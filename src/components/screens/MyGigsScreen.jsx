@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../supabase'
 import { useAuth } from '../../context/AuthContext'
+import PublicProfile from '../PublicProfile'
 
 const STATUS_CONFIG = {
   open: { label: 'Open', color: '#6C47FF', bg: '#EEE9FF', border: '#B8A5FF' },
@@ -17,6 +18,7 @@ export default function MyGigsScreen() {
   const [loading, setLoading] = useState(true)
   const [selectedGig, setSelectedGig] = useState(null)
   const [expandedGig, setExpandedGig] = useState(null)
+  const [viewingProfile, setViewingProfile] = useState(null)
   const [receipt, setReceipt] = useState(null)
   const [uploading, setUploading] = useState(false)
   const [showReceiptModal, setShowReceiptModal] = useState(false)
@@ -341,20 +343,27 @@ export default function MyGigsScreen() {
                               <div style={{
                                 display: 'flex', gap: '8px', alignItems: 'center'
                               }}>
-                                <div style={{
-                                  width: '28px', height: '28px', borderRadius: '7px',
-                                  background: '#EEE9FF', display: 'flex',
-                                  alignItems: 'center', justifyContent: 'center',
-                                  fontSize: '11px', fontWeight: '800',
-                                  color: '#6C47FF', overflow: 'hidden'
-                                }}>
-                                  {app.users?.avatar_url ? (
-                                    <img src={app.users.avatar_url} alt=""
-                                      style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                  ) : (
-                                    app.users?.full_name?.charAt(0) || '?'
-                                  )}
-                                </div>
+                                <div
+                                    onClick={(e) => {
+                                        e.stopPropagation()
+                                        setViewingProfile(app.worker_id)
+                                    }}
+                                    style={{
+                                        width: '36px', height: '36px', borderRadius: '9px',
+                                        background: '#EEE9FF', display: 'flex',
+                                        alignItems: 'center', justifyContent: 'center',
+                                        fontSize: '13px', fontWeight: '800',
+                                        color: '#6C47FF', overflow: 'hidden',
+                                        cursor: 'pointer', border: '2px solid #B8A5FF',
+                                        flexShrink: 0
+                                    }}>
+                                    {app.users?.avatar_url ? (
+                                        <img src={app.users.avatar_url} alt=""
+                                        style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    ) : (
+                                        app.users?.full_name?.charAt(0) || '?'
+                                    )}
+                                    </div>
                                 <div>
                                   <div style={{
                                     fontSize: '12px', fontWeight: '600', color: '#14123A'
@@ -368,39 +377,41 @@ export default function MyGigsScreen() {
                               </div>
                               <div style={{ display: 'flex', gap: '6px' }}>
                                 <button
-                onClick={async () => {
-                    await supabase
-                    .from('applications')
-                    .update({ status: 'accepted' })
-                    .eq('id', app.id)
-                    await supabase
-                    .from('gigs')
-                    .update({ status: 'in_progress' })
-                    .eq('id', gig.id)
-                    fetchPostedGigs()
-                }}
-                style={{
-                    background: '#DFFDF4', border: '1px solid #7EECD2',
-                    borderRadius: '7px', padding: '5px 10px',
-                    fontSize: '11px', fontWeight: '700',
-                    color: '#00C48C', cursor: 'pointer',
-                    fontFamily: 'inherit'
-                }}>✓ Accept</button>
-                <button
-                onClick={async () => {
-                    await supabase
-                    .from('applications')
-                    .update({ status: 'rejected' })
-                    .eq('id', app.id)
-                    fetchPostedGigs()
-                }}
-                style={{
-                    background: '#FFE8EE', border: '1px solid #FF99B3',
-                    borderRadius: '7px', padding: '5px 10px',
-                    fontSize: '11px', fontWeight: '700',
-                    color: '#FF3366', cursor: 'pointer',
-                    fontFamily: 'inherit'
-                }}>✗ Decline</button>
+                                  onClick={async (e) => {
+                                    e.stopPropagation()
+                                    await supabase
+                                      .from('applications')
+                                      .update({ status: 'accepted' })
+                                      .eq('id', app.id)
+                                    await supabase
+                                      .from('gigs')
+                                      .update({ status: 'in_progress' })
+                                      .eq('id', gig.id)
+                                    fetchPostedGigs()
+                                  }}
+                                  style={{
+                                    background: '#DFFDF4', border: '1px solid #7EECD2',
+                                    borderRadius: '7px', padding: '5px 10px',
+                                    fontSize: '11px', fontWeight: '700',
+                                    color: '#00C48C', cursor: 'pointer',
+                                    fontFamily: 'inherit'
+                                  }}>✓ Accept</button>
+                                <button
+                                  onClick={async (e) => {
+                                    e.stopPropagation()
+                                    await supabase
+                                      .from('applications')
+                                      .update({ status: 'rejected' })
+                                      .eq('id', app.id)
+                                    fetchPostedGigs()
+                                  }}
+                                  style={{
+                                    background: '#FFE8EE', border: '1px solid #FF99B3',
+                                    borderRadius: '7px', padding: '5px 10px',
+                                    fontSize: '11px', fontWeight: '700',
+                                    color: '#FF3366', cursor: 'pointer',
+                                    fontFamily: 'inherit'
+                                  }}>✗ Decline</button>
                               </div>
                             </div>
                           ))}
@@ -614,6 +625,13 @@ export default function MyGigsScreen() {
             }}>Cancel</button>
           </div>
         </div>
+      )}
+
+      {viewingProfile && (
+        <PublicProfile
+          userId={viewingProfile}
+          onClose={() => setViewingProfile(null)}
+        />
       )}
     </div>
   )
