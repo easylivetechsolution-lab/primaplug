@@ -7,6 +7,8 @@ export default function NotificationBell({ onNavigate }) {
   const [notifications, setNotifications] = useState([])
   const [unread, setUnread] = useState(0)
   const [open, setOpen] = useState(false)
+  const [selectedGig, setSelectedGig] = useState(null)
+  const [loadingGig, setLoadingGig] = useState(false)
   const ref = useRef()
 
   useEffect(() => {
@@ -175,16 +177,19 @@ export default function NotificationBell({ onNavigate }) {
               notifications.map(notif => (
                 <div
                   key={notif.id}
-                  onClick={() => {
+                  onClick={async () => {
                     markRead(notif.id)
                     setOpen(false)
-                    if (onNavigate) {
-                      if (notif.type === 'application') onNavigate('mygigs')
-                      else if (notif.type === 'accepted') onNavigate('mygigs')
-                      else if (notif.type === 'rejected') onNavigate('mygigs')
-                      else if (notif.type === 'review') onNavigate('profile')
-                      else if (notif.type === 'receipt') onNavigate('mygigs')
-                      else onNavigate('mygigs')
+
+                    if (notif.gig_id) {
+                      setLoadingGig(true)
+                      const { data } = await supabase
+                        .from('gigs')
+                        .select('*, users(full_name, avatar_url, trust_score, rating, gigs_completed, phone, location)')
+                        .eq('id', notif.gig_id)
+                        .single()
+                      if (data) setSelectedGig(data)
+                      setLoadingGig(false)
                     }
                   }}
                   style={{
@@ -255,9 +260,286 @@ export default function NotificationBell({ onNavigate }) {
         </div>
       )}
 
+      {/* Gig Detail from Notification */}
+      {selectedGig && (
+        <div style={{
+          position: 'fixed', inset: 0,
+          background: 'rgba(20,18,58,0.75)',
+          backdropFilter: 'blur(4px)',
+          zIndex: 800,
+          display: 'flex', alignItems: 'flex-end',
+          justifyContent: 'center',
+          fontFamily: "'Plus Jakarta Sans', sans-serif"
+        }} onClick={() => setSelectedGig(null)}>
+          <div onClick={e => e.stopPropagation()} style={{
+            background: '#fff',
+            borderRadius: '22px 22px 0 0',
+            padding: '24px', width: '100%',
+            maxWidth: '640px', maxHeight: '88vh',
+            overflowY: 'auto',
+            animation: 'slideUp 0.3s cubic-bezier(0.16,1,0.3,1)',
+            border: '1.5px solid #E2E0FF'
+          }}>
+            <div style={{
+              width: '40px', height: '4px',
+              background: '#E2E0FF', borderRadius: '2px',
+              margin: '0 auto 20px'
+            }} />
+
+            {/* Notification context */}
+            <div style={{
+              background: '#EEE9FF', borderRadius: '10px',
+              padding: '10px 14px', marginBottom: '16px',
+              fontSize: '12px', color: '#6C47FF', fontWeight: '600',
+              display: 'flex', alignItems: 'center', gap: '8px'
+            }}>
+              <span>🔔</span>
+              <span>From your notifications</span>
+            </div>
+
+            {/* Poster */}
+            <div style={{
+              display: 'flex', gap: '12px',
+              alignItems: 'center', marginBottom: '16px'
+            }}>
+              <div style={{
+                width: '48px', height: '48px', borderRadius: '13px',
+                background: '#EEE9FF', display: 'flex',
+                alignItems: 'center', justifyContent: 'center',
+                fontSize: '18px', fontWeight: '800',
+                color: '#6C47FF', overflow: 'hidden', flexShrink: 0
+              }}>
+                {selectedGig.users?.avatar_url ? (
+                  <img src={selectedGig.users.avatar_url} alt=""
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  selectedGig.users?.full_name?.charAt(0) || '?'
+                )}
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{
+                  fontSize: '14px', fontWeight: '700', color: '#14123A'
+                }}>
+                  {selectedGig.users?.full_name || 'Anonymous'}
+                </div>
+                <div style={{ fontSize: '11px', color: '#8B8FAF' }}>
+                  ⭐ {selectedGig.users?.rating || 5.0} ·{' '}
+                  Trust {selectedGig.users?.trust_score || 100}%
+                </div>
+              </div>
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: '4px',
+                background: '#FFE8EE', border: '1px solid #FF99B3',
+                borderRadius: '6px', padding: '4px 10px',
+                fontSize: '10px', fontWeight: '800', color: '#FF3366'
+              }}>
+                {selectedGig.urgency?.toUpperCase()}
+              </div>
+            </div>
+
+            {/* Title */}
+            <h2 style={{
+              fontSize: '20px', fontWeight: '800',
+              color: '#14123A', marginBottom: '16px', lineHeight: '1.3'
+            }}>{selectedGig.title}</h2>
+
+            {/* Badges */}
+            <div style={{
+              display: 'flex', gap: '7px',
+              flexWrap: 'wrap', marginBottom: '16px'
+            }}>
+              <span style={{
+                background: selectedGig.type === 'physical' ? '#FFF0E8' : '#EEE9FF',
+                border: `1px solid ${selectedGig.type === 'physical' ? '#FFBC99' : '#B8A5FF'}`,
+                borderRadius: '6px', padding: '4px 10px',
+                fontSize: '10px', fontWeight: '700',
+                color: selectedGig.type === 'physical' ? '#FF6B2B' : '#6C47FF'
+              }}>
+                {selectedGig.type === 'physical' ? '📌 PHYSICAL' : '💻 DIGITAL'}
+              </span>
+              {selectedGig.field && (
+                <span style={{
+                  background: '#F5F4FF', border: '1px solid #E2E0FF',
+                  borderRadius: '6px', padding: '4px 10px',
+                  fontSize: '10px', fontWeight: '600', color: '#8B8FAF'
+                }}>{selectedGig.field}</span>
+              )}
+              {selectedGig.slots > 1 && (
+                <span style={{
+                  background: '#DFFDF4', border: '1px solid #7EECD2',
+                  borderRadius: '6px', padding: '4px 10px',
+                  fontSize: '10px', fontWeight: '700', color: '#00C48C'
+                }}>
+                  {selectedGig.slots_filled || 0}/{selectedGig.slots} slots filled
+                </span>
+              )}
+            </div>
+
+            {/* Pay + Location */}
+            <div style={{
+              display: 'grid', gridTemplateColumns: '1fr 1fr',
+              gap: '10px', marginBottom: '14px'
+            }}>
+              <div style={{
+                background: 'linear-gradient(135deg, #E8FFE4, #DFFDF4)',
+                border: '1.5px solid #7EECD2',
+                borderRadius: '14px', padding: '14px'
+              }}>
+                <div style={{
+                  fontSize: '9px', color: '#00C48C', fontWeight: '700',
+                  textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '4px'
+                }}>Pay Range</div>
+                <div style={{
+                  fontSize: '22px', fontWeight: '800',
+                  color: '#00C48C', letterSpacing: '-0.5px'
+                }}>${selectedGig.pay_min}</div>
+                <div style={{ fontSize: '11px', color: '#00C48C', opacity: 0.7 }}>
+                  up to ${selectedGig.pay_max}
+                </div>
+              </div>
+              <div style={{
+                background: '#FFF0E8', border: '1.5px solid #FFBC99',
+                borderRadius: '14px', padding: '14px'
+              }}>
+                <div style={{
+                  fontSize: '9px', color: '#FF6B2B', fontWeight: '700',
+                  textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '4px'
+                }}>Location</div>
+                <div style={{
+                  fontSize: '13px', fontWeight: '700',
+                  color: '#14123A', lineHeight: '1.3'
+                }}>{selectedGig.location || 'Remote'}</div>
+              </div>
+            </div>
+
+            {/* Phone */}
+            {selectedGig.users?.phone && (
+              <div style={{
+                background: '#F5F4FF', border: '1.5px solid #E2E0FF',
+                borderRadius: '12px', padding: '12px 14px',
+                marginBottom: '12px',
+                display: 'flex', justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <span style={{ fontSize: '16px' }}>📱</span>
+                  <div>
+                    <div style={{
+                      fontSize: '10px', color: '#A09DC8', fontWeight: '600',
+                      textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '2px'
+                    }}>Phone / WhatsApp</div>
+                    <div style={{
+                      fontSize: '14px', fontWeight: '700', color: '#14123A'
+                    }}>{selectedGig.users.phone}</div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <a href={`tel:${selectedGig.users.phone}`} style={{
+                    background: '#EEE9FF', border: '1.5px solid #B8A5FF',
+                    borderRadius: '9px', padding: '8px 12px',
+                    fontSize: '12px', fontWeight: '700',
+                    color: '#6C47FF', textDecoration: 'none'
+                  }}>📞 Call</a>
+                  <a href={`https://wa.me/${selectedGig.users.phone.replace(/\D/g,'')}`}
+                    target="_blank" rel="noreferrer"
+                    style={{
+                      background: '#25D366', borderRadius: '9px',
+                      padding: '8px 12px', fontSize: '12px',
+                      fontWeight: '700', color: '#fff', textDecoration: 'none'
+                    }}>💬 WhatsApp</a>
+                </div>
+              </div>
+            )}
+
+            {/* Description */}
+            {selectedGig.description && (
+              <div style={{
+                background: '#F5F4FF', borderRadius: '12px',
+                padding: '14px', marginBottom: '14px',
+                fontSize: '13px', color: '#5B5887', lineHeight: '1.6'
+              }}>{selectedGig.description}</div>
+            )}
+
+            {/* Exact address */}
+            {(selectedGig.house_number || selectedGig.street || selectedGig.landmark) && (
+              <div style={{
+                background: '#EEE9FF', border: '1.5px solid #B8A5FF',
+                borderRadius: '12px', padding: '14px', marginBottom: '14px'
+              }}>
+                <div style={{
+                  fontSize: '10px', color: '#6C47FF', fontWeight: '700',
+                  textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '10px'
+                }}>🔒 Exact Address</div>
+                {selectedGig.house_number && (
+                  <div style={{ fontSize: '12px', color: '#14123A', marginBottom: '4px' }}>
+                    🏠 {selectedGig.house_number}
+                  </div>
+                )}
+                {selectedGig.street && (
+                  <div style={{ fontSize: '12px', color: '#14123A', marginBottom: '4px' }}>
+                    🛣 {selectedGig.street}
+                  </div>
+                )}
+                {selectedGig.landmark && (
+                  <div style={{ fontSize: '12px', color: '#14123A', marginBottom: '4px' }}>
+                    🏛 Near {selectedGig.landmark}
+                  </div>
+                )}
+                {selectedGig.directions && (
+                  <div style={{ fontSize: '11px', color: '#8B8FAF', marginTop: '6px', lineHeight: '1.5' }}>
+                    📋 {selectedGig.directions}
+                  </div>
+                )}
+                {selectedGig.latitude && selectedGig.longitude && (
+                  <a href={`https://www.google.com/maps?q=${selectedGig.latitude},${selectedGig.longitude}`}
+                    target="_blank" rel="noreferrer"
+                    style={{
+                      display: 'flex', alignItems: 'center',
+                      justifyContent: 'center', gap: '8px',
+                      marginTop: '12px', background: '#fff',
+                      border: '1.5px solid #B8A5FF', borderRadius: '10px',
+                      padding: '10px', fontSize: '13px', fontWeight: '700',
+                      color: '#6C47FF', textDecoration: 'none'
+                    }}>
+                    🗺 Open in Google Maps
+                  </a>
+                )}
+              </div>
+            )}
+
+            {/* Close button */}
+            <button onClick={() => setSelectedGig(null)} style={{
+              width: '100%', background: '#F5F4FF',
+              border: '1.5px solid #E2E0FF', borderRadius: '12px',
+              padding: '14px', fontSize: '13px', fontWeight: '600',
+              color: '#8B8FAF', cursor: 'pointer', fontFamily: 'inherit'
+            }}>Close</button>
+          </div>
+        </div>
+      )}
+
+      {loadingGig && (
+        <div style={{
+          position: 'fixed', inset: 0,
+          background: 'rgba(20,18,58,0.5)',
+          zIndex: 800, display: 'flex',
+          alignItems: 'center', justifyContent: 'center'
+        }}>
+          <div style={{
+            background: '#fff', borderRadius: '16px',
+            padding: '24px 32px', textAlign: 'center',
+            fontSize: '14px', color: '#6C47FF', fontWeight: '700'
+          }}>⏳ Loading gig...</div>
+        </div>
+      )}
+
       <style>{`
         @keyframes notifDrop {
           from { opacity: 0; transform: translateY(-8px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateY(24px); }
           to { opacity: 1; transform: translateY(0); }
         }
         @keyframes bellring {

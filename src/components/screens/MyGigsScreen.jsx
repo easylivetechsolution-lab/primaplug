@@ -402,10 +402,35 @@ export default function MyGigsScreen() {
                                         .from('applications')
                                         .update({ status: 'accepted' })
                                         .eq('id', app.id)
-                                      await supabase
-                                        .from('gigs')
-                                        .update({ status: 'in_progress' })
-                                        .eq('id', gig.id)
+
+                                      const { data: accepted } = await supabase
+                                        .from('applications')
+                                        .select('id')
+                                        .eq('gig_id', gig.id)
+                                        .eq('status', 'accepted')
+
+                                      const filledCount = accepted?.length || 0
+
+                                      if (filledCount >= gig.slots) {
+                                        await supabase
+                                          .from('gigs')
+                                          .update({ status: 'in_progress', slots_filled: filledCount })
+                                          .eq('id', gig.id)
+                                      } else {
+                                        await supabase
+                                          .from('gigs')
+                                          .update({ slots_filled: filledCount })
+                                          .eq('id', gig.id)
+                                      }
+
+                                      await supabase.from('notifications').insert({
+                                        user_id: app.worker_id,
+                                        title: 'Application Accepted! 🎉',
+                                        message: `Your application for "${gig.title}" has been accepted`,
+                                        type: 'accepted',
+                                        gig_id: gig.id
+                                      })
+
                                       fetchPostedGigs()
                                     }}
                                     style={{
