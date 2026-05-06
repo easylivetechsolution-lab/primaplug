@@ -175,64 +175,70 @@ export default function MyGigsScreen() {
                       background: '#fff', border: '1.5px solid #E2E0FF',
                       borderRadius: '16px', padding: '18px'
                     }}>
-                      {/* Gig Header */}
-                      <div style={{
-                        display: 'flex', justifyContent: 'space-between',
-                        alignItems: 'flex-start', marginBottom: '12px'
-                      }}>
-                        <div style={{ flex: 1, paddingRight: '10px' }}>
-                          <div
-                            onClick={() => setExpandedGig(expandedGig?.id === gig.id ? null : gig)}
-                            style={{
+                      {/* Gig Header — clickable to expand */}
+                      <div
+                        onClick={() => setExpandedGig(
+                          expandedGig?.id === gig.id ? null : gig
+                        )}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <div style={{
+                          display: 'flex', justifyContent: 'space-between',
+                          alignItems: 'flex-start', marginBottom: '8px'
+                        }}>
+                          <div style={{ flex: 1, paddingRight: '10px' }}>
+                            <div style={{
                               fontSize: '15px', fontWeight: '700',
                               color: '#14123A', marginBottom: '6px',
-                              cursor: 'pointer', display: 'flex',
-                              justifyContent: 'space-between', alignItems: 'center'
+                              display: 'flex', justifyContent: 'space-between',
+                              alignItems: 'center'
                             }}>
-                            {gig.title}
-                            <span style={{ fontSize: '12px', color: '#A09DC8' }}>
-                              {expandedGig?.id === gig.id ? '▲' : '▼'}
-                            </span>
+                              {gig.title}
+                              <span style={{ fontSize: '12px', color: '#A09DC8', marginLeft: '8px' }}>
+                                {expandedGig?.id === gig.id ? '▲' : '▼'}
+                              </span>
+                            </div>
+                            <div style={{ display: 'flex', gap: '6px' }}>
+                              <StatusBadge status={gig.status} />
+                              <span style={{
+                                background: '#F5F4FF', border: '1px solid #E2E0FF',
+                                borderRadius: '5px', padding: '2px 8px',
+                                fontSize: '9px', fontWeight: '600', color: '#8B8FAF'
+                              }}>
+                                {gig.type === 'physical' ? '📌 LOCAL' : '💻 REMOTE'}
+                              </span>
+                            </div>
                           </div>
-                          <div style={{ display: 'flex', gap: '6px' }}>
-                            <StatusBadge status={gig.status} />
-                            <span style={{
-                              background: '#F5F4FF', border: '1px solid #E2E0FF',
-                              borderRadius: '5px', padding: '2px 8px',
-                              fontSize: '9px', fontWeight: '600', color: '#8B8FAF'
-                            }}>
-                              {gig.type === 'physical' ? '📌 LOCAL' : '💻 REMOTE'}
-                            </span>
-                          </div>
-                        </div>
-                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                          <div style={{
-                            fontSize: '16px', fontWeight: '800', color: '#00C48C'
-                          }}>${gig.pay_min}–${gig.pay_max}</div>
-                          <div style={{ fontSize: '10px', color: '#A09DC8' }}>
-                            {new Date(gig.created_at).toLocaleDateString()}
+                          <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                            <div style={{
+                              fontSize: '16px', fontWeight: '800', color: '#00C48C'
+                            }}>${gig.pay_min}–${gig.pay_max}</div>
+                            <div style={{ fontSize: '10px', color: '#A09DC8' }}>
+                              {new Date(gig.created_at).toLocaleDateString()}
+                            </div>
                           </div>
                         </div>
                       </div>
 
-                      {/* Expanded Detail */}
+                      {/* Expanded Detail — NOT clickable */}
                       {expandedGig?.id === gig.id && (
                         <div style={{
                           background: '#F5F4FF', borderRadius: '12px',
                           padding: '14px', marginTop: '10px',
-                          border: '1.5px solid #E2E0FF'
+                          border: '1.5px solid #E2E0FF',
+                          marginBottom: '12px'
                         }}>
-                          {/* Gig Info */}
                           <div style={{
                             display: 'grid', gridTemplateColumns: '1fr 1fr',
-                            gap: '10px', marginBottom: '12px'
+                            gap: '10px', marginBottom: '10px'
                           }}>
                             <div style={{
                               background: '#fff', borderRadius: '10px', padding: '10px'
                             }}>
                               <div style={{
                                 fontSize: '9px', color: '#A09DC8', fontWeight: '700',
-                                textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '3px'
+                                textTransform: 'uppercase', letterSpacing: '0.5px',
+                                marginBottom: '3px'
                               }}>Pay Range</div>
                               <div style={{
                                 fontSize: '16px', fontWeight: '800', color: '#00C48C'
@@ -243,7 +249,8 @@ export default function MyGigsScreen() {
                             }}>
                               <div style={{
                                 fontSize: '9px', color: '#A09DC8', fontWeight: '700',
-                                textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '3px'
+                                textTransform: 'uppercase', letterSpacing: '0.5px',
+                                marginBottom: '3px'
                               }}>Field</div>
                               <div style={{
                                 fontSize: '13px', fontWeight: '700', color: '#14123A'
@@ -251,7 +258,6 @@ export default function MyGigsScreen() {
                             </div>
                           </div>
 
-                          {/* Location */}
                           {gig.location && (
                             <div style={{
                               background: '#fff', borderRadius: '10px',
@@ -259,15 +265,15 @@ export default function MyGigsScreen() {
                             }}>
                               <div style={{
                                 fontSize: '9px', color: '#A09DC8', fontWeight: '700',
-                                textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px'
-                              }}>General Location</div>
+                                textTransform: 'uppercase', letterSpacing: '0.5px',
+                                marginBottom: '4px'
+                              }}>Location</div>
                               <div style={{
                                 fontSize: '13px', fontWeight: '600', color: '#14123A'
                               }}>📍 {gig.location}</div>
                             </div>
                           )}
 
-                          {/* Exact Address */}
                           {(gig.house_number || gig.street || gig.landmark) && (
                             <div style={{
                               background: '#fff', borderRadius: '10px',
@@ -276,41 +282,41 @@ export default function MyGigsScreen() {
                             }}>
                               <div style={{
                                 fontSize: '9px', color: '#6C47FF', fontWeight: '700',
-                                textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px',
-                                display: 'flex', alignItems: 'center', gap: '4px'
+                                textTransform: 'uppercase', letterSpacing: '0.5px',
+                                marginBottom: '8px'
                               }}>🔒 Exact Address</div>
                               {gig.house_number && (
-                                <div style={{ fontSize: '12px', color: '#14123A', marginBottom: '3px' }}>
-                                  🏠 {gig.house_number}
-                                </div>
+                                <div style={{
+                                  fontSize: '12px', color: '#14123A', marginBottom: '3px'
+                                }}>🏠 {gig.house_number}</div>
                               )}
                               {gig.street && (
-                                <div style={{ fontSize: '12px', color: '#14123A', marginBottom: '3px' }}>
-                                  🛣 {gig.street}
-                                </div>
+                                <div style={{
+                                  fontSize: '12px', color: '#14123A', marginBottom: '3px'
+                                }}>🛣 {gig.street}</div>
                               )}
                               {gig.landmark && (
-                                <div style={{ fontSize: '12px', color: '#14123A', marginBottom: '3px' }}>
-                                  🏛 Near {gig.landmark}
-                                </div>
+                                <div style={{
+                                  fontSize: '12px', color: '#14123A', marginBottom: '3px'
+                                }}>🏛 Near {gig.landmark}</div>
                               )}
                               {gig.directions && (
-                                <div style={{ fontSize: '11px', color: '#8B8FAF', marginTop: '4px', lineHeight: '1.5' }}>
-                                  📋 {gig.directions}
-                                </div>
+                                <div style={{
+                                  fontSize: '11px', color: '#8B8FAF',
+                                  marginTop: '4px', lineHeight: '1.5'
+                                }}>📋 {gig.directions}</div>
                               )}
                             </div>
                           )}
 
-                          {/* Description */}
                           {gig.description && (
                             <div style={{
-                              background: '#fff', borderRadius: '10px',
-                              padding: '10px', marginBottom: '10px'
+                              background: '#fff', borderRadius: '10px', padding: '10px'
                             }}>
                               <div style={{
                                 fontSize: '9px', color: '#A09DC8', fontWeight: '700',
-                                textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px'
+                                textTransform: 'uppercase', letterSpacing: '0.5px',
+                                marginBottom: '4px'
                               }}>Description</div>
                               <div style={{
                                 fontSize: '12px', color: '#5B5887', lineHeight: '1.6'
@@ -320,7 +326,7 @@ export default function MyGigsScreen() {
                         </div>
                       )}
 
-                      {/* Applicants */}
+                      {/* Applicants — completely separate from expand click */}
                       {gig.applications && gig.applications.length > 0 && (
                         <div style={{
                           background: '#F5F4FF', borderRadius: '10px',
@@ -329,96 +335,124 @@ export default function MyGigsScreen() {
                           <div style={{
                             fontSize: '10px', fontWeight: '700',
                             color: '#6C47FF', textTransform: 'uppercase',
-                            letterSpacing: '0.8px', marginBottom: '8px'
+                            letterSpacing: '0.8px', marginBottom: '10px'
                           }}>
                             {gig.applications.length} Applicant{gig.applications.length !== 1 ? 's' : ''}
                           </div>
                           {gig.applications.map((app, i) => (
                             <div key={i} style={{
                               display: 'flex', justifyContent: 'space-between',
-                              alignItems: 'center', padding: '6px 0',
+                              alignItems: 'center', padding: '8px 0',
                               borderBottom: i < gig.applications.length - 1
                                 ? '1px solid #E2E0FF' : 'none'
                             }}>
                               <div style={{
-                                display: 'flex', gap: '8px', alignItems: 'center'
+                                display: 'flex', gap: '10px', alignItems: 'center'
                               }}>
                                 <div
-                                    onClick={(e) => {
-                                        e.stopPropagation()
-                                        setViewingProfile(app.worker_id)
-                                    }}
-                                    style={{
-                                        width: '36px', height: '36px', borderRadius: '9px',
-                                        background: '#EEE9FF', display: 'flex',
-                                        alignItems: 'center', justifyContent: 'center',
-                                        fontSize: '13px', fontWeight: '800',
-                                        color: '#6C47FF', overflow: 'hidden',
-                                        cursor: 'pointer', border: '2px solid #B8A5FF',
-                                        flexShrink: 0
-                                    }}>
-                                    {app.users?.avatar_url ? (
-                                        <img src={app.users.avatar_url} alt=""
-                                        style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                    ) : (
-                                        app.users?.full_name?.charAt(0) || '?'
-                                    )}
-                                    </div>
-                                <div>
-                                  <div style={{
-                                    fontSize: '12px', fontWeight: '600', color: '#14123A'
+                                  onClick={() => setViewingProfile(app.worker_id)}
+                                  style={{
+                                    width: '38px', height: '38px',
+                                    borderRadius: '10px', background: '#EEE9FF',
+                                    display: 'flex', alignItems: 'center',
+                                    justifyContent: 'center', fontSize: '14px',
+                                    fontWeight: '800', color: '#6C47FF',
+                                    overflow: 'hidden', cursor: 'pointer',
+                                    border: '2px solid #B8A5FF', flexShrink: 0
                                   }}>
-                                    {app.users?.full_name || 'Unknown'}
+                                  {app.users?.avatar_url ? (
+                                    <img src={app.users.avatar_url} alt=""
+                                      style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                  ) : (
+                                    app.users?.full_name?.charAt(0) || '?'
+                                  )}
+                                </div>
+                                <div>
+                                  <div
+                                    onClick={() => setViewingProfile(app.worker_id)}
+                                    style={{
+                                      fontSize: '13px', fontWeight: '700',
+                                      color: '#6C47FF', cursor: 'pointer',
+                                      marginBottom: '2px'
+                                    }}>
+                                    {app.users?.full_name || 'Unknown'} →
                                   </div>
                                   <div style={{ fontSize: '10px', color: '#A09DC8' }}>
-                                    Trust: {app.users?.trust_score || 100}%
+                                    Trust: {app.users?.trust_score || 100}% ·{' '}
+                                    <span style={{
+                                      color: app.status === 'accepted'
+                                        ? '#00C48C' : app.status === 'rejected'
+                                          ? '#FF3366' : '#FF6B2B',
+                                      fontWeight: '600', textTransform: 'capitalize'
+                                    }}>
+                                      {app.status}
+                                    </span>
                                   </div>
                                 </div>
                               </div>
-                              <div style={{ display: 'flex', gap: '6px' }}>
-                                <button
-                                  onClick={async (e) => {
-                                    e.stopPropagation()
-                                    await supabase
-                                      .from('applications')
-                                      .update({ status: 'accepted' })
-                                      .eq('id', app.id)
-                                    await supabase
-                                      .from('gigs')
-                                      .update({ status: 'in_progress' })
-                                      .eq('id', gig.id)
-                                    fetchPostedGigs()
-                                  }}
-                                  style={{
-                                    background: '#DFFDF4', border: '1px solid #7EECD2',
-                                    borderRadius: '7px', padding: '5px 10px',
-                                    fontSize: '11px', fontWeight: '700',
-                                    color: '#00C48C', cursor: 'pointer',
-                                    fontFamily: 'inherit'
-                                  }}>✓ Accept</button>
-                                <button
-                                  onClick={async (e) => {
-                                    e.stopPropagation()
-                                    await supabase
-                                      .from('applications')
-                                      .update({ status: 'rejected' })
-                                      .eq('id', app.id)
-                                    fetchPostedGigs()
-                                  }}
-                                  style={{
-                                    background: '#FFE8EE', border: '1px solid #FF99B3',
-                                    borderRadius: '7px', padding: '5px 10px',
-                                    fontSize: '11px', fontWeight: '700',
-                                    color: '#FF3366', cursor: 'pointer',
-                                    fontFamily: 'inherit'
-                                  }}>✗ Decline</button>
-                              </div>
+
+                              {app.status === 'pending' && (
+                                <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                                  <button
+                                    onClick={async () => {
+                                      await supabase
+                                        .from('applications')
+                                        .update({ status: 'accepted' })
+                                        .eq('id', app.id)
+                                      await supabase
+                                        .from('gigs')
+                                        .update({ status: 'in_progress' })
+                                        .eq('id', gig.id)
+                                      fetchPostedGigs()
+                                    }}
+                                    style={{
+                                      background: '#DFFDF4',
+                                      border: '1.5px solid #7EECD2',
+                                      borderRadius: '8px', padding: '7px 12px',
+                                      fontSize: '12px', fontWeight: '700',
+                                      color: '#00C48C', cursor: 'pointer',
+                                      fontFamily: 'inherit', whiteSpace: 'nowrap'
+                                    }}>✓ Accept</button>
+                                  <button
+                                    onClick={async () => {
+                                      await supabase
+                                        .from('applications')
+                                        .update({ status: 'rejected' })
+                                        .eq('id', app.id)
+                                      fetchPostedGigs()
+                                    }}
+                                    style={{
+                                      background: '#FFE8EE',
+                                      border: '1.5px solid #FF99B3',
+                                      borderRadius: '8px', padding: '7px 12px',
+                                      fontSize: '12px', fontWeight: '700',
+                                      color: '#FF3366', cursor: 'pointer',
+                                      fontFamily: 'inherit', whiteSpace: 'nowrap'
+                                    }}>✗ Decline</button>
+                                </div>
+                              )}
+
+                              {app.status === 'accepted' && (
+                                <span style={{
+                                  background: '#DFFDF4', border: '1.5px solid #7EECD2',
+                                  borderRadius: '8px', padding: '6px 12px',
+                                  fontSize: '11px', fontWeight: '700', color: '#00C48C'
+                                }}>✓ Accepted</span>
+                              )}
+
+                              {app.status === 'rejected' && (
+                                <span style={{
+                                  background: '#FFE8EE', border: '1.5px solid #FF99B3',
+                                  borderRadius: '8px', padding: '6px 12px',
+                                  fontSize: '11px', fontWeight: '700', color: '#FF3366'
+                                }}>✗ Declined</span>
+                              )}
                             </div>
                           ))}
                         </div>
                       )}
 
-                      {/* Actions */}
+                      {/* Bottom Actions */}
                       <div style={{ display: 'flex', gap: '8px' }}>
                         <button
                           onClick={() => {
