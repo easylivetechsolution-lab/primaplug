@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../supabase'
+import PublicProfile from '../PublicProfile'
 
 const URGENCY = {
   now: { label: 'NOW', color: '#FF3366', bg: '#FFE8EE', border: '#FF99B3' },
@@ -20,6 +21,7 @@ export default function FeedScreen() {
   const [urgFilter, setUrgFilter] = useState('all')
   const [fieldFilter, setFieldFilter] = useState('All')
   const [selectedGig, setSelectedGig] = useState(null)
+  const [viewingProfile, setViewingProfile] = useState(null)
   const [applying, setApplying] = useState(false)
   const [applied, setApplied] = useState(false)
 
@@ -443,26 +445,32 @@ export default function FeedScreen() {
                   padding: '14px', marginBottom: '14px',
                   display: 'flex', gap: '12px', alignItems: 'center'
                 }}>
-                  <div style={{
-                    width: '46px', height: '46px', borderRadius: '12px',
-                    background: '#EEE9FF', display: 'flex',
-                    alignItems: 'center', justifyContent: 'center',
-                    fontSize: '18px', fontWeight: '800', color: '#6C47FF',
-                    overflow: 'hidden', flexShrink: 0
-                  }}>
+                  <div
+                    onClick={() => setViewingProfile(selectedGig.poster_id)}
+                    style={{
+                        width: '46px', height: '46px', borderRadius: '12px',
+                        background: '#EEE9FF', display: 'flex',
+                        alignItems: 'center', justifyContent: 'center',
+                        fontSize: '18px', fontWeight: '800', color: '#6C47FF',
+                        overflow: 'hidden', flexShrink: 0, cursor: 'pointer'
+                    }}>
                     {selectedGig.users?.avatar_url ? (
-                      <img src={selectedGig.users.avatar_url} alt=""
+                        <img src={selectedGig.users.avatar_url} alt=""
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     ) : (
-                      selectedGig.users?.full_name?.charAt(0) || '?'
+                        selectedGig.users?.full_name?.charAt(0) || '?'
                     )}
-                  </div>
+                    </div>
                   <div style={{ flex: 1 }}>
-                    <div style={{
-                      fontSize: '14px', fontWeight: '700',
-                      color: '#14123A', marginBottom: '2px'
+                    <div
+                    onClick={() => setViewingProfile(selectedGig.poster_id)}
+                    style={{
+                    fontSize: '14px', fontWeight: '700',
+                    color: '#6C47FF', marginBottom: '2px',
+                    cursor: 'pointer', textDecoration: 'underline',
+                    textDecorationStyle: 'dotted'
                     }}>
-                      {selectedGig.users?.full_name || 'Anonymous'}
+                    {selectedGig.users?.full_name || 'Anonymous'} →
                     </div>
                     <div style={{ fontSize: '11px', color: '#8B8FAF' }}>
                       ⭐ {selectedGig.users?.rating || 5.0} rating ·{' '}
@@ -565,11 +573,46 @@ export default function FeedScreen() {
                   }}>Skip</button>
                   <button
                     onClick={async () => {
-                      setApplying(true)
-                      await new Promise(r => setTimeout(r, 1200))
-                      setApplying(false)
-                      setApplied(true)
-                    }}
+  setApplying(true)
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    const userId = session?.user?.id
+    if (!userId) {
+      alert('Please log in to apply')
+      setApplying(false)
+      return
+    }
+    // Check if already applied
+    const { data: existing } = await supabase
+      .from('applications')
+      .select('id')
+      .eq('gig_id', selectedGig.id)
+      .eq('worker_id', userId)
+      .maybeSingle()
+    if (existing) {
+      alert('You already applied for this gig!')
+      setApplying(false)
+      return
+    }
+    // Save application
+    const { error } = await supabase
+      .from('applications')
+      .insert({
+        gig_id: selectedGig.id,
+        worker_id: userId,
+        status: 'pending'
+      })
+    if (error) {
+      alert('Error applying: ' + error.message)
+      setApplying(false)
+      return
+    }
+    setApplied(true)
+  } catch (e) {
+    console.log('Apply error:', e)
+  }
+  setApplying(false)
+}}
                     disabled={applying}
                     style={{
                       flex: 2,
@@ -602,6 +645,14 @@ export default function FeedScreen() {
           to { opacity: 1; transform: translateY(0); }
         }
       `}</style>
+
+      {/* Public Profile Sheet */}
+      {viewingProfile && (
+        <PublicProfile
+          userId={viewingProfile}
+          onClose={() => setViewingProfile(null)}
+        />
+      )}
     </div>
   )
 }

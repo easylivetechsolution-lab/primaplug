@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { supabase } from '../../supabase'
+import PublicProfile from '../PublicProfile'
 
 // Fix leaflet default icon
 delete L.Icon.Default.prototype._getIconUrl
@@ -130,6 +131,7 @@ export default function MapScreen() {
   const [liveCount, setLiveCount] = useState(312)
   const [nowCount, setNowCount] = useState(17)
   const [selectedGig, setSelectedGig] = useState(null)
+  const [viewingProfile, setViewingProfile] = useState(null)
   const [applying, setApplying] = useState(false)
   const [applied, setApplied] = useState(false)
 
@@ -563,12 +565,15 @@ export default function MapScreen() {
                   display: 'flex', gap: '12px',
                   alignItems: 'center', marginBottom: '16px'
                 }}>
-                  <div style={{
+                  <div
+                    onClick={() => setViewingProfile(selectedGig.poster_id)}
+                    style={{
                     width: '52px', height: '52px', borderRadius: '14px',
                     background: '#EEE9FF', display: 'flex',
                     alignItems: 'center', justifyContent: 'center',
                     fontSize: '20px', fontWeight: '800',
-                    color: '#6C47FF', overflow: 'hidden', flexShrink: 0
+                    color: '#6C47FF', overflow: 'hidden', flexShrink: 0,
+                    cursor: 'pointer'
                   }}>
                     {selectedGig.users?.avatar_url ? (
                       <img src={selectedGig.users.avatar_url} alt=""
@@ -578,8 +583,11 @@ export default function MapScreen() {
                     )}
                   </div>
                   <div style={{ flex: 1 }}>
-                    <div style={{
-                      fontSize: '14px', fontWeight: '700', color: '#14123A'
+                    <div
+                      onClick={() => setViewingProfile(selectedGig.poster_id)}
+                      style={{
+                      fontSize: '14px', fontWeight: '700', color: '#14123A',
+                      cursor: 'pointer'
                     }}>
                       {selectedGig.users?.full_name || 'Anonymous'}
                     </div>
@@ -694,11 +702,46 @@ export default function MapScreen() {
                   }}>Skip</button>
                   <button
                     onClick={async () => {
-                      setApplying(true)
-                      await new Promise(r => setTimeout(r, 1200))
-                      setApplying(false)
-                      setApplied(true)
-                    }}
+  setApplying(true)
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    const userId = session?.user?.id
+    if (!userId) {
+      alert('Please log in to apply')
+      setApplying(false)
+      return
+    }
+    // Check if already applied
+    const { data: existing } = await supabase
+      .from('applications')
+      .select('id')
+      .eq('gig_id', selectedGig.id)
+      .eq('worker_id', userId)
+      .maybeSingle()
+    if (existing) {
+      alert('You already applied for this gig!')
+      setApplying(false)
+      return
+    }
+    // Save application
+    const { error } = await supabase
+      .from('applications')
+      .insert({
+        gig_id: selectedGig.id,
+        worker_id: userId,
+        status: 'pending'
+      })
+    if (error) {
+      alert('Error applying: ' + error.message)
+      setApplying(false)
+      return
+    }
+    setApplied(true)
+  } catch (e) {
+    console.log('Apply error:', e)
+  }
+  setApplying(false)
+}}
                     disabled={applying}
                     style={{
                       flex: 2,
@@ -719,6 +762,13 @@ export default function MapScreen() {
             )}
           </div>
         </div>
+      )}
+
+      {viewingProfile && (
+        <PublicProfile
+          userId={viewingProfile}
+          onClose={() => setViewingProfile(null)}
+        />
       )}
 
       <style>{`
