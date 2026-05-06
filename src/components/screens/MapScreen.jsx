@@ -736,6 +736,14 @@ export default function MapScreen() {
       setApplying(false)
       return
     }
+    // Notify the gig poster
+    await supabase.from('notifications').insert({
+      user_id: selectedGig.poster_id,
+      title: 'New Application!',
+      message: `Someone applied for your gig "${selectedGig.title}"`,
+      type: 'application',
+      gig_id: selectedGig.id
+    })
     setApplied(true)
   } catch (e) {
     console.log('Apply error:', e)

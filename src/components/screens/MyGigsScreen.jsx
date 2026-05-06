@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../supabase'
 import { useAuth } from '../../context/AuthContext'
 import PublicProfile from '../PublicProfile'
+import ReviewModal from '../ReviewModal'
 
 const STATUS_CONFIG = {
   open: { label: 'Open', color: '#6C47FF', bg: '#EEE9FF', border: '#B8A5FF' },
@@ -20,6 +21,8 @@ export default function MyGigsScreen() {
   const [expandedGig, setExpandedGig] = useState(null)
   const [viewingProfile, setViewingProfile] = useState(null)
   const [receipt, setReceipt] = useState(null)
+  const [showReview, setShowReview] = useState(false)
+  const [reviewData, setReviewData] = useState(null)
   const [uploading, setUploading] = useState(false)
   const [showReceiptModal, setShowReceiptModal] = useState(false)
 
@@ -433,11 +436,30 @@ export default function MyGigsScreen() {
                               )}
 
                               {app.status === 'accepted' && (
-                                <span style={{
-                                  background: '#DFFDF4', border: '1.5px solid #7EECD2',
-                                  borderRadius: '8px', padding: '6px 12px',
-                                  fontSize: '11px', fontWeight: '700', color: '#00C48C'
-                                }}>✓ Accepted</span>
+                                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                  <span style={{
+                                    background: '#DFFDF4', border: '1.5px solid #7EECD2',
+                                    borderRadius: '8px', padding: '6px 12px',
+                                    fontSize: '11px', fontWeight: '700', color: '#00C48C'
+                                  }}>✓ Accepted</span>
+                                  <button
+                                    onClick={() => {
+                                      setReviewData({
+                                        gig,
+                                        revieweeId: app.worker_id,
+                                        revieweeName: app.users?.full_name || 'Worker',
+                                        reviewType: 'worker'
+                                      })
+                                      setShowReview(true)
+                                    }}
+                                    style={{
+                                      background: '#EEE9FF', border: '1.5px solid #B8A5FF',
+                                      borderRadius: '8px', padding: '6px 12px',
+                                      fontSize: '11px', fontWeight: '700',
+                                      color: '#6C47FF', cursor: 'pointer',
+                                      fontFamily: 'inherit'
+                                    }}>⭐ Review</button>
+                                </div>
                               )}
 
                               {app.status === 'rejected' && (
@@ -665,6 +687,21 @@ export default function MyGigsScreen() {
         <PublicProfile
           userId={viewingProfile}
           onClose={() => setViewingProfile(null)}
+        />
+      )}
+
+      {/* Review Modal */}
+      {showReview && reviewData && (
+        <ReviewModal
+          gig={reviewData.gig}
+          revieweeId={reviewData.revieweeId}
+          revieweeName={reviewData.revieweeName}
+          reviewType={reviewData.reviewType}
+          onClose={() => setShowReview(false)}
+          onDone={() => {
+            setShowReview(false)
+            fetchPostedGigs()
+          }}
         />
       )}
     </div>

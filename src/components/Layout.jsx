@@ -7,6 +7,7 @@ import DiscoverScreen from './screens/DiscoverScreen'
 import MyGigsScreen from './screens/MyGigsScreen'
 import ProfileScreen from './screens/ProfileScreen'
 import PostGig from './PostGig'
+import NotificationBell from './NotificationBell'
 
 export default function Layout() {
   const { user } = useAuth()
@@ -97,6 +98,7 @@ export default function Layout() {
 
         {/* Right Actions */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <NotificationBell />
           <button onClick={() => setIsLive(l => !l)}
             style={{
               background: isLive ? '#DFFDF4' : 'transparent',

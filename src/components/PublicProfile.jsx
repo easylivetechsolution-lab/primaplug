@@ -5,13 +5,15 @@ export default function PublicProfile({ userId, onClose }) {
   const [profile, setProfile] = useState(null)
   const [gigs, setGigs] = useState([])
   const [loading, setLoading] = useState(true)
+  const [reviews, setReviews] = useState([])
 
   useEffect(() => {
-    if (userId) {
-      fetchProfile()
-      fetchUserGigs()
-    }
-  }, [userId])
+  if (userId) {
+    fetchProfile()
+    fetchUserGigs()
+    fetchReviews()
+  }
+}, [userId])
 
   const fetchProfile = async () => {
     const { data } = await supabase
@@ -22,6 +24,16 @@ export default function PublicProfile({ userId, onClose }) {
     if (data) setProfile(data)
     setLoading(false)
   }
+
+  const fetchReviews = async () => {
+  const { data } = await supabase
+    .from('reviews')
+    .select('*, users!reviews_reviewer_id_fkey(full_name, avatar_url)')
+    .eq('reviewee_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(10)
+  if (data) setReviews(data)
+}
 
   const fetchUserGigs = async () => {
     const { data } = await supabase
@@ -264,6 +276,90 @@ export default function PublicProfile({ userId, onClose }) {
                       }}>
                         ${gig.pay_min}+
                       </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Reviews */}
+            {reviews.length > 0 && (
+              <div style={{ marginBottom: '20px' }}>
+                <div style={{
+                  fontSize: '11px', fontWeight: '700', color: '#A09DC8',
+                  textTransform: 'uppercase', letterSpacing: '1px',
+                  marginBottom: '12px'
+                }}>
+                  Reviews ({reviews.length})
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {reviews.map(review => (
+                    <div key={review.id} style={{
+                      background: '#F5F4FF', borderRadius: '14px',
+                      padding: '14px', border: '1.5px solid #E2E0FF'
+                    }}>
+                      <div style={{
+                        display: 'flex', justifyContent: 'space-between',
+                        alignItems: 'flex-start', marginBottom: '8px'
+                      }}>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                          <div style={{
+                            width: '32px', height: '32px', borderRadius: '8px',
+                            background: '#EEE9FF', display: 'flex',
+                            alignItems: 'center', justifyContent: 'center',
+                            fontSize: '12px', fontWeight: '800',
+                            color: '#6C47FF', overflow: 'hidden', flexShrink: 0
+                          }}>
+                            {review.users?.avatar_url ? (
+                              <img src={review.users.avatar_url} alt=""
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : (
+                              review.users?.full_name?.charAt(0) || '?'
+                            )}
+                          </div>
+                          <div>
+                            <div style={{
+                              fontSize: '12px', fontWeight: '700', color: '#14123A'
+                            }}>
+                              {review.users?.full_name || 'Anonymous'}
+                            </div>
+                            <div style={{ fontSize: '10px', color: '#A09DC8' }}>
+                              {new Date(review.created_at).toLocaleDateString('en-US', {
+                                month: 'short', day: 'numeric', year: 'numeric'
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '2px' }}>
+                          {[1,2,3,4,5].map(s => (
+                            <span key={s} style={{
+                              fontSize: '14px',
+                              filter: s <= review.rating ? 'none' : 'grayscale(1) opacity(0.3)'
+                            }}>⭐</span>
+                          ))}
+                        </div>
+                      </div>
+
+                      {review.tags && review.tags.length > 0 && (
+                        <div style={{
+                          display: 'flex', gap: '5px',
+                          flexWrap: 'wrap', marginBottom: '7px'
+                        }}>
+                          {review.tags.map(tag => (
+                            <span key={tag} style={{
+                              background: '#EEE9FF', borderRadius: '20px',
+                              padding: '3px 9px', fontSize: '10px',
+                              fontWeight: '600', color: '#6C47FF'
+                            }}>{tag}</span>
+                          ))}
+                        </div>
+                      )}
+
+                      {review.comment && (
+                        <div style={{
+                          fontSize: '12px', color: '#5B5887', lineHeight: '1.6'
+                        }}>{review.comment}</div>
+                      )}
                     </div>
                   ))}
                 </div>
