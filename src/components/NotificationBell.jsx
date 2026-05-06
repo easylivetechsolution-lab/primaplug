@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 
-export default function NotificationBell() {
+export default function NotificationBell({ onNavigate }) {
   const { user } = useAuth()
   const [notifications, setNotifications] = useState([])
   const [unread, setUnread] = useState(0)
@@ -111,7 +111,11 @@ export default function NotificationBell() {
           position: 'relative', transition: 'all 0.15s',
           fontFamily: 'inherit'
         }}>
-        <span style={{ fontSize: '18px' }}>🔔</span>
+        <span style={{
+          fontSize: '18px',
+          display: 'inline-block',
+          animation: unread > 0 ? 'bellring 1s ease infinite' : 'none'
+        }}>🔔</span>
         {unread > 0 && (
           <div style={{
             position: 'absolute', top: '-4px', right: '-4px',
@@ -171,7 +175,18 @@ export default function NotificationBell() {
               notifications.map(notif => (
                 <div
                   key={notif.id}
-                  onClick={() => markRead(notif.id)}
+                  onClick={() => {
+                    markRead(notif.id)
+                    setOpen(false)
+                    if (onNavigate) {
+                      if (notif.type === 'application') onNavigate('mygigs')
+                      else if (notif.type === 'accepted') onNavigate('mygigs')
+                      else if (notif.type === 'rejected') onNavigate('mygigs')
+                      else if (notif.type === 'review') onNavigate('profile')
+                      else if (notif.type === 'receipt') onNavigate('mygigs')
+                      else onNavigate('mygigs')
+                    }
+                  }}
                   style={{
                     padding: '12px 16px',
                     background: notif.read ? '#fff' : '#F8F7FF',
@@ -244,6 +259,13 @@ export default function NotificationBell() {
         @keyframes notifDrop {
           from { opacity: 0; transform: translateY(-8px); }
           to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes bellring {
+          0%, 100% { transform: rotate(0deg); }
+          20% { transform: rotate(15deg); }
+          40% { transform: rotate(-15deg); }
+          60% { transform: rotate(10deg); }
+          80% { transform: rotate(-10deg); }
         }
       `}</style>
     </div>

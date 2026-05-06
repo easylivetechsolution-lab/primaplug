@@ -98,7 +98,7 @@ export default function Layout() {
 
         {/* Right Actions */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <NotificationBell />
+          <NotificationBell onNavigate={(screen) => setScreen(screen)} />
           <button onClick={() => setIsLive(l => !l)}
             style={{
               background: isLive ? '#DFFDF4' : 'transparent',
