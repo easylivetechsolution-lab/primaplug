@@ -438,17 +438,123 @@ export default function MapScreen() {
             }} />
 
             {applied ? (
-              <div style={{ textAlign: 'center', padding: '32px 0' }}>
-                <div style={{ fontSize: '52px', marginBottom: '12px' }}>🎯</div>
-                <div style={{
-                  fontSize: '22px', fontWeight: '800',
-                  color: '#6C47FF', marginBottom: '8px'
-                }}>Application Sent!</div>
-                <div style={{
-                  fontSize: '13px', color: '#8B8FAF', lineHeight: '1.6'
-                }}>
-                  The client has been notified and will review your application shortly.
+              <div style={{ padding: '20px 0' }}>
+                <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+                  <div style={{ fontSize: '52px', marginBottom: '12px' }}>🎯</div>
+                  <div style={{
+                    fontSize: '22px', fontWeight: '800',
+                    color: '#6C47FF', marginBottom: '8px'
+                  }}>Application Sent!</div>
+                  <div style={{
+                    fontSize: '13px', color: '#8B8FAF',
+                    lineHeight: '1.6', marginBottom: '20px'
+                  }}>
+                    The client will review and confirm your application.
+                    Once accepted you'll see the exact address.
+                  </div>
                 </div>
+
+                {/* Exact address revealed after apply */}
+                {(selectedGig.house_number || selectedGig.street || selectedGig.landmark) && (
+                  <div style={{
+                    background: 'linear-gradient(135deg, #EEE9FF, #F8F5FF)',
+                    border: '1.5px solid #B8A5FF',
+                    borderRadius: '16px', padding: '16px', marginBottom: '16px'
+                  }}>
+                    <div style={{
+                      display: 'flex', gap: '8px', alignItems: 'center',
+                      marginBottom: '12px'
+                    }}>
+                      <span style={{ fontSize: '18px' }}>📍</span>
+                      <div style={{
+                        fontSize: '12px', fontWeight: '700', color: '#6C47FF',
+                        textTransform: 'uppercase', letterSpacing: '0.8px'
+                      }}>Exact Address</div>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {selectedGig.house_number && (
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                          <span style={{
+                            fontSize: '10px', fontWeight: '700', color: '#A09DC8',
+                            textTransform: 'uppercase', minWidth: '60px', paddingTop: '2px'
+                          }}>Building</span>
+                          <span style={{
+                            fontSize: '13px', fontWeight: '600', color: '#14123A'
+                          }}>{selectedGig.house_number}</span>
+                        </div>
+                      )}
+                      {selectedGig.street && (
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                          <span style={{
+                            fontSize: '10px', fontWeight: '700', color: '#A09DC8',
+                            textTransform: 'uppercase', minWidth: '60px', paddingTop: '2px'
+                          }}>Street</span>
+                          <span style={{
+                            fontSize: '13px', fontWeight: '600', color: '#14123A'
+                          }}>{selectedGig.street}</span>
+                        </div>
+                      )}
+                      {selectedGig.landmark && (
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                          <span style={{
+                            fontSize: '10px', fontWeight: '700', color: '#A09DC8',
+                            textTransform: 'uppercase', minWidth: '60px', paddingTop: '2px'
+                          }}>Landmark</span>
+                          <span style={{
+                            fontSize: '13px', fontWeight: '600', color: '#14123A'
+                          }}>{selectedGig.landmark}</span>
+                        </div>
+                      )}
+                      {selectedGig.directions && (
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                          <span style={{
+                            fontSize: '10px', fontWeight: '700', color: '#A09DC8',
+                            textTransform: 'uppercase', minWidth: '60px', paddingTop: '2px'
+                          }}>Directions</span>
+                          <span style={{
+                            fontSize: '13px', color: '#5B5887', lineHeight: '1.5'
+                          }}>{selectedGig.directions}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {selectedGig.latitude && selectedGig.longitude && (
+                      <a
+                        href={`https://www.google.com/maps?q=${selectedGig.latitude},${selectedGig.longitude}`}
+                        target="_blank" rel="noreferrer"
+                        style={{
+                          display: 'flex', alignItems: 'center',
+                          justifyContent: 'center', gap: '8px',
+                          marginTop: '14px',
+                          background: '#fff', border: '1.5px solid #B8A5FF',
+                          borderRadius: '10px', padding: '10px',
+                          fontSize: '13px', fontWeight: '700',
+                          color: '#6C47FF', textDecoration: 'none'
+                        }}>
+                        🗺 Open in Google Maps
+                      </a>
+                    )}
+                  </div>
+                )}
+
+                {/* WhatsApp button */}
+                {selectedGig.users?.phone && (
+                  <a
+                    href={`https://wa.me/${selectedGig.users.phone.replace(/\D/g, '')}?text=Hi, I just applied for your gig "${selectedGig.title}" on Prima`}
+                    target="_blank" rel="noreferrer"
+                    style={{
+                      display: 'flex', alignItems: 'center',
+                      justifyContent: 'center', gap: '8px',
+                      background: '#25D366', border: 'none',
+                      borderRadius: '12px', padding: '14px',
+                      fontSize: '14px', fontWeight: '700',
+                      color: '#fff', textDecoration: 'none',
+                      width: '100%', boxSizing: 'border-box'
+                    }}>
+                    💬 Message on WhatsApp
+                  </a>
+                )}
               </div>
             ) : (
               <>
