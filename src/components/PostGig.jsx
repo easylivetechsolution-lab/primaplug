@@ -20,6 +20,10 @@ export default function PostGig({ onClose }) {
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
   const [error, setError] = useState('')
+  const [locationSearch, setLocationSearch] = useState('')
+const [locationResults, setLocationResults] = useState([])
+const [locationLoading, setLocationLoading] = useState(false)
+const [locationSelected, setLocationSelected] = useState(false)
 
   const [form, setForm] = useState({
     title: '',
@@ -295,19 +299,169 @@ export default function PostGig({ onClose }) {
                 </div>
 
                 {form.type === 'physical' && (
-                  <div>
-                    <label style={labelStyle}>Location</label>
-                    <input
-                      style={inputStyle}
-                      placeholder="e.g. Victoria Island, Lagos"
-                      value={form.location}
-                      onChange={e => update('location', e.target.value)}
-                    />
-                    <div style={{ fontSize: '11px', color: '#A09DC8', marginTop: '5px' }}>
-                      💡 Enter a real address — it will appear as a pin on the map
-                    </div>
+  <div>
+    <label style={labelStyle}>Location</label>
+    <div style={{ position: 'relative' }}>
+      <input
+        style={{
+          ...inputStyle,
+          paddingRight: locationLoading ? '40px' : '14px'
+        }}
+        placeholder="Search city, area or address..."
+        value={locationSearch}
+        onChange={async (e) => {
+          const val = e.target.value
+          setLocationSearch(val)
+          setLocationSelected(false)
+          update('location', '')
+          update('latitude', null)
+          update('longitude', null)
+
+          if (val.length < 3) {
+            setLocationResults([])
+            return
+          }
+
+          setLocationLoading(true)
+          try {
+            const res = await fetch(
+              `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val)}&limit=5&addressdetails=1`,
+              { headers: { 'Accept-Language': 'en' } }
+            )
+            const data = await res.json()
+            setLocationResults(data)
+          } catch (e) {
+            console.log('Search error:', e)
+          }
+          setLocationLoading(false)
+        }}
+      />
+
+      {/* Loading spinner */}
+      {locationLoading && (
+        <div style={{
+          position: 'absolute', right: '12px',
+          top: '50%', transform: 'translateY(-50%)',
+          fontSize: '14px'
+        }}>⏳</div>
+      )}
+
+      {/* Selected checkmark */}
+      {locationSelected && (
+        <div style={{
+          position: 'absolute', right: '12px',
+          top: '50%', transform: 'translateY(-50%)',
+          fontSize: '16px', color: '#00C48C'
+        }}>✓</div>
+      )}
+
+      {/* Dropdown Results */}
+      {locationResults.length > 0 && !locationSelected && (
+        <div style={{
+          position: 'absolute', top: '100%', left: 0, right: 0,
+          background: '#fff', border: '1.5px solid #B8A5FF',
+          borderRadius: '12px', marginTop: '4px',
+          zIndex: 100, overflow: 'hidden',
+          boxShadow: '0 8px 32px rgba(108,71,255,0.15)'
+        }}>
+          {locationResults.map((result, i) => {
+            const city = result.address?.city
+              || result.address?.town
+              || result.address?.village
+              || result.address?.county
+              || ''
+            const country = result.address?.country || ''
+            const state = result.address?.state || ''
+            const displayName = result.display_name
+
+            const shortName = [city, state, country]
+              .filter(Boolean)
+              .join(', ')
+
+            return (
+              <div
+                key={i}
+                onClick={() => {
+                  const name = shortName || displayName
+                  setLocationSearch(name)
+                  setLocationResults([])
+                  setLocationSelected(true)
+                  update('location', name)
+                  update('latitude', parseFloat(result.lat))
+                  update('longitude', parseFloat(result.lon))
+                }}
+                style={{
+                  padding: '12px 14px',
+                  cursor: 'pointer',
+                  borderBottom: i < locationResults.length - 1
+                    ? '1px solid #F5F4FF' : 'none',
+                  transition: 'background 0.1s',
+                  display: 'flex', gap: '10px', alignItems: 'flex-start'
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = '#F5F4FF'}
+                onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+              >
+                <span style={{ fontSize: '16px', flexShrink: 0, marginTop: '1px' }}>
+                  📍
+                </span>
+                <div>
+                  <div style={{
+                    fontSize: '13px', fontWeight: '600', color: '#14123A',
+                    marginBottom: '2px'
+                  }}>
+                    {shortName || city || displayName.split(',')[0]}
                   </div>
-                )}
+                  <div style={{
+                    fontSize: '11px', color: '#A09DC8',
+                    lineHeight: '1.3'
+                  }}>
+                    {displayName.length > 60
+                      ? displayName.substring(0, 60) + '...'
+                      : displayName}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* No results */}
+      {locationSearch.length >= 3
+        && !locationLoading
+        && locationResults.length === 0
+        && !locationSelected && (
+        <div style={{
+          position: 'absolute', top: '100%', left: 0, right: 0,
+          background: '#fff', border: '1.5px solid #E2E0FF',
+          borderRadius: '12px', marginTop: '4px',
+          padding: '14px', textAlign: 'center',
+          fontSize: '12px', color: '#A09DC8', zIndex: 100
+        }}>
+          No locations found. Try a different search.
+        </div>
+      )}
+    </div>
+
+    {/* Helper text */}
+    {!locationSelected && locationSearch.length === 0 && (
+      <div style={{
+        fontSize: '11px', color: '#A09DC8', marginTop: '6px',
+        display: 'flex', alignItems: 'center', gap: '4px'
+      }}>
+        🌍 Search any city, area or address worldwide
+      </div>
+    )}
+    {locationSelected && (
+      <div style={{
+        fontSize: '11px', color: '#00C48C', marginTop: '6px',
+        display: 'flex', alignItems: 'center', gap: '4px'
+      }}>
+        ✓ Location confirmed — will appear as a pin on the map
+      </div>
+    )}
+  </div>
+)}
 
                 <div>
                   <label style={labelStyle}>Open Slots</label>

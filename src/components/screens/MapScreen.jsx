@@ -1,49 +1,15 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { supabase } from '../../supabase'
 
-// Fix default marker icon issue with Vite
+// Fix leaflet default icon
 delete L.Icon.Default.prototype._getIconUrl
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
   iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-})
-
-// Custom colored pin
-const createPin = (color) => L.divIcon({
-  className: '',
-  html: `
-    <div style="
-      position:relative;
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-    ">
-      <div style="
-        width:38px;height:38px;
-        background:${color};
-        border-radius:50%;
-        border:3px solid #fff;
-        box-shadow:0 4px 16px ${color}88;
-        display:flex;align-items:center;
-        justify-content:center;
-        font-size:16px;
-      ">📌</div>
-      <div style="
-        width:0;height:0;
-        border-left:6px solid transparent;
-        border-right:6px solid transparent;
-        border-top:8px solid ${color};
-        margin-top:-2px;
-      "></div>
-    </div>
-  `,
-  iconSize: [38, 50],
-  iconAnchor: [19, 50],
-  popupAnchor: [0, -52],
 })
 
 const URGENCY_COLORS = {
@@ -53,36 +19,103 @@ const URGENCY_COLORS = {
   flexible: '#A09DC8'
 }
 
-// User location marker
-const UserMarker = ({ position }) => {
-  const icon = L.divIcon({
+// Create custom pin with profile photo
+const createProfilePin = (avatarUrl, initial, color, urgency) => {
+  const isNow = urgency === 'now'
+  const pulseRing = isNow ? `
+    <div style="
+      position:absolute;
+      inset:-8px;
+      border-radius:50%;
+      border:2px solid ${color};
+      opacity:0.6;
+      animation:pinpulse 1.5s ease-out infinite;
+    "></div>
+    <div style="
+      position:absolute;
+      inset:-16px;
+      border-radius:50%;
+      border:2px solid ${color};
+      opacity:0.3;
+      animation:pinpulse 1.5s ease-out infinite 0.4s;
+    "></div>
+  ` : ''
+
+  const avatar = avatarUrl
+    ? `<img src="${avatarUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`
+    : `<span style="font-size:16px;font-weight:800;color:${color};">${initial}</span>`
+
+  return L.divIcon({
     className: '',
     html: `
-      <div style="position:relative;display:flex;align-items:center;justify-content:center;">
+      <div style="position:relative;display:flex;flex-direction:column;align-items:center;">
+        <div style="position:relative;">
+          ${pulseRing}
+          <div style="
+            width:44px;height:44px;
+            border-radius:50%;
+            background:#fff;
+            border:3px solid ${color};
+            box-shadow:0 4px 20px ${color}66;
+            display:flex;align-items:center;
+            justify-content:center;
+            overflow:hidden;
+            position:relative;z-index:2;
+          ">${avatar}</div>
+        </div>
         <div style="
-          position:absolute;
-          width:40px;height:40px;
-          border-radius:50%;
-          background:rgba(108,71,255,0.2);
-          animation:ripple 2s ease-out infinite;
-        "></div>
-        <div style="
-          width:16px;height:16px;
-          border-radius:50%;
-          background:#6C47FF;
-          border:3px solid #fff;
-          box-shadow:0 0 16px rgba(108,71,255,0.8);
-          position:relative;z-index:2;
+          width:0;height:0;
+          border-left:7px solid transparent;
+          border-right:7px solid transparent;
+          border-top:10px solid ${color};
+          margin-top:-2px;
         "></div>
       </div>
+      <style>
+        @keyframes pinpulse {
+          0% { transform:scale(1);opacity:0.6; }
+          100% { transform:scale(2);opacity:0; }
+        }
+      </style>
     `,
-    iconSize: [40, 40],
-    iconAnchor: [20, 20],
+    iconSize: [44, 58],
+    iconAnchor: [22, 58],
+    popupAnchor: [0, -60],
   })
-  return <Marker position={position} icon={icon} />
 }
 
-// Auto center map on user location
+// User location pin
+const createUserPin = () => L.divIcon({
+  className: '',
+  html: `
+    <div style="position:relative;display:flex;align-items:center;justify-content:center;">
+      <div style="
+        position:absolute;
+        width:40px;height:40px;
+        border-radius:50%;
+        background:rgba(108,71,255,0.2);
+        animation:userpulse 2s ease-out infinite;
+      "></div>
+      <div style="
+        width:16px;height:16px;
+        border-radius:50%;
+        background:#6C47FF;
+        border:3px solid #fff;
+        box-shadow:0 0 16px rgba(108,71,255,0.8);
+        position:relative;z-index:2;
+      "></div>
+    </div>
+    <style>
+      @keyframes userpulse {
+        0% { transform:scale(1);opacity:0.6; }
+        100% { transform:scale(2.5);opacity:0; }
+      }
+    </style>
+  `,
+  iconSize: [40, 40],
+  iconAnchor: [20, 20],
+})
+
 const SetView = ({ coords }) => {
   const map = useMap()
   useEffect(() => {
@@ -93,29 +126,26 @@ const SetView = ({ coords }) => {
 
 export default function MapScreen() {
   const [gigs, setGigs] = useState([])
-  const [userPos, setUserPos] = useState([6.5244, 3.3792]) // Default Lagos
+  const [userPos, setUserPos] = useState([6.5244, 3.3792])
   const [liveCount, setLiveCount] = useState(312)
   const [nowCount, setNowCount] = useState(17)
   const [selectedGig, setSelectedGig] = useState(null)
+  const [applying, setApplying] = useState(false)
+  const [applied, setApplied] = useState(false)
 
-  // Get user location
   useEffect(() => {
     navigator.geolocation.getCurrentPosition(
       pos => setUserPos([pos.coords.latitude, pos.coords.longitude]),
-      () => console.log('Location access denied, using default')
+      () => console.log('Location denied, using Lagos default')
     )
   }, [])
 
-  // Fetch gigs from Supabase
   useEffect(() => {
     fetchGigs()
-    // Real-time subscription
     const channel = supabase
-      .channel('gigs-channel')
+      .channel('map-gigs')
       .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'gigs'
+        event: '*', schema: 'public', table: 'gigs'
       }, () => fetchGigs())
       .subscribe()
     return () => supabase.removeChannel(channel)
@@ -124,14 +154,14 @@ export default function MapScreen() {
   const fetchGigs = async () => {
     const { data } = await supabase
       .from('gigs')
-      .select(`*, users(full_name, trust_score, avatar_url)`)
+      .select('*, users(full_name, avatar_url, trust_score, rating, gigs_completed)')
       .eq('status', 'open')
       .eq('type', 'physical')
       .not('latitude', 'is', null)
+      .not('longitude', 'is', null)
     if (data) setGigs(data)
   }
 
-  // Live counter animation
   useEffect(() => {
     const t = setInterval(() => {
       setLiveCount(c => c + (Math.random() > 0.6 ? Math.round(Math.random() * 4 - 2) : 0))
@@ -140,44 +170,15 @@ export default function MapScreen() {
     return () => clearInterval(t)
   }, [])
 
+  const nowGigs = gigs.filter(g => g.urgency === 'now')
+
   return (
-    <div style={{ position: 'relative', height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <div style={{
+      position: 'relative', height: '100%',
+      display: 'flex', flexDirection: 'column'
+    }}>
 
-      {/* Live Stats Bar */}
-      <div style={{
-        position: 'absolute', top: '14px', left: '14px',
-        display: 'flex', gap: '8px', zIndex: 1000
-      }}>
-        <div style={{
-          background: 'rgba(13,27,62,0.85)',
-          backdropFilter: 'blur(8px)',
-          borderRadius: '20px', padding: '6px 13px',
-          display: 'flex', alignItems: 'center', gap: '6px',
-          border: '1px solid rgba(255,255,255,0.1)'
-        }}>
-          <div style={{
-            width: '7px', height: '7px', borderRadius: '50%',
-            background: '#FF3366', animation: 'blink 0.9s infinite'
-          }}/>
-          <span style={{ fontSize: '11px', fontWeight: '700', color: '#fff' }}>
-            {nowCount} NOW
-          </span>
-        </div>
-        <div style={{
-          background: 'rgba(13,27,62,0.85)',
-          backdropFilter: 'blur(8px)',
-          borderRadius: '20px', padding: '6px 13px',
-          display: 'flex', alignItems: 'center', gap: '6px',
-          border: '1px solid rgba(255,255,255,0.1)'
-        }}>
-          <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#00C48C' }}/>
-          <span style={{ fontSize: '11px', fontWeight: '700', color: '#fff' }}>
-            {liveCount} live
-          </span>
-        </div>
-      </div>
-
-       {/* Map */}
+      {/* Map Container */}
       <div style={{ flex: 1, position: 'relative' }}>
         <MapContainer
           center={userPos}
@@ -191,98 +192,445 @@ export default function MapScreen() {
             subdomains="abcd"
           />
           <SetView coords={userPos} />
-          <UserMarker position={userPos} />
+
+          {/* User location marker */}
+          <Marker position={userPos} icon={createUserPin()} />
+
+          {/* Gig pins */}
           {gigs.map(gig => (
             <Marker
               key={gig.id}
               position={[gig.latitude, gig.longitude]}
-              icon={createPin(URGENCY_COLORS[gig.urgency] || '#6C47FF')}
-              eventHandlers={{ click: () => setSelectedGig(gig) }}
+              icon={createProfilePin(
+                gig.users?.avatar_url,
+                gig.users?.full_name?.charAt(0) || '?',
+                URGENCY_COLORS[gig.urgency] || '#6C47FF',
+                gig.urgency
+              )}
+              eventHandlers={{
+                click: () => {
+                  setSelectedGig(gig)
+                  setApplied(false)
+                }
+              }}
             >
               <Popup>
-                <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", minWidth: '180px' }}>
-                  <div style={{ fontSize: '13px', fontWeight: '700', marginBottom: '4px' }}>{gig.title}</div>
-                  <div style={{ fontSize: '12px', color: '#6C47FF', fontWeight: '700', marginBottom: '4px' }}>
-                    ${gig.pay_min} – ${gig.pay_max}
+                <div style={{
+                  fontFamily: "'Plus Jakarta Sans', sans-serif",
+                  minWidth: '200px', padding: '4px'
+                }}>
+                  <div style={{
+                    fontSize: '13px', fontWeight: '700',
+                    color: '#14123A', marginBottom: '4px'
+                  }}>{gig.title}</div>
+                  <div style={{
+                    fontSize: '14px', fontWeight: '800',
+                    color: '#00C48C', marginBottom: '4px'
+                  }}>${gig.pay_min} – ${gig.pay_max}</div>
+                  <div style={{ fontSize: '11px', color: '#8B8FAF' }}>
+                    {gig.location}
                   </div>
-                  <div style={{ fontSize: '11px', color: '#8B8FAF' }}>{gig.location}</div>
+                  <button
+                    onClick={() => setSelectedGig(gig)}
+                    style={{
+                      marginTop: '8px', width: '100%',
+                      background: '#6C47FF', border: 'none',
+                      borderRadius: '8px', padding: '8px',
+                      fontSize: '12px', fontWeight: '700',
+                      color: '#fff', cursor: 'pointer',
+                      fontFamily: 'inherit'
+                    }}>View Details →</button>
                 </div>
               </Popup>
             </Marker>
           ))}
         </MapContainer>
+
+        {/* Live Stats Overlay — Top Left */}
+        <div style={{
+          position: 'absolute', top: '14px', left: '14px',
+          display: 'flex', gap: '8px', zIndex: 1000
+        }}>
+          <div style={{
+            background: 'rgba(13,27,62,0.88)',
+            backdropFilter: 'blur(8px)',
+            borderRadius: '20px', padding: '6px 13px',
+            display: 'flex', alignItems: 'center', gap: '6px',
+            border: '1px solid rgba(255,255,255,0.1)'
+          }}>
+            <div style={{
+              width: '7px', height: '7px', borderRadius: '50%',
+              background: '#FF3366', animation: 'blink 0.9s infinite'
+            }} />
+            <span style={{
+              fontSize: '11px', fontWeight: '700', color: '#fff'
+            }}>{nowCount} NOW</span>
+          </div>
+          <div style={{
+            background: 'rgba(13,27,62,0.88)',
+            backdropFilter: 'blur(8px)',
+            borderRadius: '20px', padding: '6px 13px',
+            display: 'flex', alignItems: 'center', gap: '6px',
+            border: '1px solid rgba(255,255,255,0.1)'
+          }}>
+            <div style={{
+              width: '7px', height: '7px', borderRadius: '50%',
+              background: '#00C48C'
+            }} />
+            <span style={{
+              fontSize: '11px', fontWeight: '700', color: '#fff'
+            }}>{liveCount} live</span>
+          </div>
+        </div>
+
+        {/* Legend — Bottom Right */}
+        <div style={{
+          position: 'absolute', bottom: '14px', right: '14px',
+          display: 'flex', flexDirection: 'column',
+          gap: '5px', zIndex: 1000
+        }}>
+          {[
+            ['#FF3366', 'Urgent NOW'],
+            ['#FF6B2B', 'Today'],
+            ['#00C48C', 'Worker live'],
+            ['#6C47FF', 'You'],
+          ].map(([color, label]) => (
+            <div key={label} style={{
+              background: 'rgba(13,27,62,0.88)',
+              backdropFilter: 'blur(6px)',
+              borderRadius: '7px', padding: '4px 10px',
+              display: 'flex', alignItems: 'center', gap: '6px',
+              border: '1px solid rgba(255,255,255,0.08)'
+            }}>
+              <div style={{
+                width: '8px', height: '8px', borderRadius: '50%',
+                background: color, flexShrink: 0
+              }} />
+              <span style={{
+                fontSize: '10px', color: 'rgba(255,255,255,0.85)',
+                fontWeight: '600'
+              }}>{label}</span>
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* Now Strip */}
+      {/* Happening Now Strip */}
       <div style={{
         background: '#fff',
         borderTop: '1.5px solid #E2E0FF',
-        padding: '12px 16px 0'
+        flexShrink: 0
       }}>
         <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '10px'
+          padding: '12px 16px 8px',
+          display: 'flex', justifyContent: 'space-between',
+          alignItems: 'center'
         }}>
-          <span style={{ fontSize: '11px', fontWeight: '700', color: '#A09DC8', letterSpacing: '1px' }}>
-            HAPPENING NOW
-          </span>
-          <span style={{ fontSize: '11px', color: '#6C47FF', fontWeight: '600', cursor: 'pointer' }}>
-            See all →
-          </span>
+          <span style={{
+            fontSize: '11px', fontWeight: '700',
+            color: '#A09DC8', letterSpacing: '1px'
+          }}>HAPPENING NOW</span>
+          <span style={{
+            fontSize: '11px', color: '#6C47FF',
+            fontWeight: '600', cursor: 'pointer'
+          }}>See all →</span>
         </div>
+
         {gigs.length === 0 ? (
           <div style={{
-            padding: '16px',
+            padding: '12px 16px 16px',
             textAlign: 'center',
-            color: '#A09DC8',
-            fontSize: '13px',
-            marginBottom: '16px'
+            color: '#A09DC8', fontSize: '13px'
           }}>
             No live gigs yet — be the first to post one! 🚀
           </div>
         ) : (
           <div style={{
             display: 'flex', gap: '12px',
-            overflowX: 'auto', paddingBottom: '16px',
+            overflowX: 'auto', padding: '0 16px 16px',
             scrollbarWidth: 'none'
           }}>
-            {gigs.slice(0, 6).map(gig => (
-              <div key={gig.id} onClick={() => setSelectedGig(gig)}
+            {gigs.slice(0, 8).map(gig => (
+              <div key={gig.id}
+                onClick={() => { setSelectedGig(gig); setApplied(false) }}
                 style={{
                   background: '#F5F4FF',
-                  borderRadius: '14px',
-                  padding: '14px',
-                  minWidth: '190px',
-                  border: '1.5px solid #E2E0FF',
-                  cursor: 'pointer',
-                  flexShrink: 0,
+                  borderRadius: '14px', padding: '12px 14px',
+                  minWidth: '190px', border: '1.5px solid #E2E0FF',
+                  cursor: 'pointer', flexShrink: 0,
                   transition: 'all 0.15s'
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.borderColor = '#B8A5FF'
+                  e.currentTarget.style.transform = 'translateY(-2px)'
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.borderColor = '#E2E0FF'
+                  e.currentTarget.style.transform = 'translateY(0)'
                 }}>
-                <div style={{ fontSize: '13px', fontWeight: '700', marginBottom: '6px', lineHeight: '1.3' }}>
-                  {gig.title}
+                <div style={{
+                  display: 'flex', justifyContent: 'space-between',
+                  alignItems: 'flex-start', marginBottom: '6px'
+                }}>
+                  <span style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '3px',
+                    background: gig.urgency === 'now' ? '#FFE8EE' : '#FFF0E8',
+                    border: `1px solid ${gig.urgency === 'now' ? '#FF99B3' : '#FFBC99'}`,
+                    borderRadius: '4px', padding: '2px 6px',
+                    fontSize: '8px', fontWeight: '800',
+                    color: gig.urgency === 'now' ? '#FF3366' : '#FF6B2B',
+                    letterSpacing: '0.8px'
+                  }}>
+                    {gig.urgency === 'now' && (
+                      <span style={{
+                        width: '4px', height: '4px', borderRadius: '50%',
+                        background: '#FF3366', display: 'inline-block',
+                        animation: 'blink 0.9s infinite'
+                      }} />
+                    )}
+                    {gig.urgency?.toUpperCase()}
+                  </span>
+                  {gig.location && (
+                    <span style={{ fontSize: '9px', color: '#FF6B2B' }}>
+                      📍
+                    </span>
+                  )}
                 </div>
-                <div style={{ fontSize: '15px', fontWeight: '800', color: '#00C48C' }}>
-                  ${gig.pay_min}–${gig.pay_max}
-                </div>
-                <div style={{ fontSize: '10px', color: '#A09DC8', marginTop: '4px' }}>
-                  {gig.location}
-                </div>
+                <div style={{
+                  fontSize: '12px', fontWeight: '700',
+                  color: '#14123A', marginBottom: '5px', lineHeight: '1.3'
+                }}>{gig.title}</div>
+                <div style={{
+                  fontSize: '14px', fontWeight: '800', color: '#00C48C'
+                }}>${gig.pay_min}–${gig.pay_max}</div>
               </div>
             ))}
           </div>
         )}
       </div>
 
+      {/* GIG DETAIL SHEET */}
+      {selectedGig && (
+        <div style={{
+          position: 'fixed', inset: 0,
+          background: 'rgba(20,18,58,0.75)',
+          backdropFilter: 'blur(4px)',
+          zIndex: 500,
+          display: 'flex', alignItems: 'flex-end',
+          justifyContent: 'center'
+        }} onClick={() => {
+          setSelectedGig(null)
+          setApplied(false)
+        }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            background: '#fff',
+            borderRadius: '22px 22px 0 0',
+            padding: '24px', width: '100%',
+            maxWidth: '640px', maxHeight: '88vh',
+            overflowY: 'auto',
+            animation: 'slideUp 0.3s cubic-bezier(0.16,1,0.3,1)',
+            fontFamily: "'Plus Jakarta Sans', sans-serif"
+          }}>
+            <div style={{
+              width: '40px', height: '4px',
+              background: '#E2E0FF', borderRadius: '2px',
+              margin: '0 auto 20px'
+            }} />
+
+            {applied ? (
+              <div style={{ textAlign: 'center', padding: '32px 0' }}>
+                <div style={{ fontSize: '52px', marginBottom: '12px' }}>🎯</div>
+                <div style={{
+                  fontSize: '22px', fontWeight: '800',
+                  color: '#6C47FF', marginBottom: '8px'
+                }}>Application Sent!</div>
+                <div style={{
+                  fontSize: '13px', color: '#8B8FAF', lineHeight: '1.6'
+                }}>
+                  The client has been notified and will review your application shortly.
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Poster Info */}
+                <div style={{
+                  display: 'flex', gap: '12px',
+                  alignItems: 'center', marginBottom: '16px'
+                }}>
+                  <div style={{
+                    width: '52px', height: '52px', borderRadius: '14px',
+                    background: '#EEE9FF', display: 'flex',
+                    alignItems: 'center', justifyContent: 'center',
+                    fontSize: '20px', fontWeight: '800',
+                    color: '#6C47FF', overflow: 'hidden', flexShrink: 0
+                  }}>
+                    {selectedGig.users?.avatar_url ? (
+                      <img src={selectedGig.users.avatar_url} alt=""
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      selectedGig.users?.full_name?.charAt(0) || '?'
+                    )}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{
+                      fontSize: '14px', fontWeight: '700', color: '#14123A'
+                    }}>
+                      {selectedGig.users?.full_name || 'Anonymous'}
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#8B8FAF' }}>
+                      ⭐ {selectedGig.users?.rating || 5.0} ·{' '}
+                      {selectedGig.users?.gigs_completed || 0} gigs ·{' '}
+                      Trust {selectedGig.users?.trust_score || 100}%
+                    </div>
+                  </div>
+                  <div style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '4px',
+                    background: URGENCY_COLORS[selectedGig.urgency] + '18',
+                    border: `1px solid ${URGENCY_COLORS[selectedGig.urgency]}44`,
+                    borderRadius: '6px', padding: '4px 10px',
+                    fontSize: '10px', fontWeight: '800',
+                    color: URGENCY_COLORS[selectedGig.urgency], letterSpacing: '0.8px'
+                  }}>
+                    {selectedGig.urgency === 'now' && (
+                      <span style={{
+                        width: '5px', height: '5px', borderRadius: '50%',
+                        background: URGENCY_COLORS[selectedGig.urgency],
+                        display: 'inline-block', animation: 'blink 0.9s infinite'
+                      }} />
+                    )}
+                    {selectedGig.urgency?.toUpperCase()}
+                  </div>
+                </div>
+
+                {/* Title */}
+                <h2 style={{
+                  fontSize: '20px', fontWeight: '800',
+                  color: '#14123A', lineHeight: '1.3', marginBottom: '16px'
+                }}>{selectedGig.title}</h2>
+
+                {/* Pay + Location */}
+                <div style={{
+                  display: 'grid', gridTemplateColumns: '1fr 1fr',
+                  gap: '10px', marginBottom: '14px'
+                }}>
+                  <div style={{
+                    background: 'linear-gradient(135deg, #E8FFE4, #DFFDF4)',
+                    border: '1.5px solid #7EECD2',
+                    borderRadius: '14px', padding: '14px'
+                  }}>
+                    <div style={{
+                      fontSize: '9px', color: '#00C48C', fontWeight: '700',
+                      textTransform: 'uppercase', letterSpacing: '0.8px',
+                      marginBottom: '4px'
+                    }}>Pay Range</div>
+                    <div style={{
+                      fontSize: '24px', fontWeight: '800',
+                      color: '#00C48C', letterSpacing: '-0.5px'
+                    }}>${selectedGig.pay_min}</div>
+                    <div style={{ fontSize: '11px', color: '#00C48C', opacity: 0.7 }}>
+                      up to ${selectedGig.pay_max}
+                    </div>
+                  </div>
+                  <div style={{
+                    background: '#FFF0E8', border: '1.5px solid #FFBC99',
+                    borderRadius: '14px', padding: '14px'
+                  }}>
+                    <div style={{
+                      fontSize: '9px', color: '#FF6B2B', fontWeight: '700',
+                      textTransform: 'uppercase', letterSpacing: '0.8px',
+                      marginBottom: '4px'
+                    }}>Location</div>
+                    <div style={{
+                      fontSize: '13px', fontWeight: '700',
+                      color: '#14123A', lineHeight: '1.3'
+                    }}>{selectedGig.location || 'Remote'}</div>
+                    {selectedGig.latitude && (
+                      <div style={{ fontSize: '10px', color: '#FF6B2B', marginTop: '2px' }}>
+                        📍 On map
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Description */}
+                {selectedGig.description && (
+                  <div style={{
+                    background: '#F5F4FF', borderRadius: '12px',
+                    padding: '14px', marginBottom: '14px',
+                    fontSize: '13px', color: '#5B5887', lineHeight: '1.6'
+                  }}>{selectedGig.description}</div>
+                )}
+
+                {/* Receipt protection notice */}
+                <div style={{
+                  background: '#EEE9FF', border: '1.5px solid #B8A5FF',
+                  borderRadius: '12px', padding: '14px',
+                  display: 'flex', gap: '10px', marginBottom: '20px'
+                }}>
+                  <span style={{ fontSize: '16px', flexShrink: 0 }}>🔒</span>
+                  <div style={{ fontSize: '12px', color: '#6C47FF', lineHeight: '1.6' }}>
+                    Both parties confirm completion by uploading receipts with their names. Direct and protected.
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button onClick={() => {
+                    setSelectedGig(null)
+                    setApplied(false)
+                  }} style={{
+                    flex: 1, background: '#F5F4FF',
+                    border: '1.5px solid #E2E0FF',
+                    borderRadius: '12px', padding: '14px',
+                    fontSize: '13px', fontWeight: '600',
+                    color: '#8B8FAF', cursor: 'pointer',
+                    fontFamily: 'inherit'
+                  }}>Skip</button>
+                  <button
+                    onClick={async () => {
+                      setApplying(true)
+                      await new Promise(r => setTimeout(r, 1200))
+                      setApplying(false)
+                      setApplied(true)
+                    }}
+                    disabled={applying}
+                    style={{
+                      flex: 2,
+                      background: applying
+                        ? '#B8A5FF'
+                        : 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+                      border: 'none', borderRadius: '12px',
+                      padding: '14px', fontSize: '14px',
+                      fontWeight: '700', color: '#fff',
+                      cursor: applying ? 'not-allowed' : 'pointer',
+                      boxShadow: '0 4px 20px rgba(108,71,255,0.35)',
+                      fontFamily: 'inherit', transition: 'all 0.2s'
+                    }}>
+                    {applying ? '⏳ Applying...' : '⚡ Apply for This Gig'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       <style>{`
         @keyframes blink {
           0%, 100% { opacity: 1; }
           50% { opacity: 0.2; }
         }
-        @keyframes ripple {
-          0% { transform: scale(1); opacity: 0.6; }
-          100% { transform: scale(2.5); opacity: 0; }
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateY(24px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .leaflet-popup-content-wrapper {
+          border-radius: 14px !important;
+          box-shadow: 0 8px 32px rgba(108,71,255,0.15) !important;
+          border: 1.5px solid #E2E0FF !important;
+        }
+        .leaflet-popup-tip {
+          background: #fff !important;
         }
         .leaflet-container {
           font-family: 'Plus Jakarta Sans', sans-serif !important;

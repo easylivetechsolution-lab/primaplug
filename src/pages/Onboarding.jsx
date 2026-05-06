@@ -8,6 +8,92 @@ const FIELDS = [
   'Photography', 'Events', 'Handyman', 'Cleaning', 'Electrical'
 ]
 
+const LocationSearch = ({ value, onSelect, inputStyle }) => {
+  const [search, setSearch] = useState(value || '')
+  const [results, setResults] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [selected, setSelected] = useState(!!value)
+
+  const handleSearch = async (val) => {
+    setSearch(val)
+    setSelected(false)
+    onSelect('')
+    if (val.length < 3) { setResults([]); return }
+    setLoading(true)
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val)}&limit=5&addressdetails=1`,
+        { headers: { 'Accept-Language': 'en' } }
+      )
+      const data = await res.json()
+      setResults(data)
+    } catch (e) { console.log(e) }
+    setLoading(false)
+  }
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <div style={{ position: 'relative' }}>
+        <input
+          style={{ ...inputStyle, paddingRight: '36px' }}
+          placeholder="Search your city or area..."
+          value={search}
+          onChange={e => handleSearch(e.target.value)}
+        />
+        <span style={{
+          position: 'absolute', right: '12px',
+          top: '50%', transform: 'translateY(-50%)', fontSize: '14px'
+        }}>
+          {loading ? '⏳' : selected ? '✓' : '🔍'}
+        </span>
+      </div>
+      {results.length > 0 && !selected && (
+        <div style={{
+          position: 'absolute', top: '100%', left: 0, right: 0,
+          background: '#fff', border: '1.5px solid #B8A5FF',
+          borderRadius: '12px', marginTop: '4px',
+          zIndex: 100, overflow: 'hidden',
+          boxShadow: '0 8px 32px rgba(108,71,255,0.15)'
+        }}>
+          {results.map((r, i) => {
+            const city = r.address?.city || r.address?.town || r.address?.village || ''
+            const country = r.address?.country || ''
+            const state = r.address?.state || ''
+            const name = [city, state, country].filter(Boolean).join(', ')
+            return (
+              <div key={i}
+                onClick={() => {
+                  setSearch(name)
+                  setResults([])
+                  setSelected(true)
+                  onSelect(name)
+                }}
+                style={{
+                  padding: '11px 14px', cursor: 'pointer',
+                  borderBottom: i < results.length - 1 ? '1px solid #F5F4FF' : 'none',
+                  display: 'flex', gap: '8px', alignItems: 'center'
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = '#F5F4FF'}
+                onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+              >
+                <span>📍</span>
+                <div>
+                  <div style={{ fontSize: '13px', fontWeight: '600', color: '#14123A' }}>
+                    {name || r.display_name.split(',')[0]}
+                  </div>
+                  <div style={{ fontSize: '10px', color: '#A09DC8' }}>
+                    {r.display_name.substring(0, 50)}...
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Onboarding() {
   const { user } = useAuth()
   const navigate = useNavigate()
@@ -237,14 +323,13 @@ export default function Onboarding() {
               />
             </div>
             <div>
-              <label style={labelStyle}>Your Location</label>
-              <input
-                style={inputStyle}
-                placeholder="e.g. Lagos, Nigeria"
-                value={form.location}
-                onChange={e => update('location', e.target.value)}
-              />
-            </div>
+  <label style={labelStyle}>Your Location</label>
+  <LocationSearch
+    value={form.location}
+    onSelect={(name) => update('location', name)}
+    inputStyle={inputStyle}
+  />
+</div>
             <div>
               <label style={labelStyle}>Bio</label>
               <textarea

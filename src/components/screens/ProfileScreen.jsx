@@ -7,6 +7,103 @@ const ALL_SKILLS = [
   'Photography', 'Events', 'Handyman', 'Cleaning', 'Electrical'
 ]
 
+const LocationSearch = ({ value, onSelect, inputStyle }) => {
+  const [search, setSearch] = useState(value || '')
+  const [results, setResults] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [selected, setSelected] = useState(!!value)
+
+  const handleSearch = async (val) => {
+    setSearch(val)
+    setSelected(false)
+    onSelect('')
+    if (val.length < 3) { setResults([]); return }
+    setLoading(true)
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val)}&limit=5&addressdetails=1`,
+        { headers: { 'Accept-Language': 'en' } }
+      )
+      const data = await res.json()
+      setResults(data)
+    } catch (e) { console.log(e) }
+    setLoading(false)
+  }
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <div style={{ position: 'relative' }}>
+        <input
+          style={{ ...inputStyle, paddingRight: '36px' }}
+          placeholder="Search your city or area..."
+          value={search}
+          onChange={e => handleSearch(e.target.value)}
+        />
+        <span style={{
+          position: 'absolute', right: '12px',
+          top: '50%', transform: 'translateY(-50%)',
+          fontSize: '14px',
+          color: selected ? '#00C48C' : '#A09DC8'
+        }}>
+          {loading ? '⏳' : selected ? '✓' : '🔍'}
+        </span>
+      </div>
+      {results.length > 0 && !selected && (
+        <div style={{
+          position: 'absolute', top: '100%', left: 0, right: 0,
+          background: '#fff', border: '1.5px solid #B8A5FF',
+          borderRadius: '12px', marginTop: '4px',
+          zIndex: 100, overflow: 'hidden',
+          boxShadow: '0 8px 32px rgba(108,71,255,0.15)'
+        }}>
+          {results.map((r, i) => {
+            const city = r.address?.city
+              || r.address?.town
+              || r.address?.village
+              || ''
+            const country = r.address?.country || ''
+            const state = r.address?.state || ''
+            const name = [city, state, country].filter(Boolean).join(', ')
+            return (
+              <div key={i}
+                onClick={() => {
+                  setSearch(name)
+                  setResults([])
+                  setSelected(true)
+                  onSelect(name)
+                }}
+                style={{
+                  padding: '11px 14px',
+                  cursor: 'pointer',
+                  borderBottom: i < results.length - 1
+                    ? '1px solid #F5F4FF' : 'none',
+                  display: 'flex', gap: '8px', alignItems: 'center'
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = '#F5F4FF'}
+                onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+              >
+                <span>📍</span>
+                <div>
+                  <div style={{
+                    fontSize: '13px', fontWeight: '600', color: '#14123A'
+                  }}>
+                    {name || r.display_name.split(',')[0]}
+                  </div>
+                  <div style={{ fontSize: '10px', color: '#A09DC8' }}>
+                    {r.display_name.length > 50
+                      ? r.display_name.substring(0, 50) + '...'
+                      : r.display_name}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function ProfileScreen({ onLogout }) {
   const { user } = useAuth()
   const [profile, setProfile] = useState(null)
@@ -210,20 +307,19 @@ export default function ProfileScreen({ onLogout }) {
                 <label style={labelStyle}>Phone</label>
                 <input style={inputStyle}
                   value={editForm.phone || ''}
-                  placeholder="+234 800 000 0000"
+                  placeholder="+1 400 000 0000"
                   onChange={e => setEditForm(f => ({
                     ...f, phone: e.target.value
                   }))} />
               </div>
               <div>
-                <label style={labelStyle}>Location</label>
-                <input style={inputStyle}
-                  value={editForm.location || ''}
-                  placeholder="e.g. Lagos, Nigeria"
-                  onChange={e => setEditForm(f => ({
-                    ...f, location: e.target.value
-                  }))} />
-              </div>
+  <label style={labelStyle}>Location</label>
+  <LocationSearch
+    value={editForm.location || ''}
+    onSelect={(name) => setEditForm(f => ({ ...f, location: name }))}
+    inputStyle={inputStyle}
+  />
+</div>
               <div>
                 <label style={labelStyle}>Bio</label>
                 <textarea
