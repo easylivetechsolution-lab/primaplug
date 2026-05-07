@@ -36,6 +36,37 @@ export default function ChatScreen() {
   }, [user])
 
   useEffect(() => {
+    const handleOpenChatWithUser = async (e) => {
+      const { userId: targetUserId, gigId } = e.detail
+      if (!targetUserId || !user) return
+
+      const { data: existing } = await supabase
+        .from('conversations')
+        .select(`
+          *,
+          gigs(id, title, pay_min, pay_max, status),
+          p1:users!conversations_participant_1_fkey(id, full_name, avatar_url, trust_score),
+          p2:users!conversations_participant_2_fkey(id, full_name, avatar_url, trust_score)
+        `)
+        .or(
+          `and(participant_1.eq.${user.id},participant_2.eq.${targetUserId}),` +
+          `and(participant_1.eq.${targetUserId},participant_2.eq.${user.id})`
+        )
+        .maybeSingle()
+
+      if (existing) {
+        setActiveConvo(existing)
+        setConversations(prev =>
+          prev.find(c => c.id === existing.id) ? prev : [existing, ...prev]
+        )
+      }
+    }
+
+    window.addEventListener('openChatWithUser', handleOpenChatWithUser)
+    return () => window.removeEventListener('openChatWithUser', handleOpenChatWithUser)
+  }, [user])
+
+  useEffect(() => {
     if (activeConvo) {
       fetchMessages(activeConvo.id)
       markAsRead(activeConvo)

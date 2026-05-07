@@ -486,6 +486,35 @@ export default function NotificationBell({ onNavigate }) {
                           }}>"{app.users.bio}"</div>
                         )}
 
+                        {/* Message applicant button */}
+                        <button
+                          onClick={() => {
+                            setNotifDetail(null)
+                            setOpen(false)
+                            window.dispatchEvent(new CustomEvent('openChatWithUser', {
+                              detail: {
+                                userId: app.worker_id,
+                                gigId: notifDetail.gig?.id
+                              }
+                            }))
+                          }}
+                          style={{
+                            width: '100%',
+                            background: '#F5F4FF',
+                            border: '1.5px solid #B8A5FF',
+                            borderRadius: '10px', padding: '10px',
+                            fontSize: '12px', fontWeight: '700',
+                            color: '#6C47FF', cursor: 'pointer',
+                            fontFamily: 'inherit', marginTop: '8px',
+                            display: 'flex', alignItems: 'center',
+                            justifyContent: 'center', gap: '6px',
+                            transition: 'all 0.15s'
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.background = '#EEE9FF'}
+                          onMouseLeave={e => e.currentTarget.style.background = '#F5F4FF'}>
+                          <span>💬</span> Message {app.users?.full_name?.split(' ')[0]}
+                        </button>
+
                         {app.status === 'pending' && (
                           <div style={{ display: 'flex', gap: '8px' }}>
                             <button

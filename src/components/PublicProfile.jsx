@@ -1,11 +1,17 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
+import { useAuth } from '../context/AuthContext'
 
 export default function PublicProfile({ userId, onClose }) {
+  const { user: currentUser } = useAuth()
   const [profile, setProfile] = useState(null)
   const [gigs, setGigs] = useState([])
   const [loading, setLoading] = useState(true)
   const [reviews, setReviews] = useState([])
+  const [messaging, setMessaging] = useState(false)
+  const [messageSent, setMessageSent] = useState(false)
+
+  const isOwnProfile = currentUser?.id === userId
 
   useEffect(() => {
   if (userId) {
@@ -34,6 +40,51 @@ export default function PublicProfile({ userId, onClose }) {
     .limit(10)
   if (data) setReviews(data)
 }
+
+  const handleMessage = async () => {
+    if (!currentUser || isOwnProfile) return
+    setMessaging(true)
+
+    try {
+      const { data: existing } = await supabase
+        .from('conversations')
+        .select('id')
+        .or(
+          `and(participant_1.eq.${currentUser.id},participant_2.eq.${userId}),` +
+          `and(participant_1.eq.${userId},participant_2.eq.${currentUser.id})`
+        )
+        .maybeSingle()
+
+      let convoId = existing?.id
+
+      if (!convoId) {
+        const { data: newConvo } = await supabase
+          .from('conversations')
+          .insert({
+            participant_1: currentUser.id,
+            participant_2: userId,
+            last_message: '',
+            last_message_at: new Date().toISOString()
+          })
+          .select('id')
+          .single()
+        convoId = newConvo?.id
+      }
+
+      setMessaging(false)
+      setMessageSent(true)
+
+      setTimeout(() => {
+        onClose()
+        window.dispatchEvent(new CustomEvent('openChatWithUser', {
+          detail: { userId, gigId: null }
+        }))
+      }, 600)
+    } catch (e) {
+      console.log('Message error:', e)
+      setMessaging(false)
+    }
+  }
 
   const fetchUserGigs = async () => {
     const { data } = await supabase
@@ -368,6 +419,22 @@ export default function PublicProfile({ userId, onClose }) {
 
             {/* Contact Buttons */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {!isOwnProfile && currentUser && (
+                <button
+                  onClick={handleMessage}
+                  disabled={messaging || messageSent}
+                  style={{
+                    width: '100%', background: messageSent ? '#DFFDF4' : '#EEE9FF',
+                    border: `1.5px solid ${messageSent ? '#7EECD2' : '#B8A5FF'}`,
+                    borderRadius: '12px', padding: '13px',
+                    fontSize: '13px', fontWeight: '700',
+                    color: messageSent ? '#00C48C' : '#6C47FF',
+                    cursor: messaging || messageSent ? 'default' : 'pointer',
+                    fontFamily: 'inherit', transition: 'all 0.2s'
+                  }}>
+                  {messageSent ? '✓ Opening Chat...' : messaging ? '⏳ Opening...' : '💬 Message'}
+                </button>
+              )}
               {profile.phone && (
                 <div style={{ display: 'flex', gap: '10px' }}>
                   <a href={`tel:${profile.phone}`} style={{

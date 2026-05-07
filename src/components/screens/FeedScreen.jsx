@@ -667,7 +667,37 @@ export default function FeedScreen() {
                 </div>
 
                 {/* Actions */}
-                <div style={{ display: 'flex', gap: '10px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {/* Message button */}
+                  <button
+                    onClick={() => {
+                      setSelectedGig(null)
+                      window.dispatchEvent(new CustomEvent('openChatWithUser', {
+                        detail: {
+                          userId: selectedGig.poster_id,
+                          gigId: selectedGig.id
+                        }
+                      }))
+                    }}
+                    style={{
+                      width: '100%',
+                      background: '#F5F4FF',
+                      border: '1.5px solid #B8A5FF',
+                      borderRadius: '12px', padding: '13px',
+                      fontSize: '14px', fontWeight: '700',
+                      color: '#6C47FF', cursor: 'pointer',
+                      fontFamily: 'inherit',
+                      display: 'flex', alignItems: 'center',
+                      justifyContent: 'center', gap: '8px',
+                      transition: 'all 0.15s'
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = '#EEE9FF' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = '#F5F4FF' }}>
+                    <span>💬</span> Message Client
+                  </button>
+
+                  {/* Skip + Apply row */}
+                  <div style={{ display: 'flex', gap: '10px' }}>
                   <button onClick={() => {
                     setSelectedGig(null)
                     setApplied(false)
@@ -761,6 +791,7 @@ export default function FeedScreen() {
                     }}>
                     {applying ? '⏳ Applying...' : '⚡ Apply for This Gig'}
                   </button>
+                  </div>
                 </div>
               </>
             )}

@@ -13,6 +13,7 @@ import PostGig from './PostGig'
 import NotificationBell from './NotificationBell'
 import Search from './Search'
 import ChatScreen from './screens/ChatScreen'
+import FloatingChat from './FloatingChat'
 
 export default function Layout() {
   const { user } = useAuth()
@@ -508,6 +509,9 @@ export default function Layout() {
           .desktop-nav { display: none !important; }
         }
       `}</style>
+
+      {/* Floating Chat — visible on all screens */}
+      <FloatingChat onOpenFullChat={() => setScreen('chat')} />
     </div>
   )
 }
