@@ -160,8 +160,9 @@ const [locationSelected, setLocationSelected] = useState(false)
         padding: '28px',
         width: '100%',
         maxWidth: '520px',
-        maxHeight: '90vh',
+        maxHeight: '88vh',
         overflowY: 'auto',
+        overflowX: 'hidden',
         border: '1.5px solid #E2E0FF',
         boxShadow: '0 20px 60px rgba(108,71,255,0.25)',
         animation: 'slideUp 0.3s cubic-bezier(0.16,1,0.3,1)'

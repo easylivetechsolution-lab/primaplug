@@ -77,9 +77,13 @@ export default function CategoryPicker({ selected, onSelect, customSkill, onCust
 
       {/* Category groups */}
       <div style={{
-        maxHeight: '320px', overflowY: 'auto',
-        border: '1.5px solid #E2E0FF', borderRadius: '12px',
-        overflow: 'hidden'
+        maxHeight: '280px',
+        overflowY: 'auto',
+        overflowX: 'hidden',
+        border: '1.5px solid #E2E0FF',
+        borderRadius: '12px',
+        scrollbarWidth: 'thin',
+        scrollbarColor: '#B8A5FF #F5F4FF'
       }}>
         {filtered.map((cat, ci) => (
           <div key={cat.group} style={{
