@@ -6,6 +6,9 @@ import FeedScreen from './screens/FeedScreen'
 import DiscoverScreen from './screens/DiscoverScreen'
 import MyGigsScreen from './screens/MyGigsScreen'
 import ProfileScreen from './screens/ProfileScreen'
+import SavedScreen from './screens/SavedScreen'
+import StatsScreen from './screens/StatsScreen'
+import SettingsScreen from './screens/SettingsScreen'
 import PostGig from './PostGig'
 import NotificationBell from './NotificationBell'
 
@@ -13,6 +16,7 @@ export default function Layout() {
   const { user } = useAuth()
   const [screen, setScreen] = useState('map')
   const [showPost, setShowPost] = useState(false)
+  const [showSearch, setShowSearch] = useState(false)
   const [isLive, setIsLive] = useState(false)
 
   useEffect(() => {
@@ -46,6 +50,9 @@ export default function Layout() {
     discover: <DiscoverScreen />,
     mygigs: <MyGigsScreen />,
     profile: <ProfileScreen onLogout={handleLogout} />,
+    saved: <SavedScreen />,
+    stats: <StatsScreen />,
+    settings: <SettingsScreen onLogout={handleLogout} />,
   }
 
   return (
@@ -176,42 +183,165 @@ export default function Layout() {
           gap: '4px',
           flexShrink: 0
         }} className="desktop-sidebar">
-          {navItems.map(item => (
-            <button key={item.key} onClick={() => setScreen(item.key)}
-              style={{
-                width: '48px', height: '48px',
-                borderRadius: '12px',
-                background: screen === item.key ? '#EEE9FF' : 'transparent',
-                border: `1.5px solid ${screen === item.key ? '#B8A5FF' : 'transparent'}`,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '3px',
-                cursor: 'pointer',
-                transition: 'all 0.15s',
-                fontFamily: 'inherit'
-              }}>
-              <span style={{ fontSize: '20px' }}>{item.icon}</span>
-              <span style={{
-                fontSize: '9px',
-                fontWeight: '600',
-                color: screen === item.key ? '#6C47FF' : '#A09DC8'
-              }}>{item.label}</span>
-            </button>
-          ))}
-          <button onClick={() => setShowPost(true)}
+
+          {/* Search */}
+          <button
+            onClick={() => setShowSearch(true)}
+            title="Search Gigs"
+            style={{
+              width: '48px', height: '48px',
+              borderRadius: '12px',
+              background: 'transparent',
+              border: '1.5px solid transparent',
+              display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center',
+              gap: '3px', cursor: 'pointer',
+              transition: 'all 0.15s', fontFamily: 'inherit'
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = '#EEE9FF'
+              e.currentTarget.style.borderColor = '#B8A5FF'
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = 'transparent'
+              e.currentTarget.style.borderColor = 'transparent'
+            }}>
+            <span style={{ fontSize: '20px' }}>🔍</span>
+            <span style={{ fontSize: '9px', fontWeight: '600', color: '#A09DC8' }}>Search</span>
+          </button>
+
+          {/* Saved Gigs */}
+          <button
+            onClick={() => setScreen('saved')}
+            title="Saved Gigs"
+            style={{
+              width: '48px', height: '48px',
+              borderRadius: '12px',
+              background: screen === 'saved' ? '#EEE9FF' : 'transparent',
+              border: `1.5px solid ${screen === 'saved' ? '#B8A5FF' : 'transparent'}`,
+              display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center',
+              gap: '3px', cursor: 'pointer',
+              transition: 'all 0.15s', fontFamily: 'inherit'
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = '#EEE9FF'
+              e.currentTarget.style.borderColor = '#B8A5FF'
+            }}
+            onMouseLeave={e => {
+              if (screen !== 'saved') {
+                e.currentTarget.style.background = 'transparent'
+                e.currentTarget.style.borderColor = 'transparent'
+              }
+            }}>
+            <span style={{ fontSize: '20px' }}>🔖</span>
+            <span style={{ fontSize: '9px', fontWeight: '600', color: screen === 'saved' ? '#6C47FF' : '#A09DC8' }}>Saved</span>
+          </button>
+
+          {/* My Stats */}
+          <button
+            onClick={() => setScreen('stats')}
+            title="My Stats"
+            style={{
+              width: '48px', height: '48px',
+              borderRadius: '12px',
+              background: screen === 'stats' ? '#EEE9FF' : 'transparent',
+              border: `1.5px solid ${screen === 'stats' ? '#B8A5FF' : 'transparent'}`,
+              display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center',
+              gap: '3px', cursor: 'pointer',
+              transition: 'all 0.15s', fontFamily: 'inherit'
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = '#EEE9FF'
+              e.currentTarget.style.borderColor = '#B8A5FF'
+            }}
+            onMouseLeave={e => {
+              if (screen !== 'stats') {
+                e.currentTarget.style.background = 'transparent'
+                e.currentTarget.style.borderColor = 'transparent'
+              }
+            }}>
+            <span style={{ fontSize: '20px' }}>📊</span>
+            <span style={{ fontSize: '9px', fontWeight: '600', color: screen === 'stats' ? '#6C47FF' : '#A09DC8' }}>Stats</span>
+          </button>
+
+          {/* Messages — coming soon */}
+          <button
+            title="Messages — Coming Soon"
+            style={{
+              width: '48px', height: '48px',
+              borderRadius: '12px', background: 'transparent',
+              border: '1.5px solid transparent',
+              display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center',
+              gap: '3px', cursor: 'not-allowed',
+              opacity: 0.5, fontFamily: 'inherit'
+            }}>
+            <span style={{ fontSize: '20px' }}>💬</span>
+            <span style={{ fontSize: '9px', fontWeight: '600', color: '#A09DC8' }}>Chat</span>
+          </button>
+
+          {/* Divider */}
+          <div style={{
+            width: '32px', height: '1px',
+            background: '#E2E0FF', margin: '6px 0'
+          }} />
+
+          {/* Settings */}
+          <button
+            onClick={() => setScreen('settings')}
+            title="Settings"
+            style={{
+              width: '48px', height: '48px',
+              borderRadius: '12px',
+              background: screen === 'settings' ? '#EEE9FF' : 'transparent',
+              border: `1.5px solid ${screen === 'settings' ? '#B8A5FF' : 'transparent'}`,
+              display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center',
+              gap: '3px', cursor: 'pointer',
+              transition: 'all 0.15s', fontFamily: 'inherit'
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = '#EEE9FF'
+              e.currentTarget.style.borderColor = '#B8A5FF'
+            }}
+            onMouseLeave={e => {
+              if (screen !== 'settings') {
+                e.currentTarget.style.background = 'transparent'
+                e.currentTarget.style.borderColor = 'transparent'
+              }
+            }}>
+            <span style={{ fontSize: '20px' }}>⚙️</span>
+            <span style={{ fontSize: '9px', fontWeight: '600', color: screen === 'settings' ? '#6C47FF' : '#A09DC8' }}>Settings</span>
+          </button>
+
+          {/* Spacer */}
+          <div style={{ flex: 1 }} />
+
+          {/* Post Gig — Primary CTA */}
+          <button
+            onClick={() => setShowPost(true)}
+            title="Post a Gig"
             style={{
               width: '48px', height: '48px',
               borderRadius: '12px',
               background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
-              border: 'none',
-              color: '#fff',
-              fontSize: '24px',
-              cursor: 'pointer',
-              marginTop: 'auto',
+              border: 'none', color: '#fff',
+              fontSize: '24px', fontWeight: '300',
+              display: 'flex', alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer', marginBottom: '4px',
               boxShadow: '0 4px 16px rgba(108,71,255,0.4)',
-              fontFamily: 'inherit'
+              transition: 'all 0.2s', fontFamily: 'inherit'
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.transform = 'scale(1.05)'
+              e.currentTarget.style.boxShadow = '0 6px 20px rgba(108,71,255,0.5)'
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.transform = 'scale(1)'
+              e.currentTarget.style.boxShadow = '0 4px 16px rgba(108,71,255,0.4)'
             }}>+</button>
         </div>
 
