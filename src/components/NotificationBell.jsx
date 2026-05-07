@@ -488,15 +488,17 @@ export default function NotificationBell({ onNavigate }) {
 
                         {/* Message applicant button */}
                         <button
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            const targetUserId = app.worker_id
+                            const gigId = notifDetail.gig?.id
                             setNotifDetail(null)
                             setOpen(false)
-                            window.dispatchEvent(new CustomEvent('openChatWithUser', {
-                              detail: {
-                                userId: app.worker_id,
-                                gigId: notifDetail.gig?.id
-                              }
-                            }))
+                            setTimeout(() => {
+                              window.dispatchEvent(new CustomEvent('openChatWithUser', {
+                                detail: { userId: targetUserId, gigId }
+                              }))
+                            }, 300)
                           }}
                           style={{
                             width: '100%',
@@ -507,12 +509,9 @@ export default function NotificationBell({ onNavigate }) {
                             color: '#6C47FF', cursor: 'pointer',
                             fontFamily: 'inherit', marginTop: '8px',
                             display: 'flex', alignItems: 'center',
-                            justifyContent: 'center', gap: '6px',
-                            transition: 'all 0.15s'
-                          }}
-                          onMouseEnter={e => e.currentTarget.style.background = '#EEE9FF'}
-                          onMouseLeave={e => e.currentTarget.style.background = '#F5F4FF'}>
-                          <span>💬</span> Message {app.users?.full_name?.split(' ')[0]}
+                            justifyContent: 'center', gap: '6px'
+                          }}>
+                          💬 Message {app.users?.full_name?.split(' ')[0]}
                         </button>
 
                         {app.status === 'pending' && (

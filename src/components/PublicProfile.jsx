@@ -10,16 +10,31 @@ export default function PublicProfile({ userId, onClose }) {
   const [reviews, setReviews] = useState([])
   const [messaging, setMessaging] = useState(false)
   const [messageSent, setMessageSent] = useState(false)
+  const [existingConvo, setExistingConvo] = useState(false)
 
   const isOwnProfile = currentUser?.id === userId
 
   useEffect(() => {
-  if (userId) {
-    fetchProfile()
-    fetchUserGigs()
-    fetchReviews()
-  }
-}, [userId])
+    if (userId) {
+      fetchProfile()
+      fetchUserGigs()
+      fetchReviews()
+    }
+  }, [userId])
+
+  useEffect(() => {
+    if (userId && currentUser && !isOwnProfile) {
+      supabase
+        .from('conversations')
+        .select('id')
+        .or(
+          `and(participant_1.eq.${currentUser.id},participant_2.eq.${userId}),` +
+          `and(participant_1.eq.${userId},participant_2.eq.${currentUser.id})`
+        )
+        .maybeSingle()
+        .then(({ data }) => { if (data) setExistingConvo(true) })
+    }
+  }, [userId, currentUser])
 
   const fetchProfile = async () => {
     const { data } = await supabase
@@ -229,6 +244,37 @@ export default function PublicProfile({ userId, onClose }) {
               )}
             </div>
 
+            {/* Message Button — top position like LinkedIn/Facebook */}
+            {!isOwnProfile && currentUser && (
+              <button
+                onClick={handleMessage}
+                disabled={messaging || messageSent}
+                style={{
+                  width: '100%',
+                  background: messageSent ? '#DFFDF4' : 'linear-gradient(135deg, #6C47FF 0%, #9B59FF 100%)',
+                  border: 'none',
+                  borderRadius: '14px', padding: '14px',
+                  fontSize: '15px', fontWeight: '700',
+                  color: messageSent ? '#00C48C' : '#fff',
+                  cursor: messaging || messageSent ? 'default' : 'pointer',
+                  fontFamily: 'inherit', transition: 'all 0.2s',
+                  marginBottom: '16px',
+                  boxShadow: messageSent ? 'none' : '0 4px 16px rgba(108,71,255,0.3)'
+                }}>
+                {messageSent ? '✓ Opening Chat...' : messaging ? '⏳ Opening...' : existingConvo ? '💬 Continue Chat' : '💬 Message'}
+              </button>
+            )}
+            {isOwnProfile && (
+              <div style={{
+                background: '#F5F4FF', border: '1.5px solid #E2E0FF',
+                borderRadius: '14px', padding: '12px 14px',
+                marginBottom: '16px', textAlign: 'center',
+                fontSize: '13px', color: '#6C47FF', fontWeight: '600'
+              }}>
+                This is your profile
+              </div>
+            )}
+
             {/* Stats */}
             <div style={{
               display: 'grid', gridTemplateColumns: 'repeat(4,1fr)',
@@ -419,22 +465,6 @@ export default function PublicProfile({ userId, onClose }) {
 
             {/* Contact Buttons */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {!isOwnProfile && currentUser && (
-                <button
-                  onClick={handleMessage}
-                  disabled={messaging || messageSent}
-                  style={{
-                    width: '100%', background: messageSent ? '#DFFDF4' : '#EEE9FF',
-                    border: `1.5px solid ${messageSent ? '#7EECD2' : '#B8A5FF'}`,
-                    borderRadius: '12px', padding: '13px',
-                    fontSize: '13px', fontWeight: '700',
-                    color: messageSent ? '#00C48C' : '#6C47FF',
-                    cursor: messaging || messageSent ? 'default' : 'pointer',
-                    fontFamily: 'inherit', transition: 'all 0.2s'
-                  }}>
-                  {messageSent ? '✓ Opening Chat...' : messaging ? '⏳ Opening...' : '💬 Message'}
-                </button>
-              )}
               {profile.phone && (
                 <div style={{ display: 'flex', gap: '10px' }}>
                   <a href={`tel:${profile.phone}`} style={{
