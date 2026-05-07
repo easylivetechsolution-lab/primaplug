@@ -2,11 +2,7 @@ import { useState } from 'react'
 import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
-
-const FIELDS = [
-  'Development', 'Design', 'Writing', 'Marketing',
-  'Photography', 'Events', 'Handyman', 'Cleaning', 'Electrical'
-]
+import CategoryPicker from '../components/CategoryPicker'
 
 const LocationSearch = ({ value, onSelect, inputStyle }) => {
   const [search, setSearch] = useState(value || '')
@@ -111,6 +107,7 @@ export default function Onboarding() {
     physical_mode: true,
     digital_mode: true,
     skills: [],
+    custom_skill: '',
     portfolio_url: '',
     social_linkedin: '',
     social_twitter: '',
@@ -417,23 +414,37 @@ export default function Onboarding() {
         {step === 3 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div>
-              <label style={labelStyle}>Your Skills</label>
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                {FIELDS.map(field => (
-                  <button key={field}
-                    onClick={() => toggleSkill(field)}
-                    style={{
-                      background: form.skills.includes(field) ? '#EEE9FF' : '#F5F4FF',
-                      border: `1.5px solid ${form.skills.includes(field) ? '#B8A5FF' : '#E2E0FF'}`,
-                      borderRadius: '20px', padding: '8px 14px',
-                      fontSize: '13px', fontWeight: '600',
-                      color: form.skills.includes(field) ? '#6C47FF' : '#8B8FAF',
-                      cursor: 'pointer', fontFamily: 'inherit',
-                      transition: 'all 0.15s'
-                    }}>{field}</button>
-                ))}
-              </div>
+              <label style={labelStyle}>Your Primary Field</label>
+              <CategoryPicker
+                selected={form.skills[0] || ''}
+                onSelect={(field) => update('skills', field ? [field, ...form.skills.slice(1)] : form.skills.slice(1))}
+                customSkill={form.custom_skill || ''}
+                onCustomSkill={(val) => update('custom_skill', val)}
+              />
             </div>
+
+            {form.skills.length > 0 && (
+              <div>
+                <label style={{ ...labelStyle, marginTop: '12px' }}>
+                  Additional Skills (tap to add more)
+                </label>
+                <div style={{ display: 'flex', gap: '7px', flexWrap: 'wrap' }}>
+                  {form.skills.map((skill, i) => (
+                    <span key={i} style={{
+                      background: '#EEE9FF', border: '1.5px solid #B8A5FF',
+                      borderRadius: '20px', padding: '6px 12px',
+                      fontSize: '12px', fontWeight: '600', color: '#6C47FF',
+                      display: 'flex', alignItems: 'center', gap: '6px'
+                    }}>
+                      {skill}
+                      <span
+                        onClick={() => update('skills', form.skills.filter((_, j) => j !== i))}
+                        style={{ cursor: 'pointer', fontSize: '14px', color: '#A09DC8' }}>×</span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div>
               <label style={labelStyle}>Portfolio URL (optional)</label>

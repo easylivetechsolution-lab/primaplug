@@ -1,11 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
-
-const FIELDS = [
-  'Development', 'Design', 'Writing', 'Marketing',
-  'Photography', 'Events', 'Handyman', 'Cleaning', 'Electrical'
-]
+import CategoryPicker from './CategoryPicker'
 
 const URGENCY = [
   { key: 'now', label: 'NOW', color: '#FF3366', bg: '#FFE8EE' },
@@ -26,22 +22,23 @@ const [locationLoading, setLocationLoading] = useState(false)
 const [locationSelected, setLocationSelected] = useState(false)
 
   const [form, setForm] = useState({
-  title: '',
-  type: 'physical',
-  field: 'Photography',
-  urgency: 'now',
-  pay_min: '',
-  pay_max: '',
-  location: '',
-  latitude: null,
-  longitude: null,
-  slots: 1,
-  description: '',
-  house_number: '',
-  street: '',
-  landmark: '',
-  directions: '',
-})
+    title: '',
+    type: 'physical',
+    field: '',
+    custom_skill: '',
+    urgency: 'now',
+    pay_min: '',
+    pay_max: '',
+    location: '',
+    latitude: null,
+    longitude: null,
+    slots: 1,
+    description: '',
+    house_number: '',
+    street: '',
+    landmark: '',
+    directions: '',
+  })
 
   const update = (key, val) => setForm(f => ({ ...f, [key]: val }))
 
@@ -102,6 +99,7 @@ const [locationSelected, setLocationSelected] = useState(false)
   longitude: lng,
   slots: form.slots,
   status: 'open',
+  custom_skill: form.custom_skill,
   house_number: form.house_number,
   street: form.street,
   landmark: form.landmark,
@@ -248,18 +246,12 @@ const [locationSelected, setLocationSelected] = useState(false)
 
                 <div>
                   <label style={labelStyle}>Field / Category</label>
-                  <div style={{ display: 'flex', gap: '7px', flexWrap: 'wrap' }}>
-                    {FIELDS.map(f => (
-                      <button key={f} onClick={() => update('field', f)} style={{
-                        background: form.field === f ? '#EEE9FF' : 'transparent',
-                        border: `1.5px solid ${form.field === f ? '#B8A5FF' : '#E2E0FF'}`,
-                        borderRadius: '20px', padding: '6px 13px',
-                        fontSize: '12px', fontWeight: '600',
-                        color: form.field === f ? '#6C47FF' : '#8B8FAF',
-                        cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s'
-                      }}>{f}</button>
-                    ))}
-                  </div>
+                  <CategoryPicker
+                    selected={form.field}
+                    onSelect={(field) => update('field', field)}
+                    customSkill={form.custom_skill}
+                    onCustomSkill={(val) => update('custom_skill', val)}
+                  />
                 </div>
               </div>
             )}
@@ -267,6 +259,8 @@ const [locationSelected, setLocationSelected] = useState(false)
             {/* STEP 2 */}
             {step === 2 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+                {/* Urgency */}
                 <div>
                   <label style={labelStyle}>Urgency</label>
                   <div style={{ display: 'flex', gap: '8px' }}>
@@ -285,6 +279,7 @@ const [locationSelected, setLocationSelected] = useState(false)
                   </div>
                 </div>
 
+                {/* Pay Range */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                   <div>
                     <label style={labelStyle}>Min Pay ($)</label>
@@ -306,211 +301,207 @@ const [locationSelected, setLocationSelected] = useState(false)
                   </div>
                 </div>
 
+                {/* Location — only for physical gigs */}
                 {form.type === 'physical' && (
-  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-    {/* General Location */}
-    <div>
-      <label style={labelStyle}>
-        General Area
-        <span style={{
-          marginLeft: '6px', fontSize: '10px',
-          color: '#A09DC8', fontWeight: '500',
-          textTransform: 'none', letterSpacing: 0
-        }}>— shown publicly on map</span>
-      </label>
-      <div style={{ position: 'relative' }}>
-        <input
-          style={{
-            ...inputStyle,
-            paddingRight: locationLoading ? '40px' : '14px'
-          }}
-          placeholder="Search city, island, area..."
-          value={locationSearch}
-          onChange={async (e) => {
-            const val = e.target.value
-            setLocationSearch(val)
-            setLocationSelected(false)
-            update('location', '')
-            update('latitude', null)
-            update('longitude', null)
-            if (val.length < 3) {
-              setLocationResults([])
-              return
-            }
-            setLocationLoading(true)
-            try {
-              const res = await fetch(
-                `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val)}&limit=5&addressdetails=1`,
-                { headers: { 'Accept-Language': 'en' } }
-              )
-              const data = await res.json()
-              setLocationResults(data)
-            } catch (e) {
-              console.log('Search error:', e)
-            }
-            setLocationLoading(false)
-          }}
-        />
-        {locationLoading && (
-          <div style={{
-            position: 'absolute', right: '12px',
-            top: '50%', transform: 'translateY(-50%)', fontSize: '14px'
-          }}>⏳</div>
-        )}
-        {locationSelected && (
-          <div style={{
-            position: 'absolute', right: '12px',
-            top: '50%', transform: 'translateY(-50%)',
-            fontSize: '16px', color: '#00C48C'
-          }}>✓</div>
-        )}
-        {locationResults.length > 0 && !locationSelected && (
-          <div style={{
-            position: 'absolute', top: '100%', left: 0, right: 0,
-            background: '#fff', border: '1.5px solid #B8A5FF',
-            borderRadius: '12px', marginTop: '4px',
-            zIndex: 100, overflow: 'hidden',
-            boxShadow: '0 8px 32px rgba(108,71,255,0.15)'
-          }}>
-            {locationResults.map((result, i) => {
-              const city = result.address?.city
-                || result.address?.town
-                || result.address?.village
-                || result.address?.county || ''
-              const country = result.address?.country || ''
-              const state = result.address?.state || ''
-              const shortName = [city, state, country]
-                .filter(Boolean).join(', ')
-              return (
-                <div key={i}
-                  onClick={() => {
-                    const name = shortName || result.display_name
-                    setLocationSearch(name)
-                    setLocationResults([])
-                    setLocationSelected(true)
-                    update('location', name)
-                    update('latitude', parseFloat(result.lat))
-                    update('longitude', parseFloat(result.lon))
-                  }}
-                  style={{
-                    padding: '11px 14px', cursor: 'pointer',
-                    borderBottom: i < locationResults.length - 1
-                      ? '1px solid #F5F4FF' : 'none',
-                    display: 'flex', gap: '8px', alignItems: 'flex-start'
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#F5F4FF'}
-                  onMouseLeave={e => e.currentTarget.style.background = '#fff'}
-                >
-                  <span style={{ fontSize: '14px', flexShrink: 0 }}>📍</span>
                   <div>
-                    <div style={{
-                      fontSize: '13px', fontWeight: '600', color: '#14123A',
-                      marginBottom: '1px'
-                    }}>
-                      {shortName || result.display_name.split(',')[0]}
+                    <label style={labelStyle}>
+                      General Area
+                      <span style={{
+                        marginLeft: '6px', fontSize: '10px',
+                        color: '#A09DC8', fontWeight: '500',
+                        textTransform: 'none', letterSpacing: 0
+                      }}>— shown publicly on map</span>
+                    </label>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        style={{
+                          ...inputStyle,
+                          paddingRight: locationLoading ? '40px' : '14px'
+                        }}
+                        placeholder="Search city, island, area..."
+                        value={locationSearch}
+                        onChange={async (e) => {
+                          const val = e.target.value
+                          setLocationSearch(val)
+                          setLocationSelected(false)
+                          update('location', '')
+                          update('latitude', null)
+                          update('longitude', null)
+                          if (val.length < 3) {
+                            setLocationResults([])
+                            return
+                          }
+                          setLocationLoading(true)
+                          try {
+                            const res = await fetch(
+                              `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val)}&limit=5&addressdetails=1`,
+                              { headers: { 'Accept-Language': 'en' } }
+                            )
+                            const data = await res.json()
+                            setLocationResults(data)
+                          } catch (e) {
+                            console.log('Search error:', e)
+                          }
+                          setLocationLoading(false)
+                        }}
+                      />
+
+                      {locationLoading && (
+                        <div style={{
+                          position: 'absolute', right: '12px',
+                          top: '50%', transform: 'translateY(-50%)',
+                          fontSize: '14px'
+                        }}>⏳</div>
+                      )}
+
+                      {locationSelected && (
+                        <div style={{
+                          position: 'absolute', right: '12px',
+                          top: '50%', transform: 'translateY(-50%)',
+                          fontSize: '16px', color: '#00C48C'
+                        }}>✓</div>
+                      )}
+
+                      {locationResults.length > 0 && !locationSelected && (
+                        <div style={{
+                          position: 'absolute', top: '100%', left: 0, right: 0,
+                          background: '#fff', border: '1.5px solid #B8A5FF',
+                          borderRadius: '12px', marginTop: '4px',
+                          zIndex: 100, overflow: 'hidden',
+                          boxShadow: '0 8px 32px rgba(108,71,255,0.15)'
+                        }}>
+                          {locationResults.map((result, i) => {
+                            const city = result.address?.city
+                              || result.address?.town
+                              || result.address?.village
+                              || result.address?.county || ''
+                            const country = result.address?.country || ''
+                            const state = result.address?.state || ''
+                            const shortName = [city, state, country]
+                              .filter(Boolean).join(', ')
+                            return (
+                              <div key={i}
+                                onClick={() => {
+                                  const name = shortName || result.display_name
+                                  setLocationSearch(name)
+                                  setLocationResults([])
+                                  setLocationSelected(true)
+                                  update('location', name)
+                                  update('latitude', parseFloat(result.lat))
+                                  update('longitude', parseFloat(result.lon))
+                                }}
+                                style={{
+                                  padding: '11px 14px', cursor: 'pointer',
+                                  borderBottom: i < locationResults.length - 1
+                                    ? '1px solid #F5F4FF' : 'none',
+                                  display: 'flex', gap: '8px', alignItems: 'flex-start'
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.background = '#F5F4FF'}
+                                onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+                              >
+                                <span style={{ fontSize: '14px', flexShrink: 0 }}>📍</span>
+                                <div>
+                                  <div style={{
+                                    fontSize: '13px', fontWeight: '600',
+                                    color: '#14123A', marginBottom: '1px'
+                                  }}>
+                                    {shortName || result.display_name.split(',')[0]}
+                                  </div>
+                                  <div style={{ fontSize: '10px', color: '#A09DC8' }}>
+                                    {result.display_name.length > 55
+                                      ? result.display_name.substring(0, 55) + '...'
+                                      : result.display_name}
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
                     </div>
-                    <div style={{ fontSize: '10px', color: '#A09DC8' }}>
-                      {result.display_name.length > 55
-                        ? result.display_name.substring(0, 55) + '...'
-                        : result.display_name}
-                    </div>
+
+                    {locationSelected && (
+                      <div style={{
+                        fontSize: '11px', color: '#00C48C',
+                        marginTop: '5px', display: 'flex',
+                        alignItems: 'center', gap: '4px'
+                      }}>✓ Pin placed on map</div>
+                    )}
+
+                    {/* Exact Address */}
+                    {locationSelected && (
+                      <div style={{
+                        background: '#F5F4FF', borderRadius: '14px',
+                        padding: '16px', border: '1.5px solid #E2E0FF',
+                        display: 'flex', flexDirection: 'column',
+                        gap: '12px', marginTop: '12px'
+                      }}>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                          <span style={{ fontSize: '16px' }}>🔒</span>
+                          <div>
+                            <div style={{
+                              fontSize: '12px', fontWeight: '700', color: '#14123A'
+                            }}>Exact Address</div>
+                            <div style={{ fontSize: '10px', color: '#A09DC8', marginTop: '1px' }}>
+                              Only shared with accepted workers
+                            </div>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label style={{ ...labelStyle, fontSize: '10px' }}>
+                            House / Building Number
+                          </label>
+                          <input
+                            style={{ ...inputStyle, background: '#fff' }}
+                            placeholder="e.g. 12, Flat 3B..."
+                            value={form.house_number || ''}
+                            onChange={e => update('house_number', e.target.value)}
+                          />
+                        </div>
+
+                        <div>
+                          <label style={{ ...labelStyle, fontSize: '10px' }}>Street Name</label>
+                          <input
+                            style={{ ...inputStyle, background: '#fff' }}
+                            placeholder="e.g. Adeola Odeku Street"
+                            value={form.street || ''}
+                            onChange={e => update('street', e.target.value)}
+                          />
+                        </div>
+
+                        <div>
+                          <label style={{ ...labelStyle, fontSize: '10px' }}>
+                            Nearest Landmark
+                          </label>
+                          <input
+                            style={{ ...inputStyle, background: '#fff' }}
+                            placeholder="e.g. Beside First Bank..."
+                            value={form.landmark || ''}
+                            onChange={e => update('landmark', e.target.value)}
+                          />
+                        </div>
+
+                        <div>
+                          <label style={{ ...labelStyle, fontSize: '10px' }}>
+                            Additional Directions (optional)
+                          </label>
+                          <textarea
+                            style={{
+                              ...inputStyle, background: '#fff',
+                              minHeight: '60px', resize: 'vertical'
+                            }}
+                            placeholder="e.g. Take the gate on the left..."
+                            value={form.directions || ''}
+                            onChange={e => update('directions', e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
-      {locationSelected && (
-        <div style={{
-          fontSize: '11px', color: '#00C48C',
-          marginTop: '5px', display: 'flex',
-          alignItems: 'center', gap: '4px'
-        }}>
-          ✓ Pin placed on map
-        </div>
-      )}
-    </div>
+                )}
 
-    {/* Exact Address — only shows after general location selected */}
-    {locationSelected && (
-      <div style={{
-        background: '#F5F4FF', borderRadius: '14px',
-        padding: '16px', border: '1.5px solid #E2E0FF',
-        display: 'flex', flexDirection: 'column', gap: '12px'
-      }}>
-        <div style={{
-          display: 'flex', gap: '8px', alignItems: 'center',
-          marginBottom: '4px'
-        }}>
-          <span style={{ fontSize: '16px' }}>🔒</span>
-          <div>
-            <div style={{
-              fontSize: '12px', fontWeight: '700', color: '#14123A'
-            }}>Exact Address</div>
-            <div style={{
-              fontSize: '10px', color: '#A09DC8', marginTop: '1px'
-            }}>
-              Only shared with accepted workers — not shown publicly
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <label style={{ ...labelStyle, fontSize: '10px' }}>
-            House / Building Number
-          </label>
-          <input
-            style={{ ...inputStyle, background: '#fff' }}
-            placeholder="e.g. 12, Flat 3B, Suite 201..."
-            value={form.house_number || ''}
-            onChange={e => update('house_number', e.target.value)}
-          />
-        </div>
-
-        <div>
-          <label style={{ ...labelStyle, fontSize: '10px' }}>
-            Street Name
-          </label>
-          <input
-            style={{ ...inputStyle, background: '#fff' }}
-            placeholder="e.g. Adeola Odeku Street"
-            value={form.street || ''}
-            onChange={e => update('street', e.target.value)}
-          />
-        </div>
-
-        <div>
-          <label style={{ ...labelStyle, fontSize: '10px' }}>
-            Nearest Landmark
-          </label>
-          <input
-            style={{ ...inputStyle, background: '#fff' }}
-            placeholder="e.g. Beside First Bank, Opposite Shoprite..."
-            value={form.landmark || ''}
-            onChange={e => update('landmark', e.target.value)}
-          />
-        </div>
-
-        <div>
-          <label style={{ ...labelStyle, fontSize: '10px' }}>
-            Additional Directions (optional)
-          </label>
-          <textarea
-            style={{
-              ...inputStyle, background: '#fff',
-              minHeight: '60px', resize: 'vertical'
-            }}
-            placeholder="e.g. Take the gate on the left, call when you arrive..."
-            value={form.directions || ''}
-            onChange={e => update('directions', e.target.value)}
-          />
-        </div>
-      </div>
-    )}
-  </div>
-)}
-
+                {/* Slots */}
                 <div>
                   <label style={labelStyle}>Open Slots</label>
                   <div style={{ display: 'flex', gap: '8px' }}>
@@ -519,15 +510,23 @@ const [locationSelected, setLocationSelected] = useState(false)
                         width: '40px', height: '40px',
                         background: form.slots === n ? '#EEE9FF' : '#F5F4FF',
                         border: `1.5px solid ${form.slots === n ? '#B8A5FF' : '#E2E0FF'}`,
-                        borderRadius: '9px',
-                        fontSize: '14px', fontWeight: '700',
+                        borderRadius: '9px', fontSize: '14px', fontWeight: '700',
                         color: form.slots === n ? '#6C47FF' : '#8B8FAF',
                         cursor: 'pointer', fontFamily: 'inherit'
                       }}>{n}</button>
                     ))}
+                    <button onClick={() => update('slots', 10)} style={{
+                      padding: '0 12px', height: '40px',
+                      background: form.slots === 10 ? '#EEE9FF' : '#F5F4FF',
+                      border: `1.5px solid ${form.slots === 10 ? '#B8A5FF' : '#E2E0FF'}`,
+                      borderRadius: '9px', fontSize: '11px', fontWeight: '700',
+                      color: form.slots === 10 ? '#6C47FF' : '#8B8FAF',
+                      cursor: 'pointer', fontFamily: 'inherit'
+                    }}>10+</button>
                   </div>
                 </div>
 
+                {/* Description */}
                 <div>
                   <label style={labelStyle}>Description (optional)</label>
                   <textarea
@@ -537,6 +536,7 @@ const [locationSelected, setLocationSelected] = useState(false)
                     onChange={e => update('description', e.target.value)}
                   />
                 </div>
+
               </div>
             )}
 

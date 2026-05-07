@@ -1,34 +1,12 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../supabase'
 import { useAuth } from '../../context/AuthContext'
-
-const FIELDS = [
-  { name: 'Development', icon: '⌨', color: '#6C47FF', bg: '#EEE9FF', border: '#B8A5FF' },
-  { name: 'Design', icon: '✦', color: '#FF4DCF', bg: '#FFE8FA', border: '#FF99E8' },
-  { name: 'Writing', icon: '✍', color: '#00C48C', bg: '#DFFDF4', border: '#7EECD2' },
-  { name: 'Marketing', icon: '📣', color: '#FF6B2B', bg: '#FFF0E8', border: '#FFBC99' },
-  { name: 'Photography', icon: '◉', color: '#0EA5E9', bg: '#E0F2FE', border: '#7DD3FC' },
-  { name: 'Events', icon: '◈', color: '#FF3366', bg: '#FFE8EE', border: '#FF99B3' },
-  { name: 'Handyman', icon: '⚙', color: '#FFB800', bg: '#FFF8E0', border: '#FFD966' },
-  { name: 'Cleaning', icon: '◇', color: '#00C48C', bg: '#DFFDF4', border: '#7EECD2' },
-  { name: 'Electrical', icon: '⚡', color: '#6C47FF', bg: '#EEE9FF', border: '#B8A5FF' },
-]
-
-const RELATED = {
-  Development: ['DevOps', 'Mobile Dev', 'QA Testing', 'API Work', 'Cloud Setup'],
-  Design: ['Motion Graphics', 'UI/UX', 'Packaging', 'Illustration', 'Brand Strategy'],
-  Writing: ['Translation', 'Script Writing', 'Editing', 'Technical Docs', 'Email Copy'],
-  Marketing: ['Paid Ads', 'Email Campaigns', 'Analytics', 'SEO', 'Community Mgmt'],
-  Photography: ['Video Editing', 'Drone Footage', 'Event Film', 'Headshots', 'Product Shots'],
-  Events: ['Photography', 'Catering Help', 'Setup Crew', 'Security', 'MC / Host'],
-  Handyman: ['Plumbing', 'Painting', 'Carpentry', 'Flooring', 'Furniture Assembly'],
-  Cleaning: ['Window Clean', 'Carpet Clean', 'Office Clean', 'Move-Out', 'Deep Clean'],
-  Electrical: ['Plumbing', 'HVAC', 'Solar Install', 'Smart Home', 'Generator'],
-}
+import { CATEGORIES } from '../../data/categories'
 
 export default function DiscoverScreen() {
   const { user } = useAuth()
   const [selectedField, setSelectedField] = useState(null)
+  const [openGroup, setOpenGroup] = useState(null)
   const [gigs, setGigs] = useState([])
   const [allGigs, setAllGigs] = useState([])
   const [loading, setLoading] = useState(false)
@@ -167,7 +145,7 @@ export default function DiscoverScreen() {
           }}>Based on Your Skills</div>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             {profile.skills.map(skill => {
-              const field = FIELDS.find(f => f.name === skill)
+              const cat = CATEGORIES.find(c => c.fields.includes(skill))
               return (
                 <button key={skill}
                   onClick={() => setSelectedField(skill)}
@@ -179,89 +157,93 @@ export default function DiscoverScreen() {
                     color: selectedField === skill ? '#fff' : '#6C47FF',
                     cursor: 'pointer', fontFamily: 'inherit',
                     transition: 'all 0.15s'
-                  }}>{field?.icon} {skill}</button>
+                  }}>{cat?.icon} {skill}</button>
               )
             })}
           </div>
         </div>
       )}
 
-      {/* Field Grid */}
+      {/* Category Groups */}
       <div style={{
         fontSize: '11px', fontWeight: '700', color: '#A09DC8',
         textTransform: 'uppercase', letterSpacing: '1.2px', marginBottom: '12px'
       }}>Browse by Field</div>
 
-      <div style={{
-        display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
-        gap: '10px', marginBottom: '24px'
-      }}>
-        {FIELDS.map(field => {
-          const count = allGigs.filter(g => g.field === field.name).length
-          const active = selectedField === field.name
-          return (
-            <div key={field.name}
-              onClick={() => setSelectedField(
-                selectedField === field.name ? null : field.name
-              )}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '24px' }}>
+        {CATEGORIES.map(cat => (
+          <div key={cat.group} style={{
+            background: '#fff',
+            border: `1.5px solid ${selectedField && cat.fields.includes(selectedField) ? cat.border : '#E2E0FF'}`,
+            borderRadius: '14px', overflow: 'hidden',
+            transition: 'border-color 0.15s'
+          }}>
+            {/* Group header */}
+            <div
+              onClick={() => setOpenGroup(openGroup === cat.group ? null : cat.group)}
               style={{
-                background: active ? field.bg : '#fff',
-                border: `1.5px solid ${active ? field.border : '#E2E0FF'}`,
-                borderRadius: '14px', padding: '14px 10px',
-                cursor: 'pointer', transition: 'all 0.15s',
-                textAlign: 'center'
+                padding: '14px 16px', cursor: 'pointer',
+                display: 'flex', justifyContent: 'space-between',
+                alignItems: 'center',
+                background: selectedField && cat.fields.includes(selectedField) ? cat.bg : '#fff'
               }}>
-              <div style={{ fontSize: '24px', marginBottom: '6px' }}>
-                {field.icon}
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <span style={{ fontSize: '20px' }}>{cat.icon}</span>
+                <div>
+                  <div style={{
+                    fontSize: '14px', fontWeight: '700',
+                    color: selectedField && cat.fields.includes(selectedField) ? cat.color : '#14123A'
+                  }}>{cat.group}</div>
+                  <div style={{ fontSize: '10px', color: '#A09DC8' }}>
+                    {cat.fields.length} specializations
+                  </div>
+                </div>
               </div>
-              <div style={{
-                fontSize: '12px', fontWeight: '700',
-                color: active ? field.color : '#14123A',
-                marginBottom: '2px'
-              }}>{field.name}</div>
-              <div style={{ fontSize: '10px', color: '#A09DC8' }}>
-                {count} gig{count !== 1 ? 's' : ''}
-              </div>
-              <div style={{
-                height: '2px', borderRadius: '2px',
-                background: active ? field.color : '#E2E0FF',
-                marginTop: '8px',
-                width: active ? '60%' : '25%',
-                margin: '8px auto 0',
-                transition: 'all 0.3s'
-              }} />
+              <span style={{ fontSize: '12px', color: '#A09DC8' }}>
+                {openGroup === cat.group ? '▲' : '▼'}
+              </span>
             </div>
-          )
-        })}
-      </div>
 
-      {/* Related Services */}
-      {selectedField && RELATED[selectedField] && (
-        <div style={{ marginBottom: '20px' }}>
-          <div style={{
-            fontSize: '11px', fontWeight: '700', color: '#A09DC8',
-            textTransform: 'uppercase', letterSpacing: '1.2px', marginBottom: '10px'
-          }}>Related to {selectedField}</div>
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            {RELATED[selectedField].map(r => (
-              <span key={r} style={{
-                background: '#fff', border: '1.5px solid #E2E0FF',
-                borderRadius: '20px', padding: '6px 13px',
-                fontSize: '12px', color: '#8B8FAF',
-                cursor: 'pointer', transition: 'all 0.15s'
-              }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.borderColor = '#B8A5FF'
-                  e.currentTarget.style.color = '#6C47FF'
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.borderColor = '#E2E0FF'
-                  e.currentTarget.style.color = '#8B8FAF'
-                }}>{r}</span>
-            ))}
+            {/* Fields */}
+            {openGroup === cat.group && (
+              <div style={{
+                display: 'flex', gap: '7px', flexWrap: 'wrap',
+                padding: '12px 16px', borderTop: `1px solid ${cat.border}`,
+                background: '#FAFAFF'
+              }}>
+                {cat.fields.map(field => {
+                  const count = allGigs.filter(g => g.field === field).length
+                  return (
+                    <button
+                      key={field}
+                      onClick={() => setSelectedField(selectedField === field ? null : field)}
+                      style={{
+                        background: selectedField === field ? cat.bg : '#fff',
+                        border: `1.5px solid ${selectedField === field ? cat.border : '#E2E0FF'}`,
+                        borderRadius: '20px', padding: '7px 14px',
+                        fontSize: '12px', fontWeight: '600',
+                        color: selectedField === field ? cat.color : '#8B8FAF',
+                        cursor: 'pointer', fontFamily: 'inherit',
+                        transition: 'all 0.15s',
+                        display: 'flex', alignItems: 'center', gap: '6px'
+                      }}>
+                      {field}
+                      {count > 0 && (
+                        <span style={{
+                          background: selectedField === field ? cat.color : '#E2E0FF',
+                          color: selectedField === field ? '#fff' : '#8B8FAF',
+                          borderRadius: '20px', padding: '0px 6px',
+                          fontSize: '10px', fontWeight: '700'
+                        }}>{count}</span>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
           </div>
-        </div>
-      )}
+        ))}
+      </div>
 
       {/* Gigs in Selected Field */}
       {selectedField && (
