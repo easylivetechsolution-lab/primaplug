@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../supabase'
 import MapScreen from './screens/MapScreen'
@@ -14,6 +14,19 @@ export default function Layout() {
   const [screen, setScreen] = useState('map')
   const [showPost, setShowPost] = useState(false)
   const [isLive, setIsLive] = useState(false)
+
+  useEffect(() => {
+    const unlock = () => {
+      const AudioContext = window.AudioContext || window.webkitAudioContext
+      if (AudioContext) {
+        const ctx = new AudioContext()
+        ctx.resume()
+      }
+      document.removeEventListener('click', unlock)
+    }
+    document.addEventListener('click', unlock)
+    return () => document.removeEventListener('click', unlock)
+  }, [])
 
   const handleLogout = async () => {
     await supabase.auth.signOut()

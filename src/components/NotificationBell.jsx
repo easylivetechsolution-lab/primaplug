@@ -2,6 +2,14 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 import PublicProfile from './PublicProfile'
+import {
+  playNotification,
+  playAccepted,
+  playDeclined,
+  playReceipt,
+  playComplete,
+  playMessage
+} from '../utils/sounds'
 
 export default function NotificationBell({ onNavigate }) {
   const { user } = useAuth()
@@ -28,6 +36,15 @@ export default function NotificationBell({ onNavigate }) {
       }, (payload) => {
         setNotifications(prev => [payload.new, ...prev])
         setUnread(prev => prev + 1)
+
+        // Play sound based on notification type
+        const type = payload.new?.type
+        if (type === 'accepted') playAccepted()
+        else if (type === 'rejected') playDeclined()
+        else if (type === 'receipt') playReceipt()
+        else if (type === 'review') playComplete()
+        else if (type === 'application') playMessage()
+        else playNotification()
       })
       .subscribe()
 
@@ -206,7 +223,7 @@ export default function NotificationBell({ onNavigate }) {
                     } else if (notif.type === 'accepted' || notif.type === 'rejected') {
                       const { data: gig } = await supabase
                         .from('gigs')
-                        .select('*, users(full_name, avatar_url, phone, trust_score)')
+                        .select('*, users(id, full_name, avatar_url, phone, trust_score, rating, location, bio, gigs_completed)')
                         .eq('id', notif.gig_id)
                         .single()
 
@@ -580,9 +597,8 @@ export default function NotificationBell({ onNavigate }) {
             {/* ACCEPTED / REJECTED TYPE — shown to worker */}
             {(notifDetail.type === 'accepted' || notifDetail.type === 'rejected') && (
               <div>
-                <div style={{
-                  textAlign: 'center', padding: '20px 0', marginBottom: '20px'
-                }}>
+                {/* Status header */}
+                <div style={{ textAlign: 'center', marginBottom: '24px' }}>
                   <div style={{ fontSize: '48px', marginBottom: '12px' }}>
                     {notifDetail.type === 'accepted' ? '🎉' : '😔'}
                   </div>
@@ -591,7 +607,9 @@ export default function NotificationBell({ onNavigate }) {
                     color: notifDetail.type === 'accepted' ? '#00C48C' : '#FF3366',
                     marginBottom: '8px'
                   }}>
-                    {notifDetail.type === 'accepted' ? 'You were accepted!' : 'Not selected this time'}
+                    {notifDetail.type === 'accepted'
+                      ? 'You were accepted!'
+                      : 'Not selected this time'}
                   </div>
                   <div style={{ fontSize: '13px', color: '#8B8FAF', lineHeight: '1.6' }}>
                     {notifDetail.type === 'accepted'
@@ -600,39 +618,167 @@ export default function NotificationBell({ onNavigate }) {
                   </div>
                 </div>
 
+                {/* Client Profile Card */}
+                {notifDetail.gig?.users && (
+                  <div style={{
+                    background: 'linear-gradient(135deg, #EEE9FF, #F8F5FF)',
+                    border: '1.5px solid #B8A5FF',
+                    borderRadius: '16px', padding: '16px',
+                    marginBottom: '14px'
+                  }}>
+                    <div style={{
+                      fontSize: '10px', color: '#6C47FF', fontWeight: '700',
+                      textTransform: 'uppercase', letterSpacing: '0.8px',
+                      marginBottom: '12px'
+                    }}>Client Profile</div>
+
+                    <div style={{
+                      display: 'flex', gap: '12px',
+                      alignItems: 'center', marginBottom: '14px'
+                    }}>
+                      <div
+                        onClick={() => setViewingProfile(notifDetail.gig.poster_id)}
+                        style={{
+                          width: '56px', height: '56px', borderRadius: '14px',
+                          background: '#EEE9FF', display: 'flex',
+                          alignItems: 'center', justifyContent: 'center',
+                          fontSize: '22px', fontWeight: '800', color: '#6C47FF',
+                          overflow: 'hidden', flexShrink: 0,
+                          cursor: 'pointer', border: '2px solid #B8A5FF'
+                        }}>
+                        {notifDetail.gig.users.avatar_url ? (
+                          <img
+                            src={notifDetail.gig.users.avatar_url}
+                            alt=""
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          />
+                        ) : (
+                          notifDetail.gig.users.full_name?.charAt(0) || '?'
+                        )}
+                      </div>
+
+                      <div style={{ flex: 1 }}>
+                        <div
+                          onClick={() => setViewingProfile(notifDetail.gig.poster_id)}
+                          style={{
+                            fontSize: '16px', fontWeight: '700',
+                            color: '#6C47FF', cursor: 'pointer',
+                            marginBottom: '3px',
+                            textDecoration: 'underline',
+                            textDecorationStyle: 'dotted'
+                          }}>
+                          {notifDetail.gig.users.full_name || 'Client'} →
+                        </div>
+                        {notifDetail.gig.users.location && (
+                          <div style={{ fontSize: '11px', color: '#FF6B2B', marginBottom: '3px' }}>
+                            📍 {notifDetail.gig.users.location}
+                          </div>
+                        )}
+                        <div style={{ fontSize: '11px', color: '#8B8FAF' }}>
+                          ⭐ {notifDetail.gig.users.rating || 5.0} ·{' '}
+                          Trust {notifDetail.gig.users.trust_score || 100}%
+                        </div>
+                      </div>
+
+                      <div style={{
+                        background: '#EEE9FF', border: '1.5px solid #B8A5FF',
+                        borderRadius: '10px', padding: '8px 12px',
+                        textAlign: 'center', flexShrink: 0
+                      }}>
+                        <div style={{
+                          fontSize: '16px', fontWeight: '800', color: '#6C47FF'
+                        }}>
+                          {notifDetail.gig.users.trust_score || 100}%
+                        </div>
+                        <div style={{
+                          fontSize: '8px', color: '#A09DC8',
+                          fontWeight: '600', letterSpacing: '0.5px'
+                        }}>TRUST</div>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => setViewingProfile(notifDetail.gig.poster_id)}
+                      style={{
+                        width: '100%', background: '#EEE9FF',
+                        border: '1.5px solid #B8A5FF', borderRadius: '10px',
+                        padding: '10px', fontSize: '12px', fontWeight: '700',
+                        color: '#6C47FF', cursor: 'pointer', fontFamily: 'inherit'
+                      }}>
+                      👤 View Full Profile
+                    </button>
+                  </div>
+                )}
+
+                {/* Gig info */}
                 {notifDetail.gig && (
                   <div style={{
                     background: '#F5F4FF', borderRadius: '14px',
-                    padding: '16px', border: '1.5px solid #E2E0FF', marginBottom: '16px'
+                    padding: '14px', border: '1.5px solid #E2E0FF',
+                    marginBottom: '14px'
                   }}>
                     <div style={{
-                      fontSize: '15px', fontWeight: '700', color: '#14123A', marginBottom: '8px'
+                      fontSize: '10px', color: '#A09DC8', fontWeight: '700',
+                      textTransform: 'uppercase', letterSpacing: '0.8px',
+                      marginBottom: '8px'
+                    }}>Gig Details</div>
+                    <div style={{
+                      fontSize: '15px', fontWeight: '700',
+                      color: '#14123A', marginBottom: '6px'
                     }}>{notifDetail.gig.title}</div>
-                    <div style={{ fontSize: '14px', fontWeight: '800', color: '#00C48C' }}>
+                    <div style={{
+                      fontSize: '15px', fontWeight: '800', color: '#00C48C',
+                      marginBottom: '4px'
+                    }}>
                       ${notifDetail.gig.pay_min}–${notifDetail.gig.pay_max}
                     </div>
                     {notifDetail.gig.location && (
-                      <div style={{ fontSize: '12px', color: '#FF6B2B', marginTop: '4px' }}>
+                      <div style={{ fontSize: '12px', color: '#FF6B2B' }}>
                         📍 {notifDetail.gig.location}
                       </div>
                     )}
                   </div>
                 )}
 
+                {/* Phone + WhatsApp — if accepted */}
                 {notifDetail.type === 'accepted' && notifDetail.gig?.users?.phone && (
-                  <a
-                    href={`https://wa.me/${notifDetail.gig.users.phone.replace(/\D/g,'')}?text=Hi, my application for "${notifDetail.gig.title}" on Prima was accepted. Looking forward to working with you!`}
-                    target="_blank" rel="noreferrer"
-                    style={{
-                      display: 'flex', alignItems: 'center',
-                      justifyContent: 'center', gap: '8px',
-                      background: '#25D366', borderRadius: '12px',
-                      padding: '14px', fontSize: '14px',
-                      fontWeight: '700', color: '#fff',
-                      textDecoration: 'none', marginBottom: '10px'
-                    }}>
-                    💬 Message Client on WhatsApp
-                  </a>
+                  <div style={{
+                    background: '#F5F4FF', border: '1.5px solid #E2E0FF',
+                    borderRadius: '12px', padding: '12px 14px',
+                    marginBottom: '12px',
+                    display: 'flex', justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <span style={{ fontSize: '16px' }}>📱</span>
+                      <div>
+                        <div style={{
+                          fontSize: '10px', color: '#A09DC8', fontWeight: '600',
+                          textTransform: 'uppercase', letterSpacing: '0.5px',
+                          marginBottom: '2px'
+                        }}>Contact Client</div>
+                        <div style={{
+                          fontSize: '14px', fontWeight: '700', color: '#14123A'
+                        }}>{notifDetail.gig.users.phone}</div>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <a href={`tel:${notifDetail.gig.users.phone}`} style={{
+                        background: '#EEE9FF', border: '1.5px solid #B8A5FF',
+                        borderRadius: '9px', padding: '8px 12px',
+                        fontSize: '12px', fontWeight: '700',
+                        color: '#6C47FF', textDecoration: 'none'
+                      }}>📞 Call</a>
+                      <a
+                        href={`https://wa.me/${notifDetail.gig.users.phone.replace(/\D/g, '')}?text=Hi, my application for "${notifDetail.gig.title}" on Prima was accepted!`}
+                        target="_blank" rel="noreferrer"
+                        style={{
+                          background: '#25D366', borderRadius: '9px',
+                          padding: '8px 12px', fontSize: '12px',
+                          fontWeight: '700', color: '#fff', textDecoration: 'none'
+                        }}>💬 WhatsApp</a>
+                    </div>
+                  </div>
                 )}
               </div>
             )}

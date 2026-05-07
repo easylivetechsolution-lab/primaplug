@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 import CategoryPicker from './CategoryPicker'
+import { playAccepted } from '../utils/sounds'
 
 const URGENCY = [
   { key: 'now', label: 'NOW', color: '#FF3366', bg: '#FFE8EE' },
@@ -112,6 +113,7 @@ const [locationSelected, setLocationSelected] = useState(false)
       return
     }
 
+    playAccepted()
     setDone(true)
     setLoading(false)
     setTimeout(() => {

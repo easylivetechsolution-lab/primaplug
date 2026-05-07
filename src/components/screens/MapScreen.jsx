@@ -4,6 +4,7 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { supabase } from '../../supabase'
 import PublicProfile from '../PublicProfile'
+import { playMapPing } from '../../utils/sounds'
 
 // Fix leaflet default icon
 delete L.Icon.Default.prototype._getIconUrl
@@ -147,8 +148,11 @@ export default function MapScreen() {
     const channel = supabase
       .channel('map-gigs')
       .on('postgres_changes', {
-        event: '*', schema: 'public', table: 'gigs'
-      }, () => fetchGigs())
+        event: 'INSERT', schema: 'public', table: 'gigs'
+      }, () => {
+        fetchGigs()
+        playMapPing()
+      })
       .subscribe()
     return () => supabase.removeChannel(channel)
   }, [])

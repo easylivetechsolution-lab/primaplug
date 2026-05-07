@@ -3,6 +3,8 @@ import { supabase } from '../../supabase'
 import { useAuth } from '../../context/AuthContext'
 import PublicProfile from '../PublicProfile'
 import ReviewModal from '../ReviewModal'
+import ReceiptFlow from '../ReceiptFlow'
+import { playAccepted, playDeclined } from '../../utils/sounds'
 
 const STATUS_CONFIG = {
   open: { label: 'Open', color: '#6C47FF', bg: '#EEE9FF', border: '#B8A5FF' },
@@ -148,7 +150,8 @@ export default function MyGigsScreen() {
   const [loading, setLoading] = useState(true)
   const [expandedGigId, setExpandedGigId] = useState(null)
   const [selectedGig, setSelectedGig] = useState(null)
-  const [showReceiptModal, setShowReceiptModal] = useState(false)
+  const [showReceiptFlow, setShowReceiptFlow] = useState(false)
+  const [receiptUserRole, setReceiptUserRole] = useState('poster')
   const [uploading, setUploading] = useState(false)
   const [viewingProfile, setViewingProfile] = useState(null)
   const [showReview, setShowReview] = useState(false)
@@ -187,6 +190,7 @@ export default function MyGigsScreen() {
   }
 
   const handleAccept = async (app, gig) => {
+    playAccepted()
     await supabase
       .from('applications')
       .update({ status: 'accepted' })
@@ -224,6 +228,7 @@ export default function MyGigsScreen() {
   }
 
   const handleDecline = async (app, gig) => {
+    playDeclined()
     await supabase
       .from('applications')
       .update({ status: 'rejected' })
@@ -493,7 +498,11 @@ export default function MyGigsScreen() {
                     display: 'flex', gap: '8px'
                   }}>
                     <button
-                      onClick={() => { setSelectedGig(gig); setShowReceiptModal(true) }}
+                      onClick={() => {
+                        setSelectedGig(gig)
+                        setReceiptUserRole('poster')
+                        setShowReceiptFlow(true)
+                      }}
                       style={{
                         flex: 1, background: '#EEE9FF',
                         border: '1.5px solid #B8A5FF',
@@ -573,7 +582,11 @@ export default function MyGigsScreen() {
                   </div>
                   {app.status === 'accepted' && (
                     <button
-                      onClick={() => { setSelectedGig(app.gigs); setShowReceiptModal(true) }}
+                      onClick={() => {
+                        setSelectedGig(app.gigs)
+                        setReceiptUserRole('worker')
+                        setShowReceiptFlow(true)
+                      }}
                       style={{
                         marginTop: '12px', width: '100%',
                         background: '#EEE9FF', border: '1.5px solid #B8A5FF',
@@ -589,65 +602,21 @@ export default function MyGigsScreen() {
         </>
       )}
 
-      {/* Receipt Modal */}
-      {showReceiptModal && selectedGig && (
-        <div style={{
-          position: 'fixed', inset: 0,
-          background: 'rgba(20,18,58,0.75)',
-          backdropFilter: 'blur(4px)',
-          zIndex: 400, display: 'flex',
-          alignItems: 'center', justifyContent: 'center',
-          padding: '20px', fontFamily: "'Plus Jakarta Sans', sans-serif"
-        }} onClick={() => setShowReceiptModal(false)}>
-          <div onClick={e => e.stopPropagation()} style={{
-            background: '#fff', borderRadius: '24px',
-            padding: '28px', width: '100%', maxWidth: '440px',
-            border: '1.5px solid #E2E0FF',
-            boxShadow: '0 20px 60px rgba(108,71,255,0.25)'
-          }}>
-            <div style={{
-              fontSize: '18px', fontWeight: '800',
-              color: '#14123A', marginBottom: '6px'
-            }}>Upload Receipt</div>
-            <div style={{
-              fontSize: '13px', color: '#8B8FAF',
-              lineHeight: '1.6', marginBottom: '20px'
-            }}>
-              Upload proof of completion for{' '}
-              <strong>{selectedGig.title}</strong>.
-              Your name must be visible.
-            </div>
-            <div
-              onClick={() => document.getElementById('receipt-input').click()}
-              style={{
-                background: '#EEE9FF', border: '2px dashed #B8A5FF',
-                borderRadius: '14px', padding: '32px',
-                textAlign: 'center', marginBottom: '16px', cursor: 'pointer'
-              }}>
-              <div style={{ fontSize: '36px', marginBottom: '8px' }}>📎</div>
-              <div style={{
-                fontSize: '14px', fontWeight: '700', color: '#6C47FF'
-              }}>
-                {uploading ? 'Uploading...' : 'Click to upload'}
-              </div>
-              <div style={{ fontSize: '11px', color: '#A09DC8', marginTop: '4px' }}>
-                Photo, PDF or screenshot
-              </div>
-              <input
-                id="receipt-input" type="file"
-                accept="image/*,.pdf"
-                style={{ display: 'none' }}
-                onChange={handleReceiptUpload}
-              />
-            </div>
-            <button onClick={() => setShowReceiptModal(false)} style={{
-              width: '100%', background: '#F5F4FF',
-              border: '1.5px solid #E2E0FF', borderRadius: '12px',
-              padding: '13px', fontSize: '13px', fontWeight: '600',
-              color: '#8B8FAF', cursor: 'pointer', fontFamily: 'inherit'
-            }}>Cancel</button>
-          </div>
-        </div>
+      {/* Receipt Flow */}
+      {showReceiptFlow && selectedGig && (
+        <ReceiptFlow
+          gig={selectedGig}
+          userRole={receiptUserRole}
+          onClose={() => {
+            setShowReceiptFlow(false)
+            setSelectedGig(null)
+          }}
+          onComplete={() => {
+            setShowReceiptFlow(false)
+            fetchPostedGigs()
+            fetchAppliedGigs()
+          }}
+        />
       )}
 
       {/* Review Modal */}
