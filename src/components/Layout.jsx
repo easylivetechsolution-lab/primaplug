@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../supabase'
 import MapScreen from './screens/MapScreen'
@@ -22,7 +22,8 @@ export default function Layout() {
   const [showPost, setShowPost] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
   const [showMobileMore, setShowMobileMore] = useState(false)
-  const [isLive, setIsLive] = useState(false)
+  const [fabPos, setFabPos] = useState({ bottom: 160, right: 16 })
+  const fabDragRef = useRef({ on: false, moved: false, sx: 0, sy: 0, sb: 160, sr: 16 })
 
   useEffect(() => {
     const handleKey = (e) => {
@@ -49,6 +50,33 @@ export default function Layout() {
     return () => document.removeEventListener('click', unlock)
   }, [])
 
+  useEffect(() => {
+    const onMove = (e) => {
+      if (!fabDragRef.current.on) return
+      const t = e.touches?.[0] ?? e
+      const dx = t.clientX - fabDragRef.current.sx
+      const dy = t.clientY - fabDragRef.current.sy
+      if (Math.abs(dx) > 5 || Math.abs(dy) > 5) fabDragRef.current.moved = true
+      if (!fabDragRef.current.moved) return
+      e.preventDefault()
+      setFabPos({
+        right: Math.max(8, Math.min(window.innerWidth - 64, fabDragRef.current.sr - dx)),
+        bottom: Math.max(8, Math.min(window.innerHeight - 64, fabDragRef.current.sb + dy))
+      })
+    }
+    const onEnd = () => { fabDragRef.current.on = false }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('touchmove', onMove, { passive: false })
+    window.addEventListener('mouseup', onEnd)
+    window.addEventListener('touchend', onEnd)
+    return () => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('touchmove', onMove)
+      window.removeEventListener('mouseup', onEnd)
+      window.removeEventListener('touchend', onEnd)
+    }
+  }, [])
+
   const handleLogout = async () => {
     await supabase.auth.signOut()
   }
@@ -66,6 +94,7 @@ export default function Layout() {
     { key: 'search', icon: 'search', label: 'Search', action: () => setShowSearch(true) },
     { key: 'saved', icon: 'saved', label: 'Saved Gigs', action: () => setScreen('saved') },
     { key: 'stats', icon: 'stats', label: 'My Stats', action: () => setScreen('stats') },
+    { key: 'chat', icon: 'chat', label: 'Messages', action: () => setScreen('chat') },
     { key: 'settings', icon: 'settings', label: 'Settings', action: () => setScreen('settings') },
   ]
 
@@ -118,7 +147,7 @@ export default function Layout() {
           </div>
           <div>
             <div style={{ fontSize: '20px', fontWeight: '800', color: '#14123A', letterSpacing: '-0.5px' }}>Prima</div>
-            <div style={{ fontSize: '9px', color: '#A09DC8', letterSpacing: '1.5px', textTransform: 'uppercase' }}>Real-Time Labor Network</div>
+            <div className="brand-subtitle" style={{ fontSize: '9px', color: '#A09DC8', letterSpacing: '1.5px', textTransform: 'uppercase' }}>Real-Time Labor Network</div>
           </div>
         </div>
 
@@ -184,55 +213,6 @@ export default function Layout() {
               color: '#A09DC8', fontWeight: '700'
             }}>⌘K</span>
           </button>
-          <button onClick={() => setIsLive(l => !l)}
-            className="desktop-action"
-            style={{
-              background: isLive ? '#DFFDF4' : 'transparent',
-              border: `1.5px solid ${isLive ? '#00C48C' : '#E2E0FF'}`,
-              borderRadius: '20px',
-              padding: '7px 14px',
-              fontSize: '12px',
-              fontWeight: '700',
-              color: isLive ? '#00C48C' : '#8B8FAF',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              fontFamily: 'inherit',
-              transition: 'all 0.2s'
-            }}>
-            <span style={{
-              width: '7px', height: '7px',
-              borderRadius: '50%',
-              background: isLive ? '#00C48C' : '#A09DC8',
-              display: 'inline-block',
-              animation: isLive ? 'blink 1s infinite' : 'none'
-            }}/>
-            {isLive ? 'LIVE' : 'Go Live'}
-          </button>
-
-          <button onClick={() => setShowPost(true)}
-            className="desktop-action"
-            style={{
-              background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
-              border: 'none',
-              borderRadius: '12px',
-              padding: '9px 18px',
-              fontSize: '13px',
-              fontWeight: '700',
-              color: '#fff',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '7px',
-              boxShadow: '0 4px 16px rgba(108,71,255,0.35)',
-              fontFamily: 'inherit',
-              transition: 'all 0.2s'
-            }}>
-            <BrandIcon name="post" size={26} />
-            Post a Gig
-          </button>
-
           <button
             onClick={() => setShowMobileMore(m => !m)}
             className="mobile-more-trigger"
@@ -303,44 +283,6 @@ export default function Layout() {
               </span>
             </button>
           ))}
-          <button
-            onClick={() => {
-              setIsLive(l => !l)
-              setShowMobileMore(false)
-            }}
-            style={{
-              width: '100%',
-              background: '#fff',
-              border: 'none',
-              padding: '12px 14px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              cursor: 'pointer',
-              fontFamily: 'inherit'
-            }}
-          >
-            <span style={{
-              width: '34px',
-              height: '34px',
-              borderRadius: '10px',
-              background: isLive ? '#DFFDF4' : '#F5F4FF',
-              border: `1.5px solid ${isLive ? '#00C48C' : '#E2E0FF'}`,
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}>
-              <span style={{
-                width: '9px',
-                height: '9px',
-                borderRadius: '50%',
-                background: isLive ? '#00C48C' : '#A09DC8'
-              }} />
-            </span>
-            <span style={{ fontSize: '13px', fontWeight: '700', color: isLive ? '#00C48C' : '#14123A' }}>
-              {isLive ? 'Live Mode On' : 'Go Live'}
-            </span>
-          </button>
         </div>
       )}
 
@@ -591,11 +533,22 @@ export default function Layout() {
       </div>
 
       {/* MOBILE FAB */}
-      <button onClick={() => setShowPost(true)}
+      <button
+        onMouseDown={(e) => {
+          fabDragRef.current = { on: true, moved: false, sx: e.clientX, sy: e.clientY, sb: fabPos.bottom, sr: fabPos.right }
+        }}
+        onTouchStart={(e) => {
+          const t = e.touches[0]
+          fabDragRef.current = { on: true, moved: false, sx: t.clientX, sy: t.clientY, sb: fabPos.bottom, sr: fabPos.right }
+        }}
+        onClick={() => {
+          if (fabDragRef.current.moved) { fabDragRef.current.moved = false; return }
+          setShowPost(true)
+        }}
         style={{
           position: 'fixed',
-          bottom: '80px',
-          right: '16px',
+          bottom: fabPos.bottom,
+          right: fabPos.right,
           zIndex: 60,
           width: '54px', height: '54px',
           borderRadius: '50%',
@@ -603,12 +556,14 @@ export default function Layout() {
           border: 'none',
           color: '#fff',
           fontSize: '26px',
-          cursor: 'pointer',
+          cursor: 'grab',
           boxShadow: '0 4px 20px rgba(108,71,255,0.5)',
           display: 'none',
           alignItems: 'center',
           justifyContent: 'center',
-          fontFamily: 'inherit'
+          fontFamily: 'inherit',
+          touchAction: 'none',
+          userSelect: 'none'
         }} className="mobile-fab">
           <BrandIcon name="post" size={36} />
         </button>
@@ -622,10 +577,6 @@ export default function Layout() {
       )}
 
       <style>{`
-        @keyframes blink {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.2; }
-        }
         @media (max-width: 768px) {
           .app-topbar {
             height: 58px !important;
@@ -637,9 +588,7 @@ export default function Layout() {
           .app-topbar > div:first-child > div:last-child > div:first-child {
             font-size: 17px !important;
           }
-          .app-topbar > div:first-child > div:last-child > div:last-child {
-            display: none !important;
-          }
+          .brand-subtitle { display: none !important; }
           .desktop-nav { display: none !important; }
           .desktop-sidebar { display: none !important; }
           .desktop-action { display: none !important; }
@@ -666,10 +615,6 @@ export default function Layout() {
             min-width: 0 !important;
             flex: 1 1 0 !important;
             padding: 5px 2px !important;
-          }
-          .mobile-fab {
-            bottom: calc(88px + env(safe-area-inset-bottom)) !important;
-            right: 14px !important;
           }
           .floating-chat-shell {
             display: none !important;

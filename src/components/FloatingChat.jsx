@@ -17,10 +17,12 @@ export default function FloatingChat({ onOpenFullChat }) {
   const [loadingMsgs, setLoadingMsgs] = useState(false)
   const [viewingProfile, setViewingProfile] = useState(null)
   const [pulse, setPulse] = useState(false)
+  const [chatPos, setChatPos] = useState({ bottom: 120, right: 24 })
   const messagesEndRef = useRef()
   const inputRef = useRef()
   const channelRef = useRef()
   const convoChannelRef = useRef()
+  const chatDrag = useRef({ on: false, moved: false, sx: 0, sy: 0, sb: 120, sr: 24 })
 
   useEffect(() => {
     if (!user) return
@@ -130,6 +132,33 @@ export default function FloatingChat({ onOpenFullChat }) {
       if (convoChannelRef.current) supabase.removeChannel(convoChannelRef.current)
     }
   }, [activeConvo?.id])
+
+  useEffect(() => {
+    const onMove = (e) => {
+      if (!chatDrag.current.on) return
+      const t = e.touches?.[0] ?? e
+      const dx = t.clientX - chatDrag.current.sx
+      const dy = t.clientY - chatDrag.current.sy
+      if (Math.abs(dx) > 5 || Math.abs(dy) > 5) chatDrag.current.moved = true
+      if (!chatDrag.current.moved) return
+      e.preventDefault()
+      setChatPos({
+        right: Math.max(8, Math.min(window.innerWidth - 72, chatDrag.current.sr - dx)),
+        bottom: Math.max(8, Math.min(window.innerHeight - 72, chatDrag.current.sb + dy))
+      })
+    }
+    const onEnd = () => { chatDrag.current.on = false }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('touchmove', onMove, { passive: false })
+    window.addEventListener('mouseup', onEnd)
+    window.addEventListener('touchend', onEnd)
+    return () => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('touchmove', onMove)
+      window.removeEventListener('mouseup', onEnd)
+      window.removeEventListener('touchend', onEnd)
+    }
+  }, [])
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -303,8 +332,8 @@ export default function FloatingChat({ onOpenFullChat }) {
       {/* Floating Button */}
       <div style={{
         position: 'fixed',
-        bottom: '24px',
-        right: '24px',
+        bottom: chatPos.bottom,
+        right: chatPos.right,
         zIndex: 8000,
         display: 'flex',
         flexDirection: 'column',
@@ -683,7 +712,17 @@ export default function FloatingChat({ onOpenFullChat }) {
 
         {/* Floating Button */}
         <button
-          onClick={() => setOpen(o => !o)}
+          onMouseDown={(e) => {
+            chatDrag.current = { on: true, moved: false, sx: e.clientX, sy: e.clientY, sb: chatPos.bottom, sr: chatPos.right }
+          }}
+          onTouchStart={(e) => {
+            const t = e.touches[0]
+            chatDrag.current = { on: true, moved: false, sx: t.clientX, sy: t.clientY, sb: chatPos.bottom, sr: chatPos.right }
+          }}
+          onClick={() => {
+            if (chatDrag.current.moved) { chatDrag.current.moved = false; return }
+            setOpen(o => !o)
+          }}
           style={{
             width: '56px', height: '56px',
             borderRadius: '50%',
@@ -695,10 +734,11 @@ export default function FloatingChat({ onOpenFullChat }) {
               ? '0 4px 20px rgba(108,71,255,0.2)'
               : '0 4px 24px rgba(108,71,255,0.5)',
             display: 'flex', alignItems: 'center',
-            justifyContent: 'center', cursor: 'pointer',
-            fontSize: '22px', transition: 'all 0.2s',
+            justifyContent: 'center', cursor: 'grab',
+            fontSize: '22px', transition: 'background 0.2s, box-shadow 0.2s',
             animation: pulse ? 'chatBounce 0.5s ease' : 'none',
-            position: 'relative'
+            position: 'relative', touchAction: 'none',
+            userSelect: 'none'
           }}>
           <span style={{
             transform: open ? 'rotate(0deg)' : 'rotate(0deg)',
