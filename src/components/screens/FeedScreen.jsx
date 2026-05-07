@@ -722,6 +722,24 @@ export default function FeedScreen() {
       type: 'application',
       gig_id: selectedGig.id
     })
+    // Create conversation between applicant and poster
+    const { data: existingConvo } = await supabase
+      .from('conversations')
+      .select('id')
+      .eq('gig_id', selectedGig.id)
+      .eq('participant_1', selectedGig.poster_id)
+      .eq('participant_2', userId)
+      .maybeSingle()
+
+    if (!existingConvo) {
+      await supabase.from('conversations').insert({
+        gig_id: selectedGig.id,
+        participant_1: selectedGig.poster_id,
+        participant_2: userId,
+        last_message: 'Application sent',
+        last_message_at: new Date().toISOString()
+      })
+    }
     setApplied(true)
   } catch (e) {
     console.log('Apply error:', e)

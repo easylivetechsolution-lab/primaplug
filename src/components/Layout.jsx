@@ -11,6 +11,8 @@ import StatsScreen from './screens/StatsScreen'
 import SettingsScreen from './screens/SettingsScreen'
 import PostGig from './PostGig'
 import NotificationBell from './NotificationBell'
+import Search from './Search'
+import ChatScreen from './screens/ChatScreen'
 
 export default function Layout() {
   const { user } = useAuth()
@@ -18,6 +20,18 @@ export default function Layout() {
   const [showPost, setShowPost] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
   const [isLive, setIsLive] = useState(false)
+
+  useEffect(() => {
+    const handleKey = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault()
+        setShowSearch(true)
+      }
+      if (e.key === 'Escape') setShowSearch(false)
+    }
+    document.addEventListener('keydown', handleKey)
+    return () => document.removeEventListener('keydown', handleKey)
+  }, [])
 
   useEffect(() => {
     const unlock = () => {
@@ -41,6 +55,7 @@ export default function Layout() {
     { key: 'feed', icon: '⚡', label: 'Feed' },
     { key: 'discover', icon: '✦', label: 'Discover' },
     { key: 'mygigs', icon: '📋', label: 'My Gigs' },
+    { key: 'chat', icon: '💬', label: 'Chat' },
     { key: 'profile', icon: '👤', label: 'Profile' },
   ]
 
@@ -53,6 +68,7 @@ export default function Layout() {
     saved: <SavedScreen />,
     stats: <StatsScreen />,
     settings: <SettingsScreen onLogout={handleLogout} />,
+    chat: <ChatScreen />,
   }
 
   return (
@@ -119,6 +135,39 @@ export default function Layout() {
         {/* Right Actions */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <NotificationBell onNavigate={(screen) => setScreen(screen)} />
+          <button
+            onClick={() => setShowSearch(true)}
+            style={{
+              background: '#F5F4FF',
+              border: '1.5px solid #E2E0FF',
+              borderRadius: '10px',
+              padding: '8px 14px',
+              fontSize: '13px',
+              fontWeight: '600',
+              color: '#8B8FAF',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '7px',
+              fontFamily: 'inherit',
+              transition: 'all 0.15s'
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.borderColor = '#B8A5FF'
+              e.currentTarget.style.color = '#6C47FF'
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.borderColor = '#E2E0FF'
+              e.currentTarget.style.color = '#8B8FAF'
+            }}>
+            <span>🔍</span>
+            <span className="search-label">Search</span>
+            <span style={{
+              background: '#E2E0FF', borderRadius: '5px',
+              padding: '1px 6px', fontSize: '10px',
+              color: '#A09DC8', fontWeight: '700'
+            }}>⌘K</span>
+          </button>
           <button onClick={() => setIsLive(l => !l)}
             style={{
               background: isLive ? '#DFFDF4' : 'transparent',
@@ -266,20 +315,36 @@ export default function Layout() {
             <span style={{ fontSize: '9px', fontWeight: '600', color: screen === 'stats' ? '#6C47FF' : '#A09DC8' }}>Stats</span>
           </button>
 
-          {/* Messages — coming soon */}
+          {/* Chat */}
           <button
-            title="Messages — Coming Soon"
+            onClick={() => setScreen('chat')}
+            title="Messages"
             style={{
               width: '48px', height: '48px',
-              borderRadius: '12px', background: 'transparent',
-              border: '1.5px solid transparent',
+              borderRadius: '12px',
+              background: screen === 'chat' ? '#EEE9FF' : 'transparent',
+              border: `1.5px solid ${screen === 'chat' ? '#B8A5FF' : 'transparent'}`,
               display: 'flex', flexDirection: 'column',
               alignItems: 'center', justifyContent: 'center',
-              gap: '3px', cursor: 'not-allowed',
-              opacity: 0.5, fontFamily: 'inherit'
+              gap: '3px', cursor: 'pointer',
+              transition: 'all 0.15s', fontFamily: 'inherit',
+              position: 'relative'
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = '#EEE9FF'
+              e.currentTarget.style.borderColor = '#B8A5FF'
+            }}
+            onMouseLeave={e => {
+              if (screen !== 'chat') {
+                e.currentTarget.style.background = 'transparent'
+                e.currentTarget.style.borderColor = 'transparent'
+              }
             }}>
             <span style={{ fontSize: '20px' }}>💬</span>
-            <span style={{ fontSize: '9px', fontWeight: '600', color: '#A09DC8' }}>Chat</span>
+            <span style={{
+              fontSize: '9px', fontWeight: '600',
+              color: screen === 'chat' ? '#6C47FF' : '#A09DC8'
+            }}>Chat</span>
           </button>
 
           {/* Divider */}
@@ -422,6 +487,11 @@ export default function Layout() {
       {/* POST GIG MODAL */}
       {showPost && <PostGig onClose={() => setShowPost(false)} />}
 
+      {/* SEARCH */}
+      {showSearch && (
+        <Search onClose={() => setShowSearch(false)} />
+      )}
+
       <style>{`
         @keyframes blink {
           0%, 100% { opacity: 1; }
@@ -432,6 +502,7 @@ export default function Layout() {
           .desktop-sidebar { display: none !important; }
           .mobile-nav { display: flex !important; }
           .mobile-fab { display: flex !important; }
+          .search-label { display: none !important; }
         }
         @media (max-width: 960px) {
           .desktop-nav { display: none !important; }
