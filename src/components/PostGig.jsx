@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 import CategoryPicker from './CategoryPicker'
+import BrandIcon from './BrandIcon'
 import { playAccepted } from '../utils/sounds'
 
 const URGENCY = [
@@ -172,7 +173,9 @@ const [locationSelected, setLocationSelected] = useState(false)
 
         {done ? (
           <div style={{ textAlign: 'center', padding: '40px 0' }}>
-            <div style={{ fontSize: '56px', marginBottom: '16px' }}>🚀</div>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
+              <BrandIcon name="discover" size={64} />
+            </div>
             <div style={{ fontSize: '22px', fontWeight: '800', color: '#6C47FF', marginBottom: '8px' }}>
               Gig Posted!
             </div>
@@ -235,8 +238,8 @@ const [locationSelected, setLocationSelected] = useState(false)
                         borderRadius: '14px', padding: '16px 12px',
                         cursor: 'pointer', textAlign: 'center', transition: 'all 0.15s'
                       }}>
-                        <div style={{ fontSize: '28px', marginBottom: '6px' }}>
-                          {t === 'physical' ? '📌' : '💻'}
+                        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
+                          <BrandIcon name={t === 'physical' ? 'physical' : 'digital'} size={42} active={form.type === t} />
                         </div>
                         <div style={{ fontSize: '13px', fontWeight: '700', color: '#14123A', textTransform: 'capitalize' }}>{t}</div>
                         <div style={{ fontSize: '10px', color: '#A09DC8', marginTop: '2px' }}>
@@ -402,7 +405,7 @@ const [locationSelected, setLocationSelected] = useState(false)
                                 onMouseEnter={e => e.currentTarget.style.background = '#F5F4FF'}
                                 onMouseLeave={e => e.currentTarget.style.background = '#fff'}
                               >
-                                <span style={{ fontSize: '14px', flexShrink: 0 }}>📍</span>
+                                <BrandIcon name="location" size={28} />
                                 <div>
                                   <div style={{
                                     fontSize: '13px', fontWeight: '600',
@@ -440,7 +443,7 @@ const [locationSelected, setLocationSelected] = useState(false)
                         gap: '12px', marginTop: '12px'
                       }}>
                         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                          <span style={{ fontSize: '16px' }}>🔒</span>
+                          <BrandIcon name="lock" size={34} />
                           <div>
                             <div style={{
                               fontSize: '12px', fontWeight: '700', color: '#14123A'
@@ -583,7 +586,7 @@ const [locationSelected, setLocationSelected] = useState(false)
                   gap: '10px',
                   marginBottom: '20px'
                 }}>
-                  <span style={{ fontSize: '16px', flexShrink: 0 }}>🔒</span>
+                  <BrandIcon name="lock" size={34} />
                   <div style={{ fontSize: '12px', color: '#6C47FF', lineHeight: '1.6' }}>
                     Both parties confirm completion by uploading receipts with their names. This protects everyone involved.
                   </div>
@@ -624,7 +627,12 @@ const [locationSelected, setLocationSelected] = useState(false)
                   boxShadow: '0 4px 20px rgba(108,71,255,0.35)',
                   fontFamily: 'inherit', transition: 'all 0.2s'
                 }}>
-                {loading ? '⏳ Posting...' : step < 3 ? 'Continue →' : '🚀 Go Live'}
+                {loading ? '⏳ Posting...' : step < 3 ? 'Continue →' : (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                    <BrandIcon name="post" size={26} />
+                    Go Live
+                  </span>
+                )}
               </button>
             </div>
           </>

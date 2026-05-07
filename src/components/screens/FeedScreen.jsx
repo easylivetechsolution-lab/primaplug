@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../supabase'
 import PublicProfile from '../PublicProfile'
+import BrandIcon from '../BrandIcon'
 import { CATEGORIES, ALL_FIELDS } from '../../data/categories'
 
 const URGENCY = {
@@ -120,11 +121,7 @@ export default function FeedScreen() {
           display: 'flex', alignItems: 'center',
           gap: '7px', marginBottom: '12px'
         }}>
-          <div style={{
-            width: '22px', height: '22px', background: '#6C47FF',
-            borderRadius: '6px', display: 'flex', alignItems: 'center',
-            justifyContent: 'center', fontSize: '11px', color: '#fff'
-          }}>✦</div>
+          <BrandIcon name="discover" size={30} />
           <span style={{
             fontSize: '11px', fontWeight: '700', color: '#6C47FF',
             letterSpacing: '0.8px', textTransform: 'uppercase'
@@ -350,7 +347,9 @@ export default function FeedScreen() {
           background: '#fff', borderRadius: '16px',
           border: '1.5px solid #E2E0FF'
         }}>
-          <div style={{ fontSize: '32px', marginBottom: '12px' }}>🔍</div>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '14px' }}>
+            <BrandIcon name="search" size={46} />
+          </div>
           <div style={{
             fontSize: '15px', fontWeight: '700',
             color: '#14123A', marginBottom: '6px'

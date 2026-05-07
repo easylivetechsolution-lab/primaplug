@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../supabase'
 import { useAuth } from '../../context/AuthContext'
 import CategoryPicker from '../CategoryPicker'
+import BrandIcon from '../BrandIcon'
 
 const LocationSearch = ({ value, onSelect, inputStyle }) => {
   const [search, setSearch] = useState(value || '')
@@ -41,7 +42,7 @@ const LocationSearch = ({ value, onSelect, inputStyle }) => {
           fontSize: '14px',
           color: selected ? '#00C48C' : '#A09DC8'
         }}>
-          {loading ? '⏳' : selected ? '✓' : '🔍'}
+          {loading ? '⏳' : selected ? '✓' : <BrandIcon name="search" size={24} />}
         </span>
       </div>
       {results.length > 0 && !selected && (
@@ -78,7 +79,7 @@ const LocationSearch = ({ value, onSelect, inputStyle }) => {
                 onMouseEnter={e => e.currentTarget.style.background = '#F5F4FF'}
                 onMouseLeave={e => e.currentTarget.style.background = '#fff'}
               >
-                <span>📍</span>
+                <BrandIcon name="location" size={28} />
                 <div>
                   <div style={{
                     fontSize: '13px', fontWeight: '600', color: '#14123A'
@@ -343,12 +344,12 @@ export default function ProfileScreen({ onLogout }) {
                 <div style={{ display: 'flex', gap: '10px' }}>
                   {[
                     {
-                      key: 'physical_mode', icon: '📌',
+                      key: 'physical_mode', icon: 'physical',
                       label: 'Physical', color: '#FF6B2B',
                       bg: '#FFF0E8', border: '#FFBC99'
                     },
                     {
-                      key: 'digital_mode', icon: '💻',
+                      key: 'digital_mode', icon: 'digital',
                       label: 'Digital', color: '#6C47FF',
                       bg: '#EEE9FF', border: '#B8A5FF'
                     }
@@ -365,8 +366,8 @@ export default function ProfileScreen({ onLogout }) {
                         cursor: 'pointer', textAlign: 'center',
                         transition: 'all 0.15s'
                       }}>
-                      <div style={{ fontSize: '22px', marginBottom: '5px' }}>
-                        {m.icon}
+                      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
+                        <BrandIcon name={m.icon} size={40} active={!!editForm[m.key]} />
                       </div>
                       <div style={{
                         fontSize: '12px', fontWeight: '700',
@@ -518,7 +519,7 @@ export default function ProfileScreen({ onLogout }) {
       fontFamily: 'inherit', display: 'flex',
       alignItems: 'center', gap: '6px'
     }}>
-      <span>✏️</span>
+      <BrandIcon name="edit" size={28} />
       <span>Edit Profile</span>
     </button>
 
@@ -590,7 +591,7 @@ export default function ProfileScreen({ onLogout }) {
         }}
           onMouseEnter={e => e.currentTarget.style.opacity = 1}
           onMouseLeave={e => e.currentTarget.style.opacity = 0}>
-          <span style={{ fontSize: '20px' }}>📷</span>
+          <BrandIcon name="camera" size={38} />
         </div>
       )}
     </div>
@@ -613,8 +614,11 @@ export default function ProfileScreen({ onLogout }) {
               @{profile?.username || 'username'}
             </div>
             {profile?.location && (
-              <div style={{ fontSize: '12px', opacity: 0.7, marginBottom: '8px' }}>
-                📍 {profile.location}
+              <div style={{
+                fontSize: '12px', opacity: 0.7, marginBottom: '8px',
+                display: 'flex', alignItems: 'center', gap: '6px'
+              }}>
+                <BrandIcon name="location" size={22} /> {profile.location}
               </div>
             )}
             <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
@@ -622,15 +626,17 @@ export default function ProfileScreen({ onLogout }) {
                 <span style={{
                   background: 'rgba(255,255,255,0.2)',
                   borderRadius: '5px', padding: '2px 8px',
-                  fontSize: '9px', fontWeight: '700', letterSpacing: '.8px'
-                }}>📌 PHYSICAL</span>
+                  fontSize: '9px', fontWeight: '700', letterSpacing: '.8px',
+                  display: 'inline-flex', alignItems: 'center', gap: '5px'
+                }}><BrandIcon name="physical" size={20} /> PHYSICAL</span>
               )}
               {profile?.digital_mode && (
                 <span style={{
                   background: 'rgba(255,255,255,0.2)',
                   borderRadius: '5px', padding: '2px 8px',
-                  fontSize: '9px', fontWeight: '700', letterSpacing: '.8px'
-                }}>💻 DIGITAL</span>
+                  fontSize: '9px', fontWeight: '700', letterSpacing: '.8px',
+                  display: 'inline-flex', alignItems: 'center', gap: '5px'
+                }}><BrandIcon name="digital" size={20} /> DIGITAL</span>
               )}
               {/* Verified badge — only shows if is_verified is true */}
               {profile?.is_verified && (
@@ -670,7 +676,10 @@ export default function ProfileScreen({ onLogout }) {
               cursor: 'pointer', fontFamily: 'inherit',
               transition: 'all 0.2s'
             }}>
-              {m === 'physical' ? '📌 Physical Mode' : '💻 Digital Mode'}
+              <span style={{ display: 'inline-flex', verticalAlign: 'middle', marginRight: '6px' }}>
+                <BrandIcon name={m === 'physical' ? 'physical' : 'digital'} size={22} active={mode === m} />
+              </span>
+              {m === 'physical' ? 'Physical Mode' : 'Digital Mode'}
             </button>
           ))}
         </div>
@@ -753,24 +762,28 @@ export default function ProfileScreen({ onLogout }) {
               display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px'
             }}>
               {[
-                ['📍 Location', profile?.location || 'Not set'],
-                ['📧 Email', user?.email || '—'],
-                ['📱 Phone', profile?.phone || 'Not set'],
-                ['⏱ Response', profile?.response_time || '< 1 hour'],
-                ['📅 Joined', profile?.joined_at
+                ['location', 'Location', profile?.location || 'Not set'],
+                ['notifications', 'Email', user?.email || '—'],
+                ['phone', 'Phone', profile?.phone || 'Not set'],
+                ['open', 'Response', profile?.response_time || '< 1 hour'],
+                ['completed', 'Joined', profile?.joined_at
                   ? new Date(profile.joined_at).toLocaleDateString('en-US', {
                     month: 'long', year: 'numeric'
                   })
                   : 'Recently'],
-                ['🟢 Status', profile?.is_available ? 'Available' : 'Busy'],
-              ].map(([key, val]) => (
+                ['accepted', 'Status', profile?.is_available ? 'Available' : 'Busy'],
+              ].map(([icon, key, val]) => (
                 <div key={key} style={{
                   background: '#F5F4FF', borderRadius: '10px', padding: '10px 12px'
                 }}>
                   <div style={{
                     fontSize: '10px', color: '#A09DC8',
-                    marginBottom: '3px', fontWeight: '600'
-                  }}>{key}</div>
+                    marginBottom: '5px', fontWeight: '600',
+                    display: 'flex', alignItems: 'center', gap: '6px'
+                  }}>
+                    <BrandIcon name={icon} size={22} active={false} />
+                    {key}
+                  </div>
                   <div style={{
                     fontSize: '13px', fontWeight: '600', color: '#14123A'
                   }}>{val}</div>
@@ -787,7 +800,10 @@ export default function ProfileScreen({ onLogout }) {
               fontSize: '11px', fontWeight: '700', color: '#A09DC8',
               textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px'
             }}>
-              {mode === 'physical' ? '📌 Physical Skills' : '💻 Digital Skills'}
+              <span style={{ display: 'inline-flex', verticalAlign: 'middle', marginRight: '6px' }}>
+                <BrandIcon name={mode === 'physical' ? 'physical' : 'digital'} size={22} />
+              </span>
+              {mode === 'physical' ? 'Physical Skills' : 'Digital Skills'}
             </div>
             {profile?.skills && profile.skills.length > 0 ? (
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -813,7 +829,7 @@ export default function ProfileScreen({ onLogout }) {
               background: '#F5F4FF', borderRadius: '10px',
               fontSize: '12px', color: '#8B8FAF', lineHeight: '1.5'
             }}>
-              💡 Toggle between Physical and Digital mode above to see how your skills appear to different clients.
+              Toggle between Physical and Digital mode above to see how your skills appear to different clients.
             </div>
           </div>
         )}
@@ -847,10 +863,10 @@ export default function ProfileScreen({ onLogout }) {
             }}>Links & Portfolio</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {[
-                ['🌐 Portfolio', profile?.portfolio_url],
-                ['💼 LinkedIn', profile?.social_linkedin],
-                ['🐦 Twitter / X', profile?.social_twitter],
-              ].map(([label, url]) => (
+                ['portfolio', 'Portfolio', profile?.portfolio_url],
+                ['linkedin', 'LinkedIn', profile?.social_linkedin],
+                ['twitter', 'Twitter / X', profile?.social_twitter],
+              ].map(([icon, label, url]) => (
                 <div key={label} style={{
                   background: '#F5F4FF', borderRadius: '10px',
                   padding: '12px 14px', display: 'flex',
@@ -858,7 +874,12 @@ export default function ProfileScreen({ onLogout }) {
                 }}>
                   <span style={{
                     fontSize: '13px', color: '#8B8FAF', fontWeight: '600'
-                  }}>{label}</span>
+                  }}>
+                    <span style={{ display: 'inline-flex', verticalAlign: 'middle', marginRight: '8px' }}>
+                      <BrandIcon name={icon} size={28} />
+                    </span>
+                    {label}
+                  </span>
                   {url ? (
                     <a href={url.startsWith('http') ? url : `https://${url}`}
                       target="_blank" rel="noreferrer"
@@ -885,7 +906,7 @@ export default function ProfileScreen({ onLogout }) {
           marginBottom: '16px',
           display: 'flex', gap: '12px', alignItems: 'center'
         }}>
-          <span style={{ fontSize: '24px', flexShrink: 0 }}>🏅</span>
+          <BrandIcon name="level" size={42} />
           <div style={{ flex: 1 }}>
             <div style={{
               fontSize: '14px', fontWeight: '700',

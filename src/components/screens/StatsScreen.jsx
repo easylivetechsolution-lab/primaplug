@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../supabase'
 import { useAuth } from '../../context/AuthContext'
+import BrandIcon from '../BrandIcon'
 
 export default function StatsScreen() {
   const { user } = useAuth()
@@ -99,20 +100,22 @@ export default function StatsScreen() {
         gap: '10px', marginBottom: '16px'
       }}>
         {[
-          ['Gigs Posted', stats?.totalPosted, '#6C47FF', '📋'],
-          ['Open Now', stats?.openGigs, '#00C48C', '🟢'],
-          ['Completed', stats?.completedGigs, '#FF6B2B', '✅'],
-          ['Applied To', stats?.totalApplied, '#0EA5E9', '⚡'],
-          ['Accepted', stats?.acceptedApps, '#00C48C', '🎯'],
-          ['Avg Rating', stats?.avgRating + '★', '#FFB800', '⭐'],
-          ['Reviews', stats?.totalReviews, '#FF4DCF', '💬'],
-          ['Level', stats?.profile?.level || 'New', '#6C47FF', '🏅'],
+          ['Gigs Posted', stats?.totalPosted, '#6C47FF', 'mygigs'],
+          ['Open Now', stats?.openGigs, '#00C48C', 'open'],
+          ['Completed', stats?.completedGigs, '#FF6B2B', 'completed'],
+          ['Applied To', stats?.totalApplied, '#0EA5E9', 'applied'],
+          ['Accepted', stats?.acceptedApps, '#00C48C', 'accepted'],
+          ['Avg Rating', stats?.avgRating + '★', '#FFB800', 'rating'],
+          ['Reviews', stats?.totalReviews, '#FF4DCF', 'reviews'],
+          ['Level', stats?.profile?.level || 'New', '#6C47FF', 'level'],
         ].map(([label, val, color, icon]) => (
           <div key={label} style={{
             background: '#fff', border: '1.5px solid #E2E0FF',
             borderRadius: '14px', padding: '14px'
           }}>
-            <div style={{ fontSize: '20px', marginBottom: '6px' }}>{icon}</div>
+            <div style={{ marginBottom: '8px' }}>
+              <BrandIcon name={icon} size={30} />
+            </div>
             <div style={{
               fontSize: '20px', fontWeight: '800',
               color, marginBottom: '3px',
@@ -170,10 +173,10 @@ export default function StatsScreen() {
           color: '#14123A', marginBottom: '14px'
         }}>Worker Level</div>
         {[
-          { level: 'New Member', min: 0, icon: '🌱', color: '#8B8FAF' },
-          { level: 'Rising', min: 3, icon: '⚡', color: '#00C48C' },
-          { level: 'Pro', min: 10, icon: '🎯', color: '#6C47FF' },
-          { level: 'Elite', min: 25, icon: '🏆', color: '#FFB800' },
+          { level: 'New Member', min: 0, icon: 'profile', color: '#8B8FAF' },
+          { level: 'Rising', min: 3, icon: 'open', color: '#00C48C' },
+          { level: 'Pro', min: 10, icon: 'accepted', color: '#6C47FF' },
+          { level: 'Elite', min: 25, icon: 'level', color: '#FFB800' },
         ].map((lvl, i) => {
           const completed = stats?.completedGigs || 0
           const isActive = i === [0,3,10,25].filter(m => completed >= m).length - 1
@@ -183,14 +186,7 @@ export default function StatsScreen() {
               display: 'flex', gap: '12px',
               alignItems: 'center', marginBottom: '10px'
             }}>
-              <div style={{
-                width: '36px', height: '36px', borderRadius: '10px',
-                background: isDone ? lvl.color + '22' : '#F5F4FF',
-                border: `1.5px solid ${isDone ? lvl.color : '#E2E0FF'}`,
-                display: 'flex', alignItems: 'center',
-                justifyContent: 'center', fontSize: '16px',
-                flexShrink: 0
-              }}>{lvl.icon}</div>
+              <BrandIcon name={lvl.icon} size={36} active={isDone} />
               <div style={{ flex: 1 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{

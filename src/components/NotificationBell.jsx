@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 import PublicProfile from './PublicProfile'
+import BrandIcon from './BrandIcon'
 import {
   playNotification,
   playAccepted,
@@ -44,6 +45,7 @@ export default function NotificationBell({ onNavigate }) {
         else if (type === 'receipt') playReceipt()
         else if (type === 'review') playComplete()
         else if (type === 'application') playMessage()
+        else if (type === 'message') playMessage()
         else playNotification()
       })
       .subscribe()
@@ -97,13 +99,13 @@ export default function NotificationBell({ onNavigate }) {
 
   const getIcon = (type) => {
     switch(type) {
-      case 'review': return '⭐'
-      case 'application': return '⚡'
-      case 'accepted': return '✅'
-      case 'rejected': return '❌'
-      case 'receipt': return '📎'
-      case 'message': return '💬'
-      default: return '🔔'
+      case 'review': return 'stats'
+      case 'application': return 'feed'
+      case 'accepted': return 'discover'
+      case 'rejected': return 'notifications'
+      case 'receipt': return 'mygigs'
+      case 'message': return 'chat'
+      default: return 'notifications'
     }
   }
 
@@ -115,6 +117,34 @@ export default function NotificationBell({ onNavigate }) {
     return `${Math.floor(seconds/86400)}d ago`
   }
 
+  const openMessageNotification = async (notif) => {
+    if (!user) return
+
+    let query = supabase
+      .from('conversations')
+      .select('id, gig_id, last_message, last_message_at, participant_1, participant_2')
+      .or(`participant_1.eq.${user.id},participant_2.eq.${user.id}`)
+      .order('last_message_at', { ascending: false })
+      .limit(5)
+
+    if (notif.gig_id) query = query.eq('gig_id', notif.gig_id)
+
+    const { data } = await query
+    if (!data || data.length === 0) return
+
+    const snippet = (notif.message || '').replace(/\.\.\.$/, '')
+    const convo = data.find(c => snippet && c.last_message?.startsWith(snippet)) || data[0]
+
+    onNavigate && onNavigate('chat')
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.dispatchEvent(new CustomEvent('openChat', {
+          detail: { convoId: convo.id }
+        }))
+      })
+    })
+  }
+
   return (
     <div ref={ref} style={{ position: 'relative' }}>
       {/* Bell Button */}
@@ -124,28 +154,54 @@ export default function NotificationBell({ onNavigate }) {
           if (!open && unread > 0) markAllRead()
         }}
         style={{
-          width: '38px', height: '38px',
-          borderRadius: '10px',
-          background: unread > 0 ? '#EEE9FF' : '#F5F4FF',
-          border: `1.5px solid ${unread > 0 ? '#B8A5FF' : '#E2E0FF'}`,
+          width: '48px', height: '48px',
+          borderRadius: '14px',
+          background: unread > 0
+            ? 'linear-gradient(135deg, #6C47FF 0%, #9B59FF 52%, #FF4DCF 100%)'
+            : '#F5F4FF',
+          border: `1.5px solid ${unread > 0 ? 'rgba(255,255,255,0.65)' : '#E2E0FF'}`,
           display: 'flex', alignItems: 'center',
           justifyContent: 'center', cursor: 'pointer',
           position: 'relative', transition: 'all 0.15s',
+          boxShadow: unread > 0
+            ? 'inset 0 1px 0 rgba(255,255,255,0.42), 0 8px 24px rgba(108,71,255,0.32)'
+            : '0 3px 12px rgba(108,71,255,0.08)',
           fontFamily: 'inherit'
         }}>
         <span style={{
-          fontSize: '18px',
-          display: 'inline-block',
+          display: 'inline-flex',
           animation: unread > 0 ? 'bellring 1s ease infinite' : 'none'
-        }}>🔔</span>
+        }}>
+          <svg width="30" height="30" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+            <path
+              d="M10.2 20.2h11.6l-1.6-1.8v-5.1A4.2 4.2 0 0 0 16 9.1a4.2 4.2 0 0 0-4.2 4.2v5.1l-1.6 1.8Z"
+              fill={unread > 0 ? '#fff' : '#6C47FF'}
+            />
+            <path
+              d="M13.8 22.2c.5.9 1.2 1.4 2.2 1.4s1.7-.5 2.2-1.4"
+              stroke={unread > 0 ? '#fff' : '#6C47FF'}
+              strokeWidth="2.2"
+              strokeLinecap="round"
+            />
+            <path
+              d="M12.7 11c.8-1 1.9-1.6 3.3-1.6s2.5.6 3.3 1.6"
+              stroke={unread > 0 ? 'rgba(255,255,255,0.72)' : '#B8A5FF'}
+              strokeWidth="1.8"
+              strokeLinecap="round"
+            />
+          </svg>
+        </span>
         {unread > 0 && (
           <div style={{
-            position: 'absolute', top: '-4px', right: '-4px',
-            width: '18px', height: '18px', borderRadius: '50%',
-            background: '#FF3366', border: '2px solid #fff',
+            position: 'absolute', top: '-5px', right: '-5px',
+            width: unread > 9 ? '24px' : '20px',
+            height: '20px', borderRadius: '50%',
+            background: 'linear-gradient(135deg, #FF3366, #FF4DCF)',
+            border: '2px solid #fff',
             display: 'flex', alignItems: 'center',
             justifyContent: 'center',
-            fontSize: '9px', fontWeight: '800', color: '#fff'
+            fontSize: '9px', fontWeight: '800', color: '#fff',
+            boxShadow: '0 4px 10px rgba(255,51,102,0.35)'
           }}>
             {unread > 9 ? '9+' : unread}
           </div>
@@ -190,7 +246,13 @@ export default function NotificationBell({ onNavigate }) {
                 padding: '32px 16px', textAlign: 'center',
                 color: '#A09DC8', fontSize: '13px'
               }}>
-                <div style={{ fontSize: '28px', marginBottom: '8px' }}>🔔</div>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  marginBottom: '10px'
+                }}>
+                  <BrandIcon name="notifications" size={54} />
+                </div>
                 No notifications yet
               </div>
             ) : (
@@ -201,6 +263,11 @@ export default function NotificationBell({ onNavigate }) {
                     markRead(notif.id)
                     setOpen(false)
                     setActionDone(null)
+
+                    if (notif.type === 'message') {
+                      await openMessageNotification(notif)
+                      return
+                    }
 
                     if (!notif.gig_id) return
 
@@ -250,14 +317,7 @@ export default function NotificationBell({ onNavigate }) {
                   onMouseEnter={e => e.currentTarget.style.background = '#F5F4FF'}
                   onMouseLeave={e => e.currentTarget.style.background = notif.read ? '#fff' : '#F8F7FF'}
                 >
-                  <div style={{
-                    width: '36px', height: '36px', borderRadius: '10px',
-                    background: '#EEE9FF', display: 'flex',
-                    alignItems: 'center', justifyContent: 'center',
-                    fontSize: '18px', flexShrink: 0
-                  }}>
-                    {getIcon(notif.type)}
-                  </div>
+                  <BrandIcon name={getIcon(notif.type)} size={42} active={!notif.read} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{
                       fontSize: '13px', fontWeight: notif.read ? '500' : '700',
@@ -490,15 +550,24 @@ export default function NotificationBell({ onNavigate }) {
                         <button
                           onClick={(e) => {
                             e.stopPropagation()
+                            e.preventDefault()
+                            // Capture values immediately before any state changes
                             const targetUserId = app.worker_id
                             const gigId = notifDetail.gig?.id
+                            // Close notification sheet completely first
+                            setActionDone(null)
                             setNotifDetail(null)
                             setOpen(false)
-                            setTimeout(() => {
-                              window.dispatchEvent(new CustomEvent('openChatWithUser', {
-                                detail: { userId: targetUserId, gigId }
-                              }))
-                            }, 300)
+                            // Wait for React to fully unmount the sheet, then fire event
+                            requestAnimationFrame(() => {
+                              requestAnimationFrame(() => {
+                                setTimeout(() => {
+                                  window.dispatchEvent(new CustomEvent('openChatWithUser', {
+                                    detail: { userId: targetUserId, gigId: gigId || null }
+                                  }))
+                                }, 100)
+                              })
+                            })
                           }}
                           style={{
                             width: '100%',

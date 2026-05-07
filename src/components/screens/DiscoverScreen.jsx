@@ -2,6 +2,20 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../supabase'
 import { useAuth } from '../../context/AuthContext'
 import { CATEGORIES } from '../../data/categories'
+import BrandIcon from '../BrandIcon'
+
+const CATEGORY_ICONS = {
+  'Technology & Digital': 'tech',
+  'Creative & Media': 'creative',
+  'Business & Finance': 'business',
+  'Education & Coaching': 'education',
+  'Trades & Technical': 'trades',
+  'Home & Personal Services': 'home',
+  'Health & Wellness': 'health',
+  'Events & Hospitality': 'events',
+  'Logistics & Transport': 'logistics',
+  Other: 'discover',
+}
 
 export default function DiscoverScreen() {
   const { user } = useAuth()
@@ -156,8 +170,12 @@ export default function DiscoverScreen() {
                     fontSize: '12px', fontWeight: '600',
                     color: selectedField === skill ? '#fff' : '#6C47FF',
                     cursor: 'pointer', fontFamily: 'inherit',
-                    transition: 'all 0.15s'
-                  }}>{cat?.icon} {skill}</button>
+                    transition: 'all 0.15s',
+                    display: 'flex', alignItems: 'center', gap: '7px'
+                  }}>
+                    <BrandIcon name={cat ? CATEGORY_ICONS[cat.group] : 'discover'} size={24} active={selectedField === skill} />
+                    {skill}
+                  </button>
               )
             })}
           </div>
@@ -188,7 +206,7 @@ export default function DiscoverScreen() {
                 background: selectedField && cat.fields.includes(selectedField) ? cat.bg : '#fff'
               }}>
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                <span style={{ fontSize: '20px' }}>{cat.icon}</span>
+                <BrandIcon name={CATEGORY_ICONS[cat.group]} size={36} active={!!(selectedField && cat.fields.includes(selectedField))} />
                 <div>
                   <div style={{
                     fontSize: '14px', fontWeight: '700',
@@ -265,7 +283,9 @@ export default function DiscoverScreen() {
               background: '#fff', borderRadius: '16px',
               border: '1.5px solid #E2E0FF'
             }}>
-              <div style={{ fontSize: '28px', marginBottom: '10px' }}>🔍</div>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
+                <BrandIcon name="discover" size={44} />
+              </div>
               <div style={{
                 fontSize: '14px', fontWeight: '700',
                 color: '#14123A', marginBottom: '6px'

@@ -1,3 +1,5 @@
+import BrandIcon from '../BrandIcon'
+
 export default function SavedScreen() {
   return (
     <div style={{
@@ -15,7 +17,13 @@ export default function SavedScreen() {
         background: '#fff', borderRadius: '16px',
         border: '1.5px solid #E2E0FF'
       }}>
-        <div style={{ fontSize: '40px', marginBottom: '12px' }}>🔖</div>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          marginBottom: '14px'
+        }}>
+          <BrandIcon name="saved" size={48} />
+        </div>
         <div style={{ fontSize: '15px', fontWeight: '700', color: '#14123A', marginBottom: '6px' }}>
           No saved gigs yet
         </div>

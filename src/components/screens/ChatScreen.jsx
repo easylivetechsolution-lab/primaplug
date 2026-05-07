@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../supabase'
 import { useAuth } from '../../context/AuthContext'
 import PublicProfile from '../PublicProfile'
+import BrandIcon from '../BrandIcon'
 import { playMessage } from '../../utils/sounds'
 
 const QUICK_REPLIES = [
@@ -36,6 +37,29 @@ export default function ChatScreen() {
   }, [user])
 
   useEffect(() => {
+    const handleOpenChat = async (e) => {
+      const { convoId } = e.detail
+      if (!convoId || !user) return
+
+      const { data } = await supabase
+        .from('conversations')
+        .select(`
+          *,
+          gigs(id, title, pay_min, pay_max, status),
+          p1:users!conversations_participant_1_fkey(id, full_name, avatar_url, trust_score),
+          p2:users!conversations_participant_2_fkey(id, full_name, avatar_url, trust_score)
+        `)
+        .eq('id', convoId)
+        .single()
+
+      if (data) {
+        setActiveConvo(data)
+        setConversations(prev =>
+          prev.find(c => c.id === data.id) ? prev : [data, ...prev]
+        )
+      }
+    }
+
     const handleOpenChatWithUser = async (e) => {
       const { userId: targetUserId, gigId } = e.detail
       if (!targetUserId || !user) return
@@ -62,8 +86,12 @@ export default function ChatScreen() {
       }
     }
 
+    window.addEventListener('openChat', handleOpenChat)
     window.addEventListener('openChatWithUser', handleOpenChatWithUser)
-    return () => window.removeEventListener('openChatWithUser', handleOpenChatWithUser)
+    return () => {
+      window.removeEventListener('openChat', handleOpenChat)
+      window.removeEventListener('openChatWithUser', handleOpenChatWithUser)
+    }
   }, [user])
 
   useEffect(() => {
@@ -177,6 +205,8 @@ export default function ChatScreen() {
       ? activeConvo.participant_2
       : activeConvo.participant_1
     const isOtherP1 = activeConvo.participant_1 !== user.id
+    const sender = activeConvo.participant_1 === user.id ? activeConvo.p1 : activeConvo.p2
+    const senderName = sender?.full_name || user.email?.split('@')[0] || 'Someone'
 
     await supabase
       .from('conversations')
@@ -192,7 +222,7 @@ export default function ChatScreen() {
     // Send notification
     await supabase.from('notifications').insert({
       user_id: otherUserId,
-      title: 'New Message',
+      title: `${senderName} sent you a message`,
       message: `${text.length > 40 ? text.substring(0, 40) + '...' : text}`,
       type: 'message',
       gig_id: activeConvo.gig_id
@@ -298,7 +328,9 @@ export default function ChatScreen() {
             <div style={{
               padding: '48px 20px', textAlign: 'center'
             }}>
-              <div style={{ fontSize: '40px', marginBottom: '12px' }}>💬</div>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '14px' }}>
+                <BrandIcon name="chat" size={50} />
+              </div>
               <div style={{
                 fontSize: '15px', fontWeight: '700',
                 color: '#14123A', marginBottom: '6px'
@@ -432,7 +464,7 @@ export default function ChatScreen() {
             justifyContent: 'center', flexDirection: 'column',
             gap: '12px', padding: '40px'
           }}>
-            <div style={{ fontSize: '56px' }}>💬</div>
+            <BrandIcon name="chat" size={58} />
             <div style={{
               fontSize: '18px', fontWeight: '800',
               color: '#14123A', textAlign: 'center'

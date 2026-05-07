@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../supabase'
+import BrandIcon from '../components/BrandIcon'
 
 export default function Auth() {
   const [mode, setMode] = useState('signup')
@@ -70,13 +71,13 @@ export default function Auth() {
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <div style={{
             width: '56px', height: '56px',
-            background: 'linear-gradient(135deg, #6C47FF, #FF4DCF)',
             borderRadius: '16px',
             display: 'flex', alignItems: 'center',
             justifyContent: 'center',
-            fontSize: '28px',
             margin: '0 auto 12px'
-          }}>🗺</div>
+          }}>
+            <BrandIcon name="map" size={56} />
+          </div>
           <div style={{ fontSize: '28px', fontWeight: '800', color: '#14123A', letterSpacing: '-0.5px' }}>Prima</div>
           <div style={{ fontSize: '13px', color: '#8B8FAF', marginTop: '4px' }}>Real-Time Labor Network</div>
         </div>

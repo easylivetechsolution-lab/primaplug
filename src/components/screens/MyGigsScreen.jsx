@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext'
 import PublicProfile from '../PublicProfile'
 import ReviewModal from '../ReviewModal'
 import ReceiptFlow from '../ReceiptFlow'
+import BrandIcon from '../BrandIcon'
 import { playAccepted, playDeclined } from '../../utils/sounds'
 
 const STATUS_CONFIG = {
@@ -327,7 +328,9 @@ export default function MyGigsScreen() {
                   background: '#fff', borderRadius: '16px',
                   border: '1.5px solid #E2E0FF'
                 }}>
-                  <div style={{ fontSize: '36px', marginBottom: '12px' }}>📋</div>
+                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '14px' }}>
+                    <BrandIcon name="mygigs" size={46} />
+                  </div>
                   <div style={{ fontSize: '15px', fontWeight: '700', color: '#14123A' }}>
                     No gigs posted yet
                   </div>
@@ -532,7 +535,9 @@ export default function MyGigsScreen() {
                   background: '#fff', borderRadius: '16px',
                   border: '1.5px solid #E2E0FF'
                 }}>
-                  <div style={{ fontSize: '36px', marginBottom: '12px' }}>⚡</div>
+                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '14px' }}>
+                    <BrandIcon name="feed" size={46} />
+                  </div>
                   <div style={{
                     fontSize: '15px', fontWeight: '700',
                     color: '#14123A', marginBottom: '6px'

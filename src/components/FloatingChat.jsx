@@ -3,6 +3,7 @@ import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 import { playMessage } from '../utils/sounds'
 import PublicProfile from './PublicProfile'
+import BrandIcon from './BrandIcon'
 
 export default function FloatingChat({ onOpenFullChat }) {
   const { user } = useAuth()
@@ -53,7 +54,14 @@ export default function FloatingChat({ onOpenFullChat }) {
 
     const handleOpenChatWithUser = async (e) => {
       const { userId: targetUserId, gigId } = e.detail
-      if (!targetUserId || !user) return
+      console.log('openChatWithUser received', targetUserId, gigId)
+      if (!targetUserId) return
+
+      // Get fresh user from supabase session
+      const { data: { session } } = await supabase.auth.getSession()
+      const currentUserId = session?.user?.id
+      if (!currentUserId) return
+
       setOpen(true)
 
       const { data: existing } = await supabase
@@ -65,8 +73,8 @@ export default function FloatingChat({ onOpenFullChat }) {
           p2:users!conversations_participant_2_fkey(id, full_name, avatar_url, trust_score)
         `)
         .or(
-          `and(participant_1.eq.${user.id},participant_2.eq.${targetUserId}),` +
-          `and(participant_1.eq.${targetUserId},participant_2.eq.${user.id})`
+          `and(participant_1.eq.${currentUserId},participant_2.eq.${targetUserId}),` +
+          `and(participant_1.eq.${targetUserId},participant_2.eq.${currentUserId})`
         )
         .maybeSingle()
 
@@ -79,7 +87,7 @@ export default function FloatingChat({ onOpenFullChat }) {
           .from('conversations')
           .insert({
             gig_id: gigId || null,
-            participant_1: user.id,
+            participant_1: currentUserId,
             participant_2: targetUserId,
             last_message: '',
             last_message_at: new Date().toISOString()
@@ -243,6 +251,8 @@ export default function FloatingChat({ onOpenFullChat }) {
       ? activeConvo.participant_2
       : activeConvo.participant_1
     const isOtherP1 = activeConvo.participant_1 !== user.id
+    const sender = activeConvo.participant_1 === user.id ? activeConvo.p1 : activeConvo.p2
+    const senderName = sender?.full_name || user.email?.split('@')[0] || 'Someone'
 
     await supabase.from('conversations').update({
       last_message: text,
@@ -254,7 +264,7 @@ export default function FloatingChat({ onOpenFullChat }) {
 
     await supabase.from('notifications').insert({
       user_id: otherUserId,
-      title: 'New Message',
+      title: `${senderName} sent you a message`,
       message: text.length > 40 ? text.substring(0, 40) + '...' : text,
       type: 'message',
       gig_id: activeConvo.gig_id
@@ -400,7 +410,9 @@ export default function FloatingChat({ onOpenFullChat }) {
                   <div style={{
                     padding: '32px 20px', textAlign: 'center'
                   }}>
-                    <div style={{ fontSize: '32px', marginBottom: '8px' }}>💬</div>
+                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '10px' }}>
+                      <BrandIcon name="chat" size={56} />
+                    </div>
                     <div style={{
                       fontSize: '14px', fontWeight: '600',
                       color: '#14123A', marginBottom: '4px'
@@ -692,7 +704,7 @@ export default function FloatingChat({ onOpenFullChat }) {
             transform: open ? 'rotate(0deg)' : 'rotate(0deg)',
             transition: 'transform 0.2s'
           }}>
-            {open ? '×' : '💬'}
+            {open ? '×' : <BrandIcon name="chat" size={38} />}
           </span>
 
           {/* Unread badge */}

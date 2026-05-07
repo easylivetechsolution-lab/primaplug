@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../supabase'
 import PublicProfile from './PublicProfile'
+import BrandIcon from './BrandIcon'
 
 const RECENT_KEY = 'prima_recent_searches'
 
@@ -166,8 +167,8 @@ export default function Search({ onClose }) {
             }}
               onFocus={() => {}}
             >
-              <span style={{ fontSize: '18px', flexShrink: 0 }}>
-                {loading ? '⏳' : '🔍'}
+              <span style={{ flexShrink: 0, display: 'inline-flex' }}>
+                {loading ? '⏳' : <BrandIcon name="search" size={32} />}
               </span>
               <input
                 ref={inputRef}
@@ -384,7 +385,13 @@ export default function Search({ onClose }) {
                 <div style={{
                   textAlign: 'center', padding: '48px 20px'
                 }}>
-                  <div style={{ fontSize: '40px', marginBottom: '12px' }}>🔍</div>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    marginBottom: '14px'
+                  }}>
+                    <BrandIcon name="search" size={60} />
+                  </div>
                   <div style={{
                     fontSize: '16px', fontWeight: '700',
                     color: '#14123A', marginBottom: '6px'

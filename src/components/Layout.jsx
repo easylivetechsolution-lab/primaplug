@@ -14,6 +14,7 @@ import NotificationBell from './NotificationBell'
 import Search from './Search'
 import ChatScreen from './screens/ChatScreen'
 import FloatingChat from './FloatingChat'
+import BrandIcon from './BrandIcon'
 
 export default function Layout() {
   const { user } = useAuth()
@@ -52,12 +53,12 @@ export default function Layout() {
   }
 
   const navItems = [
-    { key: 'map', icon: '🗺', label: 'Map' },
-    { key: 'feed', icon: '⚡', label: 'Feed' },
-    { key: 'discover', icon: '✦', label: 'Discover' },
-    { key: 'mygigs', icon: '📋', label: 'My Gigs' },
-    { key: 'chat', icon: '💬', label: 'Chat' },
-    { key: 'profile', icon: '👤', label: 'Profile' },
+    { key: 'map', icon: 'map', label: 'Map' },
+    { key: 'feed', icon: 'feed', label: 'Feed' },
+    { key: 'discover', icon: 'discover', label: 'Discover' },
+    { key: 'mygigs', icon: 'mygigs', label: 'My Gigs' },
+    { key: 'chat', icon: 'chat', label: 'Chat' },
+    { key: 'profile', icon: 'profile', label: 'Profile' },
   ]
 
   const screens = {
@@ -98,11 +99,12 @@ export default function Layout() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div style={{
             width: '36px', height: '36px',
-            background: 'linear-gradient(135deg, #6C47FF, #FF4DCF)',
             borderRadius: '10px',
             display: 'flex', alignItems: 'center',
             justifyContent: 'center', fontSize: '18px'
-          }}>🗺</div>
+          }}>
+            <BrandIcon name="map" size={36} />
+          </div>
           <div>
             <div style={{ fontSize: '20px', fontWeight: '800', color: '#14123A', letterSpacing: '-0.5px' }}>Prima</div>
             <div style={{ fontSize: '9px', color: '#A09DC8', letterSpacing: '1.5px', textTransform: 'uppercase' }}>Real-Time Labor Network</div>
@@ -128,7 +130,8 @@ export default function Layout() {
                 transition: 'all 0.15s',
                 fontFamily: 'inherit'
               }}>
-              {item.icon} {item.label}
+              <BrandIcon name={item.icon} size={28} active={screen === item.key} />
+              {item.label}
             </button>
           ))}
         </div>
@@ -161,7 +164,7 @@ export default function Layout() {
               e.currentTarget.style.borderColor = '#E2E0FF'
               e.currentTarget.style.color = '#8B8FAF'
             }}>
-            <span>🔍</span>
+            <BrandIcon name="search" size={30} />
             <span className="search-label">Search</span>
             <span style={{
               background: '#E2E0FF', borderRadius: '5px',
@@ -212,7 +215,7 @@ export default function Layout() {
               fontFamily: 'inherit',
               transition: 'all 0.2s'
             }}>
-            <span style={{ fontSize: '18px', lineHeight: 1 }}>+</span>
+            <BrandIcon name="post" size={26} />
             Post a Gig
           </button>
         </div>
@@ -239,7 +242,7 @@ export default function Layout() {
             onClick={() => setShowSearch(true)}
             title="Search Gigs"
             style={{
-              width: '48px', height: '48px',
+              width: '56px', height: '58px',
               borderRadius: '12px',
               background: 'transparent',
               border: '1.5px solid transparent',
@@ -256,7 +259,7 @@ export default function Layout() {
               e.currentTarget.style.background = 'transparent'
               e.currentTarget.style.borderColor = 'transparent'
             }}>
-            <span style={{ fontSize: '20px' }}>🔍</span>
+            <BrandIcon name="search" size={32} />
             <span style={{ fontSize: '9px', fontWeight: '600', color: '#A09DC8' }}>Search</span>
           </button>
 
@@ -265,7 +268,7 @@ export default function Layout() {
             onClick={() => setScreen('saved')}
             title="Saved Gigs"
             style={{
-              width: '48px', height: '48px',
+              width: '56px', height: '58px',
               borderRadius: '12px',
               background: screen === 'saved' ? '#EEE9FF' : 'transparent',
               border: `1.5px solid ${screen === 'saved' ? '#B8A5FF' : 'transparent'}`,
@@ -284,7 +287,7 @@ export default function Layout() {
                 e.currentTarget.style.borderColor = 'transparent'
               }
             }}>
-            <span style={{ fontSize: '20px' }}>🔖</span>
+            <BrandIcon name="saved" size={32} active={screen === 'saved'} />
             <span style={{ fontSize: '9px', fontWeight: '600', color: screen === 'saved' ? '#6C47FF' : '#A09DC8' }}>Saved</span>
           </button>
 
@@ -293,7 +296,7 @@ export default function Layout() {
             onClick={() => setScreen('stats')}
             title="My Stats"
             style={{
-              width: '48px', height: '48px',
+              width: '56px', height: '58px',
               borderRadius: '12px',
               background: screen === 'stats' ? '#EEE9FF' : 'transparent',
               border: `1.5px solid ${screen === 'stats' ? '#B8A5FF' : 'transparent'}`,
@@ -312,7 +315,7 @@ export default function Layout() {
                 e.currentTarget.style.borderColor = 'transparent'
               }
             }}>
-            <span style={{ fontSize: '20px' }}>📊</span>
+            <BrandIcon name="stats" size={32} active={screen === 'stats'} />
             <span style={{ fontSize: '9px', fontWeight: '600', color: screen === 'stats' ? '#6C47FF' : '#A09DC8' }}>Stats</span>
           </button>
 
@@ -321,7 +324,7 @@ export default function Layout() {
             onClick={() => setScreen('chat')}
             title="Messages"
             style={{
-              width: '48px', height: '48px',
+              width: '56px', height: '58px',
               borderRadius: '12px',
               background: screen === 'chat' ? '#EEE9FF' : 'transparent',
               border: `1.5px solid ${screen === 'chat' ? '#B8A5FF' : 'transparent'}`,
@@ -341,7 +344,7 @@ export default function Layout() {
                 e.currentTarget.style.borderColor = 'transparent'
               }
             }}>
-            <span style={{ fontSize: '20px' }}>💬</span>
+            <BrandIcon name="chat" size={32} active={screen === 'chat'} />
             <span style={{
               fontSize: '9px', fontWeight: '600',
               color: screen === 'chat' ? '#6C47FF' : '#A09DC8'
@@ -359,7 +362,7 @@ export default function Layout() {
             onClick={() => setScreen('settings')}
             title="Settings"
             style={{
-              width: '48px', height: '48px',
+              width: '56px', height: '58px',
               borderRadius: '12px',
               background: screen === 'settings' ? '#EEE9FF' : 'transparent',
               border: `1.5px solid ${screen === 'settings' ? '#B8A5FF' : 'transparent'}`,
@@ -378,7 +381,7 @@ export default function Layout() {
                 e.currentTarget.style.borderColor = 'transparent'
               }
             }}>
-            <span style={{ fontSize: '20px' }}>⚙️</span>
+            <BrandIcon name="settings" size={32} active={screen === 'settings'} />
             <span style={{ fontSize: '9px', fontWeight: '600', color: screen === 'settings' ? '#6C47FF' : '#A09DC8' }}>Settings</span>
           </button>
 
@@ -408,7 +411,9 @@ export default function Layout() {
             onMouseLeave={e => {
               e.currentTarget.style.transform = 'scale(1)'
               e.currentTarget.style.boxShadow = '0 4px 16px rgba(108,71,255,0.4)'
-            }}>+</button>
+            }}>
+              <BrandIcon name="post" size={34} />
+            </button>
         </div>
 
         {/* MAIN CONTENT */}
@@ -448,10 +453,7 @@ export default function Layout() {
               cursor: 'pointer',
               fontFamily: 'inherit'
             }}>
-            <span style={{
-              fontSize: '20px',
-              filter: screen === item.key ? 'none' : 'grayscale(1) opacity(0.4)'
-            }}>{item.icon}</span>
+            <BrandIcon name={item.icon} size={30} active={screen === item.key} />
             <span style={{
               fontSize: '9px',
               fontWeight: screen === item.key ? '700' : '500',
@@ -483,7 +485,9 @@ export default function Layout() {
           alignItems: 'center',
           justifyContent: 'center',
           fontFamily: 'inherit'
-        }} className="mobile-fab">+</button>
+        }} className="mobile-fab">
+          <BrandIcon name="post" size={36} />
+        </button>
 
       {/* POST GIG MODAL */}
       {showPost && <PostGig onClose={() => setShowPost(false)} />}

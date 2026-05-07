@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../../supabase'
 import { useAuth } from '../../context/AuthContext'
+import BrandIcon from '../BrandIcon'
 
 export default function SettingsScreen({ onLogout }) {
   const { user } = useAuth()
@@ -34,7 +35,7 @@ export default function SettingsScreen({ onLogout }) {
       borderBottom: '1px solid #F5F4FF'
     }}>
       <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-        <span style={{ fontSize: '18px' }}>{icon}</span>
+        <BrandIcon name={icon} size={34} active={notifications[settingKey]} />
         <div>
           <div style={{ fontSize: '13px', fontWeight: '600', color: '#14123A' }}>
             {label}
@@ -124,37 +125,37 @@ export default function SettingsScreen({ onLogout }) {
         }}>Notifications</div>
 
         <ToggleRow
-          icon="⚡"
+          icon="applied"
           label="New Applications"
           subLabel="When someone applies to your gig"
           settingKey="applications"
         />
         <ToggleRow
-          icon="✅"
+          icon="accepted"
           label="Acceptances & Rejections"
           subLabel="Status updates on your applications"
           settingKey="messages"
         />
         <ToggleRow
-          icon="📎"
+          icon="receipt"
           label="Receipt Uploads"
           subLabel="When the other party uploads a receipt"
           settingKey="receipts"
         />
         <ToggleRow
-          icon="⭐"
+          icon="reviews"
           label="New Reviews"
           subLabel="When someone reviews you"
           settingKey="reviews"
         />
         <ToggleRow
-          icon="🗺"
+          icon="map"
           label="New Gigs Nearby"
           subLabel="When gigs are posted in your area"
           settingKey="newGigs"
         />
         <ToggleRow
-          icon="🔔"
+          icon="sound"
           label="Notification Sounds"
           subLabel="Play sounds for new notifications"
           settingKey="sounds"
@@ -173,9 +174,9 @@ export default function SettingsScreen({ onLogout }) {
           marginBottom: '14px'
         }}>Privacy</div>
         {[
-          ['📍', 'Show my location on map', 'Others can see your general area'],
-          ['📱', 'Show phone number on gigs', 'Applicants can call or WhatsApp you'],
-          ['👤', 'Public profile', 'Anyone can view your profile'],
+          ['location', 'Show my location on map', 'Others can see your general area'],
+          ['phone', 'Show phone number on gigs', 'Applicants can call or WhatsApp you'],
+          ['profile', 'Public profile', 'Anyone can view your profile'],
         ].map(([icon, label, sub]) => (
           <div key={label} style={{
             display: 'flex', justifyContent: 'space-between',
@@ -183,7 +184,7 @@ export default function SettingsScreen({ onLogout }) {
             borderBottom: '1px solid #F5F4FF'
           }}>
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-              <span style={{ fontSize: '16px' }}>{icon}</span>
+              <BrandIcon name={icon} size={34} />
               <div>
                 <div style={{ fontSize: '13px', fontWeight: '600', color: '#14123A' }}>
                   {label}

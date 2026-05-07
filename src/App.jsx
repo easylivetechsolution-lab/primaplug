@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import Auth from './pages/Auth'
 import Dashboard from './pages/Dashboard'
+import BrandIcon from './components/BrandIcon'
 
 function AppRoutes() {
   const { user, loading } = useAuth()
@@ -18,13 +19,13 @@ function AppRoutes() {
       <div style={{ textAlign: 'center' }}>
         <div style={{
           width: '48px', height: '48px',
-          background: 'linear-gradient(135deg, #6C47FF, #FF4DCF)',
           borderRadius: '12px',
           display: 'flex', alignItems: 'center',
           justifyContent: 'center',
-          fontSize: '24px',
           margin: '0 auto 12px'
-        }}>🗺</div>
+        }}>
+          <BrandIcon name="map" size={48} />
+        </div>
         <div style={{ fontSize: '14px', color: '#8B8FAF', fontWeight: '600' }}>
           Loading Prima...
         </div>
