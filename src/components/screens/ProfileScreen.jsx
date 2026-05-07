@@ -606,48 +606,29 @@ export default function ProfileScreen({ onLogout }) {
 
           <div style={{ flex: 1 }}>
             <div style={{
-              fontSize: '22px', fontWeight: '800', marginBottom: '2px'
+              fontSize: '22px', fontWeight: '800', marginBottom: '5px'
             }}>
               {profile?.full_name || 'Your Name'}
             </div>
-            <div style={{ fontSize: '13px', opacity: 0.8, marginBottom: '4px' }}>
+            <div style={{ fontSize: '13px', opacity: 0.8, marginBottom: '5px' }}>
               @{profile?.username || 'username'}
             </div>
             {profile?.location && (
               <div style={{
-                fontSize: '12px', opacity: 0.7, marginBottom: '8px',
+                fontSize: '12px', opacity: 0.7, marginBottom: profile?.is_verified ? '6px' : '0',
                 display: 'flex', alignItems: 'center', gap: '6px'
               }}>
                 <BrandIcon name="location" size={22} /> {profile.location}
               </div>
             )}
-            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-              {profile?.physical_mode && (
-                <span style={{
-                  background: 'rgba(255,255,255,0.2)',
-                  borderRadius: '5px', padding: '2px 8px',
-                  fontSize: '9px', fontWeight: '700', letterSpacing: '.8px',
-                  display: 'inline-flex', alignItems: 'center', gap: '5px'
-                }}><BrandIcon name="physical" size={20} /> PHYSICAL</span>
-              )}
-              {profile?.digital_mode && (
-                <span style={{
-                  background: 'rgba(255,255,255,0.2)',
-                  borderRadius: '5px', padding: '2px 8px',
-                  fontSize: '9px', fontWeight: '700', letterSpacing: '.8px',
-                  display: 'inline-flex', alignItems: 'center', gap: '5px'
-                }}><BrandIcon name="digital" size={20} /> DIGITAL</span>
-              )}
-              {/* Verified badge — only shows if is_verified is true */}
-              {profile?.is_verified && (
-                <span style={{
-                  background: '#FFB800',
-                  borderRadius: '5px', padding: '2px 8px',
-                  fontSize: '9px', fontWeight: '700',
-                  letterSpacing: '.8px', color: '#fff'
-                }}>✓ VERIFIED</span>
-              )}
-            </div>
+            {profile?.is_verified && (
+              <span style={{
+                background: '#FFB800',
+                borderRadius: '5px', padding: '2px 8px',
+                fontSize: '9px', fontWeight: '700',
+                letterSpacing: '.8px', color: '#fff'
+              }}>✓ VERIFIED</span>
+            )}
           </div>
         </div>
 

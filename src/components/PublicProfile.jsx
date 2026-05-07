@@ -133,10 +133,30 @@ export default function PublicProfile({ userId, onClose }) {
         border: '1.5px solid #E2E0FF'
       }}>
         <div style={{
-          width: '40px', height: '4px',
-          background: '#E2E0FF', borderRadius: '2px',
-          margin: '12px auto 0'
-        }} />
+          display: 'flex', alignItems: 'center',
+          justifyContent: 'center', position: 'relative',
+          padding: '14px 16px 0'
+        }}>
+          <div style={{
+            width: '40px', height: '4px',
+            background: '#E2E0FF', borderRadius: '2px'
+          }} />
+          <button
+            onClick={onClose}
+            style={{
+              position: 'absolute', right: '14px', top: '8px',
+              width: '32px', height: '32px',
+              borderRadius: '50%', border: 'none',
+              background: '#F5F4FF',
+              display: 'flex', alignItems: 'center',
+              justifyContent: 'center', cursor: 'pointer',
+              fontSize: '18px', color: '#8B8FAF',
+              fontFamily: 'inherit', lineHeight: 1
+            }}
+            aria-label="Close">
+            ×
+          </button>
+        </div>
 
         {loading ? (
           <div style={{
@@ -180,11 +200,11 @@ export default function PublicProfile({ userId, onClose }) {
 
                 <div style={{ flex: 1 }}>
                   <div style={{
-                    fontSize: '20px', fontWeight: '800', marginBottom: '2px'
+                    fontSize: '20px', fontWeight: '800', marginBottom: '5px'
                   }}>
                     {profile.full_name}
                   </div>
-                  <div style={{ fontSize: '12px', opacity: 0.8, marginBottom: '4px' }}>
+                  <div style={{ fontSize: '12px', opacity: 0.8, marginBottom: '5px' }}>
                     @{profile.username}
                   </div>
                   {profile.location && (
@@ -192,30 +212,14 @@ export default function PublicProfile({ userId, onClose }) {
                       📍 {profile.location}
                     </div>
                   )}
-                  <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
-                    {profile.physical_mode && (
-                      <span style={{
-                        background: 'rgba(255,255,255,0.2)',
-                        borderRadius: '4px', padding: '2px 7px',
-                        fontSize: '9px', fontWeight: '700', letterSpacing: '.5px'
-                      }}>📌 PHYSICAL</span>
-                    )}
-                    {profile.digital_mode && (
-                      <span style={{
-                        background: 'rgba(255,255,255,0.2)',
-                        borderRadius: '4px', padding: '2px 7px',
-                        fontSize: '9px', fontWeight: '700', letterSpacing: '.5px'
-                      }}>💻 DIGITAL</span>
-                    )}
-                    {profile.is_verified && (
-                      <span style={{
-                        background: '#FFB800',
-                        borderRadius: '4px', padding: '2px 7px',
-                        fontSize: '9px', fontWeight: '700',
-                        letterSpacing: '.5px', color: '#fff'
-                      }}>✓ VERIFIED</span>
-                    )}
-                  </div>
+                  {profile.is_verified && (
+                    <span style={{
+                      background: '#FFB800',
+                      borderRadius: '4px', padding: '2px 7px',
+                      fontSize: '9px', fontWeight: '700',
+                      letterSpacing: '.5px', color: '#fff'
+                    }}>✓ VERIFIED</span>
+                  )}
                 </div>
 
                 {/* Trust */}
