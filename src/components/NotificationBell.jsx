@@ -1,14 +1,17 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
+import PublicProfile from './PublicProfile'
 
 export default function NotificationBell({ onNavigate }) {
   const { user } = useAuth()
   const [notifications, setNotifications] = useState([])
   const [unread, setUnread] = useState(0)
   const [open, setOpen] = useState(false)
-  const [selectedGig, setSelectedGig] = useState(null)
-  const [loadingGig, setLoadingGig] = useState(false)
+  const [notifDetail, setNotifDetail] = useState(null)
+  const [loadingDetail, setLoadingDetail] = useState(false)
+  const [viewingProfile, setViewingProfile] = useState(null)
+  const [actionDone, setActionDone] = useState(null)
   const ref = useRef()
 
   useEffect(() => {
@@ -180,17 +183,45 @@ export default function NotificationBell({ onNavigate }) {
                   onClick={async () => {
                     markRead(notif.id)
                     setOpen(false)
+                    setActionDone(null)
 
-                    if (notif.gig_id) {
-                      setLoadingGig(true)
-                      const { data } = await supabase
+                    if (!notif.gig_id) return
+
+                    setLoadingDetail(true)
+
+                    if (notif.type === 'application') {
+                      const { data: gig } = await supabase
                         .from('gigs')
-                        .select('*, users(full_name, avatar_url, trust_score, rating, gigs_completed, phone, location)')
+                        .select('*, users(full_name, avatar_url)')
                         .eq('id', notif.gig_id)
                         .single()
-                      if (data) setSelectedGig(data)
-                      setLoadingGig(false)
+
+                      const { data: apps } = await supabase
+                        .from('applications')
+                        .select('*, users(id, full_name, avatar_url, trust_score, rating, gigs_completed, bio, skills, location, phone)')
+                        .eq('gig_id', notif.gig_id)
+                        .order('created_at', { ascending: false })
+
+                      setNotifDetail({ type: 'application', gig, applications: apps || [] })
+                    } else if (notif.type === 'accepted' || notif.type === 'rejected') {
+                      const { data: gig } = await supabase
+                        .from('gigs')
+                        .select('*, users(full_name, avatar_url, phone, trust_score)')
+                        .eq('id', notif.gig_id)
+                        .single()
+
+                      setNotifDetail({ type: notif.type, gig })
+                    } else {
+                      const { data: gig } = await supabase
+                        .from('gigs')
+                        .select('*, users(full_name, avatar_url, phone, trust_score)')
+                        .eq('id', notif.gig_id)
+                        .single()
+
+                      setNotifDetail({ type: 'general', gig })
                     }
+
+                    setLoadingDetail(false)
                   }}
                   style={{
                     padding: '12px 16px',
@@ -260,8 +291,25 @@ export default function NotificationBell({ onNavigate }) {
         </div>
       )}
 
-      {/* Gig Detail from Notification */}
-      {selectedGig && (
+      {/* Loading */}
+      {loadingDetail && (
+        <div style={{
+          position: 'fixed', inset: 0,
+          background: 'rgba(20,18,58,0.5)',
+          zIndex: 800, display: 'flex',
+          alignItems: 'center', justifyContent: 'center',
+          fontFamily: "'Plus Jakarta Sans', sans-serif"
+        }}>
+          <div style={{
+            background: '#fff', borderRadius: '16px',
+            padding: '24px 32px', textAlign: 'center',
+            fontSize: '14px', color: '#6C47FF', fontWeight: '700'
+          }}>⏳ Loading...</div>
+        </div>
+      )}
+
+      {/* Notification Detail Sheet */}
+      {notifDetail && (
         <div style={{
           position: 'fixed', inset: 0,
           background: 'rgba(20,18,58,0.75)',
@@ -270,7 +318,7 @@ export default function NotificationBell({ onNavigate }) {
           display: 'flex', alignItems: 'flex-end',
           justifyContent: 'center',
           fontFamily: "'Plus Jakarta Sans', sans-serif"
-        }} onClick={() => setSelectedGig(null)}>
+        }} onClick={() => { setNotifDetail(null); setActionDone(null) }}>
           <div onClick={e => e.stopPropagation()} style={{
             background: '#fff',
             borderRadius: '22px 22px 0 0',
@@ -286,250 +334,329 @@ export default function NotificationBell({ onNavigate }) {
               margin: '0 auto 20px'
             }} />
 
-            {/* Notification context */}
-            <div style={{
-              background: '#EEE9FF', borderRadius: '10px',
-              padding: '10px 14px', marginBottom: '16px',
-              fontSize: '12px', color: '#6C47FF', fontWeight: '600',
-              display: 'flex', alignItems: 'center', gap: '8px'
-            }}>
-              <span>🔔</span>
-              <span>From your notifications</span>
-            </div>
+            {/* APPLICATION TYPE */}
+            {notifDetail.type === 'application' && (
+              <>
+                {/* Gig context */}
+                <div style={{
+                  background: '#F5F4FF', borderRadius: '12px',
+                  padding: '12px 14px', marginBottom: '20px'
+                }}>
+                  <div style={{
+                    fontSize: '10px', color: '#A09DC8', fontWeight: '700',
+                    textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '4px'
+                  }}>Gig</div>
+                  <div style={{
+                    fontSize: '15px', fontWeight: '800', color: '#14123A', marginBottom: '4px'
+                  }}>{notifDetail.gig?.title}</div>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <span style={{
+                      background: '#DFFDF4', border: '1px solid #7EECD2',
+                      borderRadius: '5px', padding: '2px 8px',
+                      fontSize: '9px', fontWeight: '700', color: '#00C48C'
+                    }}>
+                      ${notifDetail.gig?.pay_min}–${notifDetail.gig?.pay_max}
+                    </span>
+                    <span style={{
+                      background: '#EEE9FF', border: '1px solid #B8A5FF',
+                      borderRadius: '5px', padding: '2px 8px',
+                      fontSize: '9px', fontWeight: '700', color: '#6C47FF'
+                    }}>
+                      {notifDetail.gig?.slots_filled || 0}/{notifDetail.gig?.slots} slots
+                    </span>
+                  </div>
+                </div>
 
-            {/* Poster */}
-            <div style={{
-              display: 'flex', gap: '12px',
-              alignItems: 'center', marginBottom: '16px'
-            }}>
-              <div style={{
-                width: '48px', height: '48px', borderRadius: '13px',
-                background: '#EEE9FF', display: 'flex',
-                alignItems: 'center', justifyContent: 'center',
-                fontSize: '18px', fontWeight: '800',
-                color: '#6C47FF', overflow: 'hidden', flexShrink: 0
-              }}>
-                {selectedGig.users?.avatar_url ? (
-                  <img src={selectedGig.users.avatar_url} alt=""
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <div style={{
+                  fontSize: '11px', fontWeight: '700', color: '#A09DC8',
+                  textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px'
+                }}>
+                  {notifDetail.applications.length} Applicant{notifDetail.applications.length !== 1 ? 's' : ''}
+                </div>
+
+                {notifDetail.applications.length === 0 ? (
+                  <div style={{
+                    textAlign: 'center', padding: '32px',
+                    color: '#A09DC8', fontSize: '13px'
+                  }}>No applications yet</div>
                 ) : (
-                  selectedGig.users?.full_name?.charAt(0) || '?'
-                )}
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{
-                  fontSize: '14px', fontWeight: '700', color: '#14123A'
-                }}>
-                  {selectedGig.users?.full_name || 'Anonymous'}
-                </div>
-                <div style={{ fontSize: '11px', color: '#8B8FAF' }}>
-                  ⭐ {selectedGig.users?.rating || 5.0} ·{' '}
-                  Trust {selectedGig.users?.trust_score || 100}%
-                </div>
-              </div>
-              <div style={{
-                display: 'inline-flex', alignItems: 'center', gap: '4px',
-                background: '#FFE8EE', border: '1px solid #FF99B3',
-                borderRadius: '6px', padding: '4px 10px',
-                fontSize: '10px', fontWeight: '800', color: '#FF3366'
-              }}>
-                {selectedGig.urgency?.toUpperCase()}
-              </div>
-            </div>
+                  <div style={{
+                    display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px'
+                  }}>
+                    {notifDetail.applications.map((app, i) => (
+                      <div key={i} style={{
+                        background: '#F5F4FF', borderRadius: '16px',
+                        padding: '16px', border: '1.5px solid #E2E0FF'
+                      }}>
+                        <div style={{
+                          display: 'flex', gap: '12px',
+                          alignItems: 'flex-start', marginBottom: '12px'
+                        }}>
+                          <div
+                            onClick={() => setViewingProfile(app.users?.id)}
+                            style={{
+                              width: '52px', height: '52px', borderRadius: '14px',
+                              background: '#EEE9FF', display: 'flex',
+                              alignItems: 'center', justifyContent: 'center',
+                              fontSize: '20px', fontWeight: '800', color: '#6C47FF',
+                              overflow: 'hidden', flexShrink: 0,
+                              cursor: 'pointer', border: '2px solid #B8A5FF'
+                            }}>
+                            {app.users?.avatar_url ? (
+                              <img src={app.users.avatar_url} alt=""
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : (
+                              app.users?.full_name?.charAt(0) || '?'
+                            )}
+                          </div>
+                          <div style={{ flex: 1 }}>
+                            <div
+                              onClick={() => setViewingProfile(app.users?.id)}
+                              style={{
+                                fontSize: '15px', fontWeight: '700',
+                                color: '#6C47FF', cursor: 'pointer',
+                                marginBottom: '3px',
+                                textDecoration: 'underline',
+                                textDecorationStyle: 'dotted'
+                              }}>
+                              {app.users?.full_name || 'Unknown'} →
+                            </div>
+                            <div style={{ fontSize: '11px', color: '#8B8FAF', marginBottom: '4px' }}>
+                              ⭐ {app.users?.rating || 5.0} ·{' '}
+                              {app.users?.gigs_completed || 0} gigs ·{' '}
+                              Trust {app.users?.trust_score || 100}%
+                            </div>
+                            {app.users?.location && (
+                              <div style={{ fontSize: '11px', color: '#FF6B2B' }}>
+                                📍 {app.users.location}
+                              </div>
+                            )}
+                          </div>
+                          <div style={{
+                            background: app.status === 'accepted' ? '#DFFDF4'
+                              : app.status === 'rejected' ? '#FFE8EE' : '#EEE9FF',
+                            border: `1px solid ${app.status === 'accepted' ? '#7EECD2'
+                              : app.status === 'rejected' ? '#FF99B3' : '#B8A5FF'}`,
+                            borderRadius: '7px', padding: '4px 10px',
+                            fontSize: '10px', fontWeight: '700',
+                            color: app.status === 'accepted' ? '#00C48C'
+                              : app.status === 'rejected' ? '#FF3366' : '#6C47FF',
+                            flexShrink: 0
+                          }}>
+                            {app.status === 'accepted' ? '✓ Accepted'
+                              : app.status === 'rejected' ? '✗ Declined' : '⏳ Pending'}
+                          </div>
+                        </div>
 
-            {/* Title */}
-            <h2 style={{
-              fontSize: '20px', fontWeight: '800',
-              color: '#14123A', marginBottom: '16px', lineHeight: '1.3'
-            }}>{selectedGig.title}</h2>
+                        {app.users?.skills && app.users.skills.length > 0 && (
+                          <div style={{
+                            display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '12px'
+                          }}>
+                            {app.users.skills.slice(0, 4).map(skill => (
+                              <span key={skill} style={{
+                                background: '#EEE9FF', borderRadius: '20px',
+                                padding: '3px 9px', fontSize: '10px',
+                                fontWeight: '600', color: '#6C47FF'
+                              }}>{skill}</span>
+                            ))}
+                          </div>
+                        )}
 
-            {/* Badges */}
-            <div style={{
-              display: 'flex', gap: '7px',
-              flexWrap: 'wrap', marginBottom: '16px'
-            }}>
-              <span style={{
-                background: selectedGig.type === 'physical' ? '#FFF0E8' : '#EEE9FF',
-                border: `1px solid ${selectedGig.type === 'physical' ? '#FFBC99' : '#B8A5FF'}`,
-                borderRadius: '6px', padding: '4px 10px',
-                fontSize: '10px', fontWeight: '700',
-                color: selectedGig.type === 'physical' ? '#FF6B2B' : '#6C47FF'
-              }}>
-                {selectedGig.type === 'physical' ? '📌 PHYSICAL' : '💻 DIGITAL'}
-              </span>
-              {selectedGig.field && (
-                <span style={{
-                  background: '#F5F4FF', border: '1px solid #E2E0FF',
-                  borderRadius: '6px', padding: '4px 10px',
-                  fontSize: '10px', fontWeight: '600', color: '#8B8FAF'
-                }}>{selectedGig.field}</span>
-              )}
-              {selectedGig.slots > 1 && (
-                <span style={{
-                  background: '#DFFDF4', border: '1px solid #7EECD2',
-                  borderRadius: '6px', padding: '4px 10px',
-                  fontSize: '10px', fontWeight: '700', color: '#00C48C'
-                }}>
-                  {selectedGig.slots_filled || 0}/{selectedGig.slots} slots filled
-                </span>
-              )}
-            </div>
+                        {app.users?.bio && (
+                          <div style={{
+                            fontSize: '12px', color: '#8B8FAF',
+                            lineHeight: '1.5', marginBottom: '12px', fontStyle: 'italic'
+                          }}>"{app.users.bio}"</div>
+                        )}
 
-            {/* Pay + Location */}
-            <div style={{
-              display: 'grid', gridTemplateColumns: '1fr 1fr',
-              gap: '10px', marginBottom: '14px'
-            }}>
-              <div style={{
-                background: 'linear-gradient(135deg, #E8FFE4, #DFFDF4)',
-                border: '1.5px solid #7EECD2',
-                borderRadius: '14px', padding: '14px'
-              }}>
-                <div style={{
-                  fontSize: '9px', color: '#00C48C', fontWeight: '700',
-                  textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '4px'
-                }}>Pay Range</div>
-                <div style={{
-                  fontSize: '22px', fontWeight: '800',
-                  color: '#00C48C', letterSpacing: '-0.5px'
-                }}>${selectedGig.pay_min}</div>
-                <div style={{ fontSize: '11px', color: '#00C48C', opacity: 0.7 }}>
-                  up to ${selectedGig.pay_max}
-                </div>
-              </div>
-              <div style={{
-                background: '#FFF0E8', border: '1.5px solid #FFBC99',
-                borderRadius: '14px', padding: '14px'
-              }}>
-                <div style={{
-                  fontSize: '9px', color: '#FF6B2B', fontWeight: '700',
-                  textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '4px'
-                }}>Location</div>
-                <div style={{
-                  fontSize: '13px', fontWeight: '700',
-                  color: '#14123A', lineHeight: '1.3'
-                }}>{selectedGig.location || 'Remote'}</div>
-              </div>
-            </div>
+                        {app.status === 'pending' && (
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <button
+                              onClick={async () => {
+                                await supabase
+                                  .from('applications')
+                                  .update({ status: 'accepted' })
+                                  .eq('id', app.id)
 
-            {/* Phone */}
-            {selectedGig.users?.phone && (
-              <div style={{
-                background: '#F5F4FF', border: '1.5px solid #E2E0FF',
-                borderRadius: '12px', padding: '12px 14px',
-                marginBottom: '12px',
-                display: 'flex', justifyContent: 'space-between',
-                alignItems: 'center'
-              }}>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  <span style={{ fontSize: '16px' }}>📱</span>
-                  <div>
-                    <div style={{
-                      fontSize: '10px', color: '#A09DC8', fontWeight: '600',
-                      textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '2px'
-                    }}>Phone / WhatsApp</div>
-                    <div style={{
-                      fontSize: '14px', fontWeight: '700', color: '#14123A'
-                    }}>{selectedGig.users.phone}</div>
+                                const { data: accepted } = await supabase
+                                  .from('applications')
+                                  .select('id')
+                                  .eq('gig_id', notifDetail.gig.id)
+                                  .eq('status', 'accepted')
+
+                                const filled = (accepted?.length || 0) + 1
+
+                                if (filled >= notifDetail.gig.slots) {
+                                  await supabase
+                                    .from('gigs')
+                                    .update({ status: 'in_progress', slots_filled: filled })
+                                    .eq('id', notifDetail.gig.id)
+                                } else {
+                                  await supabase
+                                    .from('gigs')
+                                    .update({ slots_filled: filled })
+                                    .eq('id', notifDetail.gig.id)
+                                }
+
+                                await supabase.from('notifications').insert({
+                                  user_id: app.worker_id,
+                                  title: 'Application Accepted! 🎉',
+                                  message: `Your application for "${notifDetail.gig.title}" was accepted`,
+                                  type: 'accepted',
+                                  gig_id: notifDetail.gig.id
+                                })
+
+                                const { data: apps } = await supabase
+                                  .from('applications')
+                                  .select('*, users(id, full_name, avatar_url, trust_score, rating, gigs_completed, bio, skills, location, phone)')
+                                  .eq('gig_id', notifDetail.gig.id)
+                                  .order('created_at', { ascending: false })
+
+                                setNotifDetail(prev => ({ ...prev, applications: apps || [] }))
+                                setActionDone('accepted')
+                              }}
+                              style={{
+                                flex: 1, background: '#DFFDF4',
+                                border: '1.5px solid #7EECD2',
+                                borderRadius: '10px', padding: '12px',
+                                fontSize: '13px', fontWeight: '700',
+                                color: '#00C48C', cursor: 'pointer', fontFamily: 'inherit'
+                              }}>✓ Accept</button>
+                            <button
+                              onClick={async () => {
+                                await supabase
+                                  .from('applications')
+                                  .update({ status: 'rejected' })
+                                  .eq('id', app.id)
+
+                                await supabase.from('notifications').insert({
+                                  user_id: app.worker_id,
+                                  title: 'Application Update',
+                                  message: `Your application for "${notifDetail.gig.title}" was not selected`,
+                                  type: 'rejected',
+                                  gig_id: notifDetail.gig.id
+                                })
+
+                                const { data: apps } = await supabase
+                                  .from('applications')
+                                  .select('*, users(id, full_name, avatar_url, trust_score, rating, gigs_completed, bio, skills, location, phone)')
+                                  .eq('gig_id', notifDetail.gig.id)
+                                  .order('created_at', { ascending: false })
+
+                                setNotifDetail(prev => ({ ...prev, applications: apps || [] }))
+                                setActionDone('declined')
+                              }}
+                              style={{
+                                flex: 1, background: '#FFE8EE',
+                                border: '1.5px solid #FF99B3',
+                                borderRadius: '10px', padding: '12px',
+                                fontSize: '13px', fontWeight: '700',
+                                color: '#FF3366', cursor: 'pointer', fontFamily: 'inherit'
+                              }}>✗ Decline</button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                </div>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <a href={`tel:${selectedGig.users.phone}`} style={{
-                    background: '#EEE9FF', border: '1.5px solid #B8A5FF',
-                    borderRadius: '9px', padding: '8px 12px',
-                    fontSize: '12px', fontWeight: '700',
-                    color: '#6C47FF', textDecoration: 'none'
-                  }}>📞 Call</a>
-                  <a href={`https://wa.me/${selectedGig.users.phone.replace(/\D/g,'')}`}
-                    target="_blank" rel="noreferrer"
-                    style={{
-                      background: '#25D366', borderRadius: '9px',
-                      padding: '8px 12px', fontSize: '12px',
-                      fontWeight: '700', color: '#fff', textDecoration: 'none'
-                    }}>💬 WhatsApp</a>
-                </div>
-              </div>
+                )}
+
+                {actionDone && (
+                  <div style={{
+                    background: actionDone === 'accepted' ? '#DFFDF4' : '#FFE8EE',
+                    border: `1.5px solid ${actionDone === 'accepted' ? '#7EECD2' : '#FF99B3'}`,
+                    borderRadius: '12px', padding: '12px 16px',
+                    fontSize: '13px', fontWeight: '700',
+                    color: actionDone === 'accepted' ? '#00C48C' : '#FF3366',
+                    textAlign: 'center', marginBottom: '16px'
+                  }}>
+                    {actionDone === 'accepted'
+                      ? '✓ Application accepted! Worker has been notified.'
+                      : '✗ Application declined. Worker has been notified.'}
+                  </div>
+                )}
+              </>
             )}
 
-            {/* Description */}
-            {selectedGig.description && (
-              <div style={{
-                background: '#F5F4FF', borderRadius: '12px',
-                padding: '14px', marginBottom: '14px',
-                fontSize: '13px', color: '#5B5887', lineHeight: '1.6'
-              }}>{selectedGig.description}</div>
-            )}
-
-            {/* Exact address */}
-            {(selectedGig.house_number || selectedGig.street || selectedGig.landmark) && (
-              <div style={{
-                background: '#EEE9FF', border: '1.5px solid #B8A5FF',
-                borderRadius: '12px', padding: '14px', marginBottom: '14px'
-              }}>
+            {/* ACCEPTED / REJECTED TYPE — shown to worker */}
+            {(notifDetail.type === 'accepted' || notifDetail.type === 'rejected') && (
+              <div>
                 <div style={{
-                  fontSize: '10px', color: '#6C47FF', fontWeight: '700',
-                  textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '10px'
-                }}>🔒 Exact Address</div>
-                {selectedGig.house_number && (
-                  <div style={{ fontSize: '12px', color: '#14123A', marginBottom: '4px' }}>
-                    🏠 {selectedGig.house_number}
+                  textAlign: 'center', padding: '20px 0', marginBottom: '20px'
+                }}>
+                  <div style={{ fontSize: '48px', marginBottom: '12px' }}>
+                    {notifDetail.type === 'accepted' ? '🎉' : '😔'}
+                  </div>
+                  <div style={{
+                    fontSize: '20px', fontWeight: '800',
+                    color: notifDetail.type === 'accepted' ? '#00C48C' : '#FF3366',
+                    marginBottom: '8px'
+                  }}>
+                    {notifDetail.type === 'accepted' ? 'You were accepted!' : 'Not selected this time'}
+                  </div>
+                  <div style={{ fontSize: '13px', color: '#8B8FAF', lineHeight: '1.6' }}>
+                    {notifDetail.type === 'accepted'
+                      ? 'The client accepted your application. Contact them to confirm details.'
+                      : 'Keep applying — the right gig is coming.'}
+                  </div>
+                </div>
+
+                {notifDetail.gig && (
+                  <div style={{
+                    background: '#F5F4FF', borderRadius: '14px',
+                    padding: '16px', border: '1.5px solid #E2E0FF', marginBottom: '16px'
+                  }}>
+                    <div style={{
+                      fontSize: '15px', fontWeight: '700', color: '#14123A', marginBottom: '8px'
+                    }}>{notifDetail.gig.title}</div>
+                    <div style={{ fontSize: '14px', fontWeight: '800', color: '#00C48C' }}>
+                      ${notifDetail.gig.pay_min}–${notifDetail.gig.pay_max}
+                    </div>
+                    {notifDetail.gig.location && (
+                      <div style={{ fontSize: '12px', color: '#FF6B2B', marginTop: '4px' }}>
+                        📍 {notifDetail.gig.location}
+                      </div>
+                    )}
                   </div>
                 )}
-                {selectedGig.street && (
-                  <div style={{ fontSize: '12px', color: '#14123A', marginBottom: '4px' }}>
-                    🛣 {selectedGig.street}
-                  </div>
-                )}
-                {selectedGig.landmark && (
-                  <div style={{ fontSize: '12px', color: '#14123A', marginBottom: '4px' }}>
-                    🏛 Near {selectedGig.landmark}
-                  </div>
-                )}
-                {selectedGig.directions && (
-                  <div style={{ fontSize: '11px', color: '#8B8FAF', marginTop: '6px', lineHeight: '1.5' }}>
-                    📋 {selectedGig.directions}
-                  </div>
-                )}
-                {selectedGig.latitude && selectedGig.longitude && (
-                  <a href={`https://www.google.com/maps?q=${selectedGig.latitude},${selectedGig.longitude}`}
+
+                {notifDetail.type === 'accepted' && notifDetail.gig?.users?.phone && (
+                  <a
+                    href={`https://wa.me/${notifDetail.gig.users.phone.replace(/\D/g,'')}?text=Hi, my application for "${notifDetail.gig.title}" on Prima was accepted. Looking forward to working with you!`}
                     target="_blank" rel="noreferrer"
                     style={{
                       display: 'flex', alignItems: 'center',
                       justifyContent: 'center', gap: '8px',
-                      marginTop: '12px', background: '#fff',
-                      border: '1.5px solid #B8A5FF', borderRadius: '10px',
-                      padding: '10px', fontSize: '13px', fontWeight: '700',
-                      color: '#6C47FF', textDecoration: 'none'
+                      background: '#25D366', borderRadius: '12px',
+                      padding: '14px', fontSize: '14px',
+                      fontWeight: '700', color: '#fff',
+                      textDecoration: 'none', marginBottom: '10px'
                     }}>
-                    🗺 Open in Google Maps
+                    💬 Message Client on WhatsApp
                   </a>
                 )}
               </div>
             )}
 
-            {/* Close button */}
-            <button onClick={() => setSelectedGig(null)} style={{
-              width: '100%', background: '#F5F4FF',
-              border: '1.5px solid #E2E0FF', borderRadius: '12px',
-              padding: '14px', fontSize: '13px', fontWeight: '600',
-              color: '#8B8FAF', cursor: 'pointer', fontFamily: 'inherit'
-            }}>Close</button>
+            {/* Close */}
+            <button
+              onClick={() => { setNotifDetail(null); setActionDone(null) }}
+              style={{
+                width: '100%', background: '#F5F4FF',
+                border: '1.5px solid #E2E0FF', borderRadius: '12px',
+                padding: '13px', fontSize: '13px', fontWeight: '600',
+                color: '#8B8FAF', cursor: 'pointer', fontFamily: 'inherit'
+              }}>Close</button>
           </div>
         </div>
       )}
 
-      {loadingGig && (
-        <div style={{
-          position: 'fixed', inset: 0,
-          background: 'rgba(20,18,58,0.5)',
-          zIndex: 800, display: 'flex',
-          alignItems: 'center', justifyContent: 'center'
-        }}>
-          <div style={{
-            background: '#fff', borderRadius: '16px',
-            padding: '24px 32px', textAlign: 'center',
-            fontSize: '14px', color: '#6C47FF', fontWeight: '700'
-          }}>⏳ Loading gig...</div>
+      {/* Public Profile from notification */}
+      {viewingProfile && (
+        <div style={{ position: 'relative', zIndex: 900 }}>
+          <PublicProfile
+            userId={viewingProfile}
+            onClose={() => setViewingProfile(null)}
+          />
         </div>
       )}
 
