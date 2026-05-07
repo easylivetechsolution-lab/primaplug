@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../supabase'
 import MapScreen from './screens/MapScreen'
@@ -22,8 +22,6 @@ export default function Layout() {
   const [showPost, setShowPost] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
   const [showMobileMore, setShowMobileMore] = useState(false)
-  const [fabPos, setFabPos] = useState({ bottom: 160, right: 16 })
-  const fabDragRef = useRef({ on: false, moved: false, sx: 0, sy: 0, sb: 160, sr: 16 })
 
   useEffect(() => {
     const handleKey = (e) => {
@@ -48,33 +46,6 @@ export default function Layout() {
     }
     document.addEventListener('click', unlock)
     return () => document.removeEventListener('click', unlock)
-  }, [])
-
-  useEffect(() => {
-    const onMove = (e) => {
-      if (!fabDragRef.current.on) return
-      const t = e.touches?.[0] ?? e
-      const dx = t.clientX - fabDragRef.current.sx
-      const dy = t.clientY - fabDragRef.current.sy
-      if (Math.abs(dx) > 5 || Math.abs(dy) > 5) fabDragRef.current.moved = true
-      if (!fabDragRef.current.moved) return
-      e.preventDefault()
-      setFabPos({
-        right: Math.max(8, Math.min(window.innerWidth - 64, fabDragRef.current.sr - dx)),
-        bottom: Math.max(8, Math.min(window.innerHeight - 64, fabDragRef.current.sb + dy))
-      })
-    }
-    const onEnd = () => { fabDragRef.current.on = false }
-    window.addEventListener('mousemove', onMove)
-    window.addEventListener('touchmove', onMove, { passive: false })
-    window.addEventListener('mouseup', onEnd)
-    window.addEventListener('touchend', onEnd)
-    return () => {
-      window.removeEventListener('mousemove', onMove)
-      window.removeEventListener('touchmove', onMove)
-      window.removeEventListener('mouseup', onEnd)
-      window.removeEventListener('touchend', onEnd)
-    }
   }, [])
 
   const handleLogout = async () => {
@@ -230,7 +201,11 @@ export default function Layout() {
             }}
             aria-label="More dashboard actions"
           >
-            <BrandIcon name="settings" size={30} active={showMobileMore} />
+            <svg width="20" height="14" viewBox="0 0 20 14" fill="none">
+              <rect x="0" y="0" width="20" height="2.2" rx="1.1" fill={showMobileMore ? '#6C47FF' : '#8B8FAF'} />
+              <rect x="0" y="5.9" width="20" height="2.2" rx="1.1" fill={showMobileMore ? '#6C47FF' : '#8B8FAF'} />
+              <rect x="0" y="11.8" width="20" height="2.2" rx="1.1" fill={showMobileMore ? '#6C47FF' : '#8B8FAF'} />
+            </svg>
           </button>
         </div>
       </div>
@@ -533,40 +508,25 @@ export default function Layout() {
       </div>
 
       {/* MOBILE FAB */}
-      <button
-        onMouseDown={(e) => {
-          fabDragRef.current = { on: true, moved: false, sx: e.clientX, sy: e.clientY, sb: fabPos.bottom, sr: fabPos.right }
-        }}
-        onTouchStart={(e) => {
-          const t = e.touches[0]
-          fabDragRef.current = { on: true, moved: false, sx: t.clientX, sy: t.clientY, sb: fabPos.bottom, sr: fabPos.right }
-        }}
-        onClick={() => {
-          if (fabDragRef.current.moved) { fabDragRef.current.moved = false; return }
-          setShowPost(true)
-        }}
+      <button onClick={() => setShowPost(true)}
         style={{
           position: 'fixed',
-          bottom: fabPos.bottom,
-          right: fabPos.right,
+          bottom: '88px',
+          right: '16px',
           zIndex: 60,
-          width: '54px', height: '54px',
+          width: '52px', height: '52px',
           borderRadius: '50%',
           background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
           border: 'none',
-          color: '#fff',
-          fontSize: '26px',
-          cursor: 'grab',
+          cursor: 'pointer',
           boxShadow: '0 4px 20px rgba(108,71,255,0.5)',
           display: 'none',
           alignItems: 'center',
           justifyContent: 'center',
-          fontFamily: 'inherit',
-          touchAction: 'none',
-          userSelect: 'none'
+          fontFamily: 'inherit'
         }} className="mobile-fab">
-          <BrandIcon name="post" size={36} />
-        </button>
+        <BrandIcon name="post" size={36} />
+      </button>
 
       {/* POST GIG MODAL */}
       {showPost && <PostGig onClose={() => setShowPost(false)} />}
@@ -615,6 +575,10 @@ export default function Layout() {
             min-width: 0 !important;
             flex: 1 1 0 !important;
             padding: 5px 2px !important;
+          }
+          .mobile-fab {
+            bottom: calc(82px + env(safe-area-inset-bottom)) !important;
+            right: 16px !important;
           }
           .floating-chat-shell {
             display: none !important;
