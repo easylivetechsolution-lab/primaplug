@@ -21,6 +21,7 @@ export default function Layout() {
   const [screen, setScreen] = useState('map')
   const [showPost, setShowPost] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
+  const [showMobileMore, setShowMobileMore] = useState(false)
   const [isLive, setIsLive] = useState(false)
 
   useEffect(() => {
@@ -61,6 +62,13 @@ export default function Layout() {
     { key: 'profile', icon: 'profile', label: 'Profile' },
   ]
 
+  const mobileMoreItems = [
+    { key: 'search', icon: 'search', label: 'Search', action: () => setShowSearch(true) },
+    { key: 'saved', icon: 'saved', label: 'Saved Gigs', action: () => setScreen('saved') },
+    { key: 'stats', icon: 'stats', label: 'My Stats', action: () => setScreen('stats') },
+    { key: 'settings', icon: 'settings', label: 'Settings', action: () => setScreen('settings') },
+  ]
+
   const screens = {
     map: <MapScreen />,
     feed: <FeedScreen />,
@@ -77,7 +85,10 @@ export default function Layout() {
     <div style={{
       display: 'flex',
       flexDirection: 'column',
-      height: '100vh',
+      height: '100dvh',
+      minHeight: '100dvh',
+      position: 'fixed',
+      inset: 0,
       overflow: 'hidden',
       background: '#F5F4FF',
       fontFamily: "'Plus Jakarta Sans', sans-serif"
@@ -94,7 +105,7 @@ export default function Layout() {
         padding: '0 20px',
         flexShrink: 0,
         zIndex: 100
-      }}>
+      }} className="app-topbar">
         {/* Logo */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div style={{
@@ -114,7 +125,7 @@ export default function Layout() {
         {/* Desktop Nav */}
         <div style={{ display: 'flex', gap: '4px' }} className="desktop-nav">
           {navItems.map(item => (
-            <button key={item.key} onClick={() => setScreen(item.key)}
+            <button key={item.key} onClick={() => { setScreen(item.key); setShowMobileMore(false) }}
               style={{
                 background: screen === item.key ? '#EEE9FF' : 'transparent',
                 border: `1.5px solid ${screen === item.key ? '#B8A5FF' : 'transparent'}`,
@@ -141,6 +152,7 @@ export default function Layout() {
           <NotificationBell onNavigate={(screen) => setScreen(screen)} />
           <button
             onClick={() => setShowSearch(true)}
+            className="desktop-action"
             style={{
               background: '#F5F4FF',
               border: '1.5px solid #E2E0FF',
@@ -173,6 +185,7 @@ export default function Layout() {
             }}>⌘K</span>
           </button>
           <button onClick={() => setIsLive(l => !l)}
+            className="desktop-action"
             style={{
               background: isLive ? '#DFFDF4' : 'transparent',
               border: `1.5px solid ${isLive ? '#00C48C' : '#E2E0FF'}`,
@@ -199,6 +212,7 @@ export default function Layout() {
           </button>
 
           <button onClick={() => setShowPost(true)}
+            className="desktop-action"
             style={{
               background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
               border: 'none',
@@ -218,11 +232,120 @@ export default function Layout() {
             <BrandIcon name="post" size={26} />
             Post a Gig
           </button>
+
+          <button
+            onClick={() => setShowMobileMore(m => !m)}
+            className="mobile-more-trigger"
+            style={{
+              background: showMobileMore ? '#EEE9FF' : '#F5F4FF',
+              border: `1.5px solid ${showMobileMore ? '#B8A5FF' : '#E2E0FF'}`,
+              borderRadius: '12px',
+              width: '44px',
+              height: '44px',
+              display: 'none',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              fontFamily: 'inherit'
+            }}
+            aria-label="More dashboard actions"
+          >
+            <BrandIcon name="settings" size={30} active={showMobileMore} />
+          </button>
         </div>
       </div>
 
+      {showMobileMore && (
+        <div
+          className="mobile-more-menu"
+          style={{
+            display: 'none',
+            position: 'fixed',
+            top: '58px',
+            right: '12px',
+            width: '220px',
+            background: '#fff',
+            border: '1.5px solid #E2E0FF',
+            borderRadius: '16px',
+            boxShadow: '0 16px 44px rgba(108,71,255,0.18)',
+            zIndex: 300,
+            overflow: 'hidden'
+          }}
+        >
+          {mobileMoreItems.map(item => (
+            <button
+              key={item.key}
+              onClick={() => {
+                item.action()
+                setShowMobileMore(false)
+              }}
+              style={{
+                width: '100%',
+                background: screen === item.key ? '#F8F7FF' : '#fff',
+                border: 'none',
+                borderBottom: '1px solid #F5F4FF',
+                padding: '12px 14px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                textAlign: 'left',
+                cursor: 'pointer',
+                fontFamily: 'inherit'
+              }}
+            >
+              <BrandIcon name={item.icon} size={34} active={screen === item.key || item.key === 'search'} />
+              <span style={{
+                fontSize: '13px',
+                fontWeight: '700',
+                color: screen === item.key ? '#6C47FF' : '#14123A'
+              }}>
+                {item.label}
+              </span>
+            </button>
+          ))}
+          <button
+            onClick={() => {
+              setIsLive(l => !l)
+              setShowMobileMore(false)
+            }}
+            style={{
+              width: '100%',
+              background: '#fff',
+              border: 'none',
+              padding: '12px 14px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              cursor: 'pointer',
+              fontFamily: 'inherit'
+            }}
+          >
+            <span style={{
+              width: '34px',
+              height: '34px',
+              borderRadius: '10px',
+              background: isLive ? '#DFFDF4' : '#F5F4FF',
+              border: `1.5px solid ${isLive ? '#00C48C' : '#E2E0FF'}`,
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <span style={{
+                width: '9px',
+                height: '9px',
+                borderRadius: '50%',
+                background: isLive ? '#00C48C' : '#A09DC8'
+              }} />
+            </span>
+            <span style={{ fontSize: '13px', fontWeight: '700', color: isLive ? '#00C48C' : '#14123A' }}>
+              {isLive ? 'Live Mode On' : 'Go Live'}
+            </span>
+          </button>
+        </div>
+      )}
+
       {/* BODY */}
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+      <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }} className="app-body">
 
         {/* SIDEBAR - desktop only */}
         <div style={{
@@ -417,13 +540,14 @@ export default function Layout() {
         </div>
 
         {/* MAIN CONTENT */}
-        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ flex: 1, minWidth: 0, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           <div style={{
             flex: 1,
+            minHeight: 0,
             overflowY: screen === 'map' ? 'hidden' : 'auto',
             overflowX: 'hidden',
             WebkitOverflowScrolling: 'touch'
-          }}>
+          }} className="screen-scroll">
             {screens[screen]}
           </div>
         </div>
@@ -441,7 +565,7 @@ export default function Layout() {
         zIndex: 50
       }} className="mobile-nav">
         {navItems.map(item => (
-          <button key={item.key} onClick={() => setScreen(item.key)}
+          <button key={item.key} onClick={() => { setScreen(item.key); setShowMobileMore(false) }}
             style={{
               background: 'transparent',
               border: 'none',
@@ -503,11 +627,53 @@ export default function Layout() {
           50% { opacity: 0.2; }
         }
         @media (max-width: 768px) {
+          .app-topbar {
+            height: 58px !important;
+            padding: 0 12px !important;
+          }
+          .app-topbar > div:first-child {
+            min-width: 0;
+          }
+          .app-topbar > div:first-child > div:last-child > div:first-child {
+            font-size: 17px !important;
+          }
+          .app-topbar > div:first-child > div:last-child > div:last-child {
+            display: none !important;
+          }
           .desktop-nav { display: none !important; }
           .desktop-sidebar { display: none !important; }
+          .desktop-action { display: none !important; }
+          .mobile-more-trigger { display: flex !important; }
+          .mobile-more-menu { display: block !important; }
           .mobile-nav { display: flex !important; }
           .mobile-fab { display: flex !important; }
           .search-label { display: none !important; }
+          .app-body {
+            min-height: 0 !important;
+          }
+          .screen-scroll {
+            padding-bottom: 96px !important;
+          }
+          .mobile-nav {
+            position: fixed !important;
+            left: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            padding: 8px 6px calc(10px + env(safe-area-inset-bottom)) !important;
+            box-shadow: 0 -8px 28px rgba(20,18,58,0.08);
+          }
+          .mobile-nav button {
+            min-width: 0 !important;
+            flex: 1 1 0 !important;
+            padding: 5px 2px !important;
+          }
+          .mobile-fab {
+            bottom: calc(88px + env(safe-area-inset-bottom)) !important;
+            right: 14px !important;
+          }
+          .floating-chat-shell {
+            display: none !important;
+          }
         }
         @media (max-width: 960px) {
           .desktop-nav { display: none !important; }
@@ -515,7 +681,9 @@ export default function Layout() {
       `}</style>
 
       {/* Floating Chat — visible on all screens */}
-      <FloatingChat onOpenFullChat={() => setScreen('chat')} />
+      <div className="floating-chat-shell">
+        <FloatingChat onOpenFullChat={() => setScreen('chat')} />
+      </div>
     </div>
   )
 }
