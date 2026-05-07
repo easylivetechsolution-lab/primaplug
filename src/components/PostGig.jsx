@@ -150,7 +150,7 @@ const [locationSelected, setLocationSelected] = useState(false)
       position: 'fixed', inset: 0,
       background: 'rgba(20,18,58,0.75)',
       backdropFilter: 'blur(4px)',
-      zIndex: 500,
+      zIndex: 9999,
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',

@@ -53,7 +53,7 @@ export default function PublicProfile({ userId, onClose }) {
       position: 'fixed', inset: 0,
       background: 'rgba(20,18,58,0.75)',
       backdropFilter: 'blur(4px)',
-      zIndex: 900,
+      zIndex: 10000,
       display: 'flex', alignItems: 'flex-end',
       justifyContent: 'center',
       fontFamily: "'Plus Jakarta Sans', sans-serif"

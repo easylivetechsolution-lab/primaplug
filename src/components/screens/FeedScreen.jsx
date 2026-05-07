@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../supabase'
 import PublicProfile from '../PublicProfile'
+import { CATEGORIES, ALL_FIELDS } from '../../data/categories'
 
 const URGENCY = {
   now: { label: 'NOW', color: '#FF3366', bg: '#FFE8EE', border: '#FF99B3' },
@@ -9,17 +10,13 @@ const URGENCY = {
   flexible: { label: 'FLEXIBLE', color: '#A09DC8', bg: '#F5F4FF', border: '#E2E0FF' },
 }
 
-const FIELDS = [
-  'All', 'Development', 'Design', 'Writing', 'Marketing',
-  'Photography', 'Events', 'Handyman', 'Cleaning', 'Electrical'
-]
-
 export default function FeedScreen() {
   const [gigs, setGigs] = useState([])
   const [loading, setLoading] = useState(true)
   const [typeFilter, setTypeFilter] = useState('all')
   const [urgFilter, setUrgFilter] = useState('all')
   const [fieldFilter, setFieldFilter] = useState('All')
+  const [showFieldGroup, setShowFieldGroup] = useState(null)
   const [selectedGig, setSelectedGig] = useState(null)
   const [viewingProfile, setViewingProfile] = useState(null)
   const [applying, setApplying] = useState(false)
@@ -206,17 +203,127 @@ export default function FeedScreen() {
         ))}
       </div>
 
-      {/* Field Filters */}
-      <div style={{
-        display: 'flex', gap: '8px', overflowX: 'auto',
-        marginBottom: '20px', scrollbarWidth: 'none', paddingBottom: '4px'
-      }}>
-        {FIELDS.map(f => (
-          <button key={f} onClick={() => setFieldFilter(f)}
-            style={chipStyle(fieldFilter === f)}>
-            {f}
+      {/* Field Filters — grouped */}
+      <div style={{ marginBottom: '20px' }}>
+        <div style={{
+          display: 'flex', gap: '8px',
+          overflowX: 'auto', paddingBottom: '8px',
+          scrollbarWidth: 'none'
+        }}>
+          {/* All button */}
+          <button
+            onClick={() => setFieldFilter('All')}
+            style={chipStyle(fieldFilter === 'All')}>
+            ✦ All Fields
           </button>
-        ))}
+
+          {/* Category group buttons */}
+          {CATEGORIES.map(cat => (
+            <button
+              key={cat.group}
+              onClick={() => setShowFieldGroup(
+                showFieldGroup === cat.group ? null : cat.group
+              )}
+              style={{
+                background: showFieldGroup === cat.group ||
+                  cat.fields.includes(fieldFilter) ? cat.bg : 'transparent',
+                border: `1.5px solid ${showFieldGroup === cat.group ||
+                  cat.fields.includes(fieldFilter) ? cat.border : '#E2E0FF'}`,
+                borderRadius: '20px', padding: '6px 13px',
+                fontSize: '12px', fontWeight: '600',
+                color: showFieldGroup === cat.group ||
+                  cat.fields.includes(fieldFilter) ? cat.color : '#8B8FAF',
+                cursor: 'pointer', whiteSpace: 'nowrap',
+                fontFamily: 'inherit', transition: 'all 0.15s',
+                display: 'flex', alignItems: 'center', gap: '5px'
+              }}>
+              <span>{cat.icon}</span>
+              <span>{cat.group}</span>
+              {cat.fields.includes(fieldFilter) && (
+                <span style={{
+                  background: cat.color, color: '#fff',
+                  borderRadius: '50%', width: '14px', height: '14px',
+                  fontSize: '8px', display: 'flex',
+                  alignItems: 'center', justifyContent: 'center',
+                  fontWeight: '800'
+                }}>✓</span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* Sub-fields dropdown */}
+        {showFieldGroup && (
+          <div style={{
+            background: '#fff', border: '1.5px solid #E2E0FF',
+            borderRadius: '14px', padding: '12px 14px',
+            marginTop: '8px', animation: 'fadeIn 0.2s ease'
+          }}>
+            {(() => {
+              const cat = CATEGORIES.find(c => c.group === showFieldGroup)
+              if (!cat) return null
+              return (
+                <>
+                  <div style={{
+                    fontSize: '10px', fontWeight: '700', color: cat.color,
+                    textTransform: 'uppercase', letterSpacing: '0.8px',
+                    marginBottom: '10px', display: 'flex',
+                    alignItems: 'center', gap: '6px'
+                  }}>
+                    <span>{cat.icon}</span>
+                    <span>{cat.group}</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '7px', flexWrap: 'wrap' }}>
+                    {cat.fields.map(field => (
+                      <button
+                        key={field}
+                        onClick={() => {
+                          setFieldFilter(field)
+                          setShowFieldGroup(null)
+                        }}
+                        style={{
+                          background: fieldFilter === field ? cat.bg : '#F5F4FF',
+                          border: `1.5px solid ${fieldFilter === field ? cat.border : '#E2E0FF'}`,
+                          borderRadius: '20px', padding: '6px 12px',
+                          fontSize: '12px', fontWeight: '600',
+                          color: fieldFilter === field ? cat.color : '#8B8FAF',
+                          cursor: 'pointer', fontFamily: 'inherit',
+                          transition: 'all 0.15s'
+                        }}>
+                        {field}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )
+            })()}
+          </div>
+        )}
+
+        {/* Active filter display */}
+        {fieldFilter !== 'All' && (
+          <div style={{
+            display: 'flex', alignItems: 'center',
+            gap: '8px', marginTop: '8px'
+          }}>
+            <span style={{ fontSize: '11px', color: '#8B8FAF' }}>
+              Filtered by:
+            </span>
+            <span style={{
+              background: '#EEE9FF', border: '1.5px solid #B8A5FF',
+              borderRadius: '20px', padding: '4px 12px',
+              fontSize: '12px', fontWeight: '600', color: '#6C47FF',
+              display: 'flex', alignItems: 'center', gap: '6px'
+            }}>
+              {fieldFilter}
+              <span
+                onClick={() => setFieldFilter('All')}
+                style={{ cursor: 'pointer', fontSize: '14px', color: '#A09DC8' }}>
+                ×
+              </span>
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Gig Count */}
@@ -650,6 +757,10 @@ export default function FeedScreen() {
         }
         @keyframes slideUp {
           from { opacity: 0; transform: translateY(24px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(-6px); }
           to { opacity: 1; transform: translateY(0); }
         }
       `}</style>

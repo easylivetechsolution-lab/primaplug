@@ -803,6 +803,23 @@ export default function MapScreen() {
         .leaflet-container {
           font-family: 'Plus Jakarta Sans', sans-serif !important;
         }
+        /* Force Leaflet below all modals */
+        .leaflet-pane,
+        .leaflet-tile,
+        .leaflet-marker-icon,
+        .leaflet-marker-shadow,
+        .leaflet-tile-pane,
+        .leaflet-overlay-pane,
+        .leaflet-shadow-pane,
+        .leaflet-marker-pane,
+        .leaflet-tooltip-pane,
+        .leaflet-popup-pane {
+          z-index: 1 !important;
+        }
+        .leaflet-top,
+        .leaflet-bottom {
+          z-index: 2 !important;
+        }
       `}</style>
     </div>
   )

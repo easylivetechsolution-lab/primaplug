@@ -313,7 +313,7 @@ export default function NotificationBell({ onNavigate }) {
         <div style={{
           position: 'fixed', inset: 0,
           background: 'rgba(20,18,58,0.5)',
-          zIndex: 800, display: 'flex',
+          zIndex: 9999, display: 'flex',
           alignItems: 'center', justifyContent: 'center',
           fontFamily: "'Plus Jakarta Sans', sans-serif"
         }}>
@@ -331,7 +331,7 @@ export default function NotificationBell({ onNavigate }) {
           position: 'fixed', inset: 0,
           background: 'rgba(20,18,58,0.75)',
           backdropFilter: 'blur(4px)',
-          zIndex: 800,
+          zIndex: 9999,
           display: 'flex', alignItems: 'flex-end',
           justifyContent: 'center',
           fontFamily: "'Plus Jakarta Sans', sans-serif"
@@ -798,7 +798,7 @@ export default function NotificationBell({ onNavigate }) {
 
       {/* Public Profile from notification */}
       {viewingProfile && (
-        <div style={{ position: 'relative', zIndex: 900 }}>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 10000 }}>
           <PublicProfile
             userId={viewingProfile}
             onClose={() => setViewingProfile(null)}

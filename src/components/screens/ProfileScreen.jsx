@@ -1,11 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../supabase'
 import { useAuth } from '../../context/AuthContext'
-
-const ALL_SKILLS = [
-  'Development', 'Design', 'Writing', 'Marketing',
-  'Photography', 'Events', 'Handyman', 'Cleaning', 'Electrical'
-]
+import CategoryPicker from '../CategoryPicker'
 
 const LocationSearch = ({ value, onSelect, inputStyle }) => {
   const [search, setSearch] = useState(value || '')
@@ -399,24 +395,50 @@ export default function ProfileScreen({ onLogout }) {
               {/* Skills */}
               <div>
                 <label style={labelStyle}>Skills</label>
-                <div style={{ display: 'flex', gap: '7px', flexWrap: 'wrap' }}>
-                  {ALL_SKILLS.map(skill => {
-                    const active = (editForm.skills || []).includes(skill)
-                    return (
-                      <button key={skill}
-                        onClick={() => toggleSkill(skill)}
-                        style={{
-                          background: active ? '#EEE9FF' : '#F5F4FF',
-                          border: `1.5px solid ${active ? '#B8A5FF' : '#E2E0FF'}`,
-                          borderRadius: '20px', padding: '7px 13px',
-                          fontSize: '12px', fontWeight: '600',
-                          color: active ? '#6C47FF' : '#8B8FAF',
-                          cursor: 'pointer', fontFamily: 'inherit',
-                          transition: 'all 0.15s'
-                        }}>{skill}</button>
-                    )
-                  })}
-                </div>
+                <CategoryPicker
+                  selected={(editForm.skills || [])[0] || ''}
+                  onSelect={(field) => {
+                    if (!field) {
+                      setEditForm(f => ({ ...f, skills: [] }))
+                      return
+                    }
+                    const current = editForm.skills || []
+                    if (!current.includes(field)) {
+                      setEditForm(f => ({ ...f, skills: [field, ...current] }))
+                    }
+                  }}
+                  customSkill={editForm.custom_skill || ''}
+                  onCustomSkill={(val) => setEditForm(f => ({ ...f, custom_skill: val }))}
+                />
+
+                {editForm.skills && editForm.skills.length > 0 && (
+                  <div style={{
+                    display: 'flex', gap: '7px',
+                    flexWrap: 'wrap', marginTop: '12px'
+                  }}>
+                    {editForm.skills.map((skill, i) => (
+                      <span key={i} style={{
+                        background: '#EEE9FF',
+                        border: '1.5px solid #B8A5FF',
+                        borderRadius: '20px', padding: '6px 12px',
+                        fontSize: '12px', fontWeight: '600',
+                        color: '#6C47FF', display: 'flex',
+                        alignItems: 'center', gap: '6px'
+                      }}>
+                        {skill}
+                        <span
+                          onClick={() => setEditForm(f => ({
+                            ...f,
+                            skills: f.skills.filter((_, j) => j !== i)
+                          }))}
+                          style={{
+                            cursor: 'pointer', fontSize: '14px',
+                            color: '#A09DC8', lineHeight: 1
+                          }}>×</span>
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div>
