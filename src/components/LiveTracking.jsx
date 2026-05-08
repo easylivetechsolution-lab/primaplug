@@ -364,11 +364,11 @@ export default function LiveTracking({ gig, role, workerInfo, posterInfo, onClos
   return (
     <div style={{
       position: 'fixed', inset: 0,
-      background: 'rgba(20,18,58,0.75)',
-      backdropFilter: 'blur(4px)',
+      background: '#fff',
       zIndex: 9999,
       display: 'flex', flexDirection: 'column',
-      fontFamily: "'Plus Jakarta Sans', sans-serif"
+      fontFamily: "'Plus Jakarta Sans', sans-serif",
+      touchAction: 'none'
     }}>
       <div style={{
         background: '#fff',
@@ -454,12 +454,19 @@ export default function LiveTracking({ gig, role, workerInfo, posterInfo, onClos
       )}
 
       {/* Map */}
-      <div style={{ flex: 1, position: 'relative' }}>
+      <div style={{
+        flex: 1, position: 'relative',
+        touchAction: 'pan-x pan-y pinch-zoom'
+      }}>
         <MapContainer
           center={workerPos || [destLat || 6.5244, destLng || 3.3792]}
           zoom={14}
           style={{ height: '100%', width: '100%' }}
           zoomControl={false}
+          touchZoom={true}
+          scrollWheelZoom={true}
+          doubleClickZoom={true}
+          dragging={true}
         >
           <TileLayer
             attribution='&copy; <a href="https://carto.com/">CARTO</a>'
@@ -711,6 +718,9 @@ export default function LiveTracking({ gig, role, workerInfo, posterInfo, onClos
         @keyframes blink {
           0%, 100% { opacity: 1; }
           50% { opacity: 0.3; }
+        }
+        .leaflet-container {
+          touch-action: pan-x pan-y pinch-zoom !important;
         }
         .leaflet-pane,
         .leaflet-tile,
