@@ -273,16 +273,12 @@ export default function LiveTracking({ gig, role, workerInfo, posterInfo, onClos
 
   const updateRoute = async () => {
     if (!workerPos || !hasDestination) return
-    // Show instant straight line immediately
-    setRoute(getInstantRoute(workerPos[0], workerPos[1], destLat, destLng))
-    // Then try to get real route in background
     const result = await getRoute(workerPos[0], workerPos[1], destLat, destLng)
     if (result) {
       setRoute(result.coords)
       setEta(result.duration)
-    } else {
-      // Keep straight line, estimate ETA from distance
-      if (distance) setEta(Math.round(distance / 0.5)) // ~30km/h estimate
+    } else if (distance) {
+      setEta(Math.round(distance / 0.5))
     }
   }
 
