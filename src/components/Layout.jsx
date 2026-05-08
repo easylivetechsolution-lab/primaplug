@@ -498,7 +498,14 @@ export default function Layout() {
                 cursor: 'pointer'
               }} onClick={() => setScreen('profile')}>
                 <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flex: 1 }}>
-                  <span style={{ fontSize: '20px', flexShrink: 0 }}>⚡</span>
+                  <div style={{
+                    width: '34px', height: '34px', borderRadius: '10px',
+                    background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    flexShrink: 0
+                  }}>
+                    <BrandIcon name="profile" size={22} active={true} />
+                  </div>
                   <div style={{ flex: 1 }}>
                     <div style={{
                       fontSize: '12px', fontWeight: '700',

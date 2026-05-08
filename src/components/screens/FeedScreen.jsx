@@ -341,10 +341,12 @@ export default function FeedScreen() {
       {/* Gig List */}
       {loading ? (
         <div style={{
-          textAlign: 'center', padding: '48px 0', color: '#A09DC8'
+          textAlign: 'center', padding: '48px 0'
         }}>
-          <div style={{ fontSize: '32px', marginBottom: '12px' }}>⏳</div>
-          <div style={{ fontSize: '14px' }}>Loading gigs...</div>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
+            <BrandIcon name="feed" size={46} />
+          </div>
+          <div style={{ fontSize: '14px', color: '#A09DC8', fontWeight: '600' }}>Loading gigs...</div>
         </div>
       ) : filtered.length === 0 ? (
         <div style={{
