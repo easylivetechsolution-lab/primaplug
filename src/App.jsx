@@ -9,32 +9,74 @@ import BrandIcon from './components/BrandIcon'
 
 function AuthCallback() {
   const navigate = useNavigate()
-  const [message, setMessage] = useState('Confirming your account...')
+  const [message, setMessage] = useState('Signing you in...')
 
   useEffect(() => {
     const handleCallback = async () => {
-      const { data, error } = await supabase.auth.getSession()
+      try {
+        // Handle hash-based OAuth callback (Google, etc.)
+        if (window.location.hash) {
+          const { data, error } = await supabase.auth.getSession()
 
-      if (error) {
-        setMessage('Something went wrong. Please try again.')
-        setTimeout(() => navigate('/'), 2000)
-        return
-      }
+          if (error) {
+            console.log('Session error:', error)
+            setMessage('Something went wrong. Redirecting...')
+            setTimeout(() => navigate('/'), 2000)
+            return
+          }
 
-      if (data.session) {
-        // Check if onboarding is complete
-        const { data: profile } = await supabase
-          .from('users')
-          .select('full_name')
-          .eq('id', data.session.user.id)
-          .maybeSingle()
+          if (data.session) {
+            const userId = data.session.user.id
+            const googleName = data.session.user.user_metadata?.full_name || ''
+            const googleAvatar = data.session.user.user_metadata?.avatar_url || ''
+            const googleEmail = data.session.user.email || ''
 
-        if (profile?.full_name) {
+            // Check if Prima profile exists
+            const { data: profile } = await supabase
+              .from('users')
+              .select('id, full_name')
+              .eq('id', userId)
+              .maybeSingle()
+
+            if (!profile) {
+              // Create profile from Google data
+              await supabase.from('users').insert({
+                id: userId,
+                full_name: googleName,
+                email: googleEmail,
+                avatar_url: googleAvatar,
+                username: googleEmail.split('@')[0]
+                  .toLowerCase()
+                  .replace(/[^a-z0-9]/g, '') +
+                  Math.floor(Math.random() * 999),
+                trust_score: 100,
+                gigs_completed: 0,
+                rating: 5.0,
+                reviews_count: 0,
+                level: 'new'
+              })
+              setMessage('Profile created! Taking you to setup...')
+              setTimeout(() => navigate('/onboarding'), 1000)
+            } else if (!profile.full_name) {
+              setMessage('Almost there...')
+              setTimeout(() => navigate('/onboarding'), 1000)
+            } else {
+              setMessage('Welcome back! Loading Prima...')
+              setTimeout(() => navigate('/dashboard'), 1000)
+            }
+            return
+          }
+        }
+
+        // No hash — check existing session
+        const { data } = await supabase.auth.getSession()
+        if (data.session) {
           navigate('/dashboard')
         } else {
-          navigate('/onboarding')
+          navigate('/')
         }
-      } else {
+      } catch (e) {
+        console.log('Callback error:', e)
         navigate('/')
       }
     }
@@ -51,33 +93,36 @@ function AuthCallback() {
       fontFamily: "'Plus Jakarta Sans', sans-serif"
     }}>
       <div style={{
-        width: '56px', height: '56px',
-        borderRadius: '16px',
+        width: '64px', height: '64px',
+        borderRadius: '18px',
         background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
         display: 'flex', alignItems: 'center',
-        justifyContent: 'center', fontSize: '28px'
+        justifyContent: 'center', fontSize: '32px',
+        boxShadow: '0 8px 32px rgba(108,71,255,0.4)'
       }}>⚡</div>
       <div style={{
-        fontSize: '20px', fontWeight: '800', color: '#14123A'
+        fontSize: '24px', fontWeight: '800', color: '#14123A'
       }}>PrimaPlug</div>
       <div style={{
-        fontSize: '14px', color: '#8B8FAF', textAlign: 'center'
+        fontSize: '14px', color: '#8B8FAF',
+        textAlign: 'center', maxWidth: '240px',
+        lineHeight: '1.5'
       }}>{message}</div>
       <div style={{
-        width: '40px', height: '4px',
+        width: '120px', height: '4px',
         borderRadius: '2px', background: '#E2E0FF',
-        overflow: 'hidden'
+        overflow: 'hidden', marginTop: '8px'
       }}>
         <div style={{
-          height: '100%', background: '#6C47FF',
+          height: '100%', background: 'linear-gradient(90deg, #6C47FF, #9B59FF)',
           borderRadius: '2px',
-          animation: 'loading 1.5s ease infinite'
+          animation: 'loading 1.2s ease infinite'
         }} />
       </div>
       <style>{`
         @keyframes loading {
           0% { width: 0%; margin-left: 0%; }
-          50% { width: 100%; margin-left: 0%; }
+          50% { width: 60%; margin-left: 20%; }
           100% { width: 0%; margin-left: 100%; }
         }
       `}</style>
