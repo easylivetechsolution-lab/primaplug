@@ -71,25 +71,50 @@ const createWorkerPin = (avatarUrl, initial) => L.divIcon({
   popupAnchor: [0, -80],
 })
 
-// Destination pin
-const createDestinationPin = () => L.divIcon({
+// Destination pin — shows poster's profile photo
+const createDestinationPin = (avatarUrl, initial) => L.divIcon({
   className: '',
   html: `
     <div style="
+      position: relative;
       display: flex;
       flex-direction: column;
       align-items: center;
     ">
       <div style="
-        width: 44px; height: 44px;
+        position: absolute;
+        inset: -8px;
         border-radius: 50%;
-        background: linear-gradient(135deg, #FF3366, #FF6B2B);
-        border: 3px solid #fff;
+        border: 3px solid #FF3366;
+        opacity: 0.5;
+        animation: destPulse 2s ease-out infinite;
+      "></div>
+      <div style="
+        position: absolute;
+        inset: -16px;
+        border-radius: 50%;
+        border: 2px solid #FF3366;
+        opacity: 0.25;
+        animation: destPulse 2s ease-out infinite 0.5s;
+      "></div>
+      <div style="
+        width: 48px; height: 48px;
+        border-radius: 50%;
+        background: #fff;
+        border: 3px solid #FF3366;
         box-shadow: 0 4px 20px rgba(255,51,102,0.5);
         display: flex; align-items: center;
         justify-content: center;
-        font-size: 20px;
-      ">📍</div>
+        overflow: hidden;
+        position: relative; z-index: 2;
+        font-size: 18px; font-weight: 800;
+        color: #FF3366;
+      ">
+        ${avatarUrl
+          ? `<img src="${avatarUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`
+          : `<span style="font-size:20px;">${initial || '📍'}</span>`
+        }
+      </div>
       <div style="
         background: #FF3366;
         color: #fff;
@@ -99,6 +124,7 @@ const createDestinationPin = () => L.divIcon({
         border-radius: 10px;
         margin-top: 3px;
         white-space: nowrap;
+        box-shadow: 0 2px 8px rgba(255,51,102,0.4);
       ">DESTINATION</div>
       <div style="
         width: 0; height: 0;
@@ -108,9 +134,16 @@ const createDestinationPin = () => L.divIcon({
         margin-top: -1px;
       "></div>
     </div>
+    <style>
+      @keyframes destPulse {
+        0% { transform: scale(1); opacity: 0.5; }
+        100% { transform: scale(2); opacity: 0; }
+      }
+    </style>
   `,
-  iconSize: [44, 76],
-  iconAnchor: [22, 76],
+  iconSize: [48, 80],
+  iconAnchor: [24, 80],
+  popupAnchor: [0, -80],
 })
 
 // Auto-fit map to show both pins
@@ -136,25 +169,34 @@ const getDistance = (lat1, lng1, lat2, lng2) => {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
 }
 
-// Get route from OSRM (free routing, no API key)
+// Instant straight line — shows immediately
+const getInstantRoute = (fromLat, fromLng, toLat, toLng) => {
+  return [[fromLat, fromLng], [toLat, toLng]]
+}
+
+// Real route from OSRM in background
 const getRoute = async (fromLat, fromLng, toLat, toLng) => {
   try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 4000)
     const res = await fetch(
-      `https://router.project-osrm.org/route/v1/driving/${fromLng},${fromLat};${toLng},${toLat}?overview=full&geometries=geojson`
+      `https://router.project-osrm.org/route/v1/driving/${fromLng},${fromLat};${toLng},${toLat}?overview=full&geometries=geojson`,
+      { signal: controller.signal }
     )
+    clearTimeout(timeout)
     const data = await res.json()
     if (data.routes?.[0]) {
       const coords = data.routes[0].geometry.coordinates.map(([lng, lat]) => [lat, lng])
-      const duration = Math.round(data.routes[0].duration / 60) // minutes
+      const duration = Math.round(data.routes[0].duration / 60)
       return { coords, duration }
     }
   } catch (e) {
-    console.log('Route error:', e)
+    console.log('Route fetch failed, using straight line')
   }
   return null
 }
 
-export default function LiveTracking({ gig, role, workerInfo, onClose }) {
+export default function LiveTracking({ gig, role, workerInfo, posterInfo, onClose }) {
   // role = 'worker' | 'poster'
   const { user } = useAuth()
   const [workerPos, setWorkerPos] = useState(null)
@@ -231,15 +273,16 @@ export default function LiveTracking({ gig, role, workerInfo, onClose }) {
 
   const updateRoute = async () => {
     if (!workerPos || !hasDestination) return
-    const result = await getRoute(
-      workerPos[0], workerPos[1], destLat, destLng
-    )
+    // Show instant straight line immediately
+    setRoute(getInstantRoute(workerPos[0], workerPos[1], destLat, destLng))
+    // Then try to get real route in background
+    const result = await getRoute(workerPos[0], workerPos[1], destLat, destLng)
     if (result) {
       setRoute(result.coords)
       setEta(result.duration)
     } else {
-      // Fallback — straight line
-      setRoute([workerPos, [destLat, destLng]])
+      // Keep straight line, estimate ETA from distance
+      if (distance) setEta(Math.round(distance / 0.5)) // ~30km/h estimate
     }
   }
 
@@ -447,15 +490,20 @@ export default function LiveTracking({ gig, role, workerInfo, onClose }) {
             </Marker>
           )}
 
-          {/* Destination pin */}
+          {/* Destination pin — poster's profile photo */}
           {hasDestination && (
             <Marker
               position={[destLat, destLng]}
-              icon={createDestinationPin()}>
+              icon={createDestinationPin(
+                posterInfo?.avatar_url,
+                posterInfo?.full_name?.charAt(0) || '📍'
+              )}>
               <Popup>
                 <div style={{ fontFamily: 'inherit', fontSize: '13px' }}>
-                  <strong>📍 Destination</strong>
-                  <br />{gig.location}
+                  <strong>📍 {gig.location || 'Destination'}</strong>
+                  {posterInfo?.full_name && (
+                    <><br />{posterInfo.full_name}</>
+                  )}
                 </div>
               </Popup>
             </Marker>
@@ -463,13 +511,33 @@ export default function LiveTracking({ gig, role, workerInfo, onClose }) {
 
           {/* Route line */}
           {route.length > 0 && (
-            <Polyline
-              positions={route}
-              color="#6C47FF"
-              weight={5}
-              opacity={0.8}
-              dashArray={arrived ? undefined : "10, 5"}
-            />
+            <>
+              {/* Shadow line */}
+              <Polyline
+                positions={route}
+                color="rgba(108,71,255,0.15)"
+                weight={12}
+                lineCap="round"
+                lineJoin="round"
+              />
+              {/* Main route line */}
+              <Polyline
+                positions={route}
+                color="#6C47FF"
+                weight={5}
+                opacity={0.9}
+                lineCap="round"
+                lineJoin="round"
+              />
+              {/* White center line for premium look */}
+              <Polyline
+                positions={route}
+                color="rgba(255,255,255,0.4)"
+                weight={2}
+                lineCap="round"
+                lineJoin="round"
+              />
+            </>
           )}
         </MapContainer>
 

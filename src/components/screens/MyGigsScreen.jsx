@@ -199,7 +199,7 @@ export default function MyGigsScreen() {
     if (!user) return
     const { data } = await supabase
       .from('applications')
-      .select('*, gigs(*, users(full_name, avatar_url))')
+      .select('*, gigs(*, users(id, full_name, avatar_url, trust_score))')
       .eq('worker_id', user.id)
       .order('created_at', { ascending: false })
     if (data) setAppliedGigs(data)
@@ -703,6 +703,9 @@ export default function MyGigsScreen() {
           gig={trackingGig}
           role={trackingRole}
           workerInfo={trackingWorker}
+          posterInfo={trackingRole === 'worker'
+            ? trackingGig.users
+            : null}
           onClose={() => {
             setShowTracking(false)
             setTrackingGig(null)
