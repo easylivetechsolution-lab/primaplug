@@ -15,7 +15,7 @@ const URGENCY = {
 }
 
 export default function FeedScreen() {
-  const { profile } = useAuth()
+  const { profile, user } = useAuth()
   const [gigs, setGigs] = useState([])
   const [loading, setLoading] = useState(true)
   const [typeFilter, setTypeFilter] = useState('all')
@@ -27,9 +27,11 @@ export default function FeedScreen() {
   const [applying, setApplying] = useState(false)
   const [applied, setApplied] = useState(false)
   const [showProfilePrompt, setShowProfilePrompt] = useState(false)
+  const [savedGigIds, setSavedGigIds] = useState(new Set())
 
   useEffect(() => {
     fetchGigs()
+    fetchSavedIds()
     const channel = supabase
       .channel('feed-channel')
       .on('postgres_changes', {
@@ -65,6 +67,36 @@ export default function FeedScreen() {
       setGigs(data || [])
     }
     setLoading(false)
+  }
+
+  const fetchSavedIds = async () => {
+    if (!user) return
+    const { data } = await supabase
+      .from('saved_gigs')
+      .select('gig_id')
+      .eq('user_id', user.id)
+    if (data) setSavedGigIds(new Set(data.map(s => s.gig_id)))
+  }
+
+  const toggleSave = async (e, gigId) => {
+    e.stopPropagation()
+    if (savedGigIds.has(gigId)) {
+      await supabase
+        .from('saved_gigs')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('gig_id', gigId)
+      setSavedGigIds(prev => {
+        const next = new Set(prev)
+        next.delete(gigId)
+        return next
+      })
+    } else {
+      await supabase
+        .from('saved_gigs')
+        .insert({ user_id: user.id, gig_id: gigId })
+      setSavedGigIds(prev => new Set([...prev, gigId]))
+    }
   }
 
   const filtered = gigs.filter(g => {
@@ -419,7 +451,10 @@ export default function FeedScreen() {
                     color: '#14123A', lineHeight: '1.35'
                   }}>{gig.title}</div>
                 </div>
-                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                <div style={{
+                  display: 'flex', flexDirection: 'column',
+                  alignItems: 'flex-end', gap: '6px', flexShrink: 0
+                }}>
                   <div style={{
                     fontSize: '19px', fontWeight: '800',
                     color: '#00C48C', letterSpacing: '-0.5px'
@@ -427,6 +462,17 @@ export default function FeedScreen() {
                   <div style={{ fontSize: '10px', color: '#A09DC8' }}>
                     –${gig.pay_max}
                   </div>
+                  <button
+                    onClick={(e) => toggleSave(e, gig.id)}
+                    style={{
+                      background: savedGigIds.has(gig.id) ? '#EEE9FF' : 'transparent',
+                      border: `1.5px solid ${savedGigIds.has(gig.id) ? '#B8A5FF' : '#E2E0FF'}`,
+                      borderRadius: '8px', padding: '4px 8px',
+                      fontSize: '14px', cursor: 'pointer',
+                      transition: 'all 0.15s', fontFamily: 'inherit'
+                    }}>
+                    {savedGigIds.has(gig.id) ? '🔖' : '🏷️'}
+                  </button>
                 </div>
               </div>
 
@@ -702,8 +748,19 @@ export default function FeedScreen() {
                     <span>💬</span> Message Client
                   </button>
 
-                  {/* Skip + Apply row */}
+                  {/* Skip + Save + Apply row */}
                   <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    onClick={(e) => toggleSave(e, selectedGig.id)}
+                    style={{
+                      background: savedGigIds.has(selectedGig?.id) ? '#EEE9FF' : '#F5F4FF',
+                      border: `1.5px solid ${savedGigIds.has(selectedGig?.id) ? '#B8A5FF' : '#E2E0FF'}`,
+                      borderRadius: '12px', padding: '13px 16px',
+                      fontSize: '16px', cursor: 'pointer', flexShrink: 0,
+                      fontFamily: 'inherit'
+                    }}>
+                    {savedGigIds.has(selectedGig?.id) ? '🔖' : '🏷️'}
+                  </button>
                   <button onClick={() => {
                     setSelectedGig(null)
                     setApplied(false)

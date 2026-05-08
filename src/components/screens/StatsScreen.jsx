@@ -3,6 +3,53 @@ import { supabase } from '../../supabase'
 import { useAuth } from '../../context/AuthContext'
 import BrandIcon from '../BrandIcon'
 
+const LEVELS = [
+  {
+    key: 'new',
+    label: 'New Member',
+    icon: '🌱',
+    brandIcon: 'profile',
+    color: '#8B8FAF',
+    bg: '#F5F4FF',
+    border: '#E2E0FF',
+    min: 0,
+    desc: 'Just getting started on Prima'
+  },
+  {
+    key: 'rising',
+    label: 'Rising',
+    icon: '⚡',
+    brandIcon: 'open',
+    color: '#FF6B2B',
+    bg: '#FFF0E8',
+    border: '#FFBC99',
+    min: 3,
+    desc: 'Proving yourself — keep going!'
+  },
+  {
+    key: 'pro',
+    label: 'Pro',
+    icon: '🎯',
+    brandIcon: 'accepted',
+    color: '#6C47FF',
+    bg: '#EEE9FF',
+    border: '#B8A5FF',
+    min: 10,
+    desc: 'Trusted by the community'
+  },
+  {
+    key: 'elite',
+    label: 'Elite',
+    icon: '🏆',
+    brandIcon: 'level',
+    color: '#FFB800',
+    bg: '#FFF8E0',
+    border: '#FFD966',
+    min: 25,
+    desc: 'Top tier — the best of Prima'
+  },
+]
+
 export default function StatsScreen() {
   const { user } = useAuth()
   const [stats, setStats] = useState(null)
@@ -36,6 +83,13 @@ export default function StatsScreen() {
       .select('rating')
       .eq('reviewee_id', user.id)
 
+    const { data: receipts } = await supabase
+      .from('receipts')
+      .select('amount')
+      .eq('worker_id', user.id)
+      .eq('completed', true)
+
+    const totalEarned = receipts?.reduce((sum, r) => sum + (r.amount || 0), 0) || 0
     const avgRating = reviews?.length
       ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1)
       : '5.0'
@@ -49,49 +103,161 @@ export default function StatsScreen() {
       acceptedApps: applications?.filter(a => a.status === 'accepted').length || 0,
       totalReviews: reviews?.length || 0,
       avgRating,
+      totalEarned,
     })
     setLoading(false)
   }
 
+  const getCurrentLevel = (profile) => {
+    const level = profile?.level || 'new'
+    return LEVELS.find(l => l.key === level) || LEVELS[0]
+  }
+
+  const getNextLevel = (profile) => {
+    const current = getCurrentLevel(profile)
+    const idx = LEVELS.findIndex(l => l.key === current.key)
+    return idx < LEVELS.length - 1 ? LEVELS[idx + 1] : null
+  }
+
   if (loading) return (
     <div style={{
-      display: 'flex', alignItems: 'center',
-      justifyContent: 'center', padding: '60px',
-      color: '#A09DC8', fontSize: '14px',
-      fontFamily: "'Plus Jakarta Sans', sans-serif"
-    }}>Loading stats...</div>
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      flexDirection: 'column', gap: '12px',
+      padding: '60px', fontFamily: "'Plus Jakarta Sans', sans-serif"
+    }}>
+      <BrandIcon name="stats" size={46} />
+      <div style={{ color: '#A09DC8', fontSize: '14px', fontWeight: '600' }}>
+        Loading stats...
+      </div>
+    </div>
   )
+
+  const currentLevel = getCurrentLevel(stats?.profile)
+  const nextLevel = getNextLevel(stats?.profile)
+  const progress = stats?.profile?.level_progress || 0
+  const completed = stats?.profile?.gigs_completed || 0
 
   return (
     <div style={{
       padding: '24px 20px 100px',
       fontFamily: "'Plus Jakarta Sans', sans-serif"
     }}>
-      <div style={{ fontSize: '22px', fontWeight: '800', color: '#14123A', marginBottom: '4px' }}>
-        My Stats
-      </div>
-      <div style={{ fontSize: '13px', color: '#8B8FAF', marginBottom: '24px' }}>
-        Your Prima performance overview
-      </div>
+      <div style={{
+        fontSize: '22px', fontWeight: '800',
+        color: '#14123A', marginBottom: '4px'
+      }}>My Stats</div>
+      <div style={{
+        fontSize: '13px', color: '#8B8FAF', marginBottom: '24px'
+      }}>Your Prima performance overview</div>
 
       {/* Trust Score Hero */}
       <div style={{
         background: 'linear-gradient(135deg, #6C47FF 0%, #9B59FF 50%, #FF4DCF 100%)',
         borderRadius: '20px', padding: '24px',
-        color: '#fff', marginBottom: '16px',
-        textAlign: 'center'
+        color: '#fff', marginBottom: '16px', textAlign: 'center'
       }}>
-        <div style={{ fontSize: '11px', opacity: 0.8, letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '8px' }}>
-          Trust Score
-        </div>
-        <div style={{ fontSize: '56px', fontWeight: '800', letterSpacing: '-2px', marginBottom: '4px' }}>
+        <div style={{
+          fontSize: '11px', opacity: 0.8,
+          letterSpacing: '1.5px', textTransform: 'uppercase',
+          marginBottom: '8px'
+        }}>Trust Score</div>
+        <div style={{
+          fontSize: '56px', fontWeight: '800',
+          letterSpacing: '-2px', marginBottom: '4px'
+        }}>
           {stats?.profile?.trust_score || 100}%
         </div>
         <div style={{ fontSize: '13px', opacity: 0.8 }}>
-          {stats?.profile?.trust_score >= 95 ? '🏆 Excellent — Top Tier'
-            : stats?.profile?.trust_score >= 80 ? '👍 Good Standing'
+          {stats?.profile?.trust_score >= 95
+            ? '🏆 Excellent — Top Tier'
+            : stats?.profile?.trust_score >= 80
+              ? '👍 Good Standing'
               : '⚠️ Needs Improvement'}
         </div>
+      </div>
+
+      {/* Level Card */}
+      <div style={{
+        background: currentLevel.bg,
+        border: `1.5px solid ${currentLevel.border}`,
+        borderRadius: '16px', padding: '18px',
+        marginBottom: '16px'
+      }}>
+        <div style={{
+          display: 'flex', gap: '12px',
+          alignItems: 'center', marginBottom: '14px'
+        }}>
+          <div style={{
+            width: '52px', height: '52px', borderRadius: '14px',
+            background: '#fff', display: 'flex',
+            alignItems: 'center', justifyContent: 'center',
+            fontSize: '26px', flexShrink: 0,
+            boxShadow: `0 4px 16px ${currentLevel.color}33`
+          }}>{currentLevel.icon}</div>
+          <div style={{ flex: 1 }}>
+            <div style={{
+              fontSize: '10px', color: currentLevel.color,
+              fontWeight: '700', textTransform: 'uppercase',
+              letterSpacing: '1px', marginBottom: '3px'
+            }}>Current Level</div>
+            <div style={{
+              fontSize: '20px', fontWeight: '800', color: '#14123A'
+            }}>{currentLevel.label}</div>
+            <div style={{
+              fontSize: '11px', color: '#8B8FAF', marginTop: '2px'
+            }}>{currentLevel.desc}</div>
+          </div>
+          <div style={{
+            background: currentLevel.color, color: '#fff',
+            borderRadius: '10px', padding: '6px 12px',
+            fontSize: '13px', fontWeight: '800', flexShrink: 0
+          }}>{completed} gigs</div>
+        </div>
+
+        {nextLevel ? (
+          <>
+            <div style={{
+              display: 'flex', justifyContent: 'space-between',
+              fontSize: '11px', color: '#8B8FAF', marginBottom: '6px'
+            }}>
+              <span>Progress to {nextLevel.label}</span>
+              <span style={{ fontWeight: '700', color: currentLevel.color }}>
+                {progress}%
+              </span>
+            </div>
+            <div style={{
+              height: '8px', background: 'rgba(255,255,255,0.6)',
+              borderRadius: '4px', overflow: 'hidden', marginBottom: '8px'
+            }}>
+              <div style={{
+                height: '100%', borderRadius: '4px',
+                width: `${progress}%`,
+                background: currentLevel.color,
+                transition: 'width 0.8s ease'
+              }} />
+            </div>
+            <div style={{
+              fontSize: '11px', color: '#8B8FAF',
+              display: 'flex', alignItems: 'center', gap: '6px'
+            }}>
+              <span>{nextLevel.icon}</span>
+              <span>
+                {nextLevel.min - completed > 0
+                  ? `${nextLevel.min - completed} more gigs to reach ${nextLevel.label}`
+                  : `Ready to level up to ${nextLevel.label}!`}
+              </span>
+            </div>
+          </>
+        ) : (
+          <div style={{
+            background: 'rgba(255,184,0,0.15)',
+            borderRadius: '10px', padding: '10px 14px',
+            fontSize: '12px', color: '#FFB800',
+            fontWeight: '600', textAlign: 'center'
+          }}>
+            🏆 You've reached the highest level!
+          </div>
+        )}
       </div>
 
       {/* Stats Grid */}
@@ -100,15 +266,15 @@ export default function StatsScreen() {
         gap: '10px', marginBottom: '16px'
       }}>
         {[
-          ['Gigs Posted', stats?.totalPosted, '#6C47FF', 'mygigs'],
-          ['Open Now', stats?.openGigs, '#00C48C', 'open'],
-          ['Completed', stats?.completedGigs, '#FF6B2B', 'completed'],
-          ['Applied To', stats?.totalApplied, '#0EA5E9', 'applied'],
-          ['Accepted', stats?.acceptedApps, '#00C48C', 'accepted'],
-          ['Avg Rating', stats?.avgRating + '★', '#FFB800', 'rating'],
-          ['Reviews', stats?.totalReviews, '#FF4DCF', 'reviews'],
-          ['Level', stats?.profile?.level || 'New', '#6C47FF', 'level'],
-        ].map(([label, val, color, icon]) => (
+          { label: 'Total Earned', value: `$${stats?.totalEarned?.toFixed(0) || 0}`, color: '#00C48C', icon: 'pay' },
+          { label: 'Gigs Completed', value: completed, color: '#6C47FF', icon: 'completed' },
+          { label: 'Avg Rating', value: `${stats?.avgRating}★`, color: '#FFB800', icon: 'rating' },
+          { label: 'Reviews', value: stats?.totalReviews || 0, color: '#FF4DCF', icon: 'reviews' },
+          { label: 'Gigs Posted', value: stats?.totalPosted || 0, color: '#FF6B2B', icon: 'mygigs' },
+          { label: 'Applied To', value: stats?.totalApplied || 0, color: '#0EA5E9', icon: 'applied' },
+          { label: 'Accepted', value: stats?.acceptedApps || 0, color: '#00C48C', icon: 'accepted' },
+          { label: 'Trust Score', value: `${stats?.profile?.trust_score || 100}%`, color: '#6C47FF', icon: 'level' },
+        ].map(({ label, value, color, icon }) => (
           <div key={label} style={{
             background: '#fff', border: '1.5px solid #E2E0FF',
             borderRadius: '14px', padding: '14px'
@@ -118,9 +284,8 @@ export default function StatsScreen() {
             </div>
             <div style={{
               fontSize: '20px', fontWeight: '800',
-              color, marginBottom: '3px',
-              fontFamily: "'JetBrains Mono', monospace"
-            }}>{val}</div>
+              color, marginBottom: '3px'
+            }}>{value}</div>
             <div style={{
               fontSize: '10px', color: '#A09DC8',
               fontWeight: '600', textTransform: 'uppercase',
@@ -163,50 +328,71 @@ export default function StatsScreen() {
         </div>
       )}
 
-      {/* Level Progress */}
+      {/* Level Roadmap */}
       <div style={{
         background: '#fff', border: '1.5px solid #E2E0FF',
-        borderRadius: '14px', padding: '16px'
+        borderRadius: '16px', padding: '18px'
       }}>
         <div style={{
           fontSize: '12px', fontWeight: '700',
-          color: '#14123A', marginBottom: '14px'
-        }}>Worker Level</div>
-        {[
-          { level: 'New Member', min: 0, icon: 'profile', color: '#8B8FAF' },
-          { level: 'Rising', min: 3, icon: 'open', color: '#00C48C' },
-          { level: 'Pro', min: 10, icon: 'accepted', color: '#6C47FF' },
-          { level: 'Elite', min: 25, icon: 'level', color: '#FFB800' },
-        ].map((lvl, i) => {
-          const completed = stats?.completedGigs || 0
-          const isActive = i === [0,3,10,25].filter(m => completed >= m).length - 1
-          const isDone = completed >= lvl.min
+          color: '#14123A', marginBottom: '16px'
+        }}>Level Roadmap</div>
+        {LEVELS.map((lvl, i) => {
+          const isActive = lvl.key === currentLevel.key
+          const isDone = LEVELS.findIndex(l => l.key === currentLevel.key) > i
           return (
-            <div key={lvl.level} style={{
+            <div key={lvl.key} style={{
               display: 'flex', gap: '12px',
-              alignItems: 'center', marginBottom: '10px'
+              alignItems: 'center',
+              padding: '10px 0',
+              borderBottom: i < LEVELS.length - 1 ? '1px solid #F5F4FF' : 'none'
             }}>
-              <BrandIcon name={lvl.icon} size={36} active={isDone} />
+              <div style={{
+                width: '40px', height: '40px', borderRadius: '12px',
+                background: isActive || isDone ? lvl.bg : '#F5F4FF',
+                border: `1.5px solid ${isActive || isDone ? lvl.border : '#E2E0FF'}`,
+                display: 'flex', alignItems: 'center',
+                justifyContent: 'center', flexShrink: 0
+              }}>
+                <BrandIcon name={lvl.brandIcon} size={28} active={isActive || isDone} />
+              </div>
               <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <div style={{
+                  display: 'flex', justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}>
                   <span style={{
-                    fontSize: '13px', fontWeight: isActive ? '700' : '500',
-                    color: isDone ? lvl.color : '#A09DC8'
-                  }}>{lvl.level}</span>
+                    fontSize: '13px',
+                    fontWeight: isActive ? '700' : '500',
+                    color: isActive ? lvl.color : isDone ? '#14123A' : '#A09DC8'
+                  }}>{lvl.label}</span>
                   <span style={{ fontSize: '11px', color: '#A09DC8' }}>
-                    {lvl.min} gigs
+                    {lvl.min}+ gigs
                   </span>
                 </div>
+                <div style={{
+                  fontSize: '11px', color: '#A09DC8', marginTop: '2px'
+                }}>{lvl.desc}</div>
                 {isActive && (
-                  <div style={{ fontSize: '10px', color: '#8B8FAF', marginTop: '2px' }}>
+                  <div style={{
+                    display: 'inline-flex', alignItems: 'center',
+                    gap: '4px', marginTop: '4px',
+                    background: lvl.bg, border: `1px solid ${lvl.border}`,
+                    borderRadius: '20px', padding: '2px 8px',
+                    fontSize: '9px', fontWeight: '700', color: lvl.color
+                  }}>
                     ← You are here
                   </div>
                 )}
               </div>
               {isDone && (
-                <span style={{
-                  fontSize: '14px', color: lvl.color
-                }}>✓</span>
+                <div style={{
+                  width: '24px', height: '24px', borderRadius: '50%',
+                  background: '#DFFDF4', border: '1.5px solid #7EECD2',
+                  display: 'flex', alignItems: 'center',
+                  justifyContent: 'center', fontSize: '12px',
+                  flexShrink: 0
+                }}>✓</div>
               )}
             </div>
           )

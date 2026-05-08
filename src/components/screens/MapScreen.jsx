@@ -5,6 +5,7 @@ import 'leaflet/dist/leaflet.css'
 import { supabase } from '../../supabase'
 import PublicProfile from '../PublicProfile'
 import { playMapPing } from '../../utils/sounds'
+import { useAuth } from '../../context/AuthContext'
 
 // Fix leaflet default icon
 delete L.Icon.Default.prototype._getIconUrl
@@ -127,6 +128,7 @@ const SetView = ({ coords }) => {
 }
 
 export default function MapScreen() {
+  const { user } = useAuth()
   const [gigs, setGigs] = useState([])
   const [userPos, setUserPos] = useState([6.5244, 3.3792])
   const [liveCount, setLiveCount] = useState(312)
@@ -135,6 +137,7 @@ export default function MapScreen() {
   const [viewingProfile, setViewingProfile] = useState(null)
   const [applying, setApplying] = useState(false)
   const [applied, setApplied] = useState(false)
+  const [savedGigIds, setSavedGigIds] = useState(new Set())
 
   useEffect(() => {
     navigator.geolocation.getCurrentPosition(
@@ -143,8 +146,39 @@ export default function MapScreen() {
     )
   }, [])
 
+  const fetchSavedIds = async () => {
+    if (!user) return
+    const { data } = await supabase
+      .from('saved_gigs')
+      .select('gig_id')
+      .eq('user_id', user.id)
+    if (data) setSavedGigIds(new Set(data.map(s => s.gig_id)))
+  }
+
+  const toggleSave = async (e, gigId) => {
+    e.stopPropagation()
+    if (savedGigIds.has(gigId)) {
+      await supabase
+        .from('saved_gigs')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('gig_id', gigId)
+      setSavedGigIds(prev => {
+        const next = new Set(prev)
+        next.delete(gigId)
+        return next
+      })
+    } else {
+      await supabase
+        .from('saved_gigs')
+        .insert({ user_id: user.id, gig_id: gigId })
+      setSavedGigIds(prev => new Set([...prev, gigId]))
+    }
+  }
+
   useEffect(() => {
     fetchGigs()
+    fetchSavedIds()
     const channel = supabase
       .channel('map-gigs')
       .on('postgres_changes', {
@@ -693,6 +727,17 @@ export default function MapScreen() {
 
                 {/* Action Buttons */}
                 <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    onClick={(e) => toggleSave(e, selectedGig.id)}
+                    style={{
+                      background: savedGigIds.has(selectedGig?.id) ? '#EEE9FF' : '#F5F4FF',
+                      border: `1.5px solid ${savedGigIds.has(selectedGig?.id) ? '#B8A5FF' : '#E2E0FF'}`,
+                      borderRadius: '12px', padding: '13px 16px',
+                      fontSize: '16px', cursor: 'pointer', flexShrink: 0,
+                      fontFamily: 'inherit'
+                    }}>
+                    {savedGigIds.has(selectedGig?.id) ? '🔖' : '🏷️'}
+                  </button>
                   <button onClick={() => {
                     setSelectedGig(null)
                     setApplied(false)
