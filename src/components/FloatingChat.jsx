@@ -62,6 +62,14 @@ export default function FloatingChat({ onOpenFullChat }) {
       const currentUserId = session?.user?.id
       if (!currentUserId) return
 
+      // On mobile the floating panel is hidden — hand off to ChatScreen instead
+      if (window.innerWidth <= 768) {
+        sessionStorage.setItem('pendingChatUserId', targetUserId)
+        sessionStorage.setItem('pendingChatGigId', gigId || '')
+        window.dispatchEvent(new CustomEvent('navigateToScreen', { detail: { screen: 'chat' } }))
+        return
+      }
+
       setOpen(true)
 
       const { data: existing } = await supabase

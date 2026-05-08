@@ -27,7 +27,7 @@ const StatusBadge = ({ status }) => {
 }
 
 // ── APPLICANT ROW ── completely standalone, no parent click interference
-const ApplicantRow = ({ app, gig, onAccept, onDecline, onReview, onViewProfile }) => (
+const ApplicantRow = ({ app, gig, onAccept, onDecline, onReview, onReceipt, onViewProfile }) => (
   <div style={{
     display: 'flex', alignItems: 'center',
     justifyContent: 'space-between',
@@ -123,13 +123,22 @@ const ApplicantRow = ({ app, gig, onAccept, onDecline, onReview, onViewProfile }
           }}>✓ Accepted</span>
           <button
             onMouseDown={(e) => { e.stopPropagation(); e.preventDefault() }}
+            onClick={() => onReceipt(app)}
+            style={{
+              background: '#F5F4FF', border: '1.5px solid #E2E0FF',
+              borderRadius: '8px', padding: '7px 10px',
+              fontSize: '11px', fontWeight: '700',
+              color: '#6C47FF', cursor: 'pointer', fontFamily: 'inherit'
+            }}>📎</button>
+          <button
+            onMouseDown={(e) => { e.stopPropagation(); e.preventDefault() }}
             onClick={() => onReview(app)}
             style={{
               background: '#EEE9FF', border: '1.5px solid #B8A5FF',
-              borderRadius: '8px', padding: '7px 12px',
+              borderRadius: '8px', padding: '7px 10px',
               fontSize: '11px', fontWeight: '700',
               color: '#6C47FF', cursor: 'pointer', fontFamily: 'inherit'
-            }}>⭐ Review</button>
+            }}>⭐</button>
         </>
       )}
       {app.status === 'rejected' && (
@@ -153,6 +162,7 @@ export default function MyGigsScreen() {
   const [selectedGig, setSelectedGig] = useState(null)
   const [showReceiptFlow, setShowReceiptFlow] = useState(false)
   const [receiptUserRole, setReceiptUserRole] = useState('poster')
+  const [receiptWorker, setReceiptWorker] = useState(null)
   const [uploading, setUploading] = useState(false)
   const [viewingProfile, setViewingProfile] = useState(null)
   const [showReview, setShowReview] = useState(false)
@@ -479,6 +489,12 @@ export default function MyGigsScreen() {
                           gig={gig}
                           onAccept={(a) => handleAccept(a, gig)}
                           onDecline={(a) => handleDecline(a, gig)}
+                          onReceipt={(a) => {
+                            setSelectedGig(gig)
+                            setReceiptWorker({ id: a.worker_id, name: a.users?.full_name || 'Worker' })
+                            setReceiptUserRole('poster')
+                            setShowReceiptFlow(true)
+                          }}
                           onReview={(a) => {
                             setReviewData({
                               gig,
@@ -498,28 +514,15 @@ export default function MyGigsScreen() {
                   <div style={{
                     borderTop: '1px solid #E2E0FF',
                     padding: '12px 18px',
-                    display: 'flex', gap: '8px'
+                    display: 'flex', justifyContent: 'flex-end'
                   }}>
-                    <button
-                      onClick={() => {
-                        setSelectedGig(gig)
-                        setReceiptUserRole('poster')
-                        setShowReceiptFlow(true)
-                      }}
-                      style={{
-                        flex: 1, background: '#EEE9FF',
-                        border: '1.5px solid #B8A5FF',
-                        borderRadius: '10px', padding: '10px',
-                        fontSize: '12px', fontWeight: '700',
-                        color: '#6C47FF', cursor: 'pointer', fontFamily: 'inherit'
-                      }}>📎 Upload Receipt</button>
                     <button
                       onClick={() => handleDeleteGig(gig.id)}
                       style={{
                         background: '#FFE8EE', border: '1.5px solid #FF99B3',
                         borderRadius: '10px', padding: '10px 14px',
                         fontSize: '14px', cursor: 'pointer', fontFamily: 'inherit'
-                      }}>🗑</button>
+                      }}>🗑 Delete Gig</button>
                   </div>
                 </div>
               ))}
@@ -612,12 +615,15 @@ export default function MyGigsScreen() {
         <ReceiptFlow
           gig={selectedGig}
           userRole={receiptUserRole}
+          workerId={receiptUserRole === 'poster' ? receiptWorker?.id : user.id}
           onClose={() => {
             setShowReceiptFlow(false)
             setSelectedGig(null)
+            setReceiptWorker(null)
           }}
           onComplete={() => {
             setShowReceiptFlow(false)
+            setReceiptWorker(null)
             fetchPostedGigs()
             fetchAppliedGigs()
           }}

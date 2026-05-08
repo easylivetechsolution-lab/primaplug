@@ -3,8 +3,9 @@ import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 import { playComplete, playReceipt } from '../utils/sounds'
 
-export default function ReceiptFlow({ gig, userRole, onClose, onComplete }) {
+export default function ReceiptFlow({ gig, userRole, workerId, onClose, onComplete }) {
   // userRole = 'poster' or 'worker'
+  // workerId  = the specific worker this receipt belongs to
   const { user } = useAuth()
   const [receipt, setReceipt] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -15,11 +16,12 @@ export default function ReceiptFlow({ gig, userRole, onClose, onComplete }) {
   const [step, setStep] = useState('upload') // upload | review | confirm | done | dispute
   const fileRef = useRef()
 
+  const targetWorkerId = workerId || user.id
+
   useEffect(() => {
     fetchReceipt()
-    // Real-time updates
     const channel = supabase
-      .channel('receipt-' + gig.id)
+      .channel(`receipt-${gig.id}-${targetWorkerId}`)
       .on('postgres_changes', {
         event: '*', schema: 'public',
         table: 'receipts',
@@ -27,13 +29,14 @@ export default function ReceiptFlow({ gig, userRole, onClose, onComplete }) {
       }, () => fetchReceipt())
       .subscribe()
     return () => supabase.removeChannel(channel)
-  }, [gig.id])
+  }, [gig.id, targetWorkerId])
 
   const fetchReceipt = async () => {
     const { data } = await supabase
       .from('receipts')
       .select('*')
       .eq('gig_id', gig.id)
+      .eq('worker_id', targetWorkerId)
       .maybeSingle()
     if (data) {
       setReceipt(data)
@@ -60,7 +63,7 @@ export default function ReceiptFlow({ gig, userRole, onClose, onComplete }) {
     setUploading(true)
 
     const ext = file.name.split('.').pop()
-    const fileName = `${gig.id}-${userRole}-${Date.now()}.${ext}`
+    const fileName = `${gig.id}-${targetWorkerId}-${userRole}-${Date.now()}.${ext}`
 
     const { error: uploadError } = await supabase.storage
       .from('receipts')
@@ -91,7 +94,7 @@ export default function ReceiptFlow({ gig, userRole, onClose, onComplete }) {
       const insertData = {
         gig_id: gig.id,
         poster_id: gig.poster_id,
-        worker_id: user.id,
+        worker_id: targetWorkerId,
         amount: parseFloat(amount) || 0,
         notes,
         status: 'pending'

@@ -48,6 +48,18 @@ export default function Layout() {
     return () => document.removeEventListener('click', unlock)
   }, [])
 
+  useEffect(() => {
+    const handleNavigate = (e) => {
+      const { screen: targetScreen } = e.detail || {}
+      if (targetScreen) {
+        setScreen(targetScreen)
+        setShowMobileMore(false)
+      }
+    }
+    window.addEventListener('navigateToScreen', handleNavigate)
+    return () => window.removeEventListener('navigateToScreen', handleNavigate)
+  }, [])
+
   const handleLogout = async () => {
     await supabase.auth.signOut()
   }

@@ -88,6 +88,18 @@ export default function ChatScreen() {
 
     window.addEventListener('openChat', handleOpenChat)
     window.addEventListener('openChatWithUser', handleOpenChatWithUser)
+
+    // Handle pending mobile navigation (set by FloatingChat before navigating here)
+    const pendingUserId = sessionStorage.getItem('pendingChatUserId')
+    if (pendingUserId && user) {
+      sessionStorage.removeItem('pendingChatUserId')
+      const pendingGigId = sessionStorage.getItem('pendingChatGigId') || null
+      sessionStorage.removeItem('pendingChatGigId')
+      window.dispatchEvent(new CustomEvent('openChatWithUser', {
+        detail: { userId: pendingUserId, gigId: pendingGigId || null }
+      }))
+    }
+
     return () => {
       window.removeEventListener('openChat', handleOpenChat)
       window.removeEventListener('openChatWithUser', handleOpenChatWithUser)
