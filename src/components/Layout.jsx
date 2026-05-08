@@ -17,7 +17,7 @@ import Search from './Search'
 import ChatScreen from './screens/ChatScreen'
 import FloatingChat from './FloatingChat'
 import BrandIcon from './BrandIcon'
-import ServicesScreen from './screens/ServicesScreen'
+import ServicesScreen from "./screens/ServicesScreen";
 
 export default function Layout() {
   const { user, profile } = useAuth()
