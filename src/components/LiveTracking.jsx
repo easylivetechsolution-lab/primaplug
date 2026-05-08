@@ -210,11 +210,24 @@ export default function LiveTracking({ gig, role, workerInfo, posterInfo, onClos
   const [tracking, setTracking] = useState(false)
   const [arrived, setArrived] = useState(false)
   const [watchId, setWatchId] = useState(null)
+  const [resolvedPosterInfo, setResolvedPosterInfo] = useState(posterInfo)
   const channelRef = useRef()
 
   const destLat = parseFloat(gig.latitude)
   const destLng = parseFloat(gig.longitude)
   const hasDestination = !isNaN(destLat) && !isNaN(destLng)
+
+  // When poster tracks a worker, posterInfo isn't passed — fetch own profile instead
+  useEffect(() => {
+    if (!posterInfo && role === 'poster' && user) {
+      supabase
+        .from('users')
+        .select('id, full_name, avatar_url')
+        .eq('id', user.id)
+        .single()
+        .then(({ data }) => { if (data) setResolvedPosterInfo(data) })
+    }
+  }, [])
 
   useEffect(() => {
     if (role === 'poster') {
@@ -502,14 +515,14 @@ export default function LiveTracking({ gig, role, workerInfo, posterInfo, onClos
             <Marker
               position={[destLat, destLng]}
               icon={createDestinationPin(
-                posterInfo?.avatar_url,
-                posterInfo?.full_name?.charAt(0) || '📍'
+                resolvedPosterInfo?.avatar_url,
+                resolvedPosterInfo?.full_name?.charAt(0) || '📍'
               )}>
               <Popup>
                 <div style={{ fontFamily: 'inherit', fontSize: '13px' }}>
                   <strong>📍 {gig.location || 'Destination'}</strong>
-                  {posterInfo?.full_name && (
-                    <><br />{posterInfo.full_name}</>
+                  {resolvedPosterInfo?.full_name && (
+                    <><br />{resolvedPosterInfo.full_name}</>
                   )}
                 </div>
               </Popup>
