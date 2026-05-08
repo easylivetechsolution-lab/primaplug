@@ -5,6 +5,7 @@ import PublicProfile from '../PublicProfile'
 import ReviewModal from '../ReviewModal'
 import ReceiptFlow from '../ReceiptFlow'
 import BrandIcon from '../BrandIcon'
+import LiveTracking from '../LiveTracking'
 import { playAccepted, playDeclined } from '../../utils/sounds'
 
 const STATUS_CONFIG = {
@@ -167,6 +168,10 @@ export default function MyGigsScreen() {
   const [viewingProfile, setViewingProfile] = useState(null)
   const [showReview, setShowReview] = useState(false)
   const [reviewData, setReviewData] = useState(null)
+  const [showTracking, setShowTracking] = useState(false)
+  const [trackingGig, setTrackingGig] = useState(null)
+  const [trackingRole, setTrackingRole] = useState('worker')
+  const [trackingWorker, setTrackingWorker] = useState(null)
 
   useEffect(() => {
     fetchPostedGigs()
@@ -483,29 +488,50 @@ export default function MyGigsScreen() {
                         {gig.applications.length} Applicant{gig.applications.length !== 1 ? 's' : ''}
                       </div>
                       {gig.applications.map((app) => (
-                        <ApplicantRow
-                          key={app.id}
-                          app={app}
-                          gig={gig}
-                          onAccept={(a) => handleAccept(a, gig)}
-                          onDecline={(a) => handleDecline(a, gig)}
-                          onReceipt={(a) => {
-                            setSelectedGig(gig)
-                            setReceiptWorker({ id: a.worker_id, name: a.users?.full_name || 'Worker' })
-                            setReceiptUserRole('poster')
-                            setShowReceiptFlow(true)
-                          }}
-                          onReview={(a) => {
-                            setReviewData({
-                              gig,
-                              revieweeId: a.worker_id,
-                              revieweeName: a.users?.full_name || 'Worker',
-                              reviewType: 'worker'
-                            })
-                            setShowReview(true)
-                          }}
-                          onViewProfile={(id) => setViewingProfile(id)}
-                        />
+                        <div key={app.id}>
+                          <ApplicantRow
+                            app={app}
+                            gig={gig}
+                            onAccept={(a) => handleAccept(a, gig)}
+                            onDecline={(a) => handleDecline(a, gig)}
+                            onReceipt={(a) => {
+                              setSelectedGig(gig)
+                              setReceiptWorker({ id: a.worker_id, name: a.users?.full_name || 'Worker' })
+                              setReceiptUserRole('poster')
+                              setShowReceiptFlow(true)
+                            }}
+                            onReview={(a) => {
+                              setReviewData({
+                                gig,
+                                revieweeId: a.worker_id,
+                                revieweeName: a.users?.full_name || 'Worker',
+                                reviewType: 'worker'
+                              })
+                              setShowReview(true)
+                            }}
+                            onViewProfile={(id) => setViewingProfile(id)}
+                          />
+                          {app.status === 'accepted' && gig.type === 'physical' && (
+                            <button
+                              onClick={() => {
+                                setTrackingGig(gig)
+                                setTrackingRole('poster')
+                                setTrackingWorker(app.users)
+                                setShowTracking(true)
+                              }}
+                              style={{
+                                marginTop: '8px', width: '100%',
+                                background: '#EEE9FF', border: '1.5px solid #B8A5FF',
+                                borderRadius: '10px', padding: '9px',
+                                fontSize: '12px', fontWeight: '700', color: '#6C47FF',
+                                cursor: 'pointer', fontFamily: 'inherit',
+                                display: 'flex', alignItems: 'center',
+                                justifyContent: 'center', gap: '6px'
+                              }}>
+                              📍 Track Worker
+                            </button>
+                          )}
+                        </div>
                       ))}
                     </div>
                   )}
@@ -603,6 +629,27 @@ export default function MyGigsScreen() {
                         color: '#6C47FF', cursor: 'pointer', fontFamily: 'inherit'
                       }}>📎 Upload Completion Receipt</button>
                   )}
+                  {app.status === 'accepted' && app.gigs?.type === 'physical' && (
+                    <button
+                      onClick={() => {
+                        setTrackingGig(app.gigs)
+                        setTrackingRole('worker')
+                        setTrackingWorker(null)
+                        setShowTracking(true)
+                      }}
+                      style={{
+                        marginTop: '10px', width: '100%',
+                        background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+                        border: 'none', borderRadius: '12px', padding: '12px',
+                        fontSize: '13px', fontWeight: '700', color: '#fff',
+                        cursor: 'pointer', fontFamily: 'inherit',
+                        display: 'flex', alignItems: 'center',
+                        justifyContent: 'center', gap: '8px',
+                        boxShadow: '0 4px 16px rgba(108,71,255,0.35)'
+                      }}>
+                      🧭 Navigate to Gig
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
@@ -647,6 +694,19 @@ export default function MyGigsScreen() {
         <PublicProfile
           userId={viewingProfile}
           onClose={() => setViewingProfile(null)}
+        />
+      )}
+
+      {/* Live Tracking */}
+      {showTracking && trackingGig && (
+        <LiveTracking
+          gig={trackingGig}
+          role={trackingRole}
+          workerInfo={trackingWorker}
+          onClose={() => {
+            setShowTracking(false)
+            setTrackingGig(null)
+          }}
         />
       )}
     </div>
