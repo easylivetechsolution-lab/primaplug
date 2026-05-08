@@ -146,13 +146,17 @@ const createDestinationPin = (avatarUrl, initial) => L.divIcon({
   popupAnchor: [0, -80],
 })
 
-// Auto-fit map to show both pins
+// Auto-fit map to show both pins — mobile: once only; desktop: on every update
 const FitBounds = ({ positions }) => {
   const map = useMap()
+  const hasFitted = useRef(false)
+  const isMobile = window.innerWidth <= 768
   useEffect(() => {
     if (positions.length >= 2) {
+      if (isMobile && hasFitted.current) return
       const bounds = L.latLngBounds(positions)
       map.fitBounds(bounds, { padding: [60, 60] })
+      hasFitted.current = true
     }
   }, [positions])
   return null
