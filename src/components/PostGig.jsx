@@ -4,6 +4,8 @@ import { useAuth } from '../context/AuthContext'
 import CategoryPicker from './CategoryPicker'
 import BrandIcon from './BrandIcon'
 import { playAccepted } from '../utils/sounds'
+import { getProfileCompletion } from '../utils/profileComplete'
+import ProfilePrompt from './ProfilePrompt'
 
 const URGENCY = [
   { key: 'now', label: 'NOW', color: '#FF3366', bg: '#FFE8EE' },
@@ -13,11 +15,12 @@ const URGENCY = [
 ]
 
 export default function PostGig({ onClose }) {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
   const [error, setError] = useState('')
+  const [showPrompt, setShowPrompt] = useState(false)
   const [locationSearch, setLocationSearch] = useState('')
 const [locationResults, setLocationResults] = useState([])
 const [locationLoading, setLocationLoading] = useState(false)
@@ -71,6 +74,11 @@ const [locationSelected, setLocationSelected] = useState(false)
 }
 
   const handleSubmit = async () => {
+    const { complete } = getProfileCompletion(profile)
+    if (!complete) {
+      setShowPrompt(true)
+      return
+    }
     if (!form.title || !form.pay_min || !form.pay_max) {
       setError('Please fill in title and pay range')
       return
@@ -147,6 +155,7 @@ const [locationSelected, setLocationSelected] = useState(false)
   }
 
   return (
+    <>
     <div style={{
       position: 'fixed', inset: 0,
       background: 'rgba(20,18,58,0.75)',
@@ -646,5 +655,18 @@ const [locationSelected, setLocationSelected] = useState(false)
         `}</style>
       </div>
     </div>
+
+    {showPrompt && (
+      <ProfilePrompt
+        profile={profile}
+        onClose={() => setShowPrompt(false)}
+        onGoToProfile={() => {
+          setShowPrompt(false)
+          onClose()
+          window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'profile' }))
+        }}
+      />
+    )}
+    </>
   )
 }

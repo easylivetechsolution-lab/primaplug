@@ -3,6 +3,9 @@ import { supabase } from '../../supabase'
 import PublicProfile from '../PublicProfile'
 import BrandIcon from '../BrandIcon'
 import { CATEGORIES, ALL_FIELDS } from '../../data/categories'
+import { getProfileCompletion } from '../../utils/profileComplete'
+import ProfilePrompt from '../ProfilePrompt'
+import { useAuth } from '../../context/AuthContext'
 
 const URGENCY = {
   now: { label: 'NOW', color: '#FF3366', bg: '#FFE8EE', border: '#FF99B3' },
@@ -12,6 +15,7 @@ const URGENCY = {
 }
 
 export default function FeedScreen() {
+  const { profile } = useAuth()
   const [gigs, setGigs] = useState([])
   const [loading, setLoading] = useState(true)
   const [typeFilter, setTypeFilter] = useState('all')
@@ -22,6 +26,7 @@ export default function FeedScreen() {
   const [viewingProfile, setViewingProfile] = useState(null)
   const [applying, setApplying] = useState(false)
   const [applied, setApplied] = useState(false)
+  const [showProfilePrompt, setShowProfilePrompt] = useState(false)
 
   useEffect(() => {
     fetchGigs()
@@ -709,6 +714,11 @@ export default function FeedScreen() {
                   }}>Skip</button>
                   <button
                     onClick={async () => {
+  const { complete } = getProfileCompletion(profile)
+  if (!complete) {
+    setShowProfilePrompt(true)
+    return
+  }
   setApplying(true)
   try {
     const { data: { session } } = await supabase.auth.getSession()
@@ -818,6 +828,18 @@ export default function FeedScreen() {
         <PublicProfile
           userId={viewingProfile}
           onClose={() => setViewingProfile(null)}
+        />
+      )}
+
+      {showProfilePrompt && (
+        <ProfilePrompt
+          profile={profile}
+          onClose={() => setShowProfilePrompt(false)}
+          onGoToProfile={() => {
+            setShowProfilePrompt(false)
+            setSelectedGig(null)
+            window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'profile' }))
+          }}
         />
       )}
     </div>

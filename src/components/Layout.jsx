@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../supabase'
+import { getProfileCompletion } from '../utils/profileComplete'
+import ProfilePrompt from './ProfilePrompt'
 import MapScreen from './screens/MapScreen'
 import FeedScreen from './screens/FeedScreen'
 import DiscoverScreen from './screens/DiscoverScreen'
@@ -17,11 +19,12 @@ import FloatingChat from './FloatingChat'
 import BrandIcon from './BrandIcon'
 
 export default function Layout() {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const [screen, setScreen] = useState('map')
   const [showPost, setShowPost] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
   const [showMobileMore, setShowMobileMore] = useState(false)
+  const [showProfilePrompt, setShowProfilePrompt] = useState(false)
 
   useEffect(() => {
     const handleKey = (e) => {
@@ -58,6 +61,14 @@ export default function Layout() {
     }
     window.addEventListener('navigateToScreen', handleNavigate)
     return () => window.removeEventListener('navigateToScreen', handleNavigate)
+  }, [])
+
+  useEffect(() => {
+    const handleNavigate = (e) => {
+      setScreen(e.detail)
+    }
+    window.addEventListener('navigateTo', handleNavigate)
+    return () => window.removeEventListener('navigateTo', handleNavigate)
   }, [])
 
   const handleLogout = async () => {
@@ -470,6 +481,53 @@ export default function Layout() {
 
         {/* MAIN CONTENT */}
         <div style={{ flex: 1, minWidth: 0, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+
+          {/* Profile Completion Banner */}
+          {profile && (() => {
+            const { score, complete } = getProfileCompletion(profile)
+            if (complete) return null
+            return (
+              <div style={{
+                background: 'linear-gradient(135deg, #EEE9FF, #F8F5FF)',
+                border: '1.5px solid #B8A5FF',
+                borderRadius: '14px',
+                padding: '12px 16px',
+                margin: '12px 16px 0',
+                display: 'flex', justifyContent: 'space-between',
+                alignItems: 'center', gap: '12px',
+                cursor: 'pointer'
+              }} onClick={() => setScreen('profile')}>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flex: 1 }}>
+                  <span style={{ fontSize: '20px', flexShrink: 0 }}>⚡</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{
+                      fontSize: '12px', fontWeight: '700',
+                      color: '#14123A', marginBottom: '4px'
+                    }}>
+                      Complete your profile — {score}% done
+                    </div>
+                    <div style={{
+                      height: '4px', background: '#E2E0FF',
+                      borderRadius: '2px', overflow: 'hidden'
+                    }}>
+                      <div style={{
+                        height: '100%', borderRadius: '2px',
+                        width: `${score}%`,
+                        background: 'linear-gradient(90deg, #6C47FF, #9B59FF)'
+                      }} />
+                    </div>
+                  </div>
+                </div>
+                <div style={{
+                  background: '#6C47FF', color: '#fff',
+                  borderRadius: '8px', padding: '6px 12px',
+                  fontSize: '11px', fontWeight: '700',
+                  whiteSpace: 'nowrap', flexShrink: 0
+                }}>Finish →</div>
+              </div>
+            )
+          })()}
+
           <div style={{
             flex: 1,
             minHeight: 0,
