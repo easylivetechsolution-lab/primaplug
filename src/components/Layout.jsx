@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useAdmin } from '../hooks/useAdmin'
 import { supabase } from '../supabase'
 import { getProfileCompletion } from '../utils/profileComplete'
 import ProfilePrompt from './ProfilePrompt'
@@ -21,6 +23,8 @@ import ServicesScreen from "./screens/ServicesScreen";
 
 export default function Layout() {
   const { user, profile } = useAuth()
+  const { isAdmin } = useAdmin()
+  const navigate = useNavigate()
   const [screen, setScreen] = useState('map')
   const [showPost, setShowPost] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
@@ -484,6 +488,29 @@ export default function Layout() {
 
           {/* Spacer */}
           <div style={{ flex: 1 }} />
+
+          {/* Admin — only visible to admins */}
+          {isAdmin && (
+            <button
+              onClick={() => navigate('/admin')}
+              title="Admin Dashboard"
+              style={{
+                width: '48px', height: '48px',
+                borderRadius: '12px',
+                background: '#FFE8EE',
+                border: '1.5px solid #FF99B3',
+                display: 'flex', flexDirection: 'column',
+                alignItems: 'center', justifyContent: 'center',
+                gap: '3px', cursor: 'pointer',
+                fontFamily: 'inherit', marginBottom: '6px'
+              }}>
+              <span style={{ fontSize: '18px' }}>⚙️</span>
+              <span style={{
+                fontSize: '8px', fontWeight: '700',
+                color: '#FF3366'
+              }}>Admin</span>
+            </button>
+          )}
 
           {/* Post Gig — Primary CTA */}
           <button
