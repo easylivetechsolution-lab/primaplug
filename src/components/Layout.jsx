@@ -17,6 +17,7 @@ import Search from './Search'
 import ChatScreen from './screens/ChatScreen'
 import FloatingChat from './FloatingChat'
 import BrandIcon from './BrandIcon'
+import ServicesScreen from './screens/ServicesScreen'
 
 export default function Layout() {
   const { user, profile } = useAuth()
@@ -82,6 +83,7 @@ export default function Layout() {
     { key: 'mygigs', icon: 'mygigs', label: 'My Gigs' },
     { key: 'chat', icon: 'chat', label: 'Chat' },
     { key: 'profile', icon: 'profile', label: 'Profile' },
+    { key: 'services', label: '🛠 Services' },
   ]
 
   const mobileMoreItems = [
@@ -102,6 +104,7 @@ export default function Layout() {
     stats: <StatsScreen />,
     settings: <SettingsScreen onLogout={handleLogout} />,
     chat: <ChatScreen />,
+    services: <ServicesScreen />,
   }
 
   return (
@@ -414,6 +417,37 @@ export default function Layout() {
             }}>Chat</span>
           </button>
 
+          {/* Services */}
+          <button
+            onClick={() => setScreen('services')}
+            title="Services"
+            style={{
+              width: '48px', height: '48px',
+              borderRadius: '12px',
+              background: screen === 'services' ? '#EEE9FF' : 'transparent',
+              border: `1.5px solid ${screen === 'services' ? '#B8A5FF' : 'transparent'}`,
+              display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center',
+              gap: '3px', cursor: 'pointer',
+              transition: 'all 0.15s', fontFamily: 'inherit'
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = '#EEE9FF'
+              e.currentTarget.style.borderColor = '#B8A5FF'
+            }}
+            onMouseLeave={e => {
+              if (screen !== 'services') {
+                e.currentTarget.style.background = 'transparent'
+                e.currentTarget.style.borderColor = 'transparent'
+              }
+            }}>
+            <span style={{ fontSize: '20px' }}>🛠</span>
+            <span style={{
+              fontSize: '9px', fontWeight: '600',
+              color: screen === 'services' ? '#6C47FF' : '#A09DC8'
+            }}>Services</span>
+          </button>
+
           {/* Divider */}
           <div style={{
             width: '32px', height: '1px',
@@ -558,7 +592,7 @@ export default function Layout() {
         flexShrink: 0,
         zIndex: 50
       }} className="mobile-nav">
-        {navItems.map(item => (
+        {navItems.filter(i => i.key !== 'services').map(item => (
           <button key={item.key} onClick={() => { setScreen(item.key); setShowMobileMore(false) }}
             style={{
               background: 'transparent',
@@ -582,6 +616,23 @@ export default function Layout() {
             )}
           </button>
         ))}
+        <button
+          onClick={() => setScreen('services')}
+          style={{
+            background: 'transparent', border: 'none',
+            padding: '6px 10px', display: 'flex',
+            flexDirection: 'column', alignItems: 'center',
+            gap: '3px', cursor: 'pointer', fontFamily: 'inherit'
+          }}>
+          <span style={{
+            fontSize: '20px',
+            filter: screen === 'services' ? 'none' : 'grayscale(1) opacity(0.4)'
+          }}>🛠</span>
+          <span style={{
+            fontSize: '9px', fontWeight: screen === 'services' ? '700' : '500',
+            color: screen === 'services' ? '#6C47FF' : '#A09DC8'
+          }}>Services</span>
+        </button>
       </div>
 
       {/* MOBILE FAB */}
