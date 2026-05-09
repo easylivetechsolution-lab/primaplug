@@ -346,7 +346,7 @@ export default function MapScreen() {
         {/* Category Filter Chips */}
         <div style={{
           position: 'absolute', top: '52px', left: '14px',
-          right: '14px', zIndex: 400,
+          right: '14px', zIndex: 10,
           display: 'flex', gap: '7px',
           overflowX: 'auto', scrollbarWidth: 'none',
           pointerEvents: 'all'

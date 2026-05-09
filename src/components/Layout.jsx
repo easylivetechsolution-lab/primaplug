@@ -134,7 +134,8 @@ export default function Layout() {
         justifyContent: 'space-between',
         padding: '0 20px',
         flexShrink: 0,
-        zIndex: 100
+        position: 'relative',
+        zIndex: 9500
       }} className="app-topbar">
         {/* Logo */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -253,7 +254,7 @@ export default function Layout() {
             border: '1.5px solid #E2E0FF',
             borderRadius: '16px',
             boxShadow: '0 16px 44px rgba(108,71,255,0.18)',
-            zIndex: 9000,
+            zIndex: 9600,
             overflow: 'hidden'
           }}
         >

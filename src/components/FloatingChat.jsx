@@ -311,13 +311,9 @@ export default function FloatingChat({ onOpenFullChat }) {
       {/* Floating Button */}
       <div style={{
         position: 'fixed',
-        bottom: '120px',
+        bottom: '24px',
         right: '24px',
-        zIndex: 8000,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'flex-end',
-        gap: '8px'
+        zIndex: 8000
       }}>
 
         {/* Chat Panel */}
@@ -333,7 +329,11 @@ export default function FloatingChat({ onOpenFullChat }) {
             flexDirection: 'column',
             overflow: 'hidden',
             animation: 'chatPop 0.25s cubic-bezier(0.16,1,0.3,1)',
-            fontFamily: "'Plus Jakarta Sans', sans-serif"
+            fontFamily: "'Plus Jakarta Sans', sans-serif",
+            position: 'fixed',
+            bottom: '90px',
+            right: '24px',
+            zIndex: 8000
           }}>
 
             {/* Panel Header */}
