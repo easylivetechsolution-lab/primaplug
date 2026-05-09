@@ -211,11 +211,11 @@ export default function NotificationBell({ onNavigate }) {
       {/* Dropdown */}
       {open && (
         <div style={{
-          position: 'absolute', top: '44px', right: 0,
+          position: 'fixed', top: '68px', right: '16px',
           width: '320px', background: '#fff',
           borderRadius: '16px', border: '1.5px solid #E2E0FF',
-          boxShadow: '0 12px 40px rgba(108,71,255,0.15)',
-          zIndex: 200, overflow: 'hidden',
+          boxShadow: '0 12px 40px rgba(108,71,255,0.18)',
+          zIndex: 9000, overflow: 'hidden',
           animation: 'notifDrop 0.2s ease',
           fontFamily: "'Plus Jakarta Sans', sans-serif"
         }}>

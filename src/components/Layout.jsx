@@ -246,14 +246,14 @@ export default function Layout() {
           style={{
             display: 'none',
             position: 'fixed',
-            top: '58px',
+            top: '62px',
             right: '12px',
             width: '220px',
             background: '#fff',
             border: '1.5px solid #E2E0FF',
             borderRadius: '16px',
             boxShadow: '0 16px 44px rgba(108,71,255,0.18)',
-            zIndex: 300,
+            zIndex: 9000,
             overflow: 'hidden'
           }}
         >
