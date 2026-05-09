@@ -3,6 +3,7 @@ import { supabase } from '../../supabase'
 import { useAuth } from '../../context/AuthContext'
 import PostService from '../PostService'
 import ServiceDetail from '../ServiceDetail'
+import EditService from '../EditService'
 import PublicProfile from '../PublicProfile'
 import { CATEGORIES } from '../../data/categories'
 
@@ -13,6 +14,7 @@ export default function ServicesScreen() {
   const [showPost, setShowPost] = useState(false)
   const [selectedService, setSelectedService] = useState(null)
   const [viewingProfile, setViewingProfile] = useState(null)
+  const [editingService, setEditingService] = useState(null)
   const [activeCategory, setActiveCategory] = useState('All')
   const [searchQuery, setSearchQuery] = useState('')
   const [typeFilter, setTypeFilter] = useState('all')
@@ -235,7 +237,8 @@ export default function ServicesScreen() {
                     background: '#fff',
                     border: '1.5px solid #E2E0FF',
                     borderRadius: '18px', overflow: 'hidden',
-                    cursor: 'pointer', transition: 'all 0.2s'
+                    cursor: 'pointer', transition: 'all 0.2s',
+                    position: 'relative'
                   }}
                   onMouseEnter={e => {
                     e.currentTarget.style.borderColor = '#B8A5FF'
@@ -248,6 +251,28 @@ export default function ServicesScreen() {
                     e.currentTarget.style.boxShadow = 'none'
                   }}>
                   {/* Service Header */}
+                  {/* Edit button — only for owner */}
+                  {service.worker_id === user?.id && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setEditingService(service)
+                      }}
+                      style={{
+                        position: 'absolute', top: '10px', right: '10px',
+                        background: 'rgba(255,255,255,0.9)',
+                        border: '1.5px solid #E2E0FF',
+                        borderRadius: '8px', padding: '5px 10px',
+                        fontSize: '11px', fontWeight: '700',
+                        color: '#6C47FF', cursor: 'pointer',
+                        fontFamily: 'inherit',
+                        display: 'flex', alignItems: 'center', gap: '4px',
+                        zIndex: 2
+                      }}>
+                      ✏️ Edit
+                    </button>
+                  )}
+
                   {service.images?.[0] ? (
                     <div style={{
                       height: '140px', position: 'relative',
@@ -480,6 +505,18 @@ export default function ServicesScreen() {
         <PublicProfile
           userId={viewingProfile}
           onClose={() => setViewingProfile(null)}
+        />
+      )}
+
+      {/* Edit Service Modal */}
+      {editingService && (
+        <EditService
+          service={editingService}
+          onClose={() => setEditingService(null)}
+          onUpdated={() => {
+            setEditingService(null)
+            fetchServices()
+          }}
         />
       )}
     </div>
