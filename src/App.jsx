@@ -7,6 +7,7 @@ import Onboarding from './pages/Onboarding'
 import Dashboard from './pages/Dashboard'
 import Admin from './pages/Admin'
 import BrandIcon from './components/BrandIcon'
+import { LanguageProvider } from './context/LanguageContext'
 
 function AuthCallback() {
   const navigate = useNavigate()
@@ -211,7 +212,9 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <AppRoutes />
+        <LanguageProvider>
+          <AppRoutes />
+        </LanguageProvider>
       </AuthProvider>
     </BrowserRouter>
   )

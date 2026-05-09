@@ -1,8 +1,12 @@
 import { useState } from 'react'
 import { supabase } from '../supabase'
 import BrandIcon from '../components/BrandIcon'
+import { LANGUAGES } from '../data/languages'
+import { useLanguage } from '../context/LanguageContext'
 
 export default function Auth() {
+  const { language, setLanguage, t } = useLanguage()
+  const [showLangPicker, setShowLangPicker] = useState(false)
   const [mode, setMode] = useState('signup')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -67,6 +71,75 @@ export default function Auth() {
         maxWidth: '420px',
         boxShadow: '0 20px 60px rgba(108,71,255,0.3)'
       }}>
+        {/* Language Selector */}
+        <div style={{
+          display: 'flex', justifyContent: 'flex-end',
+          marginBottom: '16px', position: 'relative'
+        }}>
+          <button
+            onClick={() => setShowLangPicker(s => !s)}
+            style={{
+              background: '#F5F4FF', border: '1.5px solid #E2E0FF',
+              borderRadius: '10px', padding: '8px 14px',
+              fontSize: '13px', fontWeight: '600', color: '#14123A',
+              cursor: 'pointer', fontFamily: 'inherit',
+              display: 'flex', alignItems: 'center', gap: '7px'
+            }}>
+            <span>{LANGUAGES.find(l => l.code === language)?.flag || '🇬🇧'}</span>
+            <span>{LANGUAGES.find(l => l.code === language)?.native || 'English'}</span>
+            <span style={{ fontSize: '10px', color: '#A09DC8' }}>▼</span>
+          </button>
+
+          {showLangPicker && (
+            <div style={{
+              position: 'absolute', top: '44px', right: 0,
+              background: '#fff', border: '1.5px solid #E2E0FF',
+              borderRadius: '14px', padding: '8px',
+              zIndex: 100, minWidth: '200px',
+              boxShadow: '0 8px 32px rgba(108,71,255,0.15)',
+              maxHeight: '300px', overflowY: 'auto'
+            }}>
+              <div style={{
+                fontSize: '10px', fontWeight: '700', color: '#A09DC8',
+                textTransform: 'uppercase', letterSpacing: '0.8px',
+                padding: '4px 8px 8px'
+              }}>{t('chooseLanguage')}</div>
+              {LANGUAGES.map(lang => (
+                <div
+                  key={lang.code}
+                  onClick={() => {
+                    setLanguage(lang.code)
+                    setShowLangPicker(false)
+                  }}
+                  style={{
+                    display: 'flex', gap: '10px', alignItems: 'center',
+                    padding: '10px 12px', borderRadius: '10px',
+                    cursor: 'pointer', transition: 'background 0.1s',
+                    background: language === lang.code ? '#EEE9FF' : 'transparent'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#F5F4FF'}
+                  onMouseLeave={e => e.currentTarget.style.background =
+                    language === lang.code ? '#EEE9FF' : 'transparent'}
+                >
+                  <span style={{ fontSize: '20px' }}>{lang.flag}</span>
+                  <div>
+                    <div style={{
+                      fontSize: '13px', fontWeight: language === lang.code ? '700' : '500',
+                      color: language === lang.code ? '#6C47FF' : '#14123A'
+                    }}>{lang.native}</div>
+                    <div style={{ fontSize: '10px', color: '#A09DC8' }}>{lang.name}</div>
+                  </div>
+                  {language === lang.code && (
+                    <span style={{
+                      marginLeft: 'auto', color: '#6C47FF', fontSize: '14px'
+                    }}>✓</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <div style={{

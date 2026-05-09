@@ -32,6 +32,8 @@ export default function PostService({ onClose, onPosted }) {
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
+  const [images, setImages] = useState([])
+  const [uploadingImages, setUploadingImages] = useState(false)
   const [form, setForm] = useState({
     title: '',
     description: '',
@@ -69,6 +71,7 @@ export default function PostService({ onClose, onPosted }) {
     try {
       const { error } = await supabase.from('services').insert({
         worker_id: user.id,
+        images: images.length > 0 ? images : null,
         title: form.title,
         description: form.description,
         field: form.field,
@@ -269,6 +272,89 @@ export default function PostService({ onClose, onPosted }) {
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {/* Image Upload */}
+              <div>
+                <label style={labelStyle}>
+                  Portfolio Images
+                  <span style={{
+                    fontSize: '9px', color: '#A09DC8',
+                    fontWeight: '500', marginLeft: '6px',
+                    textTransform: 'none', letterSpacing: 0
+                  }}>Up to 5 images</span>
+                </label>
+                <div style={{
+                  display: 'flex', gap: '8px', flexWrap: 'wrap'
+                }}>
+                  {images.map((url, i) => (
+                    <div key={url} style={{
+                      width: '80px', height: '80px',
+                      borderRadius: '10px', overflow: 'hidden',
+                      border: '1.5px solid #B8A5FF',
+                      position: 'relative', flexShrink: 0
+                    }}>
+                      <img src={url} alt=""
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <button
+                        onClick={() => setImages(imgs => imgs.filter((_, idx) => idx !== i))}
+                        style={{
+                          position: 'absolute', top: '3px', right: '3px',
+                          width: '18px', height: '18px', borderRadius: '50%',
+                          background: 'rgba(20,18,58,0.7)', border: 'none',
+                          color: '#fff', fontSize: '10px', cursor: 'pointer',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontFamily: 'inherit'
+                        }}>×</button>
+                    </div>
+                  ))}
+                  {images.length < 5 && (
+                    <label style={{
+                      width: '80px', height: '80px', borderRadius: '10px',
+                      border: '1.5px dashed #B8A5FF',
+                      background: '#F5F4FF', cursor: 'pointer',
+                      display: 'flex', flexDirection: 'column',
+                      alignItems: 'center', justifyContent: 'center',
+                      gap: '4px', flexShrink: 0
+                    }}>
+                      <span style={{ fontSize: '20px' }}>📷</span>
+                      <span style={{ fontSize: '9px', color: '#A09DC8', fontWeight: '600' }}>
+                        {uploadingImages ? 'Uploading...' : 'Add'}
+                      </span>
+                      <input
+                        type="file" accept="image/*" multiple
+                        style={{ display: 'none' }}
+                        onChange={async (e) => {
+                          const files = Array.from(e.target.files).slice(0, 5 - images.length)
+                          if (!files.length) return
+                          setUploadingImages(true)
+                          const uploaded = []
+                          for (const file of files) {
+                            const fileName = `${user.id}-${Date.now()}-${file.name.replace(/\s/g, '_')}`
+                            const { error } = await supabase.storage
+                              .from('service-images')
+                              .upload(fileName, file, { upsert: true })
+                            if (!error) {
+                              const { data } = supabase.storage
+                                .from('service-images')
+                                .getPublicUrl(fileName)
+                              uploaded.push(data.publicUrl)
+                            }
+                          }
+                          setImages(prev => [...prev, ...uploaded])
+                          setUploadingImages(false)
+                        }}
+                      />
+                    </label>
+                  )}
+                </div>
+                {images.length > 0 && images.length < 3 && (
+                  <div style={{
+                    fontSize: '10px', color: '#FF6B2B', marginTop: '6px'
+                  }}>
+                    💡 Add at least 3 images for better visibility
+                  </div>
+                )}
               </div>
             </div>
           )}

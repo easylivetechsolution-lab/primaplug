@@ -6,6 +6,10 @@ import { supabase } from '../../supabase'
 import PublicProfile from '../PublicProfile'
 import { playMapPing } from '../../utils/sounds'
 import { useAuth } from '../../context/AuthContext'
+import { getCurrency } from '../../data/currencies'
+import { CATEGORIES } from '../../data/categories'
+
+const getCurrencySymbol = (code) => getCurrency(code || 'USD').symbol
 
 // Fix leaflet default icon
 delete L.Icon.Default.prototype._getIconUrl
@@ -138,6 +142,7 @@ export default function MapScreen() {
   const [applying, setApplying] = useState(false)
   const [applied, setApplied] = useState(false)
   const [savedGigIds, setSavedGigIds] = useState(new Set())
+  const [categoryFilter, setCategoryFilter] = useState('All')
 
   useEffect(() => {
     navigator.geolocation.getCurrentPosition(
@@ -176,9 +181,18 @@ export default function MapScreen() {
     }
   }
 
+  const cleanExpiredGigs = async () => {
+    await supabase
+      .from('gigs')
+      .delete()
+      .lt('expires_at', new Date().toISOString())
+      .eq('status', 'open')
+  }
+
   useEffect(() => {
     fetchGigs()
     fetchSavedIds()
+    cleanExpiredGigs()
     const channel = supabase
       .channel('map-gigs')
       .on('postgres_changes', {
@@ -210,7 +224,13 @@ export default function MapScreen() {
     return () => clearInterval(t)
   }, [])
 
-  const nowGigs = gigs.filter(g => g.urgency === 'now')
+  const filteredGigs = gigs.filter(g => {
+    if (categoryFilter === 'All') return true
+    const cat = CATEGORIES.find(c => c.group === categoryFilter)
+    return cat ? cat.fields.includes(g.field) : true
+  })
+
+  const nowGigs = filteredGigs.filter(g => g.urgency === 'now')
 
   return (
     <div style={{
@@ -237,7 +257,7 @@ export default function MapScreen() {
           <Marker position={userPos} icon={createUserPin()} />
 
           {/* Gig pins */}
-          {gigs.map(gig => (
+          {filteredGigs.map(gig => (
             <Marker
               key={gig.id}
               position={[gig.latitude, gig.longitude]}
@@ -266,7 +286,7 @@ export default function MapScreen() {
                   <div style={{
                     fontSize: '14px', fontWeight: '800',
                     color: '#00C48C', marginBottom: '4px'
-                  }}>${gig.pay_min} – ${gig.pay_max}</div>
+                  }}>{getCurrencySymbol(gig.currency)}{gig.pay_min} – {getCurrencySymbol(gig.currency)}{gig.pay_max}</div>
                   <div style={{ fontSize: '11px', color: '#8B8FAF' }}>
                     {gig.location}
                   </div>
@@ -323,6 +343,48 @@ export default function MapScreen() {
           </div>
         </div>
 
+        {/* Category Filter Chips */}
+        <div style={{
+          position: 'absolute', top: '52px', left: '14px',
+          right: '14px', zIndex: 1000,
+          display: 'flex', gap: '7px',
+          overflowX: 'auto', scrollbarWidth: 'none',
+          pointerEvents: 'all'
+        }}>
+          <button
+            onClick={() => setCategoryFilter('All')}
+            style={{
+              background: categoryFilter === 'All'
+                ? 'rgba(108,71,255,0.95)' : 'rgba(13,27,62,0.82)',
+              backdropFilter: 'blur(8px)',
+              border: `1.5px solid ${categoryFilter === 'All' ? '#9B59FF' : 'rgba(255,255,255,0.15)'}`,
+              borderRadius: '20px', padding: '5px 13px',
+              fontSize: '11px', fontWeight: '700',
+              color: '#fff', cursor: 'pointer',
+              whiteSpace: 'nowrap', fontFamily: 'inherit'
+            }}>✦ All</button>
+          {CATEGORIES.map(cat => (
+            <button
+              key={cat.group}
+              onClick={() => setCategoryFilter(
+                categoryFilter === cat.group ? 'All' : cat.group
+              )}
+              style={{
+                background: categoryFilter === cat.group
+                  ? cat.color + 'CC' : 'rgba(13,27,62,0.82)',
+                backdropFilter: 'blur(8px)',
+                border: `1.5px solid ${categoryFilter === cat.group ? cat.color : 'rgba(255,255,255,0.15)'}`,
+                borderRadius: '20px', padding: '5px 13px',
+                fontSize: '11px', fontWeight: '700',
+                color: '#fff', cursor: 'pointer',
+                whiteSpace: 'nowrap', fontFamily: 'inherit',
+                transition: 'all 0.15s'
+              }}>
+              {cat.icon} {cat.group}
+            </button>
+          ))}
+        </div>
+
         {/* Legend — Bottom Right */}
         <div style={{
           position: 'absolute', bottom: '14px', right: '14px',
@@ -376,13 +438,15 @@ export default function MapScreen() {
           }}>See all →</span>
         </div>
 
-        {gigs.length === 0 ? (
+        {filteredGigs.length === 0 ? (
           <div style={{
             padding: '12px 16px 16px',
             textAlign: 'center',
             color: '#A09DC8', fontSize: '13px'
           }}>
-            No live gigs yet — be the first to post one! 🚀
+            {gigs.length === 0
+              ? 'No live gigs yet — be the first to post one! 🚀'
+              : 'No gigs in this category nearby'}
           </div>
         ) : (
           <div style={{
@@ -390,7 +454,7 @@ export default function MapScreen() {
             overflowX: 'auto', padding: '0 16px 16px',
             scrollbarWidth: 'none'
           }}>
-            {gigs.slice(0, 8).map(gig => (
+            {filteredGigs.slice(0, 8).map(gig => (
               <div key={gig.id}
                 onClick={() => { setSelectedGig(gig); setApplied(false) }}
                 style={{
@@ -442,7 +506,7 @@ export default function MapScreen() {
                 }}>{gig.title}</div>
                 <div style={{
                   fontSize: '14px', fontWeight: '800', color: '#00C48C'
-                }}>${gig.pay_min}–${gig.pay_max}</div>
+                }}>{getCurrencySymbol(gig.currency)}{gig.pay_min}–{getCurrencySymbol(gig.currency)}{gig.pay_max}</div>
               </div>
             ))}
           </div>
@@ -678,9 +742,9 @@ export default function MapScreen() {
                     <div style={{
                       fontSize: '24px', fontWeight: '800',
                       color: '#00C48C', letterSpacing: '-0.5px'
-                    }}>${selectedGig.pay_min}</div>
+                    }}>{getCurrencySymbol(selectedGig.currency)}{selectedGig.pay_min}</div>
                     <div style={{ fontSize: '11px', color: '#00C48C', opacity: 0.7 }}>
-                      up to ${selectedGig.pay_max}
+                      up to {getCurrencySymbol(selectedGig.currency)}{selectedGig.pay_max}
                     </div>
                   </div>
                   <div style={{

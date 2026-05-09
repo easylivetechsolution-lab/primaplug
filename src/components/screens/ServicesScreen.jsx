@@ -248,44 +248,87 @@ export default function ServicesScreen() {
                     e.currentTarget.style.boxShadow = 'none'
                   }}>
                   {/* Service Header */}
-                  <div style={{
-                    background: 'linear-gradient(135deg, #EEE9FF, #F8F5FF)',
-                    padding: '20px', position: 'relative'
-                  }}>
+                  {service.images?.[0] ? (
                     <div style={{
-                      fontSize: '32px', marginBottom: '10px'
+                      height: '140px', position: 'relative',
+                      overflow: 'hidden', background: '#F5F4FF'
                     }}>
-                      {CATEGORIES.find(c =>
-                        c.fields.includes(service.field)
-                      )?.icon || '🛠'}
-                    </div>
-                    <div style={{
-                      fontSize: '15px', fontWeight: '700',
-                      color: '#14123A', lineHeight: '1.3',
-                      marginBottom: '6px'
-                    }}>{service.title}</div>
-                    <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
-                      {service.field && (
-                        <span style={{
-                          background: '#fff',
-                          border: '1px solid #E2E0FF',
-                          borderRadius: '5px', padding: '2px 8px',
-                          fontSize: '9px', fontWeight: '600', color: '#8B8FAF'
-                        }}>{service.field}</span>
+                      <img src={service.images[0]} alt=""
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      {service.images.length > 1 && (
+                        <div style={{
+                          position: 'absolute', bottom: '8px', right: '8px',
+                          background: 'rgba(20,18,58,0.65)', backdropFilter: 'blur(4px)',
+                          borderRadius: '6px', padding: '2px 8px',
+                          fontSize: '10px', fontWeight: '700', color: '#fff'
+                        }}>
+                          +{service.images.length - 1} photos
+                        </div>
                       )}
-                      <span style={{
-                        background: service.type === 'digital' ? '#EEE9FF' : '#FFF0E8',
-                        border: `1px solid ${service.type === 'digital' ? '#B8A5FF' : '#FFBC99'}`,
-                        borderRadius: '5px', padding: '2px 8px',
-                        fontSize: '9px', fontWeight: '700',
-                        color: service.type === 'digital' ? '#6C47FF' : '#FF6B2B'
+                      {/* Badges overlay */}
+                      <div style={{
+                        position: 'absolute', bottom: '8px', left: '8px',
+                        display: 'flex', gap: '5px', flexWrap: 'wrap'
                       }}>
-                        {service.type === 'digital' ? '💻 Digital' : '📌 Physical'}
-                      </span>
+                        {service.field && (
+                          <span style={{
+                            background: 'rgba(255,255,255,0.9)',
+                            border: '1px solid #E2E0FF',
+                            borderRadius: '5px', padding: '2px 8px',
+                            fontSize: '9px', fontWeight: '600', color: '#8B8FAF'
+                          }}>{service.field}</span>
+                        )}
+                        <span style={{
+                          background: service.type === 'digital'
+                            ? 'rgba(108,71,255,0.9)' : 'rgba(255,107,43,0.9)',
+                          borderRadius: '5px', padding: '2px 8px',
+                          fontSize: '9px', fontWeight: '700', color: '#fff'
+                        }}>
+                          {service.type === 'digital' ? '💻 Digital' : '📌 Physical'}
+                        </span>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div style={{
+                      background: 'linear-gradient(135deg, #EEE9FF, #F8F5FF)',
+                      padding: '20px', position: 'relative'
+                    }}>
+                      <div style={{ fontSize: '32px', marginBottom: '10px' }}>
+                        {CATEGORIES.find(c => c.fields.includes(service.field))?.icon || '🛠'}
+                      </div>
+                      <div style={{
+                        fontSize: '15px', fontWeight: '700',
+                        color: '#14123A', lineHeight: '1.3', marginBottom: '6px'
+                      }}>{service.title}</div>
+                      <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+                        {service.field && (
+                          <span style={{
+                            background: '#fff', border: '1px solid #E2E0FF',
+                            borderRadius: '5px', padding: '2px 8px',
+                            fontSize: '9px', fontWeight: '600', color: '#8B8FAF'
+                          }}>{service.field}</span>
+                        )}
+                        <span style={{
+                          background: service.type === 'digital' ? '#EEE9FF' : '#FFF0E8',
+                          border: `1px solid ${service.type === 'digital' ? '#B8A5FF' : '#FFBC99'}`,
+                          borderRadius: '5px', padding: '2px 8px',
+                          fontSize: '9px', fontWeight: '700',
+                          color: service.type === 'digital' ? '#6C47FF' : '#FF6B2B'
+                        }}>
+                          {service.type === 'digital' ? '💻 Digital' : '📌 Physical'}
+                        </span>
+                      </div>
+                    </div>
+                  )}
 
                   <div style={{ padding: '14px 16px' }}>
+                    {/* Title (shown here only when there's an image header) */}
+                    {service.images?.[0] && (
+                      <div style={{
+                        fontSize: '15px', fontWeight: '700',
+                        color: '#14123A', lineHeight: '1.3', marginBottom: '8px'
+                      }}>{service.title}</div>
+                    )}
                     {/* Description */}
                     {service.description && (
                       <div style={{

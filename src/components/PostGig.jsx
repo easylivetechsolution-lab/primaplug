@@ -6,6 +6,8 @@ import BrandIcon from './BrandIcon'
 import { playAccepted } from '../utils/sounds'
 import { getProfileCompletion } from '../utils/profileComplete'
 import ProfilePrompt from './ProfilePrompt'
+import { CURRENCIES } from '../data/currencies'
+import { useLanguage } from '../context/LanguageContext'
 
 const URGENCY = [
   { key: 'now', label: 'NOW', color: '#FF3366', bg: '#FFE8EE' },
@@ -16,6 +18,7 @@ const URGENCY = [
 
 export default function PostGig({ onClose }) {
   const { user, profile } = useAuth()
+  const { currency: defaultCurrency } = useLanguage()
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
@@ -34,6 +37,8 @@ const [locationSelected, setLocationSelected] = useState(false)
     urgency: 'now',
     pay_min: '',
     pay_max: '',
+    currency: defaultCurrency || 'USD',
+    duration_days: 1,
     location: '',
     latitude: null,
     longitude: null,
@@ -95,6 +100,9 @@ const [locationSelected, setLocationSelected] = useState(false)
       if (coords) { lat = coords.lat; lng = coords.lng }
     }
 
+    const expiresAt = new Date()
+    expiresAt.setDate(expiresAt.getDate() + form.duration_days)
+
     const { error: err } = await supabase.from('gigs').insert({
   poster_id: user.id,
   title: form.title,
@@ -104,6 +112,9 @@ const [locationSelected, setLocationSelected] = useState(false)
   urgency: form.urgency,
   pay_min: parseFloat(form.pay_min),
   pay_max: parseFloat(form.pay_max),
+  currency: form.currency,
+  duration_days: form.duration_days,
+  expires_at: expiresAt.toISOString(),
   location: form.location,
   latitude: lat,
   longitude: lng,
@@ -294,10 +305,40 @@ const [locationSelected, setLocationSelected] = useState(false)
                   </div>
                 </div>
 
+                {/* Currency + Duration row */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <div>
+                    <label style={labelStyle}>Currency</label>
+                    <select
+                      value={form.currency}
+                      onChange={e => update('currency', e.target.value)}
+                      style={{ ...inputStyle, appearance: 'none', cursor: 'pointer' }}>
+                      {CURRENCIES.map(c => (
+                        <option key={c.code} value={c.code}>
+                          {c.flag} {c.code} ({c.symbol})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Duration</label>
+                    <select
+                      value={form.duration_days}
+                      onChange={e => update('duration_days', parseInt(e.target.value))}
+                      style={{ ...inputStyle, appearance: 'none', cursor: 'pointer' }}>
+                      {[1, 2, 3, 4, 5].map(d => (
+                        <option key={d} value={d}>
+                          {d} day{d !== 1 ? 's' : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
                 {/* Pay Range */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                   <div>
-                    <label style={labelStyle}>Min Pay ($)</label>
+                    <label style={labelStyle}>Min Pay ({CURRENCIES.find(c => c.code === form.currency)?.symbol || '$'})</label>
                     <input
                       style={inputStyle} type="number"
                       placeholder="e.g. 80"
@@ -306,7 +347,7 @@ const [locationSelected, setLocationSelected] = useState(false)
                     />
                   </div>
                   <div>
-                    <label style={labelStyle}>Max Pay ($)</label>
+                    <label style={labelStyle}>Max Pay ({CURRENCIES.find(c => c.code === form.currency)?.symbol || '$'})</label>
                     <input
                       style={inputStyle} type="number"
                       placeholder="e.g. 160"

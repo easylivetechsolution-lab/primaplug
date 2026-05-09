@@ -3,6 +3,7 @@ import { supabase } from '../../supabase'
 import PublicProfile from '../PublicProfile'
 import BrandIcon from '../BrandIcon'
 import { CATEGORIES, ALL_FIELDS } from '../../data/categories'
+import { getCurrency } from '../../data/currencies'
 import { getProfileCompletion } from '../../utils/profileComplete'
 import ProfilePrompt from '../ProfilePrompt'
 import { useAuth } from '../../context/AuthContext'
@@ -13,6 +14,8 @@ const URGENCY = {
   scheduled: { label: 'SCHEDULED', color: '#6C47FF', bg: '#EEE9FF', border: '#B8A5FF' },
   flexible: { label: 'FLEXIBLE', color: '#A09DC8', bg: '#F5F4FF', border: '#E2E0FF' },
 }
+
+const getCurrencySymbol = (code) => getCurrency(code || 'USD').symbol
 
 export default function FeedScreen() {
   const { profile, user } = useAuth()
@@ -29,9 +32,18 @@ export default function FeedScreen() {
   const [showProfilePrompt, setShowProfilePrompt] = useState(false)
   const [savedGigIds, setSavedGigIds] = useState(new Set())
 
+  const cleanExpiredGigs = async () => {
+    await supabase
+      .from('gigs')
+      .delete()
+      .lt('expires_at', new Date().toISOString())
+      .eq('status', 'open')
+  }
+
   useEffect(() => {
     fetchGigs()
     fetchSavedIds()
+    cleanExpiredGigs()
     const channel = supabase
       .channel('feed-channel')
       .on('postgres_changes', {
@@ -194,7 +206,7 @@ export default function FeedScreen() {
                 }}>{gig.title}</div>
                 <div style={{
                   fontSize: '14px', fontWeight: '800', color: '#00C48C'
-                }}>${gig.pay_min}+</div>
+                }}>{getCurrencySymbol(gig.currency)}{gig.pay_min}+</div>
               </div>
             ))}
           </div>
@@ -458,9 +470,9 @@ export default function FeedScreen() {
                   <div style={{
                     fontSize: '19px', fontWeight: '800',
                     color: '#00C48C', letterSpacing: '-0.5px'
-                  }}>${gig.pay_min}</div>
+                  }}>{getCurrencySymbol(gig.currency)}{gig.pay_min}</div>
                   <div style={{ fontSize: '10px', color: '#A09DC8' }}>
-                    –${gig.pay_max}
+                    –{getCurrencySymbol(gig.currency)}{gig.pay_max}
                   </div>
                   <button
                     onClick={(e) => toggleSave(e, gig.id)}
@@ -670,9 +682,9 @@ export default function FeedScreen() {
                     <div style={{
                       fontSize: '24px', fontWeight: '800',
                       color: '#00C48C', letterSpacing: '-0.5px'
-                    }}>${selectedGig.pay_min}</div>
+                    }}>{getCurrencySymbol(selectedGig.currency)}{selectedGig.pay_min}</div>
                     <div style={{ fontSize: '11px', color: '#00C48C', opacity: 0.7 }}>
-                      up to ${selectedGig.pay_max}
+                      up to {getCurrencySymbol(selectedGig.currency)}{selectedGig.pay_max}
                     </div>
                   </div>
                   <div style={{

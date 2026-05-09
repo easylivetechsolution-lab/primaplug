@@ -2,9 +2,15 @@ import { useState } from 'react'
 import { supabase } from '../../supabase'
 import { useAuth } from '../../context/AuthContext'
 import BrandIcon from '../BrandIcon'
+import { useLanguage } from '../../context/LanguageContext'
+import { LANGUAGES } from '../../data/languages'
+import { CURRENCIES } from '../../data/currencies'
 
 export default function SettingsScreen({ onLogout }) {
   const { user } = useAuth()
+  const { language, setLanguage, currency, setCurrency, t } = useLanguage()
+  const [showLangPicker, setShowLangPicker] = useState(false)
+  const [showCurrencyPicker, setShowCurrencyPicker] = useState(false)
   const [notifications, setNotifications] = useState({
     applications: true,
     messages: true,
@@ -207,6 +213,158 @@ export default function SettingsScreen({ onLogout }) {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Language & Currency */}
+      <div style={{
+        background: '#fff', border: '1.5px solid #E2E0FF',
+        borderRadius: '16px', padding: '16px 18px',
+        marginBottom: '14px'
+      }}>
+        <div style={{
+          fontSize: '11px', fontWeight: '700', color: '#A09DC8',
+          textTransform: 'uppercase', letterSpacing: '1px',
+          marginBottom: '14px'
+        }}>Language & Currency</div>
+
+        {/* Language selector */}
+        <div style={{
+          display: 'flex', justifyContent: 'space-between',
+          alignItems: 'center', padding: '12px 0',
+          borderBottom: '1px solid #F5F4FF',
+          position: 'relative'
+        }}>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            <span style={{ fontSize: '20px' }}>🌍</span>
+            <div>
+              <div style={{ fontSize: '13px', fontWeight: '600', color: '#14123A' }}>
+                {t('language')}
+              </div>
+              <div style={{ fontSize: '11px', color: '#A09DC8' }}>App display language</div>
+            </div>
+          </div>
+          <button
+            onClick={() => { setShowLangPicker(s => !s); setShowCurrencyPicker(false) }}
+            style={{
+              background: '#F5F4FF', border: '1.5px solid #E2E0FF',
+              borderRadius: '10px', padding: '7px 12px',
+              fontSize: '13px', fontWeight: '600', color: '#14123A',
+              cursor: 'pointer', fontFamily: 'inherit',
+              display: 'flex', alignItems: 'center', gap: '7px'
+            }}>
+            <span>{LANGUAGES.find(l => l.code === language)?.flag}</span>
+            <span>{LANGUAGES.find(l => l.code === language)?.native}</span>
+            <span style={{ fontSize: '10px', color: '#A09DC8' }}>▼</span>
+          </button>
+
+          {showLangPicker && (
+            <div style={{
+              position: 'absolute', top: '50px', right: 0,
+              background: '#fff', border: '1.5px solid #E2E0FF',
+              borderRadius: '14px', padding: '8px',
+              zIndex: 100, minWidth: '220px',
+              boxShadow: '0 8px 32px rgba(108,71,255,0.15)',
+              maxHeight: '280px', overflowY: 'auto'
+            }}>
+              {LANGUAGES.map(lang => (
+                <div
+                  key={lang.code}
+                  onClick={() => { setLanguage(lang.code); setShowLangPicker(false) }}
+                  style={{
+                    display: 'flex', gap: '10px', alignItems: 'center',
+                    padding: '10px 12px', borderRadius: '10px',
+                    cursor: 'pointer',
+                    background: language === lang.code ? '#EEE9FF' : 'transparent'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#F5F4FF'}
+                  onMouseLeave={e => e.currentTarget.style.background =
+                    language === lang.code ? '#EEE9FF' : 'transparent'}
+                >
+                  <span style={{ fontSize: '20px' }}>{lang.flag}</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{
+                      fontSize: '13px', fontWeight: language === lang.code ? '700' : '500',
+                      color: language === lang.code ? '#6C47FF' : '#14123A'
+                    }}>{lang.native}</div>
+                    <div style={{ fontSize: '10px', color: '#A09DC8' }}>{lang.name}</div>
+                  </div>
+                  {language === lang.code && (
+                    <span style={{ color: '#6C47FF', fontSize: '14px' }}>✓</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Currency selector */}
+        <div style={{
+          display: 'flex', justifyContent: 'space-between',
+          alignItems: 'center', padding: '12px 0',
+          position: 'relative'
+        }}>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            <span style={{ fontSize: '20px' }}>💱</span>
+            <div>
+              <div style={{ fontSize: '13px', fontWeight: '600', color: '#14123A' }}>
+                {t('currency')}
+              </div>
+              <div style={{ fontSize: '11px', color: '#A09DC8' }}>Default display currency</div>
+            </div>
+          </div>
+          <button
+            onClick={() => { setShowCurrencyPicker(s => !s); setShowLangPicker(false) }}
+            style={{
+              background: '#F5F4FF', border: '1.5px solid #E2E0FF',
+              borderRadius: '10px', padding: '7px 12px',
+              fontSize: '13px', fontWeight: '600', color: '#14123A',
+              cursor: 'pointer', fontFamily: 'inherit',
+              display: 'flex', alignItems: 'center', gap: '7px'
+            }}>
+            <span>{CURRENCIES.find(c => c.code === currency)?.flag}</span>
+            <span>{currency}</span>
+            <span style={{ fontSize: '10px', color: '#A09DC8' }}>▼</span>
+          </button>
+
+          {showCurrencyPicker && (
+            <div style={{
+              position: 'absolute', top: '50px', right: 0,
+              background: '#fff', border: '1.5px solid #E2E0FF',
+              borderRadius: '14px', padding: '8px',
+              zIndex: 100, minWidth: '240px',
+              boxShadow: '0 8px 32px rgba(108,71,255,0.15)',
+              maxHeight: '280px', overflowY: 'auto'
+            }}>
+              {CURRENCIES.map(curr => (
+                <div
+                  key={curr.code}
+                  onClick={() => { setCurrency(curr.code); setShowCurrencyPicker(false) }}
+                  style={{
+                    display: 'flex', gap: '10px', alignItems: 'center',
+                    padding: '10px 12px', borderRadius: '10px',
+                    cursor: 'pointer',
+                    background: currency === curr.code ? '#EEE9FF' : 'transparent'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#F5F4FF'}
+                  onMouseLeave={e => e.currentTarget.style.background =
+                    currency === curr.code ? '#EEE9FF' : 'transparent'}
+                >
+                  <span style={{ fontSize: '20px' }}>{curr.flag}</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{
+                      fontSize: '13px', fontWeight: currency === curr.code ? '700' : '500',
+                      color: currency === curr.code ? '#6C47FF' : '#14123A'
+                    }}>{curr.code} — {curr.symbol}</div>
+                    <div style={{ fontSize: '10px', color: '#A09DC8' }}>{curr.name}</div>
+                  </div>
+                  {currency === curr.code && (
+                    <span style={{ color: '#6C47FF', fontSize: '14px' }}>✓</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Save button */}

@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../supabase'
 import { useAuth } from '../../context/AuthContext'
+import { getCurrency } from '../../data/currencies'
+import EditGig from '../EditGig'
+
+const getCurrencySymbol = (code) => getCurrency(code || 'USD').symbol
 import PublicProfile from '../PublicProfile'
 import ReviewModal from '../ReviewModal'
 import ReceiptFlow from '../ReceiptFlow'
@@ -172,6 +176,7 @@ export default function MyGigsScreen() {
   const [trackingGig, setTrackingGig] = useState(null)
   const [trackingRole, setTrackingRole] = useState('worker')
   const [trackingWorker, setTrackingWorker] = useState(null)
+  const [editingGig, setEditingGig] = useState(null)
 
   useEffect(() => {
     fetchPostedGigs()
@@ -397,9 +402,20 @@ export default function MyGigsScreen() {
                     <div style={{ textAlign: 'right', flexShrink: 0, paddingLeft: '10px' }}>
                       <div style={{
                         fontSize: '15px', fontWeight: '800', color: '#00C48C'
-                      }}>${gig.pay_min}–${gig.pay_max}</div>
+                      }}>{getCurrencySymbol(gig.currency)}{gig.pay_min}–{getCurrencySymbol(gig.currency)}{gig.pay_max}</div>
                       <div style={{ fontSize: '10px', color: '#A09DC8', marginTop: '2px' }}>
                         {new Date(gig.created_at).toLocaleDateString()}
+                        {gig.expires_at && (
+                          <span style={{
+                            marginLeft: '6px',
+                            color: new Date(gig.expires_at) < new Date(Date.now() + 86400000)
+                              ? '#FF3366' : '#A09DC8'
+                          }}>
+                            · Expires {new Date(gig.expires_at).toLocaleDateString('en-US', {
+                              month: 'short', day: 'numeric'
+                            })}
+                          </span>
+                        )}
                       </div>
                       <div style={{ fontSize: '11px', color: '#A09DC8', marginTop: '4px' }}>
                         {expandedGigId === gig.id ? '▲' : '▼'}
@@ -427,7 +443,7 @@ export default function MyGigsScreen() {
                           }}>Pay Range</div>
                           <div style={{
                             fontSize: '15px', fontWeight: '800', color: '#00C48C'
-                          }}>${gig.pay_min}–${gig.pay_max}</div>
+                          }}>{getCurrencySymbol(gig.currency)}{gig.pay_min}–{getCurrencySymbol(gig.currency)}{gig.pay_max}</div>
                         </div>
                         <div style={{
                           background: '#fff', borderRadius: '10px', padding: '10px'
@@ -540,15 +556,24 @@ export default function MyGigsScreen() {
                   <div style={{
                     borderTop: '1px solid #E2E0FF',
                     padding: '12px 18px',
-                    display: 'flex', justifyContent: 'flex-end'
+                    display: 'flex', gap: '8px', justifyContent: 'flex-end'
                   }}>
+                    <button
+                      onClick={() => setEditingGig(gig)}
+                      style={{
+                        background: '#EEE9FF', border: '1.5px solid #B8A5FF',
+                        borderRadius: '10px', padding: '10px 14px',
+                        fontSize: '13px', fontWeight: '700',
+                        color: '#6C47FF', cursor: 'pointer', fontFamily: 'inherit'
+                      }}>✏️ Edit</button>
                     <button
                       onClick={() => handleDeleteGig(gig.id)}
                       style={{
                         background: '#FFE8EE', border: '1.5px solid #FF99B3',
                         borderRadius: '10px', padding: '10px 14px',
-                        fontSize: '14px', cursor: 'pointer', fontFamily: 'inherit'
-                      }}>🗑 Delete Gig</button>
+                        fontSize: '13px', fontWeight: '700',
+                        color: '#FF3366', cursor: 'pointer', fontFamily: 'inherit'
+                      }}>🗑 Delete</button>
                   </div>
                 </div>
               ))}
@@ -607,7 +632,7 @@ export default function MyGigsScreen() {
                     <div style={{
                       fontSize: '15px', fontWeight: '800', color: '#00C48C'
                     }}>
-                      ${app.gigs?.pay_min}–${app.gigs?.pay_max}
+                      {getCurrencySymbol(app.gigs?.currency)}{app.gigs?.pay_min}–{getCurrencySymbol(app.gigs?.currency)}{app.gigs?.pay_max}
                     </div>
                   </div>
                   <div style={{ fontSize: '11px', color: '#8B8FAF' }}>
@@ -709,6 +734,18 @@ export default function MyGigsScreen() {
           onClose={() => {
             setShowTracking(false)
             setTrackingGig(null)
+          }}
+        />
+      )}
+
+      {/* Edit Gig Modal */}
+      {editingGig && (
+        <EditGig
+          gig={editingGig}
+          onClose={() => setEditingGig(null)}
+          onSaved={() => {
+            setEditingGig(null)
+            fetchPostedGigs()
           }}
         />
       )}

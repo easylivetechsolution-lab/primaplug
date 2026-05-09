@@ -3,6 +3,9 @@ import { supabase } from '../../supabase'
 import { useAuth } from '../../context/AuthContext'
 import PublicProfile from '../PublicProfile'
 import BrandIcon from '../BrandIcon'
+import { getCurrency } from '../../data/currencies'
+
+const getCurrencySymbol = (code) => getCurrency(code || 'USD').symbol
 
 export default function SavedScreen() {
   const { user } = useAuth()
@@ -234,7 +237,7 @@ export default function SavedScreen() {
                     }}>
                       <div style={{
                         fontSize: '16px', fontWeight: '800', color: '#00C48C'
-                      }}>${gig.pay_min}–${gig.pay_max}</div>
+                      }}>{getCurrencySymbol(gig.currency)}{gig.pay_min}–{getCurrencySymbol(gig.currency)}{gig.pay_max}</div>
                       <button
                         onClick={(e) => {
                           e.stopPropagation()

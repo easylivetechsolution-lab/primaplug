@@ -14,6 +14,8 @@ export default function ServiceDetail({ service, onClose, onViewProfile }) {
   const [ordering, setOrdering] = useState(false)
   const [ordered, setOrdered] = useState(false)
   const [requirements, setRequirements] = useState('')
+  const [currentImage, setCurrentImage] = useState(0)
+  const [lightbox, setLightbox] = useState(false)
 
   const packages = [
     service.basic_price && {
@@ -132,6 +134,82 @@ export default function ServiceDetail({ service, onClose, onViewProfile }) {
             </div>
           ) : (
             <>
+              {/* Image Gallery */}
+              {service.images && service.images.length > 0 && (
+                <div style={{ marginBottom: '16px' }}>
+                  {/* Main image */}
+                  <div style={{
+                    position: 'relative', width: '100%',
+                    paddingTop: '56.25%', borderRadius: '14px',
+                    overflow: 'hidden', cursor: 'pointer',
+                    background: '#F5F4FF'
+                  }} onClick={() => setLightbox(true)}>
+                    <img
+                      src={service.images[currentImage]}
+                      alt=""
+                      style={{
+                        position: 'absolute', inset: 0,
+                        width: '100%', height: '100%', objectFit: 'cover',
+                        animation: 'fadeInScale 0.25s ease'
+                      }}
+                    />
+                    {/* Counter badge */}
+                    <div style={{
+                      position: 'absolute', bottom: '10px', right: '10px',
+                      background: 'rgba(20,18,58,0.7)', backdropFilter: 'blur(4px)',
+                      borderRadius: '8px', padding: '3px 9px',
+                      fontSize: '11px', fontWeight: '700', color: '#fff'
+                    }}>
+                      {currentImage + 1}/{service.images.length}
+                    </div>
+                    {/* Nav arrows */}
+                    {service.images.length > 1 && (
+                      <>
+                        <button onClick={(e) => { e.stopPropagation(); setCurrentImage(i => (i - 1 + service.images.length) % service.images.length) }}
+                          style={{
+                            position: 'absolute', left: '8px', top: '50%',
+                            transform: 'translateY(-50%)', background: 'rgba(20,18,58,0.6)',
+                            border: 'none', borderRadius: '50%', width: '32px', height: '32px',
+                            color: '#fff', fontSize: '14px', cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center'
+                          }}>‹</button>
+                        <button onClick={(e) => { e.stopPropagation(); setCurrentImage(i => (i + 1) % service.images.length) }}
+                          style={{
+                            position: 'absolute', right: '8px', top: '50%',
+                            transform: 'translateY(-50%)', background: 'rgba(20,18,58,0.6)',
+                            border: 'none', borderRadius: '50%', width: '32px', height: '32px',
+                            color: '#fff', fontSize: '14px', cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center'
+                          }}>›</button>
+                      </>
+                    )}
+                  </div>
+                  {/* Thumbnail strip */}
+                  {service.images.length > 1 && (
+                    <div style={{
+                      display: 'flex', gap: '6px', marginTop: '8px',
+                      overflowX: 'auto', scrollbarWidth: 'none'
+                    }}>
+                      {service.images.map((img, i) => (
+                        <div
+                          key={i}
+                          onClick={() => setCurrentImage(i)}
+                          style={{
+                            width: '52px', height: '52px', borderRadius: '8px',
+                            overflow: 'hidden', flexShrink: 0, cursor: 'pointer',
+                            border: `2px solid ${currentImage === i ? '#6C47FF' : '#E2E0FF'}`,
+                            opacity: currentImage === i ? 1 : 0.65,
+                            transition: 'all 0.15s'
+                          }}>
+                          <img src={img} alt=""
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Worker info */}
               <div style={{
                 display: 'flex', gap: '12px',
@@ -339,8 +417,88 @@ export default function ServiceDetail({ service, onClose, onViewProfile }) {
             from { opacity: 0; transform: translateY(24px); }
             to { opacity: 1; transform: translateY(0); }
           }
+          @keyframes fadeInScale {
+            from { opacity: 0; transform: scale(1.03); }
+            to { opacity: 1; transform: scale(1); }
+          }
         `}</style>
       </div>
+
+      {/* Lightbox */}
+      {lightbox && service.images && service.images.length > 0 && (
+        <div
+          onClick={() => setLightbox(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 99999,
+            background: 'rgba(10,8,30,0.96)',
+            display: 'flex', alignItems: 'center',
+            justifyContent: 'center', flexDirection: 'column'
+          }}>
+          <button
+            onClick={() => setLightbox(false)}
+            style={{
+              position: 'absolute', top: '16px', right: '16px',
+              background: 'rgba(255,255,255,0.1)', border: 'none',
+              borderRadius: '50%', width: '40px', height: '40px',
+              color: '#fff', fontSize: '20px', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center'
+            }}>×</button>
+
+          <div onClick={e => e.stopPropagation()} style={{
+            maxWidth: '90vw', maxHeight: '80vh', position: 'relative'
+          }}>
+            <img
+              src={service.images[currentImage]}
+              alt=""
+              style={{
+                maxWidth: '90vw', maxHeight: '80vh',
+                objectFit: 'contain', borderRadius: '12px',
+                animation: 'fadeInScale 0.2s ease'
+              }}
+            />
+            {service.images.length > 1 && (
+              <>
+                <button onClick={() => setCurrentImage(i => (i - 1 + service.images.length) % service.images.length)}
+                  style={{
+                    position: 'absolute', left: '-48px', top: '50%',
+                    transform: 'translateY(-50%)', background: 'rgba(255,255,255,0.12)',
+                    border: 'none', borderRadius: '50%', width: '40px', height: '40px',
+                    color: '#fff', fontSize: '20px', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                  }}>‹</button>
+                <button onClick={() => setCurrentImage(i => (i + 1) % service.images.length)}
+                  style={{
+                    position: 'absolute', right: '-48px', top: '50%',
+                    transform: 'translateY(-50%)', background: 'rgba(255,255,255,0.12)',
+                    border: 'none', borderRadius: '50%', width: '40px', height: '40px',
+                    color: '#fff', fontSize: '20px', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                  }}>›</button>
+              </>
+            )}
+          </div>
+
+          {/* Dot nav */}
+          {service.images.length > 1 && (
+            <div style={{
+              display: 'flex', gap: '8px', marginTop: '20px'
+            }}>
+              {service.images.map((_, i) => (
+                <div
+                  key={i}
+                  onClick={e => { e.stopPropagation(); setCurrentImage(i) }}
+                  style={{
+                    width: currentImage === i ? '24px' : '8px',
+                    height: '8px', borderRadius: '4px',
+                    background: currentImage === i ? '#6C47FF' : 'rgba(255,255,255,0.3)',
+                    cursor: 'pointer', transition: 'all 0.2s'
+                  }}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
