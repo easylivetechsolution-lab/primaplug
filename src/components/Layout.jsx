@@ -91,6 +91,7 @@ export default function Layout() {
   ]
 
   const mobileMoreItems = [
+    { key: 'discover', icon: 'discover', label: 'Discover', action: () => setScreen('discover') },
     { key: 'search', icon: 'search', label: 'Search', action: () => setShowSearch(true) },
     { key: 'saved', icon: 'saved', label: 'Saved Gigs', action: () => setScreen('saved') },
     { key: 'stats', icon: 'stats', label: 'My Stats', action: () => setScreen('stats') },
@@ -620,7 +621,7 @@ export default function Layout() {
         flexShrink: 0,
         zIndex: 50
       }} className="mobile-nav">
-        {navItems.filter(i => i.key !== 'services' && i.key !== 'profile').map(item => (
+        {navItems.filter(i => i.key !== 'services' && i.key !== 'profile' && i.key !== 'discover').map(item => (
           <button key={item.key} onClick={() => { setScreen(item.key); setShowMobileMore(false) }}
             style={{
               background: 'transparent',
@@ -633,7 +634,7 @@ export default function Layout() {
               cursor: 'pointer',
               fontFamily: 'inherit'
             }}>
-            <BrandIcon name={item.icon} size={30} active={screen === item.key} />
+            <BrandIcon name={item.icon} size={34} active={screen === item.key} />
             <span style={{
               fontSize: '9px',
               fontWeight: screen === item.key ? '700' : '500',
@@ -653,10 +654,7 @@ export default function Layout() {
             flexDirection: 'column', alignItems: 'center',
             gap: '3px', cursor: 'pointer', fontFamily: 'inherit'
           }}>
-          <span style={{
-            fontSize: '20px',
-            filter: screen === 'services' ? 'none' : 'grayscale(1) opacity(0.4)'
-          }}>🛠</span>
+          <BrandIcon name="services" size={34} active={screen === 'services'} />
           <span style={{
             fontSize: '9px', fontWeight: screen === 'services' ? '700' : '500',
             color: screen === 'services' ? '#6C47FF' : '#A09DC8'
@@ -674,7 +672,7 @@ export default function Layout() {
             flexDirection: 'column', alignItems: 'center',
             gap: '3px', cursor: 'pointer', fontFamily: 'inherit'
           }}>
-          <BrandIcon name="profile" size={30} active={screen === 'profile'} />
+          <BrandIcon name="profile" size={34} active={screen === 'profile'} />
           <span style={{
             fontSize: '9px', fontWeight: screen === 'profile' ? '700' : '500',
             color: screen === 'profile' ? '#6C47FF' : '#A09DC8'
