@@ -309,7 +309,7 @@ export default function MapScreen() {
         {/* Live Stats Overlay — Top Left */}
         <div style={{
           position: 'absolute', top: '14px', left: '14px',
-          display: 'flex', gap: '8px', zIndex: 1000
+          display: 'flex', gap: '8px', zIndex: 400
         }}>
           <div style={{
             background: 'rgba(13,27,62,0.88)',
@@ -346,7 +346,7 @@ export default function MapScreen() {
         {/* Category Filter Chips */}
         <div style={{
           position: 'absolute', top: '52px', left: '14px',
-          right: '14px', zIndex: 1000,
+          right: '14px', zIndex: 400,
           display: 'flex', gap: '7px',
           overflowX: 'auto', scrollbarWidth: 'none',
           pointerEvents: 'all'
@@ -389,7 +389,7 @@ export default function MapScreen() {
         <div style={{
           position: 'absolute', bottom: '14px', right: '14px',
           display: 'flex', flexDirection: 'column',
-          gap: '5px', zIndex: 1000
+          gap: '5px', zIndex: 400
         }}>
           {[
             ['#FF3366', 'Urgent NOW'],
