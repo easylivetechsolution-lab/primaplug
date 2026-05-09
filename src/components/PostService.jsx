@@ -325,24 +325,52 @@ export default function PostService({ onClose, onPosted }) {
                         type="file" accept="image/*" multiple
                         style={{ display: 'none' }}
                         onChange={async (e) => {
-                          const files = Array.from(e.target.files).slice(0, 5 - images.length)
-                          if (!files.length) return
+                          const files = Array.from(e.target.files)
+                          if (files.length === 0) return
+
+                          const remaining = 5 - images.length
+                          const toUpload = files.slice(0, remaining)
                           setUploadingImages(true)
+
                           const uploaded = []
-                          for (const file of files) {
-                            const fileName = `${user.id}-${Date.now()}-${file.name.replace(/\s/g, '_')}`
-                            const { error } = await supabase.storage
-                              .from('service-images')
-                              .upload(fileName, file, { upsert: true })
-                            if (!error) {
-                              const { data } = supabase.storage
+                          for (const file of toUpload) {
+                            try {
+                              const ext = file.name.split('.').pop().toLowerCase()
+                              const fileName = `service-${user.id}-${Date.now()}-${Math.round(Math.random() * 10000)}.${ext}`
+
+                              console.log('Uploading:', fileName)
+
+                              const { data, error } = await supabase.storage
+                                .from('service-images')
+                                .upload(fileName, file, {
+                                  cacheControl: '3600',
+                                  upsert: false,
+                                  contentType: file.type
+                                })
+
+                              if (error) {
+                                console.error('Upload error:', error)
+                                alert(`Upload failed: ${error.message}`)
+                                continue
+                              }
+
+                              console.log('Upload success:', data)
+
+                              const { data: urlData } = supabase.storage
                                 .from('service-images')
                                 .getPublicUrl(fileName)
-                              uploaded.push(data.publicUrl)
+
+                              console.log('Public URL:', urlData.publicUrl)
+                              uploaded.push(urlData.publicUrl)
+
+                            } catch (err) {
+                              console.error('Unexpected error:', err)
                             }
                           }
+
                           setImages(prev => [...prev, ...uploaded])
                           setUploadingImages(false)
+                          e.target.value = ''
                         }}
                       />
                     </label>

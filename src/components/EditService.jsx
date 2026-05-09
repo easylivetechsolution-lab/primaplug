@@ -58,26 +58,48 @@ export default function EditService({ service, onClose, onUpdated }) {
 
   const handleImageUpload = async (e) => {
     const files = Array.from(e.target.files)
+    if (files.length === 0) return
+
     const remaining = 5 - form.images.length
     const toUpload = files.slice(0, remaining)
-    if (toUpload.length === 0) return
     setUploadingImages(true)
+
     const uploaded = []
     for (const file of toUpload) {
-      const ext = file.name.split('.').pop()
-      const name = `${user.id}-${Date.now()}-${Math.random()}.${ext}`
-      const { error } = await supabase.storage
-        .from('service-images')
-        .upload(name, file, { upsert: true })
-      if (!error) {
-        const { data } = supabase.storage
+      try {
+        const ext = file.name.split('.').pop().toLowerCase()
+        const fileName = `service-${user.id}-${Date.now()}-${Math.round(Math.random() * 10000)}.${ext}`
+
+        console.log('Uploading:', fileName)
+
+        const { data, error } = await supabase.storage
           .from('service-images')
-          .getPublicUrl(name)
-        uploaded.push(data.publicUrl)
+          .upload(fileName, file, {
+            cacheControl: '3600',
+            upsert: false,
+            contentType: file.type
+          })
+
+        if (error) {
+          console.error('Upload error:', error)
+          alert(`Upload failed: ${error.message}`)
+          continue
+        }
+
+        const { data: urlData } = supabase.storage
+          .from('service-images')
+          .getPublicUrl(fileName)
+
+        uploaded.push(urlData.publicUrl)
+
+      } catch (err) {
+        console.error('Unexpected error:', err)
       }
     }
+
     update('images', [...form.images, ...uploaded])
     setUploadingImages(false)
+    e.target.value = ''
   }
 
   const removeImage = (index) => {

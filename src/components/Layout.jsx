@@ -619,7 +619,7 @@ export default function Layout() {
         flexShrink: 0,
         zIndex: 50
       }} className="mobile-nav">
-        {navItems.filter(i => i.key !== 'services').map(item => (
+        {navItems.filter(i => i.key !== 'services' && i.key !== 'profile').map(item => (
           <button key={item.key} onClick={() => { setScreen(item.key); setShowMobileMore(false) }}
             style={{
               background: 'transparent',
@@ -643,6 +643,7 @@ export default function Layout() {
             )}
           </button>
         ))}
+        {/* Services — before Profile */}
         <button
           onClick={() => setScreen('services')}
           style={{
@@ -659,29 +660,52 @@ export default function Layout() {
             fontSize: '9px', fontWeight: screen === 'services' ? '700' : '500',
             color: screen === 'services' ? '#6C47FF' : '#A09DC8'
           }}>Services</span>
+          {screen === 'services' && (
+            <div style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#6C47FF' }} />
+          )}
+        </button>
+        {/* Profile — last */}
+        <button
+          onClick={() => { setScreen('profile'); setShowMobileMore(false) }}
+          style={{
+            background: 'transparent', border: 'none',
+            padding: '6px 10px', display: 'flex',
+            flexDirection: 'column', alignItems: 'center',
+            gap: '3px', cursor: 'pointer', fontFamily: 'inherit'
+          }}>
+          <BrandIcon name="profile" size={30} active={screen === 'profile'} />
+          <span style={{
+            fontSize: '9px', fontWeight: screen === 'profile' ? '700' : '500',
+            color: screen === 'profile' ? '#6C47FF' : '#A09DC8'
+          }}>Profile</span>
+          {screen === 'profile' && (
+            <div style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#6C47FF' }} />
+          )}
         </button>
       </div>
 
-      {/* MOBILE FAB */}
-      <button onClick={() => setShowPost(true)}
-        style={{
-          position: 'fixed',
-          bottom: '88px',
-          right: '16px',
-          zIndex: 60,
-          width: '52px', height: '52px',
-          borderRadius: '50%',
-          background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
-          border: 'none',
-          cursor: 'pointer',
-          boxShadow: '0 4px 20px rgba(108,71,255,0.5)',
-          display: 'none',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontFamily: 'inherit'
-        }} className="mobile-fab">
-        <BrandIcon name="post" size={36} />
-      </button>
+      {/* MOBILE FAB — hidden on chat screen to avoid covering the input */}
+      {screen !== 'chat' && (
+        <button onClick={() => setShowPost(true)}
+          style={{
+            position: 'fixed',
+            bottom: '88px',
+            right: '16px',
+            zIndex: 60,
+            width: '52px', height: '52px',
+            borderRadius: '50%',
+            background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+            border: 'none',
+            cursor: 'pointer',
+            boxShadow: '0 4px 20px rgba(108,71,255,0.5)',
+            display: 'none',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontFamily: 'inherit'
+          }} className="mobile-fab">
+          <BrandIcon name="post" size={36} />
+        </button>
+      )}
 
       {/* POST GIG MODAL */}
       {showPost && <PostGig onClose={() => setShowPost(false)} />}

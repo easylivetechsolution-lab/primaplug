@@ -14,6 +14,13 @@ export const CATEGORIES = [
       'Data & Analytics',
       'AI & Automation',
       'DevOps & Cloud',
+      'Database Administration',
+      'QA & Testing',
+      'Game Development',
+      'Blockchain & Web3',
+      'No-Code / Low-Code',
+      'SEO & Digital Marketing',
+      'Social Media Management',
     ]
   },
   {
@@ -31,6 +38,12 @@ export const CATEGORIES = [
       'Illustration & Art',
       'Content Creation',
       'Copywriting & Editing',
+      'Brand Identity & Logo',
+      'Podcast Production',
+      '3D Modeling & Rendering',
+      'Social Media Content',
+      'Voice Over',
+      'Scriptwriting',
     ]
   },
   {
@@ -48,6 +61,12 @@ export const CATEGORIES = [
       'Virtual Assistant',
       'Customer Support',
       'Sales & Marketing',
+      'HR & Recruitment',
+      'E-commerce Management',
+      'Market Research',
+      'Translation & Localization',
+      'Tax & Compliance',
+      'Business Plan Writing',
     ]
   },
   {
@@ -63,6 +82,11 @@ export const CATEGORIES = [
       'Life Coaching',
       'Sports Coaching',
       'Skills Training',
+      'Music Lessons',
+      'Art & Craft Classes',
+      'Exam Preparation',
+      'Online Course Creation',
+      'Child Development',
     ]
   },
   {
@@ -80,6 +104,13 @@ export const CATEGORIES = [
       'Solar & Renewable Energy',
       'Welding & Fabrication',
       'Auto Mechanics',
+      'Painting & Decorating',
+      'Tiling & Flooring',
+      'Roofing',
+      'Appliance Repair',
+      'Generator & Power Systems',
+      'Borehole & Water Systems',
+      'Glazing & Windows',
     ]
   },
   {
@@ -97,6 +128,12 @@ export const CATEGORIES = [
       'Pest Control',
       'Security Services',
       'Personal Shopping',
+      'Laundry & Ironing',
+      'Childcare & Nannying',
+      'Elder Care',
+      'Pet Care & Walking',
+      'Fumigation',
+      'Home Staging',
     ]
   },
   {
@@ -114,6 +151,11 @@ export const CATEGORIES = [
       'Massage Therapy',
       'Beauty & Makeup',
       'Barbering & Hair',
+      'Yoga & Meditation',
+      'Dental Care',
+      'Optometry',
+      'Pharmacy & Drug Dispensing',
+      'First Aid & Emergency',
     ]
   },
   {
@@ -129,6 +171,12 @@ export const CATEGORIES = [
       'MC & Public Speaking',
       'Waitering & Service',
       'Photography & Filming',
+      'Event Decoration',
+      'Makeup Artist',
+      'Hype Man & Host',
+      'Balloon & Decor',
+      'Band & Live Music',
+      'Security & Ushering',
     ]
   },
   {
@@ -143,6 +191,11 @@ export const CATEGORIES = [
       'Freight & Haulage',
       'Errand Running',
       'Warehousing',
+      'Motorcycle Dispatch',
+      'Airport Transfers',
+      'Moving Assistance',
+      'Last-Mile Delivery',
+      'Cold Chain Logistics',
     ]
   },
   {
