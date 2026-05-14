@@ -228,20 +228,65 @@ export default function CommissionScreen() {
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <button
                     onClick={() => {
-                      setSelectedCommission(commission)
-                      setShowPayment(true)
+                      if (!window.FlutterwaveCheckout) {
+                        alert('Payment system loading. Please try again in a moment.')
+                        return
+                      }
+                      window.FlutterwaveCheckout({
+                        public_key: import.meta.env.VITE_FLUTTERWAVE_PUBLIC_KEY,
+                        tx_ref: `PRIMA-COMM-${commission.id}-${Date.now()}`,
+                        amount: commission.commission_amount,
+                        currency: commission.currency || 'NGN',
+                        payment_options: 'card, banktransfer, ussd, opay',
+                        customer: {
+                          email: user?.email,
+                          name: user?.user_metadata?.full_name || 'Prima User',
+                        },
+                        customizations: {
+                          title: 'PrimaPlug Commission',
+                          description: `Platform fee for: ${commission.gigs?.title}`,
+                          logo: 'https://primaplug.vercel.app/prima-icon.png',
+                        },
+                        callback: async (response) => {
+                          if (response.status === 'successful') {
+                            await supabase
+                              .from('commissions')
+                              .update({
+                                status: 'paid',
+                                paid_at: new Date().toISOString(),
+                                payment_method: 'flutterwave',
+                                flw_ref: response.flw_ref
+                              })
+                              .eq('id', commission.id)
+
+                            await supabase.rpc('check_commission_status', {
+                              p_worker_id: user.id
+                            })
+
+                            await supabase.from('notifications').insert({
+                              user_id: user.id,
+                              title: '✅ Commission Paid!',
+                              message: `Platform fee paid successfully via Flutterwave.`,
+                              type: 'general'
+                            })
+
+                            await fetchCommissions()
+                            alert('Payment successful! Your account is in good standing.')
+                          }
+                        },
+                        onclose: () => console.log('Payment closed'),
+                      })
                     }}
                     style={{
-                      flex: 1, background: '#F5F4FF',
-                      border: '1.5px solid #E2E0FF',
-                      borderRadius: '10px', padding: '10px',
-                      fontSize: '12px', fontWeight: '700',
-                      color: '#14123A', cursor: 'pointer',
-                      fontFamily: 'inherit',
+                      flex: 2,
+                      background: 'linear-gradient(135deg, #F5A623, #F97316)',
+                      border: 'none', borderRadius: '10px', padding: '12px',
+                      fontSize: '13px', fontWeight: '700', color: '#fff',
+                      cursor: 'pointer', fontFamily: 'inherit',
                       display: 'flex', alignItems: 'center',
-                      justifyContent: 'center', gap: '5px'
+                      justifyContent: 'center', gap: '6px'
                     }}>
-                    🏦 Bank Transfer
+                    ⚡ Pay with Flutterwave
                   </button>
                   <button
                     onClick={() => handlePayWithCredits(commission)}

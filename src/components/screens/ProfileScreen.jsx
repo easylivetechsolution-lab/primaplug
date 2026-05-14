@@ -106,7 +106,8 @@ const LocationSearch = ({ value, onSelect, inputStyle }) => {
 
 export default function ProfileScreen({ onLogout }) {
   const { user } = useAuth()
-  const { credits, hasUnpaidCommissions } = useCredits()
+  const { credits, hasUnpaidCommissions, totalOwed, pendingCommissions } = useCredits()
+  const isOwnProfile = true
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
@@ -678,46 +679,109 @@ export default function ProfileScreen({ onLogout }) {
         </div>
       </div>
 
-      {/* Credits & Commission Status */}
-      <div style={{
-        display: 'grid', gridTemplateColumns: '1fr 1fr',
-        gap: '10px', marginBottom: '16px'
-      }}>
+      {/* Financial Row */}
+      {!isOwnProfile ? null : (
         <div style={{
-          background: '#FFF8E0', border: '1.5px solid #FFD966',
-          borderRadius: '14px', padding: '14px', textAlign: 'center'
+          display: 'grid', gridTemplateColumns: '1fr 1fr',
+          gap: '10px', marginBottom: '16px'
         }}>
-          <div style={{ fontSize: '20px', marginBottom: '4px' }}>⭐</div>
+          {/* Credits Card */}
           <div style={{
-            fontSize: '22px', fontWeight: '800',
-            color: '#FFB800', marginBottom: '3px'
-          }}>{credits?.balance?.toFixed(0) || 0}</div>
-          <div style={{
-            fontSize: '10px', color: '#A09DC8', fontWeight: '600',
-            textTransform: 'uppercase', letterSpacing: '0.5px'
-          }}>Prima Credits</div>
-        </div>
-        <div style={{
-          background: hasUnpaidCommissions ? '#FFE8EE' : '#DFFDF4',
-          border: `1.5px solid ${hasUnpaidCommissions ? '#FF99B3' : '#7EECD2'}`,
-          borderRadius: '14px', padding: '14px', textAlign: 'center'
-        }}>
-          <div style={{ fontSize: '20px', marginBottom: '4px' }}>
-            {hasUnpaidCommissions ? '⚠️' : '✅'}
-          </div>
-          <div style={{
-            fontSize: '14px', fontWeight: '800',
-            color: hasUnpaidCommissions ? '#FF3366' : '#00C48C',
-            marginBottom: '3px'
+            background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+            borderRadius: '16px', padding: '14px',
+            color: '#fff', position: 'relative', overflow: 'hidden'
           }}>
-            {hasUnpaidCommissions ? 'Owed' : 'Clear'}
+            <div style={{
+              fontSize: '9px', opacity: 0.8,
+              textTransform: 'uppercase', letterSpacing: '1px',
+              marginBottom: '4px'
+            }}>Prima Credits</div>
+            <div style={{
+              fontSize: '24px', fontWeight: '800',
+              letterSpacing: '-1px', marginBottom: '2px'
+            }}>{credits?.balance?.toFixed(0) || 0}</div>
+            <div style={{
+              fontSize: '10px', opacity: 0.7, marginBottom: '10px'
+            }}>≈ ${((credits?.balance || 0) / 50).toFixed(2)}</div>
+            <button
+              onClick={() => window.dispatchEvent(
+                new CustomEvent('navigateTo', { detail: 'withdrawal' })
+              )}
+              style={{
+                background: 'rgba(255,255,255,0.25)',
+                border: '1px solid rgba(255,255,255,0.4)',
+                borderRadius: '8px', padding: '6px 12px',
+                fontSize: '11px', fontWeight: '700',
+                color: '#fff', cursor: 'pointer',
+                fontFamily: 'inherit', width: '100%'
+              }}>💸 Withdraw</button>
           </div>
-          <div style={{
-            fontSize: '10px', color: '#A09DC8', fontWeight: '600',
-            textTransform: 'uppercase', letterSpacing: '0.5px'
-          }}>Commission</div>
+
+          {/* Commission Card */}
+          <div
+            onClick={() => window.dispatchEvent(
+              new CustomEvent('navigateTo', { detail: 'commission' })
+            )}
+            style={{
+              background: hasUnpaidCommissions ? '#FFE8EE' : '#DFFDF4',
+              border: `1.5px solid ${hasUnpaidCommissions ? '#FF99B3' : '#7EECD2'}`,
+              borderRadius: '16px', padding: '14px',
+              cursor: 'pointer', transition: 'all 0.15s'
+            }}
+            onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+            onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+          >
+            <div style={{
+              fontSize: '9px',
+              color: hasUnpaidCommissions ? '#FF3366' : '#00C48C',
+              fontWeight: '700', textTransform: 'uppercase',
+              letterSpacing: '1px', marginBottom: '4px'
+            }}>Commission</div>
+
+            {hasUnpaidCommissions ? (
+              <>
+                <div style={{
+                  fontSize: '22px', fontWeight: '800',
+                  color: '#FF3366', letterSpacing: '-1px',
+                  marginBottom: '2px'
+                }}>
+                  ${totalOwed.toFixed(2)}
+                </div>
+                <div style={{
+                  fontSize: '10px', color: '#FF3366',
+                  opacity: 0.8, marginBottom: '10px'
+                }}>
+                  {pendingCommissions.length} pending
+                </div>
+                <div style={{
+                  background: '#FF3366', color: '#fff',
+                  borderRadius: '8px', padding: '6px 12px',
+                  fontSize: '11px', fontWeight: '700',
+                  textAlign: 'center'
+                }}>⚠️ Pay Now →</div>
+              </>
+            ) : (
+              <>
+                <div style={{
+                  fontSize: '22px', fontWeight: '800',
+                  color: '#00C48C', marginBottom: '2px'
+                }}>Clear</div>
+                <div style={{
+                  fontSize: '10px', color: '#00C48C',
+                  opacity: 0.8, marginBottom: '10px'
+                }}>No amount owed</div>
+                <div style={{
+                  background: 'rgba(0,196,140,0.15)',
+                  border: '1px solid #7EECD2',
+                  borderRadius: '8px', padding: '6px 12px',
+                  fontSize: '11px', fontWeight: '700',
+                  color: '#00C48C', textAlign: 'center'
+                }}>✓ View History →</div>
+              </>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* TRUST STATS */}
       <div style={{

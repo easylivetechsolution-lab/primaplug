@@ -3,11 +3,39 @@ import { supabase } from '../../supabase'
 import { useCredits } from '../../context/CreditsContext'
 import { useAuth } from '../../context/AuthContext'
 
-const METHODS = [
-  { key: 'bank', label: 'Bank Transfer', icon: '🏦', desc: 'Nigeria local bank account' },
-  { key: 'opay', label: 'OPay', icon: '📱', desc: 'OPay wallet' },
-  { key: 'palmpay', label: 'PalmPay', icon: '🌴', desc: 'PalmPay wallet' },
-  { key: 'flutterwave', label: 'Flutterwave', icon: '🦋', desc: 'Flutterwave payout' },
+const PAYMENT_METHODS = [
+  {
+    key: 'nigerian_bank',
+    label: 'Nigerian Bank',
+    icon: '🏦',
+    desc: 'All Nigerian banks',
+    fields: ['bank_name', 'account_number', 'account_name'],
+    currency: 'NGN'
+  },
+  {
+    key: 'mobile_money',
+    label: 'Mobile Money',
+    icon: '📱',
+    desc: 'OPay, PalmPay, Kuda',
+    fields: ['mobile_number', 'account_name'],
+    currency: 'NGN'
+  },
+  {
+    key: 'international',
+    label: 'International',
+    icon: '🌍',
+    desc: 'USD, GBP, EUR bank',
+    fields: ['bank_name', 'account_number', 'account_name', 'swift_code'],
+    currency: 'USD'
+  },
+  {
+    key: 'mobile_money_africa',
+    label: 'Africa Mobile',
+    icon: '🌍📱',
+    desc: 'M-Pesa, MTN MoMo',
+    fields: ['mobile_number', 'account_name', 'country'],
+    currency: 'LOCAL'
+  },
 ]
 
 const CREDITS_PER_DOLLAR = 50
@@ -18,7 +46,7 @@ export default function WithdrawalScreen() {
   const { user } = useAuth()
   const [method, setMethod] = useState(null)
   const [amount, setAmount] = useState('')
-  const [accountDetails, setAccountDetails] = useState('')
+  const [form, setForm] = useState({})
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState(false)
   const [error, setError] = useState('')
@@ -27,13 +55,35 @@ export default function WithdrawalScreen() {
   const dollarValue = balance / CREDITS_PER_DOLLAR
   const creditsToWithdraw = parseInt(amount) || 0
   const dollarPayout = creditsToWithdraw / CREDITS_PER_DOLLAR
+  const selectedMethod = PAYMENT_METHODS.find(m => m.key === method)
+
+  const updateForm = (key, val) => setForm(f => ({ ...f, [key]: val }))
+
+  const labelStyle = {
+    fontSize: '11px', fontWeight: '700',
+    color: '#8B8FAF', textTransform: 'uppercase',
+    letterSpacing: '0.8px', display: 'block', marginBottom: '6px'
+  }
+
+  const inputStyle = {
+    width: '100%', background: '#F5F4FF',
+    border: '1.5px solid #E2E0FF', borderRadius: '10px',
+    padding: '11px 14px', fontSize: '13px',
+    color: '#14123A', fontFamily: 'inherit',
+    outline: 'none', boxSizing: 'border-box'
+  }
 
   const handleSubmit = async () => {
     setError('')
     if (!method) return setError('Please select a withdrawal method.')
     if (creditsToWithdraw < MIN_CREDITS) return setError(`Minimum withdrawal is ${MIN_CREDITS} credits ($${(MIN_CREDITS / CREDITS_PER_DOLLAR).toFixed(2)}).`)
     if (creditsToWithdraw > balance) return setError('Insufficient credits balance.')
-    if (!accountDetails.trim()) return setError('Please enter your account details.')
+    if (!form.account_name?.trim()) return setError('Please enter your account details.')
+
+    const accountDetails = Object.entries(form)
+      .filter(([, v]) => v)
+      .map(([k, v]) => `${k}: ${v}`)
+      .join(', ')
 
     setSubmitting(true)
     try {
@@ -41,7 +91,7 @@ export default function WithdrawalScreen() {
         p_user_id: user.id,
         p_amount: creditsToWithdraw,
         p_type: 'withdrawal',
-        p_description: `Withdrawal via ${method} — $${dollarPayout.toFixed(2)}`
+        p_description: `Withdrawal via ${selectedMethod?.label} — $${dollarPayout.toFixed(2)}`
       })
       if (spendErr) throw spendErr
 
@@ -50,14 +100,14 @@ export default function WithdrawalScreen() {
         credits_amount: creditsToWithdraw,
         dollar_amount: dollarPayout,
         method,
-        account_details: accountDetails.trim(),
+        account_details: accountDetails,
         status: 'pending'
       })
 
       await supabase.from('notifications').insert({
         user_id: user.id,
         title: '💸 Withdrawal Requested',
-        message: `Your withdrawal of ${creditsToWithdraw} credits ($${dollarPayout.toFixed(2)}) via ${method} is being processed.`,
+        message: `Your withdrawal of ${creditsToWithdraw} credits ($${dollarPayout.toFixed(2)}) via ${selectedMethod?.label} is being processed.`,
         type: 'general'
       })
 
@@ -86,10 +136,10 @@ export default function WithdrawalScreen() {
           lineHeight: '1.6', marginBottom: '24px',
           maxWidth: '280px', margin: '0 auto 24px'
         }}>
-          Your {creditsToWithdraw} credits (${dollarPayout.toFixed(2)}) payout via {METHODS.find(m => m.key === method)?.label} is being processed. Allow 1–3 business days.
+          Your {creditsToWithdraw} credits (${dollarPayout.toFixed(2)}) payout via {selectedMethod?.label} is being processed. Allow 1–3 business days.
         </div>
         <button
-          onClick={() => { setDone(false); setAmount(''); setAccountDetails(''); setMethod(null) }}
+          onClick={() => { setDone(false); setAmount(''); setForm({}); setMethod(null) }}
           style={{
             background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
             border: 'none', borderRadius: '14px',
@@ -149,42 +199,58 @@ export default function WithdrawalScreen() {
         </div>
       </div>
 
-      {/* Method Selection */}
-      <div style={{ marginBottom: '20px' }}>
+      {/* Payment Method */}
+      <div style={{ marginBottom: '16px' }}>
+        <label style={labelStyle}>Where should we send it?</label>
         <div style={{
-          fontSize: '12px', fontWeight: '700',
-          color: '#14123A', marginBottom: '10px'
-        }}>Withdrawal Method</div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {METHODS.map(m => (
-            <button
+          display: 'flex', flexDirection: 'column', gap: '8px'
+        }}>
+          {PAYMENT_METHODS.map(m => (
+            <div
               key={m.key}
-              onClick={() => setMethod(m.key)}
+              onClick={() => { setMethod(m.key); setForm({}) }}
               style={{
                 background: method === m.key ? '#EEE9FF' : '#fff',
                 border: `1.5px solid ${method === m.key ? '#6C47FF' : '#E2E0FF'}`,
                 borderRadius: '14px', padding: '14px 16px',
-                display: 'flex', alignItems: 'center', gap: '12px',
-                cursor: 'pointer', fontFamily: 'inherit',
-                textAlign: 'left', transition: 'all 0.15s'
+                cursor: 'pointer', transition: 'all 0.15s',
+                display: 'flex', alignItems: 'center', gap: '12px'
               }}>
-              <span style={{ fontSize: '24px', flexShrink: 0 }}>{m.icon}</span>
+              <div style={{
+                width: '42px', height: '42px', borderRadius: '12px',
+                background: method === m.key ? '#6C47FF' : '#F5F4FF',
+                display: 'flex', alignItems: 'center',
+                justifyContent: 'center', fontSize: '20px',
+                flexShrink: 0, transition: 'all 0.15s'
+              }}>{m.icon}</div>
               <div style={{ flex: 1 }}>
                 <div style={{
                   fontSize: '14px', fontWeight: '700',
-                  color: method === m.key ? '#6C47FF' : '#14123A'
+                  color: method === m.key ? '#6C47FF' : '#14123A',
+                  marginBottom: '2px'
                 }}>{m.label}</div>
-                <div style={{ fontSize: '11px', color: '#8B8FAF' }}>{m.desc}</div>
-              </div>
-              {method === m.key && (
                 <div style={{
-                  width: '20px', height: '20px', borderRadius: '50%',
-                  background: '#6C47FF', display: 'flex',
-                  alignItems: 'center', justifyContent: 'center',
-                  fontSize: '11px', color: '#fff', flexShrink: 0
-                }}>✓</div>
-              )}
-            </button>
+                  fontSize: '11px',
+                  color: method === m.key ? '#6C47FF' : '#A09DC8',
+                  opacity: 0.8
+                }}>{m.desc}</div>
+              </div>
+              <div style={{
+                width: '20px', height: '20px', borderRadius: '50%',
+                border: `2px solid ${method === m.key ? '#6C47FF' : '#E2E0FF'}`,
+                background: method === m.key ? '#6C47FF' : '#fff',
+                display: 'flex', alignItems: 'center',
+                justifyContent: 'center', flexShrink: 0,
+                transition: 'all 0.15s'
+              }}>
+                {method === m.key && (
+                  <div style={{
+                    width: '8px', height: '8px',
+                    borderRadius: '50%', background: '#fff'
+                  }} />
+                )}
+              </div>
+            </div>
           ))}
         </div>
       </div>
@@ -221,33 +287,198 @@ export default function WithdrawalScreen() {
         )}
       </div>
 
-      {/* Account Details */}
-      <div style={{ marginBottom: '20px' }}>
+      {/* Payment Details */}
+      {method && (
         <div style={{
-          fontSize: '12px', fontWeight: '700',
-          color: '#14123A', marginBottom: '8px'
-        }}>Account Details</div>
-        <textarea
-          value={accountDetails}
-          onChange={e => setAccountDetails(e.target.value)}
-          placeholder={
-            method === 'bank'
-              ? 'Bank name, account number, account name'
-              : method === 'opay' || method === 'palmpay'
-                ? 'Phone number registered on the wallet'
-                : 'Your Flutterwave account email or ID'
-          }
-          rows={3}
-          style={{
-            width: '100%', boxSizing: 'border-box',
-            background: '#F5F4FF', border: '1.5px solid #E2E0FF',
-            borderRadius: '12px', padding: '14px 16px',
-            fontSize: '13px', color: '#14123A',
-            fontFamily: 'inherit', resize: 'none',
-            outline: 'none', lineHeight: '1.5'
-          }}
-        />
-      </div>
+          background: '#F5F4FF', borderRadius: '14px',
+          padding: '16px', marginBottom: '20px',
+          display: 'flex', flexDirection: 'column', gap: '12px'
+        }}>
+          <div style={{
+            fontSize: '12px', fontWeight: '700',
+            color: '#14123A',
+            display: 'flex', alignItems: 'center', gap: '6px'
+          }}>
+            <span>{selectedMethod?.icon}</span>
+            {selectedMethod?.label} Details
+          </div>
+
+          {/* Nigerian Bank */}
+          {method === 'nigerian_bank' && (
+            <>
+              <div>
+                <label style={labelStyle}>Bank Name</label>
+                <input
+                  style={{ ...inputStyle, background: '#fff' }}
+                  placeholder="e.g. GTBank, First Bank, Access, Zenith..."
+                  value={form.bank_name || ''}
+                  onChange={e => updateForm('bank_name', e.target.value)}
+                  onFocus={e => e.target.style.borderColor = '#B8A5FF'}
+                  onBlur={e => e.target.style.borderColor = '#E2E0FF'}
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>Account Number</label>
+                <input
+                  style={{ ...inputStyle, background: '#fff' }}
+                  placeholder="10-digit NUBAN account number"
+                  maxLength={10}
+                  value={form.account_number || ''}
+                  onChange={e => updateForm('account_number', e.target.value)}
+                  onFocus={e => e.target.style.borderColor = '#B8A5FF'}
+                  onBlur={e => e.target.style.borderColor = '#E2E0FF'}
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>Account Name</label>
+                <input
+                  style={{ ...inputStyle, background: '#fff' }}
+                  placeholder="Full name as it appears on account"
+                  value={form.account_name || ''}
+                  onChange={e => updateForm('account_name', e.target.value)}
+                  onFocus={e => e.target.style.borderColor = '#B8A5FF'}
+                  onBlur={e => e.target.style.borderColor = '#E2E0FF'}
+                />
+              </div>
+            </>
+          )}
+
+          {/* Mobile Money */}
+          {method === 'mobile_money' && (
+            <>
+              <div>
+                <label style={labelStyle}>Mobile Number</label>
+                <input
+                  style={{ ...inputStyle, background: '#fff' }}
+                  placeholder="e.g. 08012345678"
+                  value={form.mobile_number || ''}
+                  onChange={e => updateForm('mobile_number', e.target.value)}
+                  onFocus={e => e.target.style.borderColor = '#B8A5FF'}
+                  onBlur={e => e.target.style.borderColor = '#E2E0FF'}
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>Wallet Provider</label>
+                <select
+                  value={form.bank_name || ''}
+                  onChange={e => updateForm('bank_name', e.target.value)}
+                  style={{ ...inputStyle, background: '#fff', appearance: 'none' }}>
+                  <option value="">Select provider</option>
+                  <option value="OPay">OPay</option>
+                  <option value="PalmPay">PalmPay</option>
+                  <option value="Kuda">Kuda</option>
+                  <option value="Carbon">Carbon</option>
+                  <option value="Moniepoint">Moniepoint</option>
+                </select>
+              </div>
+              <div>
+                <label style={labelStyle}>Account Name</label>
+                <input
+                  style={{ ...inputStyle, background: '#fff' }}
+                  placeholder="Full name on wallet"
+                  value={form.account_name || ''}
+                  onChange={e => updateForm('account_name', e.target.value)}
+                  onFocus={e => e.target.style.borderColor = '#B8A5FF'}
+                  onBlur={e => e.target.style.borderColor = '#E2E0FF'}
+                />
+              </div>
+            </>
+          )}
+
+          {/* International */}
+          {method === 'international' && (
+            <>
+              <div>
+                <label style={labelStyle}>Bank Name</label>
+                <input
+                  style={{ ...inputStyle, background: '#fff' }}
+                  placeholder="Your bank name"
+                  value={form.bank_name || ''}
+                  onChange={e => updateForm('bank_name', e.target.value)}
+                  onFocus={e => e.target.style.borderColor = '#B8A5FF'}
+                  onBlur={e => e.target.style.borderColor = '#E2E0FF'}
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>Account / IBAN Number</label>
+                <input
+                  style={{ ...inputStyle, background: '#fff' }}
+                  placeholder="Account or IBAN number"
+                  value={form.account_number || ''}
+                  onChange={e => updateForm('account_number', e.target.value)}
+                  onFocus={e => e.target.style.borderColor = '#B8A5FF'}
+                  onBlur={e => e.target.style.borderColor = '#E2E0FF'}
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>SWIFT / BIC Code</label>
+                <input
+                  style={{ ...inputStyle, background: '#fff' }}
+                  placeholder="e.g. AAAABBCC123"
+                  value={form.swift_code || ''}
+                  onChange={e => updateForm('swift_code', e.target.value)}
+                  onFocus={e => e.target.style.borderColor = '#B8A5FF'}
+                  onBlur={e => e.target.style.borderColor = '#E2E0FF'}
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>Account Name</label>
+                <input
+                  style={{ ...inputStyle, background: '#fff' }}
+                  placeholder="Full name on account"
+                  value={form.account_name || ''}
+                  onChange={e => updateForm('account_name', e.target.value)}
+                  onFocus={e => e.target.style.borderColor = '#B8A5FF'}
+                  onBlur={e => e.target.style.borderColor = '#E2E0FF'}
+                />
+              </div>
+            </>
+          )}
+
+          {/* Africa Mobile Money */}
+          {method === 'mobile_money_africa' && (
+            <>
+              <div>
+                <label style={labelStyle}>Country</label>
+                <select
+                  value={form.country || ''}
+                  onChange={e => updateForm('country', e.target.value)}
+                  style={{ ...inputStyle, background: '#fff', appearance: 'none' }}>
+                  <option value="">Select country</option>
+                  <option value="KE">Kenya (M-Pesa)</option>
+                  <option value="GH">Ghana (MTN MoMo)</option>
+                  <option value="TZ">Tanzania (M-Pesa)</option>
+                  <option value="UG">Uganda (MTN MoMo)</option>
+                  <option value="ZA">South Africa</option>
+                  <option value="RW">Rwanda (MTN MoMo)</option>
+                </select>
+              </div>
+              <div>
+                <label style={labelStyle}>Mobile Number</label>
+                <input
+                  style={{ ...inputStyle, background: '#fff' }}
+                  placeholder="Mobile money number with country code"
+                  value={form.mobile_number || ''}
+                  onChange={e => updateForm('mobile_number', e.target.value)}
+                  onFocus={e => e.target.style.borderColor = '#B8A5FF'}
+                  onBlur={e => e.target.style.borderColor = '#E2E0FF'}
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>Account Name</label>
+                <input
+                  style={{ ...inputStyle, background: '#fff' }}
+                  placeholder="Name on mobile money account"
+                  value={form.account_name || ''}
+                  onChange={e => updateForm('account_name', e.target.value)}
+                  onFocus={e => e.target.style.borderColor = '#B8A5FF'}
+                  onBlur={e => e.target.style.borderColor = '#E2E0FF'}
+                />
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       {error && (
         <div style={{
