@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 import { playMessage } from '../utils/sounds'
+import { sendPushToUser } from '../utils/pushNotifications'
 import PublicProfile from './PublicProfile'
 import BrandIcon from './BrandIcon'
 
@@ -277,6 +278,12 @@ export default function FloatingChat({ onOpenFullChat }) {
       type: 'message',
       gig_id: activeConvo.gig_id
     })
+    await sendPushToUser(
+      otherUserId,
+      '💬 New Message',
+      text.length > 40 ? text.substring(0, 40) + '...' : text,
+      { type: 'message' }
+    )
 
     setSending(false)
     fetchConversations()

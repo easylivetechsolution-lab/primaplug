@@ -11,6 +11,7 @@ import ReceiptFlow from '../ReceiptFlow'
 import BrandIcon from '../BrandIcon'
 import LiveTracking from '../LiveTracking'
 import { playAccepted, playDeclined } from '../../utils/sounds'
+import { sendPushToUser } from '../../utils/pushNotifications'
 
 const STATUS_CONFIG = {
   open: { label: 'Open', color: '#6C47FF', bg: '#EEE9FF', border: '#B8A5FF' },
@@ -244,6 +245,12 @@ export default function MyGigsScreen() {
       type: 'accepted',
       gig_id: gig.id
     })
+    await sendPushToUser(
+      app.worker_id,
+      '🎉 Application Accepted!',
+      `Your application for "${gig.title}" was accepted`,
+      { type: 'accepted', gigId: gig.id }
+    )
 
     fetchPostedGigs()
   }
@@ -262,6 +269,12 @@ export default function MyGigsScreen() {
       type: 'rejected',
       gig_id: gig.id
     })
+    await sendPushToUser(
+      app.worker_id,
+      'Application Update',
+      `Your application for "${gig.title}" was not selected`,
+      { type: 'rejected', gigId: gig.id }
+    )
 
     fetchPostedGigs()
   }

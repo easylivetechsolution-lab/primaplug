@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { supabase } from '../supabase'
+import { initPushNotifications, listenForMessages } from '../utils/pushNotifications'
 
 const AuthContext = createContext({})
 
@@ -48,15 +49,20 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
-      if (session?.user) fetchProfile(session.user.id)
+      if (session?.user) {
+        fetchProfile(session.user.id)
+        setTimeout(() => initPushNotifications(session.user.id), 3000)
+      }
       setLoading(false)
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         setUser(session?.user ?? null)
-        if (session?.user) fetchProfile(session.user.id)
-        else setProfile(null)
+        if (session?.user) {
+          fetchProfile(session.user.id)
+          setTimeout(() => initPushNotifications(session.user.id), 3000)
+        } else setProfile(null)
         setLoading(false)
       }
     )

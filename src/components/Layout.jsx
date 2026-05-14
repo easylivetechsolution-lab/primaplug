@@ -20,6 +20,7 @@ import ChatScreen from './screens/ChatScreen'
 import FloatingChat from './FloatingChat'
 import BrandIcon from './BrandIcon'
 import ServicesScreen from "./screens/ServicesScreen";
+import { initPushNotifications } from '../utils/pushNotifications'
 
 export default function Layout() {
   const { user, profile } = useAuth()
@@ -30,6 +31,7 @@ export default function Layout() {
   const [showSearch, setShowSearch] = useState(false)
   const [showMobileMore, setShowMobileMore] = useState(false)
   const [showProfilePrompt, setShowProfilePrompt] = useState(false)
+  const [showPushPrompt, setShowPushPrompt] = useState(false)
 
   useEffect(() => {
     const handleKey = (e) => {
@@ -75,6 +77,16 @@ export default function Layout() {
     window.addEventListener('navigateTo', handleNavigate)
     return () => window.removeEventListener('navigateTo', handleNavigate)
   }, [])
+
+  useEffect(() => {
+    if (!user) return
+    const timer = setTimeout(() => {
+      if (Notification.permission === 'default') {
+        setShowPushPrompt(true)
+      }
+    }, 30000)
+    return () => clearTimeout(timer)
+  }, [user])
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -771,6 +783,66 @@ export default function Layout() {
       <div className="floating-chat-shell">
         <FloatingChat onOpenFullChat={() => setScreen('chat')} />
       </div>
+
+      {/* Push Notification Prompt */}
+      {showPushPrompt && (
+        <div style={{
+          position: 'fixed', bottom: '90px', left: '50%',
+          transform: 'translateX(-50%)',
+          background: '#fff', borderRadius: '16px',
+          padding: '16px 20px', width: '320px',
+          boxShadow: '0 8px 32px rgba(108,71,255,0.2)',
+          border: '1.5px solid #E2E0FF',
+          zIndex: 8500,
+          fontFamily: "'Plus Jakarta Sans', sans-serif",
+          animation: 'slideUp 0.3s ease'
+        }}>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+            <div style={{
+              width: '40px', height: '40px', borderRadius: '12px',
+              background: '#EEE9FF', display: 'flex',
+              alignItems: 'center', justifyContent: 'center',
+              fontSize: '20px', flexShrink: 0
+            }}>🔔</div>
+            <div style={{ flex: 1 }}>
+              <div style={{
+                fontSize: '13px', fontWeight: '700',
+                color: '#14123A', marginBottom: '3px'
+              }}>Stay in the loop</div>
+              <div style={{
+                fontSize: '11px', color: '#8B8FAF',
+                lineHeight: '1.5', marginBottom: '10px'
+              }}>
+                Get notified about applications, messages and gig updates even when the app is closed.
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  onClick={async () => {
+                    setShowPushPrompt(false)
+                    await initPushNotifications(user.id)
+                  }}
+                  style={{
+                    flex: 2,
+                    background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+                    border: 'none', borderRadius: '8px', padding: '8px',
+                    fontSize: '12px', fontWeight: '700', color: '#fff',
+                    cursor: 'pointer', fontFamily: 'inherit'
+                  }}>Enable Notifications</button>
+                <button
+                  onClick={() => setShowPushPrompt(false)}
+                  style={{
+                    flex: 1, background: '#F5F4FF',
+                    border: '1.5px solid #E2E0FF',
+                    borderRadius: '8px', padding: '8px',
+                    fontSize: '12px', fontWeight: '600',
+                    color: '#8B8FAF', cursor: 'pointer',
+                    fontFamily: 'inherit'
+                  }}>Not now</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

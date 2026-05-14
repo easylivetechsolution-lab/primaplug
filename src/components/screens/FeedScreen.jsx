@@ -7,6 +7,7 @@ import { getCurrency } from '../../data/currencies'
 import { getProfileCompletion } from '../../utils/profileComplete'
 import ProfilePrompt from '../ProfilePrompt'
 import { useAuth } from '../../context/AuthContext'
+import { sendPushToUser } from '../../utils/pushNotifications'
 
 const URGENCY = {
   now: { label: 'NOW', color: '#FF3366', bg: '#FFE8EE', border: '#FF99B3' },
@@ -832,6 +833,12 @@ export default function FeedScreen() {
       type: 'application',
       gig_id: selectedGig.id
     })
+    await sendPushToUser(
+      selectedGig.poster_id,
+      '⚡ New Application!',
+      `Someone applied for your gig "${selectedGig.title}"`,
+      { type: 'application', gigId: selectedGig.id }
+    )
     // Create conversation between applicant and poster
     const { data: existingConvo } = await supabase
       .from('conversations')
