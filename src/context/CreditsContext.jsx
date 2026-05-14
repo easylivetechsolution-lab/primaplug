@@ -15,94 +15,88 @@ export const CreditsProvider = ({ children }) => {
     if (user) {
       fetchCredits()
       fetchCommissions()
-      subscribeToCredits()
+    } else {
+      setCredits(null)
+      setCommissions([])
+      setLoading(false)
     }
   }, [user])
 
   const fetchCredits = async () => {
     if (!user) return
-    const { data } = await supabase
-      .from('prima_credits')
-      .select('*')
-      .eq('user_id', user.id)
-      .maybeSingle()
-
-    if (!data) {
-      // Create credits record for new user
-      const { data: newCredits } = await supabase
+    try {
+      const { data } = await supabase
         .from('prima_credits')
-        .insert({ user_id: user.id, balance: 0 })
-        .select()
-        .single()
-      setCredits(newCredits)
-    } else {
-      setCredits(data)
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle()
+
+      if (!data) {
+        const { data: newCredits } = await supabase
+          .from('prima_credits')
+          .insert({ user_id: user.id, balance: 0, lifetime_earned: 0, lifetime_spent: 0 })
+          .select()
+          .single()
+        setCredits(newCredits)
+      } else {
+        setCredits(data)
+      }
+    } catch (e) {
+      console.log('Credits fetch error:', e)
     }
     setLoading(false)
   }
 
   const fetchCommissions = async () => {
     if (!user) return
-    const { data } = await supabase
-      .from('commissions')
-      .select('*, gigs(title, currency)')
-      .eq('worker_id', user.id)
-      .order('created_at', { ascending: false })
-    if (data) setCommissions(data)
-  }
-
-  const subscribeToCredits = () => {
-    const channel = supabase
-      .channel('credits-' + user.id)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'prima_credits',
-      }, (payload) => {
-        if (payload.new?.user_id === user.id || payload.old?.user_id === user.id) {
-          fetchCredits()
-        }
-      })
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'commissions',
-      }, (payload) => {
-        if (payload.new?.worker_id === user.id || payload.old?.worker_id === user.id) {
-          fetchCommissions()
-        }
-      })
-      .subscribe()
-    return () => supabase.removeChannel(channel)
+    try {
+      const { data } = await supabase
+        .from('commissions')
+        .select('*, gigs(title, currency)')
+        .eq('worker_id', user.id)
+        .order('created_at', { ascending: false })
+      if (data) setCommissions(data)
+    } catch (e) {
+      console.log('Commissions fetch error:', e)
+    }
   }
 
   const addCredits = async (amount, type, description, gigId = null) => {
     if (!user) return
-    await supabase.rpc('add_credits', {
-      p_user_id: user.id,
-      p_amount: amount,
-      p_type: type,
-      p_description: description,
-      p_gig_id: gigId
-    })
-    await fetchCredits()
+    try {
+      await supabase.rpc('add_credits', {
+        p_user_id: user.id,
+        p_amount: amount,
+        p_type: type,
+        p_description: description,
+        p_gig_id: gigId
+      })
+      await fetchCredits()
+    } catch (e) {
+      console.log('Add credits error:', e)
+    }
   }
 
   const spendCredits = async (amount, type, description, gigId = null) => {
     if (!user) return false
-    const { data } = await supabase.rpc('spend_credits', {
-      p_user_id: user.id,
-      p_amount: amount,
-      p_type: type,
-      p_description: description,
-      p_gig_id: gigId
-    })
-    await fetchCredits()
-    return data
+    try {
+      const { data } = await supabase.rpc('spend_credits', {
+        p_user_id: user.id,
+        p_amount: amount,
+        p_type: type,
+        p_description: description,
+        p_gig_id: gigId
+      })
+      await fetchCredits()
+      return data
+    } catch (e) {
+      console.log('Spend credits error:', e)
+      return false
+    }
   }
 
   const pendingCommissions = commissions.filter(c => c.status === 'pending')
-  const totalOwed = pendingCommissions.reduce((sum, c) => sum + c.commission_amount, 0)
+  const totalOwed = pendingCommissions.reduce((sum, c) => sum + (c.commission_amount || 0), 0)
   const hasUnpaidCommissions = pendingCommissions.length > 0
 
   return (

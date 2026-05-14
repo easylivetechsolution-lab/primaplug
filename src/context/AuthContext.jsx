@@ -12,47 +12,22 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true)
 
   const fetchProfile = async (userId) => {
+    if (!userId) return
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('users')
         .select('*')
         .eq('id', userId)
         .maybeSingle()
 
-      if (!data) {
-        // New Google user — get their info from auth
-        const { data: { user: authUser } } = await supabase.auth.getUser()
-        if (authUser) {
-          const googleName = authUser.user_metadata?.full_name || ''
-          const googleAvatar = authUser.user_metadata?.avatar_url || ''
-          const googleEmail = authUser.email || ''
-
-          await supabase.from('users').insert({
-            id: userId,
-            full_name: googleName,
-            email: googleEmail,
-            avatar_url: googleAvatar,
-            username: googleEmail.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, ''),
-            trust_score: 100,
-            gigs_completed: 0,
-            rating: 5.0,
-          })
-        }
+      if (error) {
+        console.log('Profile fetch error:', error)
+        return
       }
 
       setProfile(data)
-
-      if (data) {
-        try {
-          await supabase.rpc('check_commission_status', {
-            p_worker_id: userId
-          })
-        } catch (e) {
-          console.log('Commission check error:', e)
-        }
-      }
     } catch (e) {
-      console.log('Profile fetch error:', e)
+      console.log('Profile fetch exception:', e)
     } finally {
       setLoading(false)
     }
