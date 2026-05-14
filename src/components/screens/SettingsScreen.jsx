@@ -5,9 +5,11 @@ import BrandIcon from '../BrandIcon'
 import { useLanguage } from '../../context/LanguageContext'
 import { LANGUAGES } from '../../data/languages'
 import { CURRENCIES } from '../../data/currencies'
+import { useCredits } from '../../context/CreditsContext'
 
 export default function SettingsScreen({ onLogout }) {
   const { user } = useAuth()
+  const { credits } = useCredits()
   const { language, setLanguage, currency, setCurrency, t } = useLanguage()
   const [showLangPicker, setShowLangPicker] = useState(false)
   const [showCurrencyPicker, setShowCurrencyPicker] = useState(false)
@@ -82,6 +84,63 @@ export default function SettingsScreen({ onLogout }) {
       </div>
       <div style={{ fontSize: '13px', color: '#8B8FAF', marginBottom: '24px' }}>
         Manage your Prima preferences
+      </div>
+
+      {/* Prima Credits Card */}
+      <div style={{
+        background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+        borderRadius: '16px', padding: '18px',
+        marginBottom: '14px', color: '#fff'
+      }}>
+        <div style={{
+          display: 'flex', justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <div>
+            <div style={{
+              fontSize: '11px', opacity: 0.8,
+              textTransform: 'uppercase', letterSpacing: '1px',
+              marginBottom: '4px'
+            }}>Prima Credits Balance</div>
+            <div style={{
+              fontSize: '32px', fontWeight: '800',
+              letterSpacing: '-1px', marginBottom: '3px'
+            }}>
+              {credits?.balance?.toFixed(0) || 0}
+            </div>
+            <div style={{ fontSize: '11px', opacity: 0.7 }}>
+              ≈ ${((credits?.balance || 0) / 50).toFixed(2)} value · 50 credits = $1
+            </div>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: '11px', opacity: 0.7, marginBottom: '4px' }}>
+              Lifetime earned
+            </div>
+            <div style={{ fontSize: '18px', fontWeight: '800' }}>
+              {credits?.lifetime_earned?.toFixed(0) || 0}
+            </div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: '8px', marginTop: '14px' }}>
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'referral' }))}
+            style={{
+              flex: 1, background: 'rgba(255,255,255,0.2)',
+              border: '1px solid rgba(255,255,255,0.3)',
+              borderRadius: '10px', padding: '9px',
+              fontSize: '12px', fontWeight: '700',
+              color: '#fff', cursor: 'pointer', fontFamily: 'inherit'
+            }}>🎁 Refer & Earn</button>
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'commission' }))}
+            style={{
+              flex: 1, background: 'rgba(255,255,255,0.2)',
+              border: '1px solid rgba(255,255,255,0.3)',
+              borderRadius: '10px', padding: '9px',
+              fontSize: '12px', fontWeight: '700',
+              color: '#fff', cursor: 'pointer', fontFamily: 'inherit'
+            }}>💰 Commission</button>
+        </div>
       </div>
 
       {/* Account */}

@@ -5,6 +5,7 @@ import CategoryPicker from '../CategoryPicker'
 import BrandIcon from '../BrandIcon'
 import { completeReferral } from '../../utils/referral'
 import { getProfileCompletion } from '../../utils/profileComplete'
+import { useCredits } from '../../context/CreditsContext'
 
 const LocationSearch = ({ value, onSelect, inputStyle }) => {
   const [search, setSearch] = useState(value || '')
@@ -105,6 +106,7 @@ const LocationSearch = ({ value, onSelect, inputStyle }) => {
 
 export default function ProfileScreen({ onLogout }) {
   const { user } = useAuth()
+  const { credits, hasUnpaidCommissions } = useCredits()
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
@@ -673,6 +675,47 @@ export default function ProfileScreen({ onLogout }) {
               {m === 'physical' ? 'Physical Mode' : 'Digital Mode'}
             </button>
           ))}
+        </div>
+      </div>
+
+      {/* Credits & Commission Status */}
+      <div style={{
+        display: 'grid', gridTemplateColumns: '1fr 1fr',
+        gap: '10px', marginBottom: '16px'
+      }}>
+        <div style={{
+          background: '#FFF8E0', border: '1.5px solid #FFD966',
+          borderRadius: '14px', padding: '14px', textAlign: 'center'
+        }}>
+          <div style={{ fontSize: '20px', marginBottom: '4px' }}>⭐</div>
+          <div style={{
+            fontSize: '22px', fontWeight: '800',
+            color: '#FFB800', marginBottom: '3px'
+          }}>{credits?.balance?.toFixed(0) || 0}</div>
+          <div style={{
+            fontSize: '10px', color: '#A09DC8', fontWeight: '600',
+            textTransform: 'uppercase', letterSpacing: '0.5px'
+          }}>Prima Credits</div>
+        </div>
+        <div style={{
+          background: hasUnpaidCommissions ? '#FFE8EE' : '#DFFDF4',
+          border: `1.5px solid ${hasUnpaidCommissions ? '#FF99B3' : '#7EECD2'}`,
+          borderRadius: '14px', padding: '14px', textAlign: 'center'
+        }}>
+          <div style={{ fontSize: '20px', marginBottom: '4px' }}>
+            {hasUnpaidCommissions ? '⚠️' : '✅'}
+          </div>
+          <div style={{
+            fontSize: '14px', fontWeight: '800',
+            color: hasUnpaidCommissions ? '#FF3366' : '#00C48C',
+            marginBottom: '3px'
+          }}>
+            {hasUnpaidCommissions ? 'Owed' : 'Clear'}
+          </div>
+          <div style={{
+            fontSize: '10px', color: '#A09DC8', fontWeight: '600',
+            textTransform: 'uppercase', letterSpacing: '0.5px'
+          }}>Commission</div>
         </div>
       </div>
 

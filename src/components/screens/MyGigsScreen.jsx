@@ -12,6 +12,7 @@ import BrandIcon from '../BrandIcon'
 import LiveTracking from '../LiveTracking'
 import { playAccepted, playDeclined } from '../../utils/sounds'
 import { sendPushToUser } from '../../utils/pushNotifications'
+import { useCredits } from '../../context/CreditsContext'
 
 const STATUS_CONFIG = {
   open: { label: 'Open', color: '#6C47FF', bg: '#EEE9FF', border: '#B8A5FF' },
@@ -160,6 +161,7 @@ const ApplicantRow = ({ app, gig, onAccept, onDecline, onReview, onReceipt, onVi
 
 export default function MyGigsScreen() {
   const { user } = useAuth()
+  const { hasUnpaidCommissions, totalOwed, pendingCommissions } = useCredits()
   const [tab, setTab] = useState('posted')
   const [postedGigs, setPostedGigs] = useState([])
   const [appliedGigs, setAppliedGigs] = useState([])
@@ -321,6 +323,36 @@ export default function MyGigsScreen() {
           Track your posted and applied gigs
         </div>
       </div>
+
+      {/* Commission Warning */}
+      {hasUnpaidCommissions && (
+        <div
+          onClick={() => window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'commission' }))}
+          style={{
+            background: '#FFE8EE', border: '1.5px solid #FF99B3',
+            borderRadius: '14px', padding: '12px 16px',
+            marginBottom: '16px', cursor: 'pointer',
+            display: 'flex', justifyContent: 'space-between',
+            alignItems: 'center', gap: '10px'
+          }}>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <span style={{ fontSize: '18px' }}>⚠️</span>
+            <div>
+              <div style={{ fontSize: '12px', fontWeight: '700', color: '#FF3366' }}>
+                Platform commission due
+              </div>
+              <div style={{ fontSize: '10px', color: '#FF3366', opacity: 0.8 }}>
+                ${totalOwed.toFixed(2)} owed · {pendingCommissions.length} pending
+              </div>
+            </div>
+          </div>
+          <div style={{
+            background: '#FF3366', color: '#fff',
+            borderRadius: '8px', padding: '5px 10px',
+            fontSize: '11px', fontWeight: '700', flexShrink: 0
+          }}>Pay Now →</div>
+        </div>
+      )}
 
       {/* Tabs */}
       <div style={{

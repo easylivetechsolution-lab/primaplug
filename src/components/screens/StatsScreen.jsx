@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../supabase'
 import { useAuth } from '../../context/AuthContext'
 import BrandIcon from '../BrandIcon'
+import { useCredits } from '../../context/CreditsContext'
 
 const LEVELS = [
   {
@@ -52,6 +53,7 @@ const LEVELS = [
 
 export default function StatsScreen() {
   const { user } = useAuth()
+  const { credits } = useCredits()
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
 
@@ -274,13 +276,16 @@ export default function StatsScreen() {
           { label: 'Applied To', value: stats?.totalApplied || 0, color: '#0EA5E9', icon: 'applied' },
           { label: 'Accepted', value: stats?.acceptedApps || 0, color: '#00C48C', icon: 'accepted' },
           { label: 'Trust Score', value: `${stats?.profile?.trust_score || 100}%`, color: '#6C47FF', icon: 'level' },
+          { label: 'Prima Credits', value: credits?.balance?.toFixed(0) || 0, color: '#FFB800', icon: '⭐' },
         ].map(({ label, value, color, icon }) => (
           <div key={label} style={{
             background: '#fff', border: '1.5px solid #E2E0FF',
             borderRadius: '14px', padding: '14px'
           }}>
-            <div style={{ marginBottom: '8px' }}>
-              <BrandIcon name={icon} size={30} />
+            <div style={{ marginBottom: '8px', fontSize: icon.length <= 2 ? '22px' : undefined }}>
+              {icon.length <= 2
+                ? icon
+                : <BrandIcon name={icon} size={30} />}
             </div>
             <div style={{
               fontSize: '20px', fontWeight: '800',

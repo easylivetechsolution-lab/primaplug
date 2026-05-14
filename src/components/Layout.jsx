@@ -511,6 +511,45 @@ export default function Layout() {
             }}>Refer</span>
           </button>
 
+          {/* Commission */}
+          <button
+            onClick={() => setScreen('commission')}
+            title="Platform Commission"
+            style={{
+              width: '48px', height: '48px',
+              borderRadius: '12px',
+              background: screen === 'commission' ? '#FFE8EE' : 'transparent',
+              border: `1.5px solid ${screen === 'commission' ? '#FF99B3' : 'transparent'}`,
+              display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center',
+              gap: '3px', cursor: 'pointer',
+              transition: 'all 0.15s', fontFamily: 'inherit',
+              position: 'relative'
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = '#FFE8EE'
+              e.currentTarget.style.borderColor = '#FF99B3'
+            }}
+            onMouseLeave={e => {
+              if (screen !== 'commission') {
+                e.currentTarget.style.background = 'transparent'
+                e.currentTarget.style.borderColor = 'transparent'
+              }
+            }}>
+            <span style={{ fontSize: '20px' }}>💰</span>
+            <span style={{
+              fontSize: '9px', fontWeight: '600',
+              color: screen === 'commission' ? '#FF3366' : '#A09DC8'
+            }}>Commission</span>
+            {hasUnpaidCommissions && (
+              <div style={{
+                position: 'absolute', top: '6px', right: '6px',
+                width: '8px', height: '8px', borderRadius: '50%',
+                background: '#FF3366', border: '2px solid #fff'
+              }} />
+            )}
+          </button>
+
           {/* Divider */}
           <div style={{
             width: '32px', height: '1px',
