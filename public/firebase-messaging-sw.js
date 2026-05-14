@@ -1,43 +1,59 @@
 importScripts('https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js')
 importScripts('https://www.gstatic.com/firebasejs/10.7.0/firebase-messaging-compat.js')
 
-// Receive Firebase config from main thread and initialize
+let app = null
+let messaging = null
+
 self.addEventListener('message', (event) => {
   if (event.data?.type === 'FIREBASE_CONFIG') {
-    if (!firebase.apps.length) {
-      firebase.initializeApp(event.data.config)
-      const messaging = firebase.messaging()
+    try {
+      if (!firebase.apps.length) {
+        app = firebase.initializeApp(event.data.config)
+      } else {
+        app = firebase.apps[0]
+      }
+      messaging = firebase.messaging()
 
       messaging.onBackgroundMessage((payload) => {
-        const { title, body, icon, data } = payload.notification || {}
+        const { title, body } = payload.notification || {}
         self.registration.showNotification(title || 'PrimaPlug', {
           body: body || 'You have a new notification',
-          icon: icon || '/prima-icon.png',
-          badge: '/prima-badge.png',
-          data: data || {},
+          icon: '/prima-icon.png',
           vibrate: [200, 100, 200],
-          actions: [
-            { action: 'open', title: 'Open Prima' },
-            { action: 'close', title: 'Dismiss' }
-          ]
         })
       })
+    } catch (e) {
+      console.log('SW Firebase init error:', e)
     }
+  }
+})
+
+self.addEventListener('push', (event) => {
+  if (!event.data) return
+  try {
+    const data = event.data.json()
+    const title = data?.notification?.title || 'PrimaPlug'
+    const body = data?.notification?.body || 'You have a new notification'
+    event.waitUntil(
+      self.registration.showNotification(title, {
+        body,
+        icon: '/prima-icon.png',
+        vibrate: [200, 100, 200],
+      })
+    )
+  } catch (e) {
+    console.log('Push event error:', e)
   }
 })
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
-  if (event.action === 'open' || !event.action) {
-    event.waitUntil(
-      clients.matchAll({ type: 'window' }).then(clientList => {
-        for (const client of clientList) {
-          if (client.url.includes('primaplug') && 'focus' in client) {
-            return client.focus()
-          }
-        }
-        return clients.openWindow('https://primaplug.vercel.app/dashboard')
-      })
-    )
-  }
+  event.waitUntil(
+    clients.matchAll({ type: 'window' }).then(clientList => {
+      for (const client of clientList) {
+        if ('focus' in client) return client.focus()
+      }
+      return clients.openWindow('https://primaplug.vercel.app/dashboard')
+    })
+  )
 })

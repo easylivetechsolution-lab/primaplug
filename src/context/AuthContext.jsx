@@ -43,12 +43,18 @@ export const AuthProvider = ({ children }) => {
       setProfile(data)
 
       if (data) {
-        await supabase.rpc('check_commission_status', {
-          p_worker_id: userId
-        }).catch(() => null)
+        try {
+          await supabase.rpc('check_commission_status', {
+            p_worker_id: userId
+          })
+        } catch (e) {
+          console.log('Commission check error:', e)
+        }
       }
     } catch (e) {
       console.log('Profile fetch error:', e)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -58,8 +64,9 @@ export const AuthProvider = ({ children }) => {
       if (session?.user) {
         fetchProfile(session.user.id)
         setTimeout(() => initPushNotifications(session.user.id), 3000)
+      } else {
+        setLoading(false)
       }
-      setLoading(false)
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -68,8 +75,10 @@ export const AuthProvider = ({ children }) => {
         if (session?.user) {
           fetchProfile(session.user.id)
           setTimeout(() => initPushNotifications(session.user.id), 3000)
-        } else setProfile(null)
-        setLoading(false)
+        } else {
+          setProfile(null)
+          setLoading(false)
+        }
       }
     )
 

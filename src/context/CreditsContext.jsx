@@ -55,15 +55,23 @@ export const CreditsProvider = ({ children }) => {
     const channel = supabase
       .channel('credits-' + user.id)
       .on('postgres_changes', {
-        event: '*', schema: 'public',
+        event: '*',
+        schema: 'public',
         table: 'prima_credits',
-        filter: `user_id=eq.${user.id}`
-      }, () => fetchCredits())
+      }, (payload) => {
+        if (payload.new?.user_id === user.id || payload.old?.user_id === user.id) {
+          fetchCredits()
+        }
+      })
       .on('postgres_changes', {
-        event: '*', schema: 'public',
+        event: '*',
+        schema: 'public',
         table: 'commissions',
-        filter: `worker_id=eq.${user.id}`
-      }, () => fetchCommissions())
+      }, (payload) => {
+        if (payload.new?.worker_id === user.id || payload.old?.worker_id === user.id) {
+          fetchCommissions()
+        }
+      })
       .subscribe()
     return () => supabase.removeChannel(channel)
   }
