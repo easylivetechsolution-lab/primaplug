@@ -41,6 +41,12 @@ export const AuthProvider = ({ children }) => {
       }
 
       setProfile(data)
+
+      if (data) {
+        await supabase.rpc('check_commission_status', {
+          p_worker_id: userId
+        }).catch(() => null)
+      }
     } catch (e) {
       console.log('Profile fetch error:', e)
     }

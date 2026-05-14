@@ -3,6 +3,8 @@ import { supabase } from '../../supabase'
 import { useAuth } from '../../context/AuthContext'
 import CategoryPicker from '../CategoryPicker'
 import BrandIcon from '../BrandIcon'
+import { completeReferral } from '../../utils/referral'
+import { getProfileCompletion } from '../../utils/profileComplete'
 
 const LocationSearch = ({ value, onSelect, inputStyle }) => {
   const [search, setSearch] = useState(value || '')
@@ -185,6 +187,14 @@ export default function ProfileScreen({ onLogout }) {
       alert('Error saving: ' + error.message)
       setSaving(false)
       return
+    }
+
+    const updatedProfile = data?.[0]
+    if (updatedProfile) {
+      const { complete } = getProfileCompletion(updatedProfile)
+      if (complete) {
+        await completeReferral(user.id)
+      }
     }
 
     await fetchProfile()

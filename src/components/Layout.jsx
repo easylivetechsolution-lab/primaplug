@@ -20,11 +20,15 @@ import ChatScreen from './screens/ChatScreen'
 import FloatingChat from './FloatingChat'
 import BrandIcon from './BrandIcon'
 import ServicesScreen from "./screens/ServicesScreen";
+import ReferralScreen from './screens/ReferralScreen'
+import CommissionScreen from './screens/CommissionScreen'
 import { initPushNotifications } from '../utils/pushNotifications'
+import { useCredits } from '../context/CreditsContext'
 
 export default function Layout() {
   const { user, profile } = useAuth()
   const { isAdmin } = useAdmin()
+  const { hasUnpaidCommissions } = useCredits()
   const navigate = useNavigate()
   const [screen, setScreen] = useState('map')
   const [showPost, setShowPost] = useState(false)
@@ -122,6 +126,8 @@ export default function Layout() {
     settings: <SettingsScreen onLogout={handleLogout} />,
     chat: <ChatScreen />,
     services: <ServicesScreen />,
+    referral: <ReferralScreen />,
+    commission: <CommissionScreen />,
   }
 
   return (
@@ -183,10 +189,18 @@ export default function Layout() {
                 alignItems: 'center',
                 gap: '6px',
                 transition: 'all 0.15s',
-                fontFamily: 'inherit'
+                fontFamily: 'inherit',
+                position: 'relative'
               }}>
               <BrandIcon name={item.icon} size={28} active={screen === item.key} />
               {item.label}
+              {item.key === 'mygigs' && hasUnpaidCommissions && (
+                <span style={{
+                  position: 'absolute', top: '6px', right: '6px',
+                  width: '7px', height: '7px', borderRadius: '50%',
+                  background: '#FF3366', border: '1.5px solid #fff'
+                }} />
+              )}
             </button>
           ))}
         </div>
@@ -464,6 +478,37 @@ export default function Layout() {
               fontSize: '9px', fontWeight: '600',
               color: screen === 'services' ? '#6C47FF' : '#A09DC8'
             }}>Services</span>
+          </button>
+
+          {/* Referral */}
+          <button
+            onClick={() => setScreen('referral')}
+            title="Refer & Earn"
+            style={{
+              width: '48px', height: '48px',
+              borderRadius: '12px',
+              background: screen === 'referral' ? '#EEE9FF' : 'transparent',
+              border: `1.5px solid ${screen === 'referral' ? '#B8A5FF' : 'transparent'}`,
+              display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center',
+              gap: '3px', cursor: 'pointer',
+              transition: 'all 0.15s', fontFamily: 'inherit'
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = '#EEE9FF'
+              e.currentTarget.style.borderColor = '#B8A5FF'
+            }}
+            onMouseLeave={e => {
+              if (screen !== 'referral') {
+                e.currentTarget.style.background = 'transparent'
+                e.currentTarget.style.borderColor = 'transparent'
+              }
+            }}>
+            <span style={{ fontSize: '20px' }}>🎁</span>
+            <span style={{
+              fontSize: '9px', fontWeight: '600',
+              color: screen === 'referral' ? '#6C47FF' : '#A09DC8'
+            }}>Refer</span>
           </button>
 
           {/* Divider */}

@@ -1,0 +1,142 @@
+import { supabase } from '../supabase'
+
+// Save referral code from URL to localStorage
+export const captureReferralCode = () => {
+  const params = new URLSearchParams(window.location.search)
+  const ref = params.get('ref')
+  if (ref) {
+    localStorage.setItem('prima_referral', ref)
+    console.log('Referral code captured:', ref)
+  }
+}
+
+// Process referral after signup
+export const processReferral = async (newUserId) => {
+  const referralCode = localStorage.getItem('prima_referral')
+  if (!referralCode) return
+
+  try {
+    // Find referrer by code
+    const { data: referrer } = await supabase
+      .from('users')
+      .select('id, full_name')
+      .eq('referral_code', referralCode)
+      .maybeSingle()
+
+    if (!referrer || referrer.id === newUserId) return
+
+    // Check if referral already exists
+    const { data: existing } = await supabase
+      .from('referrals')
+      .select('id')
+      .eq('referred_id', newUserId)
+      .maybeSingle()
+
+    if (existing) return
+
+    // Create referral record
+    await supabase.from('referrals').insert({
+      referrer_id: referrer.id,
+      referred_id: newUserId,
+      referral_code: referralCode,
+      status: 'pending'
+    })
+
+    console.log('Referral created for:', referrer.full_name)
+    localStorage.removeItem('prima_referral')
+  } catch (e) {
+    console.error('Referral error:', e)
+  }
+}
+
+// Complete referral when new user finishes profile
+export const completeReferral = async (userId) => {
+  try {
+    // Find pending referral for this user
+    const { data: referral } = await supabase
+      .from('referrals')
+      .select('*, referrer:users!referrals_referrer_id_fkey(id, full_name)')
+      .eq('referred_id', userId)
+      .eq('status', 'pending')
+      .eq('reward_given', false)
+      .maybeSingle()
+
+    if (!referral) return
+
+    // Mark referral complete
+    await supabase
+      .from('referrals')
+      .update({
+        status: 'completed',
+        reward_given: true,
+        completed_at: new Date().toISOString()
+      })
+      .eq('id', referral.id)
+
+    // Reward referrer — +5 trust score + 20 credits
+    await supabase
+      .from('users')
+      .update({
+        trust_score: supabase.raw('least(100, trust_score + 5)')
+      })
+      .eq('id', referral.referrer_id)
+
+    await supabase.rpc('add_credits', {
+      p_user_id: referral.referrer_id,
+      p_amount: 20,
+      p_type: 'referral_reward',
+      p_description: `Referral reward — ${referral.referrer?.full_name || 'Someone'} joined Prima`,
+    })
+
+    // Reward new user — +3 trust score + 10 credits
+    await supabase
+      .from('users')
+      .update({
+        trust_score: supabase.raw('least(100, trust_score + 3)')
+      })
+      .eq('id', userId)
+
+    await supabase.rpc('add_credits', {
+      p_user_id: userId,
+      p_amount: 10,
+      p_type: 'referral_joined',
+      p_description: 'Welcome bonus for joining via referral',
+    })
+
+    // Notify referrer
+    await supabase.from('notifications').insert({
+      user_id: referral.referrer_id,
+      title: '🎉 Referral Completed!',
+      message: `Your referral completed their profile! You earned +5 trust score and 20 Prima Credits.`,
+      type: 'general'
+    })
+
+    // Notify new user
+    await supabase.from('notifications').insert({
+      user_id: userId,
+      title: '🎁 Welcome Bonus!',
+      message: 'You joined via referral and earned +3 trust score and 10 Prima Credits!',
+      type: 'general'
+    })
+
+    console.log('Referral completed and rewards given')
+  } catch (e) {
+    console.error('Complete referral error:', e)
+  }
+}
+
+// Generate referral code for new user
+export const generateReferralCode = async (userId, username, fullName) => {
+  const base = (username || fullName || 'user')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '')
+    .substring(0, 8)
+  const code = base + Math.floor(1000 + Math.random() * 9000)
+
+  await supabase
+    .from('users')
+    .update({ referral_code: code })
+    .eq('id', userId)
+
+  return code
+}

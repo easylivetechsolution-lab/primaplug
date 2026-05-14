@@ -3,6 +3,7 @@ import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import CategoryPicker from '../components/CategoryPicker'
+import { processReferral, generateReferralCode } from '../utils/referral'
 
 const LocationSearch = ({ value, onSelect, inputStyle }) => {
   const [search, setSearch] = useState(value || '')
@@ -173,6 +174,12 @@ export default function Onboarding() {
         setLoading(false)
         return
       }
+
+      // Generate referral code for new user
+      await generateReferralCode(user.id, form.username, form.full_name)
+
+      // Process any pending referral
+      await processReferral(user.id)
 
       navigate('/dashboard')
     } catch (e) {

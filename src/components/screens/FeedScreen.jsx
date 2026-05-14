@@ -800,6 +800,17 @@ export default function FeedScreen() {
       setApplying(false)
       return
     }
+    // Check account status
+    const { data: userStatus } = await supabase
+      .from('users')
+      .select('account_status')
+      .eq('id', userId)
+      .single()
+    if (userStatus?.account_status === 'restricted') {
+      alert('Your account is restricted due to unpaid platform commission. Please pay to restore full access.')
+      setApplying(false)
+      return
+    }
     // Check if already applied
     const { data: existing } = await supabase
       .from('applications')

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 import { playComplete, playReceipt } from '../utils/sounds'
+import { getCurrency } from '../data/currencies'
 
 export default function ReceiptFlow({ gig, userRole, workerId, onClose, onComplete }) {
   // userRole = 'poster' or 'worker'
@@ -147,6 +148,7 @@ export default function ReceiptFlow({ gig, userRole, workerId, onClose, onComple
 
     if (updated.poster_confirmed && updated.worker_confirmed) {
       playComplete()
+
       // Mark receipt complete
       await supabase
         .from('receipts')
@@ -163,24 +165,59 @@ export default function ReceiptFlow({ gig, userRole, workerId, onClose, onComple
         .update({ status: 'completed' })
         .eq('id', gig.id)
 
-      // Update worker gigs_completed count
+      // ── COMMISSION CALCULATION ──
+      const gigAmount = updated.amount || 0
+      if (gigAmount > 0) {
+        const commissionAmount = gigAmount * 0.10
+        const dueDate = new Date()
+        dueDate.setDate(dueDate.getDate() + 7)
+
+        await supabase.from('commissions').insert({
+          gig_id: gig.id,
+          worker_id: updated.worker_id,
+          gig_amount: gigAmount,
+          commission_amount: commissionAmount,
+          currency: gig.currency || 'USD',
+          status: 'pending',
+          due_date: dueDate.toISOString()
+        })
+
+        await supabase.from('notifications').insert({
+          user_id: updated.worker_id,
+          title: '💰 Platform Commission Due',
+          message: `You earned on "${gig.title}". A 10% platform fee of ${getCurrency(gig.currency || 'USD').symbol}${commissionAmount.toFixed(2)} is now due. Pay within 7 days to maintain your account.`,
+          type: 'commission',
+          gig_id: gig.id
+        })
+      }
+
+      // ── CREDITS BONUS FOR COMPLETION ──
+      await supabase.rpc('add_credits', {
+        p_user_id: updated.worker_id,
+        p_amount: 5,
+        p_type: 'completion_bonus',
+        p_description: `Bonus credits for completing "${gig.title}"`,
+        p_gig_id: gig.id
+      })
+
+      // Update worker gigs_completed
       await supabase.rpc('increment_gigs_completed', {
         worker_id: updated.worker_id
       }).catch(() => null)
 
-      // Notify both parties
+      // Notify both
       await supabase.from('notifications').insert([
         {
           user_id: updated.poster_id,
           title: 'Gig Completed! ✅',
-          message: `"${gig.title}" is now complete. Please leave a review!`,
+          message: `"${gig.title}" is complete. Please leave a review!`,
           type: 'review',
           gig_id: gig.id
         },
         {
           user_id: updated.worker_id,
           title: 'Gig Completed! ✅',
-          message: `"${gig.title}" is now complete. Please leave a review!`,
+          message: `"${gig.title}" is complete. You earned +5 Prima Credits bonus!`,
           type: 'review',
           gig_id: gig.id
         }

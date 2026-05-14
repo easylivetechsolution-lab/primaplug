@@ -8,6 +8,8 @@ import Dashboard from './pages/Dashboard'
 import Admin from './pages/Admin'
 import BrandIcon from './components/BrandIcon'
 import { LanguageProvider } from './context/LanguageContext'
+import { CreditsProvider } from './context/CreditsContext'
+import { captureReferralCode } from './utils/referral'
 
 function AuthCallback() {
   const navigate = useNavigate()
@@ -161,6 +163,10 @@ function ProtectedRoute({ children }) {
 function AppRoutes() {
   const { user, loading } = useAuth()
 
+  useEffect(() => {
+    captureReferralCode()
+  }, [])
+
   if (loading) return (
     <div style={{
       minHeight: '100vh',
@@ -213,7 +219,9 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <LanguageProvider>
-          <AppRoutes />
+          <CreditsProvider>
+            <AppRoutes />
+          </CreditsProvider>
         </LanguageProvider>
       </AuthProvider>
     </BrowserRouter>
