@@ -9,7 +9,7 @@ import Admin from './pages/Admin'
 import BrandIcon from './components/BrandIcon'
 import { LanguageProvider } from './context/LanguageContext'
 import { CreditsProvider } from './context/CreditsContext'
-import { captureReferralCode } from './utils/referral'
+import { captureReferralCode, captureGigReferral } from './utils/referral'
 
 function AuthCallback() {
   const navigate = useNavigate()
@@ -165,6 +165,7 @@ function AppRoutes() {
 
   useEffect(() => {
     captureReferralCode()
+    captureGigReferral()
   }, [])
 
   if (loading) return (

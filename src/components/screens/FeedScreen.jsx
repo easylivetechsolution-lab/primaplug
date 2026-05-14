@@ -8,6 +8,8 @@ import { getProfileCompletion } from '../../utils/profileComplete'
 import ProfilePrompt from '../ProfilePrompt'
 import { useAuth } from '../../context/AuthContext'
 import { sendPushToUser } from '../../utils/pushNotifications'
+import { trackGigReferral } from '../../utils/referral'
+import ShareGig from '../ShareGig'
 
 const URGENCY = {
   now: { label: 'NOW', color: '#FF3366', bg: '#FFE8EE', border: '#FF99B3' },
@@ -32,6 +34,7 @@ export default function FeedScreen() {
   const [applied, setApplied] = useState(false)
   const [showProfilePrompt, setShowProfilePrompt] = useState(false)
   const [savedGigIds, setSavedGigIds] = useState(new Set())
+  const [sharingGig, setSharingGig] = useState(null)
 
   const cleanExpiredGigs = async () => {
     await supabase
@@ -761,6 +764,26 @@ export default function FeedScreen() {
                     <span>💬</span> Message Client
                   </button>
 
+                  {/* Share & Earn */}
+                  <button
+                    onClick={() => setSharingGig(selectedGig)}
+                    style={{
+                      width: '100%',
+                      background: '#F5F4FF',
+                      border: '1.5px solid #B8A5FF',
+                      borderRadius: '12px', padding: '13px',
+                      fontSize: '14px', fontWeight: '700',
+                      color: '#6C47FF', cursor: 'pointer',
+                      fontFamily: 'inherit',
+                      display: 'flex', alignItems: 'center',
+                      justifyContent: 'center', gap: '8px',
+                      transition: 'all 0.15s'
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = '#EEE9FF' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = '#F5F4FF' }}>
+                    <span>🔗</span> Share & Earn Credits
+                  </button>
+
                   {/* Skip + Save + Apply row */}
                   <div style={{ display: 'flex', gap: '10px' }}>
                   <button
@@ -869,6 +892,7 @@ export default function FeedScreen() {
       })
     }
     setApplied(true)
+    await trackGigReferral(selectedGig.id, userId)
   } catch (e) {
     console.log('Apply error:', e)
   }
@@ -930,6 +954,10 @@ export default function FeedScreen() {
             window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'profile' }))
           }}
         />
+      )}
+
+      {sharingGig && (
+        <ShareGig gig={sharingGig} onClose={() => setSharingGig(null)} />
       )}
     </div>
   )

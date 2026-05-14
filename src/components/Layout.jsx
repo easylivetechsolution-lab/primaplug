@@ -22,6 +22,7 @@ import BrandIcon from './BrandIcon'
 import ServicesScreen from "./screens/ServicesScreen";
 import ReferralScreen from './screens/ReferralScreen'
 import CommissionScreen from './screens/CommissionScreen'
+import WithdrawalScreen from './screens/WithdrawalScreen'
 import { initPushNotifications } from '../utils/pushNotifications'
 import { useCredits } from '../context/CreditsContext'
 
@@ -128,6 +129,7 @@ export default function Layout() {
     services: <ServicesScreen />,
     referral: <ReferralScreen />,
     commission: <CommissionScreen />,
+    withdrawal: <WithdrawalScreen />,
   }
 
   return (
@@ -548,6 +550,37 @@ export default function Layout() {
                 background: '#FF3366', border: '2px solid #fff'
               }} />
             )}
+          </button>
+
+          {/* Withdraw */}
+          <button
+            onClick={() => setScreen('withdrawal')}
+            title="Withdraw Credits"
+            style={{
+              width: '48px', height: '48px',
+              borderRadius: '12px',
+              background: screen === 'withdrawal' ? '#DFFDF4' : 'transparent',
+              border: `1.5px solid ${screen === 'withdrawal' ? '#7EECD2' : 'transparent'}`,
+              display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center',
+              gap: '3px', cursor: 'pointer',
+              transition: 'all 0.15s', fontFamily: 'inherit'
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = '#DFFDF4'
+              e.currentTarget.style.borderColor = '#7EECD2'
+            }}
+            onMouseLeave={e => {
+              if (screen !== 'withdrawal') {
+                e.currentTarget.style.background = 'transparent'
+                e.currentTarget.style.borderColor = 'transparent'
+              }
+            }}>
+            <span style={{ fontSize: '20px' }}>💸</span>
+            <span style={{
+              fontSize: '9px', fontWeight: '600',
+              color: screen === 'withdrawal' ? '#00C48C' : '#A09DC8'
+            }}>Withdraw</span>
           </button>
 
           {/* Divider */}

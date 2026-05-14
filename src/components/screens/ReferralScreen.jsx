@@ -375,6 +375,49 @@ export default function ReferralScreen() {
         </div>
       )}
 
+      {/* Withdraw Credits */}
+      <div style={{
+        background: 'linear-gradient(135deg, #DFFDF4, #E8FFF5)',
+        border: '1.5px solid #7EECD2',
+        borderRadius: '16px', padding: '18px',
+        marginBottom: '14px'
+      }}>
+        <div style={{
+          display: 'flex', justifyContent: 'space-between',
+          alignItems: 'center', marginBottom: '10px'
+        }}>
+          <div>
+            <div style={{
+              fontSize: '14px', fontWeight: '700', color: '#14123A',
+              marginBottom: '2px'
+            }}>💸 Withdraw Your Credits</div>
+            <div style={{ fontSize: '12px', color: '#8B8FAF' }}>
+              Convert credits to cash · 50 credits = $1
+            </div>
+          </div>
+          <div style={{
+            background: '#00C48C', color: '#fff',
+            borderRadius: '10px', padding: '6px 12px',
+            fontSize: '16px', fontWeight: '800'
+          }}>
+            {credits?.balance?.toFixed(0) || 0}
+          </div>
+        </div>
+        <button
+          onClick={() => window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'withdrawal' }))}
+          style={{
+            width: '100%',
+            background: 'linear-gradient(135deg, #00C48C, #00A876)',
+            border: 'none', borderRadius: '12px',
+            padding: '12px', fontSize: '14px',
+            fontWeight: '700', color: '#fff',
+            cursor: 'pointer', fontFamily: 'inherit',
+            boxShadow: '0 4px 16px rgba(0,196,140,0.3)'
+          }}>
+          💸 Withdraw Credits
+        </button>
+      </div>
+
       {/* Leaderboard */}
       {leaderboard.length > 0 && (
         <div style={{

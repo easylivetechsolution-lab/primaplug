@@ -3,6 +3,7 @@ import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 import { playComplete, playReceipt } from '../utils/sounds'
 import { getCurrency } from '../data/currencies'
+import { rewardGigReferral } from '../utils/referral'
 
 export default function ReceiptFlow({ gig, userRole, workerId, onClose, onComplete }) {
   // userRole = 'poster' or 'worker'
@@ -189,6 +190,8 @@ export default function ReceiptFlow({ gig, userRole, workerId, onClose, onComple
           type: 'commission',
           gig_id: gig.id
         })
+
+        await rewardGigReferral(gig.id, gigAmount, gig.currency || 'USD')
       }
 
       // ── CREDITS BONUS FOR COMPLETION ──

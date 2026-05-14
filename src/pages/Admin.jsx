@@ -11,6 +11,7 @@ const TABS = [
   { key: 'services', label: '🛠 Services', icon: '🛠' },
   { key: 'disputes', label: '⚠️ Disputes', icon: '⚠️' },
   { key: 'receipts', label: '📎 Receipts', icon: '📎' },
+  { key: 'withdrawals', label: '💸 Withdrawals', icon: '💸' },
 ]
 
 export default function Admin() {
@@ -24,6 +25,7 @@ export default function Admin() {
   const [services, setServices] = useState([])
   const [disputes, setDisputes] = useState([])
   const [receipts, setReceipts] = useState([])
+  const [withdrawals, setWithdrawals] = useState([])
   const [loadingData, setLoadingData] = useState(false)
   const [search, setSearch] = useState('')
 
@@ -70,10 +72,15 @@ export default function Admin() {
       .select('*', { count: 'exact', head: true })
       .gte('joined_at', weekAgo.toISOString())
 
+    const { count: pendingWithdrawals } = await supabase
+      .from('withdrawals')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'pending')
+
     setStats({
       totalUsers, totalGigs, totalServices,
       totalReceipts, openDisputes, completedGigs,
-      totalValue, newUsersThisWeek
+      totalValue, newUsersThisWeek, pendingWithdrawals: pendingWithdrawals || 0
     })
   }
 
@@ -119,6 +126,14 @@ export default function Admin() {
           .order('created_at', { ascending: false })
           .limit(100)
         setReceipts(receiptsData || [])
+        break
+      case 'withdrawals':
+        const { data: withdrawalsData } = await supabase
+          .from('withdrawals')
+          .select('*, users(full_name, email)')
+          .order('created_at', { ascending: false })
+          .limit(100)
+        setWithdrawals(withdrawalsData || [])
         break
     }
     setLoadingData(false)
@@ -282,6 +297,14 @@ export default function Admin() {
               }}>
               <span>{tab.icon}</span>
               <span>{tab.label.split(' ')[1]}</span>
+              {tab.key === 'withdrawals' && stats?.pendingWithdrawals > 0 && (
+                <span style={{
+                  background: '#FFB800', color: '#fff',
+                  borderRadius: '10px', padding: '1px 6px',
+                  fontSize: '9px', display: 'flex', alignItems: 'center',
+                  justifyContent: 'center', fontWeight: '800', marginLeft: 'auto'
+                }}>{stats.pendingWithdrawals}</span>
+              )}
               {tab.key === 'disputes' && stats?.openDisputes > 0 && (
                 <span style={{
                   background: '#FF3366', color: '#fff',
@@ -319,6 +342,7 @@ export default function Admin() {
                   { label: 'Transactions', value: stats.totalReceipts, icon: '📎', color: '#00C48C', sub: `$${stats.totalValue?.toFixed(0)} total value` },
                   { label: 'Open Disputes', value: stats.openDisputes, icon: '⚠️', color: '#FF3366', sub: 'Needs review' },
                   { label: 'Completed Gigs', value: stats.completedGigs, icon: '✅', color: '#00C48C', sub: 'All time' },
+                  { label: 'Pending Payouts', value: stats.pendingWithdrawals, icon: '💸', color: '#FFB800', sub: 'Withdrawal requests' },
                 ].map(({ label, value, icon, color, sub }) => (
                   <div key={label} style={{
                     background: '#fff', border: '1.5px solid #E2E0FF',
@@ -843,6 +867,130 @@ export default function Admin() {
                         fontFamily: 'inherit'
                       }}>Dismiss</button>
                   </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* WITHDRAWALS TAB */}
+          {activeTab === 'withdrawals' && (
+            <div>
+              <div style={{
+                fontSize: '20px', fontWeight: '800',
+                color: '#14123A', marginBottom: '16px'
+              }}>Withdrawal Requests ({withdrawals.length})</div>
+              {withdrawals.length === 0 ? (
+                <div style={{
+                  textAlign: 'center', padding: '48px',
+                  color: '#A09DC8', fontSize: '14px'
+                }}>No withdrawal requests yet</div>
+              ) : withdrawals.map(w => (
+                <div key={w.id} style={{
+                  background: '#fff', border: '1.5px solid #E2E0FF',
+                  borderRadius: '14px', padding: '16px',
+                  marginBottom: '10px'
+                }}>
+                  <div style={{
+                    display: 'flex', justifyContent: 'space-between',
+                    alignItems: 'flex-start', marginBottom: '8px'
+                  }}>
+                    <div>
+                      <div style={{
+                        fontSize: '14px', fontWeight: '700', color: '#14123A'
+                      }}>{w.users?.full_name || 'Unknown'}</div>
+                      <div style={{ fontSize: '11px', color: '#8B8FAF' }}>
+                        {w.users?.email}
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{
+                        fontSize: '16px', fontWeight: '800', color: '#00C48C'
+                      }}>${w.dollar_amount?.toFixed(2)}</div>
+                      <div style={{ fontSize: '11px', color: '#A09DC8' }}>
+                        {w.credits_amount} credits
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{
+                    display: 'flex', gap: '8px', flexWrap: 'wrap',
+                    marginBottom: '10px'
+                  }}>
+                    <span style={{
+                      background: '#EEE9FF', border: '1px solid #B8A5FF',
+                      borderRadius: '6px', padding: '3px 8px',
+                      fontSize: '11px', fontWeight: '700', color: '#6C47FF'
+                    }}>{w.method?.toUpperCase()}</span>
+                    <span style={{
+                      background: w.status === 'pending' ? '#FFF8E0' : w.status === 'paid' ? '#DFFDF4' : '#FFE8EE',
+                      border: `1px solid ${w.status === 'pending' ? '#FFD966' : w.status === 'paid' ? '#7EECD2' : '#FF99B3'}`,
+                      borderRadius: '6px', padding: '3px 8px',
+                      fontSize: '11px', fontWeight: '700',
+                      color: w.status === 'pending' ? '#FFB800' : w.status === 'paid' ? '#00C48C' : '#FF3366'
+                    }}>{w.status?.toUpperCase()}</span>
+                    <span style={{ fontSize: '11px', color: '#A09DC8' }}>
+                      {new Date(w.created_at).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <div style={{
+                    background: '#F5F4FF', borderRadius: '8px',
+                    padding: '8px 12px', fontSize: '12px',
+                    color: '#5B5887', marginBottom: '10px'
+                  }}>
+                    <strong>Account:</strong> {w.account_details}
+                  </div>
+                  {w.status === 'pending' && (
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        onClick={async () => {
+                          await supabase
+                            .from('withdrawals')
+                            .update({ status: 'paid', paid_at: new Date().toISOString() })
+                            .eq('id', w.id)
+                          await supabase.from('notifications').insert({
+                            user_id: w.user_id,
+                            title: '💸 Withdrawal Paid!',
+                            message: `Your withdrawal of ${w.credits_amount} credits ($${w.dollar_amount?.toFixed(2)}) has been processed.`,
+                            type: 'general'
+                          })
+                          fetchTabData('withdrawals')
+                        }}
+                        style={{
+                          flex: 1, background: '#00C48C',
+                          border: 'none', borderRadius: '8px',
+                          padding: '8px', fontSize: '12px',
+                          fontWeight: '700', color: '#fff',
+                          cursor: 'pointer', fontFamily: 'inherit'
+                        }}>✓ Mark Paid</button>
+                      <button
+                        onClick={async () => {
+                          await supabase
+                            .from('withdrawals')
+                            .update({ status: 'rejected' })
+                            .eq('id', w.id)
+                          await supabase.rpc('add_credits', {
+                            p_user_id: w.user_id,
+                            p_amount: w.credits_amount,
+                            p_type: 'withdrawal_refund',
+                            p_description: 'Withdrawal rejected — credits refunded'
+                          })
+                          await supabase.from('notifications').insert({
+                            user_id: w.user_id,
+                            title: '❌ Withdrawal Rejected',
+                            message: `Your withdrawal was rejected. ${w.credits_amount} credits have been refunded to your account.`,
+                            type: 'general'
+                          })
+                          fetchTabData('withdrawals')
+                        }}
+                        style={{
+                          flex: 1, background: '#FFE8EE',
+                          border: '1.5px solid #FF99B3',
+                          borderRadius: '8px', padding: '8px',
+                          fontSize: '12px', fontWeight: '700',
+                          color: '#FF3366', cursor: 'pointer',
+                          fontFamily: 'inherit'
+                        }}>✕ Reject & Refund</button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

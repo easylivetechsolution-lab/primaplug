@@ -4,6 +4,8 @@ import { useAuth } from '../../context/AuthContext'
 import PublicProfile from '../PublicProfile'
 import BrandIcon from '../BrandIcon'
 import { getCurrency } from '../../data/currencies'
+import { trackGigReferral } from '../../utils/referral'
+import ShareGig from '../ShareGig'
 
 const getCurrencySymbol = (code) => getCurrency(code || 'USD').symbol
 
@@ -15,6 +17,7 @@ export default function SavedScreen() {
   const [viewingProfile, setViewingProfile] = useState(null)
   const [applying, setApplying] = useState(false)
   const [applied, setApplied] = useState(null)
+  const [sharingGig, setSharingGig] = useState(null)
 
   useEffect(() => {
     fetchSavedGigs()
@@ -99,6 +102,7 @@ export default function SavedScreen() {
       }
 
       setApplied(gig.id)
+      await trackGigReferral(gig.id, user.id)
     } catch (e) {
       console.log('Apply error:', e)
     }
@@ -395,7 +399,22 @@ export default function SavedScreen() {
                     </div>
 
                     {/* Action buttons */}
-                    <div style={{ display: 'flex', gap: '8px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <button
+                        onClick={() => setSharingGig(gig)}
+                        style={{
+                          width: '100%', background: '#F5F4FF',
+                          border: '1.5px solid #B8A5FF',
+                          borderRadius: '10px', padding: '11px',
+                          fontSize: '13px', fontWeight: '700',
+                          color: '#6C47FF', cursor: 'pointer',
+                          fontFamily: 'inherit',
+                          display: 'flex', alignItems: 'center',
+                          justifyContent: 'center', gap: '6px'
+                        }}>
+                        🔗 Share & Earn Credits
+                      </button>
+                      <div style={{ display: 'flex', gap: '8px' }}>
                       <button
                         onClick={() => {
                           setSelectedGig(null)
@@ -444,6 +463,7 @@ export default function SavedScreen() {
                           <><BrandIcon name="open" size={18} /> Apply Now</>
                         )}
                       </button>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -459,6 +479,10 @@ export default function SavedScreen() {
           userId={viewingProfile}
           onClose={() => setViewingProfile(null)}
         />
+      )}
+
+      {sharingGig && (
+        <ShareGig gig={sharingGig} onClose={() => setSharingGig(null)} />
       )}
 
       <style>{`

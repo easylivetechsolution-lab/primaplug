@@ -140,3 +140,116 @@ export const generateReferralCode = async (userId, username, fullName) => {
 
   return code
 }
+
+// Capture gig referral from URL
+export const captureGigReferral = () => {
+  const params = new URLSearchParams(window.location.search)
+  const gigRef = params.get('gigref')
+  const ref = params.get('ref')
+  if (gigRef && ref) {
+    localStorage.setItem('prima_gig_referral', JSON.stringify({ gigId: gigRef, referralCode: ref }))
+    console.log('Gig referral captured:', gigRef, ref)
+    return { gigId: gigRef, referralCode: ref }
+  }
+  return null
+}
+
+export const getCapturedGigReferral = () => {
+  try {
+    const data = localStorage.getItem('prima_gig_referral')
+    return data ? JSON.parse(data) : null
+  } catch (e) {
+    return null
+  }
+}
+
+export const clearGigReferral = () => {
+  localStorage.removeItem('prima_gig_referral')
+}
+
+export const trackGigReferral = async (gigId, referredUserId) => {
+  const captured = getCapturedGigReferral()
+  if (!captured) return
+  if (captured.gigId !== gigId) return
+
+  try {
+    const { data: referrer } = await supabase
+      .from('users')
+      .select('id')
+      .eq('referral_code', captured.referralCode)
+      .maybeSingle()
+
+    if (!referrer) return
+    if (referrer.id === referredUserId) return
+
+    const { data: existing } = await supabase
+      .from('gig_referrals')
+      .select('id')
+      .eq('gig_id', gigId)
+      .eq('referred_id', referredUserId)
+      .maybeSingle()
+
+    if (existing) return
+
+    await supabase.from('gig_referrals').insert({
+      gig_id: gigId,
+      referrer_id: referrer.id,
+      referred_id: referredUserId,
+      status: 'pending'
+    })
+
+    clearGigReferral()
+    console.log('Gig referral tracked')
+  } catch (e) {
+    console.error('Track gig referral error:', e)
+  }
+}
+
+export const rewardGigReferral = async (gigId, gigAmount, currency) => {
+  try {
+    const { data: referral } = await supabase
+      .from('gig_referrals')
+      .select('*, referrer:users!gig_referrals_referrer_id_fkey(full_name)')
+      .eq('gig_id', gigId)
+      .eq('status', 'pending')
+      .eq('reward_given', false)
+      .maybeSingle()
+
+    if (!referral) return
+
+    const rewardDollars = gigAmount * 0.05
+    const rewardCredits = Math.round(rewardDollars * 50)
+    if (rewardCredits < 1) return
+
+    await supabase.rpc('add_credits', {
+      p_user_id: referral.referrer_id,
+      p_amount: rewardCredits,
+      p_type: 'gig_referral',
+      p_description: `5% gig referral reward`,
+      p_gig_id: gigId
+    })
+
+    await supabase
+      .from('gig_referrals')
+      .update({
+        status: 'completed',
+        reward_given: true,
+        gig_amount: gigAmount,
+        reward_credits: rewardCredits,
+        completed_at: new Date().toISOString()
+      })
+      .eq('id', referral.id)
+
+    await supabase.from('notifications').insert({
+      user_id: referral.referrer_id,
+      title: '🎉 Gig Referral Reward!',
+      message: `You earned ${rewardCredits} Prima Credits (5% of $${gigAmount}) for referring a gig!`,
+      type: 'general',
+      gig_id: gigId
+    })
+
+    console.log('Gig referral rewarded:', rewardCredits, 'credits')
+  } catch (e) {
+    console.error('Reward gig referral error:', e)
+  }
+}

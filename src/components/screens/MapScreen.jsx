@@ -8,6 +8,8 @@ import { playMapPing } from '../../utils/sounds'
 import { useAuth } from '../../context/AuthContext'
 import { getCurrency } from '../../data/currencies'
 import { CATEGORIES } from '../../data/categories'
+import { trackGigReferral } from '../../utils/referral'
+import ShareGig from '../ShareGig'
 
 const getCurrencySymbol = (code) => getCurrency(code || 'USD').symbol
 
@@ -143,6 +145,7 @@ export default function MapScreen() {
   const [applied, setApplied] = useState(false)
   const [savedGigIds, setSavedGigIds] = useState(new Set())
   const [categoryFilter, setCategoryFilter] = useState('All')
+  const [sharingGig, setSharingGig] = useState(null)
 
   useEffect(() => {
     navigator.geolocation.getCurrentPosition(
@@ -790,7 +793,26 @@ export default function MapScreen() {
                 </div>
 
                 {/* Action Buttons */}
-                <div style={{ display: 'flex', gap: '10px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <button
+                    onClick={() => setSharingGig(selectedGig)}
+                    style={{
+                      width: '100%',
+                      background: '#F5F4FF',
+                      border: '1.5px solid #B8A5FF',
+                      borderRadius: '12px', padding: '13px',
+                      fontSize: '14px', fontWeight: '700',
+                      color: '#6C47FF', cursor: 'pointer',
+                      fontFamily: 'inherit',
+                      display: 'flex', alignItems: 'center',
+                      justifyContent: 'center', gap: '8px',
+                      transition: 'all 0.15s'
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = '#EEE9FF' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = '#F5F4FF' }}>
+                    <span>🔗</span> Share & Earn Credits
+                  </button>
+                  <div style={{ display: 'flex', gap: '10px' }}>
                   <button
                     onClick={(e) => toggleSave(e, selectedGig.id)}
                     style={{
@@ -858,6 +880,7 @@ export default function MapScreen() {
       gig_id: selectedGig.id
     })
     setApplied(true)
+    await trackGigReferral(selectedGig.id, userId)
   } catch (e) {
     console.log('Apply error:', e)
   }
@@ -878,6 +901,7 @@ export default function MapScreen() {
                     }}>
                     {applying ? '⏳ Applying...' : '⚡ Apply for This Gig'}
                   </button>
+                  </div>
                 </div>
               </>
             )}
@@ -890,6 +914,10 @@ export default function MapScreen() {
           userId={viewingProfile}
           onClose={() => setViewingProfile(null)}
         />
+      )}
+
+      {sharingGig && (
+        <ShareGig gig={sharingGig} onClose={() => setSharingGig(null)} />
       )}
 
       <style>{`
