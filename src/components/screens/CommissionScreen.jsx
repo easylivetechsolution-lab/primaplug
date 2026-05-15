@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { supabase } from '../../supabase'
 import { useAuth } from '../../context/AuthContext'
+import { payWithFlutterwave, verifyFlutterwavePayment } from '../../utils/flutterwave'
 import { useCredits } from '../../context/CreditsContext'
 import { getCurrency } from '../../data/currencies'
 
 export default function CommissionScreen() {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const {
     credits, commissions, pendingCommissions,
     totalOwed, hasUnpaidCommissions,
@@ -225,30 +226,28 @@ export default function CommissionScreen() {
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '8px' }}>
+                {/* Payment buttons */}
+                <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                  {/* Pay with Flutterwave */}
                   <button
-                    onClick={() => {
-                      if (!window.FlutterwaveCheckout) {
-                        alert('Payment system loading. Please try again in a moment.')
-                        return
-                      }
-                      window.FlutterwaveCheckout({
-                        public_key: import.meta.env.VITE_FLUTTERWAVE_PUBLIC_KEY,
-                        tx_ref: `PRIMA-COMM-${commission.id}-${Date.now()}`,
+                    onClick={async () => {
+                      setPaying(commission.id)
+                      const txRef = `PRIMA-COMM-${commission.id}-${Date.now()}`
+
+                      payWithFlutterwave({
+                        publicKey: import.meta.env.VITE_FLUTTERWAVE_PUBLIC_KEY,
                         amount: commission.commission_amount,
                         currency: commission.currency || 'NGN',
-                        payment_options: 'card, banktransfer, ussd, opay',
-                        customer: {
-                          email: user?.email,
-                          name: user?.user_metadata?.full_name || 'Prima User',
-                        },
-                        customizations: {
-                          title: 'PrimaPlug Commission',
-                          description: `Platform fee for: ${commission.gigs?.title}`,
-                          logo: 'https://primaplug.vercel.app/prima-icon.png',
-                        },
-                        callback: async (response) => {
-                          if (response.status === 'successful') {
+                        email: user?.email || '',
+                        name: profile?.full_name || 'Prima User',
+                        txRef,
+                        title: 'PrimaPlug Commission',
+                        description: `10% platform fee — ${commission.gigs?.title || 'Gig'}`,
+                        onSuccess: async (response) => {
+                          const verified = await verifyFlutterwavePayment(txRef, supabase)
+                          if (verified?.verified) {
+                            await fetchCommissions()
+                          } else {
                             await supabase
                               .from('commissions')
                               .update({
@@ -258,36 +257,34 @@ export default function CommissionScreen() {
                                 flw_ref: response.flw_ref
                               })
                               .eq('id', commission.id)
-
-                            await supabase.rpc('check_commission_status', {
-                              p_worker_id: user.id
-                            })
-
-                            await supabase.from('notifications').insert({
-                              user_id: user.id,
-                              title: '✅ Commission Paid!',
-                              message: `Platform fee paid successfully via Flutterwave.`,
-                              type: 'general'
-                            })
-
                             await fetchCommissions()
-                            alert('Payment successful! Your account is in good standing.')
                           }
+                          setPaying(null)
                         },
-                        onclose: () => console.log('Payment closed'),
+                        onClose: () => setPaying(null),
                       })
                     }}
+                    disabled={paying === commission.id}
                     style={{
                       flex: 2,
-                      background: 'linear-gradient(135deg, #F5A623, #F97316)',
-                      border: 'none', borderRadius: '10px', padding: '12px',
-                      fontSize: '13px', fontWeight: '700', color: '#fff',
-                      cursor: 'pointer', fontFamily: 'inherit',
+                      background: paying === commission.id
+                        ? '#E2E0FF'
+                        : 'linear-gradient(135deg, #F5A623, #F97316)',
+                      border: 'none', borderRadius: '10px',
+                      padding: '12px', fontSize: '13px',
+                      fontWeight: '700',
+                      color: paying === commission.id ? '#A09DC8' : '#fff',
+                      cursor: paying === commission.id ? 'not-allowed' : 'pointer',
+                      fontFamily: 'inherit',
                       display: 'flex', alignItems: 'center',
                       justifyContent: 'center', gap: '6px'
                     }}>
-                    ⚡ Pay with Flutterwave
+                    {paying === commission.id
+                      ? '⏳ Processing...'
+                      : '⚡ Pay Now'}
                   </button>
+
+                  {/* Pay with Credits */}
                   <button
                     onClick={() => handlePayWithCredits(commission)}
                     disabled={paying === commission.id || !canPayWithCredits}
@@ -295,11 +292,10 @@ export default function CommissionScreen() {
                       flex: 1,
                       background: !canPayWithCredits
                         ? '#F5F4FF'
-                        : paying === commission.id
-                          ? '#B8A5FF'
-                          : 'linear-gradient(135deg, #6C47FF, #9B59FF)',
-                      border: !canPayWithCredits ? '1.5px solid #E2E0FF' : 'none',
-                      borderRadius: '10px', padding: '10px',
+                        : 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+                      border: !canPayWithCredits
+                        ? '1.5px solid #E2E0FF' : 'none',
+                      borderRadius: '10px', padding: '12px',
                       fontSize: '12px', fontWeight: '700',
                       color: !canPayWithCredits ? '#A09DC8' : '#fff',
                       cursor: !canPayWithCredits ? 'not-allowed' : 'pointer',
@@ -307,17 +303,16 @@ export default function CommissionScreen() {
                       display: 'flex', alignItems: 'center',
                       justifyContent: 'center', gap: '5px'
                     }}>
-                    {paying === commission.id
-                      ? '⏳...'
-                      : `⭐ ${creditsNeeded} Credits`}
+                    ⭐ Credits
                   </button>
                 </div>
+
                 {!canPayWithCredits && (
                   <div style={{
                     fontSize: '10px', color: '#A09DC8',
-                    marginTop: '5px', textAlign: 'center'
+                    marginTop: '5px', textAlign: 'right'
                   }}>
-                    Need {creditsNeeded} credits · You have {credits?.balance?.toFixed(0) || 0}
+                    Need {creditsNeeded} credits to pay with credits
                   </div>
                 )}
               </div>

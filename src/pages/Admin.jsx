@@ -942,25 +942,36 @@ export default function Admin() {
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <button
                         onClick={async () => {
+                          const confirmed = window.confirm(
+                            `Confirm payment of $${w.dollar_amount?.toFixed(2)} to ${w.users?.full_name || 'user'}?\n\nMake sure you have already sent this payment via Flutterwave or directly before confirming.`
+                          )
+                          if (!confirmed) return
+
                           await supabase
                             .from('withdrawals')
-                            .update({ status: 'paid', paid_at: new Date().toISOString() })
+                            .update({
+                              status: 'paid',
+                              paid_at: new Date().toISOString()
+                            })
                             .eq('id', w.id)
+
                           await supabase.from('notifications').insert({
                             user_id: w.user_id,
-                            title: '💸 Withdrawal Paid!',
-                            message: `Your withdrawal of ${w.credits_amount} credits ($${w.dollar_amount?.toFixed(2)}) has been processed.`,
+                            title: '✅ Withdrawal Paid!',
+                            message: `Your withdrawal of $${w.dollar_amount?.toFixed(2)} has been sent to your ${w.method === 'nigerian_bank' ? 'bank account' : w.method === 'mobile_money' ? 'mobile wallet' : 'account'}. Check within 24 hours.`,
                             type: 'general'
                           })
+
                           fetchTabData('withdrawals')
                         }}
                         style={{
-                          flex: 1, background: '#00C48C',
-                          border: 'none', borderRadius: '8px',
-                          padding: '8px', fontSize: '12px',
-                          fontWeight: '700', color: '#fff',
-                          cursor: 'pointer', fontFamily: 'inherit'
-                        }}>✓ Mark Paid</button>
+                          flex: 2, background: '#DFFDF4',
+                          border: '1.5px solid #7EECD2',
+                          borderRadius: '10px', padding: '10px',
+                          fontSize: '13px', fontWeight: '700',
+                          color: '#00C48C', cursor: 'pointer',
+                          fontFamily: 'inherit'
+                        }}>✓ Confirm Paid</button>
                       <button
                         onClick={async () => {
                           await supabase

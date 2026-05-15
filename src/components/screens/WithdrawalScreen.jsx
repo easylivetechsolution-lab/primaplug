@@ -2,11 +2,20 @@ import { useState } from 'react'
 import { supabase } from '../../supabase'
 import { useCredits } from '../../context/CreditsContext'
 import { useAuth } from '../../context/AuthContext'
+import { payWithFlutterwave } from '../../utils/flutterwave'
 
 const PAYMENT_METHODS = [
   {
+    key: 'international',
+    label: 'International',
+    icon: '🌍',
+    desc: 'USD, GBP, EUR bank',
+    fields: ['bank_name', 'account_number', 'account_name', 'swift_code'],
+    currency: 'USD'
+  },
+  {
     key: 'nigerian_bank',
-    label: 'Nigerian Bank',
+    label: 'Bank Details',
     icon: '🏦',
     desc: 'All Nigerian banks',
     fields: ['bank_name', 'account_number', 'account_name'],
@@ -19,22 +28,6 @@ const PAYMENT_METHODS = [
     desc: 'OPay, PalmPay, Kuda',
     fields: ['mobile_number', 'account_name'],
     currency: 'NGN'
-  },
-  {
-    key: 'international',
-    label: 'International',
-    icon: '🌍',
-    desc: 'USD, GBP, EUR bank',
-    fields: ['bank_name', 'account_number', 'account_name', 'swift_code'],
-    currency: 'USD'
-  },
-  {
-    key: 'mobile_money_africa',
-    label: 'Africa Mobile',
-    icon: '🌍📱',
-    desc: 'M-Pesa, MTN MoMo',
-    fields: ['mobile_number', 'account_name', 'country'],
-    currency: 'LOCAL'
   },
 ]
 
@@ -435,48 +428,6 @@ export default function WithdrawalScreen() {
             </>
           )}
 
-          {/* Africa Mobile Money */}
-          {method === 'mobile_money_africa' && (
-            <>
-              <div>
-                <label style={labelStyle}>Country</label>
-                <select
-                  value={form.country || ''}
-                  onChange={e => updateForm('country', e.target.value)}
-                  style={{ ...inputStyle, background: '#fff', appearance: 'none' }}>
-                  <option value="">Select country</option>
-                  <option value="KE">Kenya (M-Pesa)</option>
-                  <option value="GH">Ghana (MTN MoMo)</option>
-                  <option value="TZ">Tanzania (M-Pesa)</option>
-                  <option value="UG">Uganda (MTN MoMo)</option>
-                  <option value="ZA">South Africa</option>
-                  <option value="RW">Rwanda (MTN MoMo)</option>
-                </select>
-              </div>
-              <div>
-                <label style={labelStyle}>Mobile Number</label>
-                <input
-                  style={{ ...inputStyle, background: '#fff' }}
-                  placeholder="Mobile money number with country code"
-                  value={form.mobile_number || ''}
-                  onChange={e => updateForm('mobile_number', e.target.value)}
-                  onFocus={e => e.target.style.borderColor = '#B8A5FF'}
-                  onBlur={e => e.target.style.borderColor = '#E2E0FF'}
-                />
-              </div>
-              <div>
-                <label style={labelStyle}>Account Name</label>
-                <input
-                  style={{ ...inputStyle, background: '#fff' }}
-                  placeholder="Name on mobile money account"
-                  value={form.account_name || ''}
-                  onChange={e => updateForm('account_name', e.target.value)}
-                  onFocus={e => e.target.style.borderColor = '#B8A5FF'}
-                  onBlur={e => e.target.style.borderColor = '#E2E0FF'}
-                />
-              </div>
-            </>
-          )}
         </div>
       )}
 
@@ -507,6 +458,17 @@ export default function WithdrawalScreen() {
         }}>
         {submitting ? '⏳ Processing...' : '💸 Request Withdrawal'}
       </button>
+
+      <div style={{
+        fontSize: '11px', color: '#A09DC8',
+        textAlign: 'center', marginTop: '10px',
+        lineHeight: '1.6', background: '#F5F4FF',
+        borderRadius: '10px', padding: '10px 14px'
+      }}>
+        💸 Credits deducted immediately on request.<br/>
+        💳 Payment sent via Flutterwave within 48 hours.<br/>
+        📧 You'll get a notification when payment is sent.
+      </div>
     </div>
   )
 }

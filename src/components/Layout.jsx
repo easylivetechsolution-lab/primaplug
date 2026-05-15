@@ -109,10 +109,11 @@ export default function Layout() {
 
   const mobileMoreItems = [
     { key: 'discover', icon: 'discover', label: 'Discover', action: () => setScreen('discover') },
-    { key: 'search', icon: 'search', label: 'Search', action: () => setShowSearch(true) },
+    { key: 'referral', emoji: '🎁', label: 'Refer & Earn', action: () => setScreen('referral') },
+    { key: 'commission', emoji: '💰', label: 'Commission', action: () => setScreen('commission') },
+    { key: 'withdrawal', emoji: '💸', label: 'Withdraw Credits', action: () => setScreen('withdrawal') },
     { key: 'saved', icon: 'saved', label: 'Saved Gigs', action: () => setScreen('saved') },
     { key: 'stats', icon: 'stats', label: 'My Stats', action: () => setScreen('stats') },
-    { key: 'chat', icon: 'chat', label: 'Messages', action: () => setScreen('chat') },
     { key: 'settings', icon: 'settings', label: 'Settings', action: () => setScreen('settings') },
   ]
 
@@ -308,7 +309,16 @@ export default function Layout() {
                 fontFamily: 'inherit'
               }}
             >
-              <BrandIcon name={item.icon} size={34} active={screen === item.key || item.key === 'search'} />
+                  {item.emoji ? (
+                <span style={{
+                  width: 34, height: 34, borderRadius: '10px',
+                  background: screen === item.key ? '#EEE9FF' : '#F5F4FF',
+                  display: 'flex', alignItems: 'center',
+                  justifyContent: 'center', fontSize: '18px', flexShrink: 0
+                }}>{item.emoji}</span>
+              ) : (
+                <BrandIcon name={item.icon} size={34} active={screen === item.key || item.key === 'search'} />
+              )}
               <span style={{
                 fontSize: '13px',
                 fontWeight: '700',
@@ -511,76 +521,6 @@ export default function Layout() {
               fontSize: '9px', fontWeight: '600',
               color: screen === 'referral' ? '#6C47FF' : '#A09DC8'
             }}>Refer</span>
-          </button>
-
-          {/* Commission */}
-          <button
-            onClick={() => setScreen('commission')}
-            title="Platform Commission"
-            style={{
-              width: '48px', height: '48px',
-              borderRadius: '12px',
-              background: screen === 'commission' ? '#FFE8EE' : 'transparent',
-              border: `1.5px solid ${screen === 'commission' ? '#FF99B3' : 'transparent'}`,
-              display: 'flex', flexDirection: 'column',
-              alignItems: 'center', justifyContent: 'center',
-              gap: '3px', cursor: 'pointer',
-              transition: 'all 0.15s', fontFamily: 'inherit',
-              position: 'relative'
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.background = '#FFE8EE'
-              e.currentTarget.style.borderColor = '#FF99B3'
-            }}
-            onMouseLeave={e => {
-              if (screen !== 'commission') {
-                e.currentTarget.style.background = 'transparent'
-                e.currentTarget.style.borderColor = 'transparent'
-              }
-            }}>
-            <span style={{ fontSize: '20px' }}>💰</span>
-            <span style={{
-              fontSize: '9px', fontWeight: '600',
-              color: screen === 'commission' ? '#FF3366' : '#A09DC8'
-            }}>Commission</span>
-            {hasUnpaidCommissions && (
-              <div style={{
-                position: 'absolute', top: '6px', right: '6px',
-                width: '8px', height: '8px', borderRadius: '50%',
-                background: '#FF3366', border: '2px solid #fff'
-              }} />
-            )}
-          </button>
-
-          {/* Withdraw */}
-          <button
-            onClick={() => setScreen('withdrawal')}
-            title="Withdraw Credits"
-            style={{
-              width: '48px', height: '48px',
-              borderRadius: '12px',
-              background: screen === 'withdrawal' ? '#DFFDF4' : 'transparent',
-              border: `1.5px solid ${screen === 'withdrawal' ? '#7EECD2' : 'transparent'}`,
-              display: 'flex', flexDirection: 'column',
-              alignItems: 'center', justifyContent: 'center',
-              gap: '3px', cursor: 'pointer',
-              transition: 'all 0.15s', fontFamily: 'inherit'
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.background = '#DFFDF4'
-              e.currentTarget.style.borderColor = '#7EECD2'
-            }}
-            onMouseLeave={e => {
-              if (screen !== 'withdrawal') {
-                e.currentTarget.style.background = 'transparent'
-                e.currentTarget.style.borderColor = 'transparent'
-              }
-            }}>
-            <span style={{ fontSize: '20px' }}>💸</span>
-            <span style={{
-              fontSize: '9px', fontWeight: '600',
-              color: screen === 'withdrawal' ? '#00C48C' : '#A09DC8'
-            }}>Withdraw</span>
           </button>
 
           {/* Divider */}

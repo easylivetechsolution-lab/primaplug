@@ -636,11 +636,15 @@ export default function ProfileScreen({ onLogout }) {
             )}
             {profile?.is_verified && (
               <span style={{
-                background: '#FFB800',
-                borderRadius: '5px', padding: '2px 8px',
+                display: 'inline-flex', alignItems: 'center', gap: '4px',
+                background: 'linear-gradient(135deg, #FFB800, #FF8C00)',
+                borderRadius: '8px', padding: '3px 8px 3px 3px',
                 fontSize: '9px', fontWeight: '700',
                 letterSpacing: '.8px', color: '#fff'
-              }}>✓ VERIFIED</span>
+              }}>
+                <BrandIcon name="level" size={16} active={true} />
+                VERIFIED
+              </span>
             )}
           </div>
         </div>
@@ -782,6 +786,34 @@ export default function ProfileScreen({ onLogout }) {
           </div>
         </div>
       )}
+
+      {/* Refer & Earn */}
+      <div
+        onClick={() => window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'referral' }))}
+        style={{
+          background: 'linear-gradient(135deg, #6C47FF 0%, #9B59FF 55%, #FF4DCF 100%)',
+          borderRadius: '16px', padding: '14px 16px',
+          marginBottom: '16px', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', gap: '12px'
+        }}>
+        <div style={{
+          width: '42px', height: '42px', borderRadius: '12px',
+          background: 'rgba(255,255,255,0.2)',
+          border: '1px solid rgba(255,255,255,0.3)',
+          display: 'flex', alignItems: 'center',
+          justifyContent: 'center', fontSize: '22px', flexShrink: 0
+        }}>🎁</div>
+        <div style={{ flex: 1 }}>
+          <div style={{
+            fontSize: '13px', fontWeight: '800',
+            color: '#fff', marginBottom: '2px'
+          }}>Refer & Earn</div>
+          <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.75)' }}>
+            Earn 5% of your friends' first gig earnings
+          </div>
+        </div>
+        <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '16px' }}>→</span>
+      </div>
 
       {/* TRUST STATS */}
       <div style={{
