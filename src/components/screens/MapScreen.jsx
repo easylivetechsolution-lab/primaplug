@@ -259,6 +259,7 @@ export default function MapScreen() {
         <MapContainer
           center={[6.5244, 3.3792]}
           zoom={15}
+          maxZoom={19}
           style={{ height: '100%', width: '100%' }}
           zoomControl={false}
           ref={mapRef}
@@ -267,6 +268,7 @@ export default function MapScreen() {
             attribution='&copy; <a href="https://carto.com/">CARTO</a>'
             url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
             subdomains="abcd"
+            maxZoom={19}
           />
           <SetView coords={userPos} />
 
@@ -594,10 +596,26 @@ export default function MapScreen() {
             fontFamily: "'Plus Jakarta Sans', sans-serif"
           }}>
             <div style={{
-              width: '40px', height: '4px',
-              background: '#E2E0FF', borderRadius: '2px',
-              margin: '0 auto 20px'
-            }} />
+              display: 'flex', alignItems: 'center',
+              justifyContent: 'center', position: 'relative',
+              marginBottom: '20px'
+            }}>
+              <div style={{
+                width: '40px', height: '4px',
+                background: '#E2E0FF', borderRadius: '2px'
+              }} />
+              <button
+                onClick={() => { setSelectedGig(null); setApplied(false) }}
+                style={{
+                  position: 'absolute', right: 0,
+                  width: '32px', height: '32px',
+                  background: '#F5F4FF', border: '1.5px solid #E2E0FF',
+                  borderRadius: '50%', fontSize: '16px',
+                  color: '#8B8FAF', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontFamily: 'inherit', lineHeight: 1
+                }}>×</button>
+            </div>
 
             {applied ? (
               <div style={{ padding: '20px 0' }}>
@@ -825,6 +843,33 @@ export default function MapScreen() {
                     )}
                   </div>
                 </div>
+
+                {/* Full address — visible before applying */}
+                {(selectedGig.house_number || selectedGig.street) && (
+                  <div style={{
+                    background: '#FFF8F0', border: '1.5px solid #FFBC99',
+                    borderRadius: '14px', padding: '14px', marginBottom: '14px',
+                    display: 'flex', gap: '10px', alignItems: 'flex-start'
+                  }}>
+                    <span style={{ fontSize: '18px', flexShrink: 0 }}>🏠</span>
+                    <div>
+                      <div style={{
+                        fontSize: '9px', fontWeight: '700', color: '#FF6B2B',
+                        textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '4px'
+                      }}>Address</div>
+                      {selectedGig.house_number && (
+                        <div style={{ fontSize: '13px', fontWeight: '700', color: '#14123A' }}>
+                          {selectedGig.house_number}
+                        </div>
+                      )}
+                      {selectedGig.street && (
+                        <div style={{ fontSize: '13px', fontWeight: '600', color: '#5B5887' }}>
+                          {selectedGig.street}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* Description */}
                 {selectedGig.description && (
