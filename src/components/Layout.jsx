@@ -98,7 +98,7 @@ export default function Layout() {
   }
 
   const navItems = [
-    { key: 'map', icon: 'map', label: 'Map' },
+    { key: 'map', icon: 'map', label: 'Home' },
     { key: 'feed', icon: 'feed', label: 'Feed' },
     { key: 'discover', icon: 'discover', label: 'Discover' },
     { key: 'mygigs', icon: 'mygigs', label: 'My Gigs' },
@@ -161,17 +161,19 @@ export default function Layout() {
       }} className="app-topbar">
         {/* Logo */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{
-            width: '36px', height: '36px',
-            borderRadius: '10px',
-            display: 'flex', alignItems: 'center',
-            justifyContent: 'center', fontSize: '18px'
-          }}>
-            <BrandIcon name="map" size={36} />
-          </div>
+          <img
+            src="/prima-logo.png"
+            alt="Prima"
+            style={{
+              width: '40px', height: '40px',
+              objectFit: 'contain',
+              flexShrink: 0,
+              filter: 'drop-shadow(0 2px 10px rgba(108,71,255,0.4))'
+            }}
+          />
           <div>
             <div style={{ fontSize: '20px', fontWeight: '800', color: '#14123A', letterSpacing: '-0.5px' }}>Prima</div>
-            <div className="brand-subtitle" style={{ fontSize: '9px', color: '#A09DC8', letterSpacing: '1.5px', textTransform: 'uppercase' }}>Real-Time Labor Network</div>
+            <div className="brand-subtitle" style={{ fontSize: '9px', color: '#A09DC8', letterSpacing: '1.5px', textTransform: 'uppercase' }}>Real-Time Workforce Network</div>
           </div>
         </div>
 
