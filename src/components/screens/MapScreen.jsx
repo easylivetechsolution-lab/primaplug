@@ -257,18 +257,16 @@ export default function MapScreen() {
       {/* Map Container */}
       <div style={{ flex: 1, position: 'relative' }}>
         <MapContainer
-          center={userPos}
-          zoom={13}
+          center={[6.5244, 3.3792]}
+          zoom={15}
           style={{ height: '100%', width: '100%' }}
           zoomControl={false}
           ref={mapRef}
         >
           <TileLayer
-            url={`https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}?access_token=${import.meta.env.VITE_MAPBOX_TOKEN}`}
-            attribution='&copy; <a href="https://www.mapbox.com/">Mapbox</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-            tileSize={512}
-            zoomOffset={-1}
-            maxZoom={22}
+            attribution='&copy; <a href="https://carto.com/">CARTO</a>'
+            url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+            subdomains="abcd"
           />
           <SetView coords={userPos} />
 
@@ -276,53 +274,94 @@ export default function MapScreen() {
           <Marker position={userPos} icon={createUserPin()} />
 
           {/* Gig pins */}
-          {filteredGigs.map(gig => (
-            <Marker
-              key={gig.id}
-              position={[gig.latitude, gig.longitude]}
-              icon={createProfilePin(
-                gig.users?.avatar_url,
-                gig.users?.full_name?.charAt(0) || '?',
-                URGENCY_COLORS[gig.urgency] || '#6C47FF',
-                gig.urgency
-              )}
-              eventHandlers={{
-                click: () => {
-                  setSelectedGig(gig)
-                  setApplied(false)
-                }
-              }}
-            >
-              <Popup>
-                <div style={{
-                  fontFamily: "'Plus Jakarta Sans', sans-serif",
-                  minWidth: '200px', padding: '4px'
-                }}>
-                  <div style={{
-                    fontSize: '13px', fontWeight: '700',
-                    color: '#14123A', marginBottom: '4px'
-                  }}>{gig.title}</div>
-                  <div style={{
-                    fontSize: '14px', fontWeight: '800',
-                    color: '#00C48C', marginBottom: '4px'
-                  }}>{getCurrencySymbol(gig.currency)}{gig.pay_min} – {getCurrencySymbol(gig.currency)}{gig.pay_max}</div>
-                  <div style={{ fontSize: '11px', color: '#8B8FAF' }}>
-                    {gig.location}
+          {filteredGigs.map(gig => {
+            const pinColor = gig.urgency === 'now' ? '#FF3366' : gig.urgency === 'today' ? '#FF6B2B' : '#6C47FF'
+            const gigIcon = L.divIcon({
+              className: 'custom-gig-pin',
+              html: `
+                <div style="position:relative;display:flex;flex-direction:column;align-items:center;">
+                  <div style="
+                    width:44px;height:44px;border-radius:50%;
+                    border:3px solid ${pinColor};
+                    overflow:hidden;background:#EEE9FF;
+                    box-shadow:0 4px 12px rgba(0,0,0,0.25);
+                    display:flex;align-items:center;justify-content:center;
+                    font-size:16px;font-weight:800;color:#6C47FF;
+                  ">
+                    ${gig.users?.avatar_url
+                      ? `<img src="${gig.users.avatar_url}" style="width:100%;height:100%;object-fit:cover"/>`
+                      : gig.users?.full_name?.charAt(0) || '?'
+                    }
                   </div>
-                  <button
-                    onClick={() => setSelectedGig(gig)}
-                    style={{
-                      marginTop: '8px', width: '100%',
-                      background: '#6C47FF', border: 'none',
-                      borderRadius: '8px', padding: '8px',
-                      fontSize: '12px', fontWeight: '700',
-                      color: '#fff', cursor: 'pointer',
-                      fontFamily: 'inherit'
-                    }}>View Details →</button>
+                  ${gig.urgency === 'now' ? `
+                    <div style="
+                      position:absolute;top:-3px;right:-3px;
+                      width:12px;height:12px;
+                      background:#FF3366;border-radius:50%;
+                      border:2px solid white;
+                      animation:pinpulse 1s infinite;
+                    "></div>
+                  ` : ''}
+                  <div style="
+                    background:white;border-radius:8px;
+                    padding:3px 7px;font-size:10px;font-weight:700;
+                    color:#14123A;box-shadow:0 2px 8px rgba(0,0,0,0.15);
+                    margin-top:3px;white-space:nowrap;
+                    max-width:120px;overflow:hidden;text-overflow:ellipsis;
+                    font-family:'Plus Jakarta Sans',sans-serif;
+                  ">
+                    ${gig.street
+                      ? `📍 ${gig.street}`
+                      : gig.location
+                        ? `📍 ${gig.location}`
+                        : gig.title?.substring(0, 20)}
+                  </div>
                 </div>
-              </Popup>
-            </Marker>
-          ))}
+              `,
+              iconSize: [44, 66],
+              iconAnchor: [22, 66],
+              popupAnchor: [0, -66]
+            })
+
+            return (
+              <Marker
+                key={gig.id}
+                position={[gig.latitude, gig.longitude]}
+                icon={gigIcon}
+                eventHandlers={{
+                  click: () => {
+                    setSelectedGig(gig)
+                    setApplied(false)
+                  }
+                }}
+              >
+                <Popup>
+                  <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", minWidth: '200px' }}>
+                    {(gig.house_number || gig.street || gig.landmark) && (
+                      <div style={{
+                        background: '#F5F4FF', borderRadius: '8px',
+                        padding: '8px 10px', marginBottom: '8px',
+                        fontSize: '11px', color: '#5B5887'
+                      }}>
+                        {gig.house_number && <div>🏠 {gig.house_number}</div>}
+                        {gig.street && <div>🛣️ {gig.street}</div>}
+                        {gig.landmark && <div>📍 Near {gig.landmark}</div>}
+                      </div>
+                    )}
+                    <div style={{ fontSize: '13px', fontWeight: '700', color: '#14123A', marginBottom: '4px' }}>
+                      {gig.title}
+                    </div>
+                    <div style={{ fontSize: '14px', fontWeight: '800', color: '#00C48C', marginBottom: '6px' }}>
+                      {getCurrencySymbol(gig.currency)}{gig.pay_min}–{getCurrencySymbol(gig.currency)}{gig.pay_max}
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#8B8FAF' }}>
+                      Posted by {gig.users?.full_name}
+                    </div>
+                  </div>
+                </Popup>
+              </Marker>
+            )
+          })}
         </MapContainer>
 
         {/* Live Stats Overlay — Top Left */}

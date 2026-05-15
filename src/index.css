@@ -9,3 +9,26 @@ body {
   background: #F5F4FF;
   color: #14123A;
 }
+
+/* Make map attribution minimal */
+.leaflet-control-attribution {
+  background: rgba(255,255,255,0.4) !important;
+  font-size: 7px !important;
+  padding: 1px 3px !important;
+  opacity: 0.35 !important;
+  border-radius: 3px !important;
+  transition: opacity 0.3s !important;
+  backdrop-filter: blur(4px) !important;
+}
+
+.leaflet-control-attribution:hover {
+  opacity: 0.9 !important;
+}
+
+.leaflet-control-attribution a {
+  color: #555 !important;
+}
+
+.leaflet-control-attribution svg {
+  display: none !important;
+}

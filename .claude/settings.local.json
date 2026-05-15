@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(del \"c:\\\\primeplug\\\\src\\\\components\\\\screens\\\\ServicesScreen.jsx\")"
+      "Bash(del \"c:\\\\primeplug\\\\src\\\\components\\\\screens\\\\ServicesScreen.jsx\")",
+      "Bash(git restore *)"
     ]
   }
 }
