@@ -486,9 +486,11 @@ export default function LiveTracking({ gig, role, workerInfo, posterInfo, onClos
           dragging={true}
         >
           <TileLayer
-            attribution='&copy; <a href="https://carto.com/">CARTO</a>'
-            url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-            subdomains="abcd"
+            url={`https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}?access_token=${import.meta.env.VITE_MAPBOX_TOKEN}`}
+            attribution='&copy; <a href="https://www.mapbox.com/">Mapbox</a>'
+            tileSize={512}
+            zoomOffset={-1}
+            maxZoom={22}
           />
 
           {allPositions.length >= 2 && <FitBounds positions={allPositions} />}

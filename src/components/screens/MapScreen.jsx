@@ -146,12 +146,25 @@ export default function MapScreen() {
   const [savedGigIds, setSavedGigIds] = useState(new Set())
   const [categoryFilter, setCategoryFilter] = useState('All')
   const [sharingGig, setSharingGig] = useState(null)
+  const mapRef = useRef(null)
 
   useEffect(() => {
-    navigator.geolocation.getCurrentPosition(
-      pos => setUserPos([pos.coords.latitude, pos.coords.longitude]),
-      () => console.log('Location denied, using Lagos default')
-    )
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const { latitude, longitude } = pos.coords
+          setUserPos([latitude, longitude])
+          if (mapRef.current) {
+            mapRef.current.setView([latitude, longitude], 14)
+          }
+        },
+        (err) => {
+          console.log('Location error:', err)
+          setUserPos([6.5244, 3.3792])
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      )
+    }
   }, [])
 
   const fetchSavedIds = async () => {
@@ -248,11 +261,14 @@ export default function MapScreen() {
           zoom={13}
           style={{ height: '100%', width: '100%' }}
           zoomControl={false}
+          ref={mapRef}
         >
           <TileLayer
-            attribution='&copy; <a href="https://carto.com/">CARTO</a>'
-            url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-            subdomains="abcd"
+            url={`https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}?access_token=${import.meta.env.VITE_MAPBOX_TOKEN}`}
+            attribution='&copy; <a href="https://www.mapbox.com/">Mapbox</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            tileSize={512}
+            zoomOffset={-1}
+            maxZoom={22}
           />
           <SetView coords={userPos} />
 
