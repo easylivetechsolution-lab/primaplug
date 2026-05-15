@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 import CategoryPicker from './CategoryPicker'
@@ -25,9 +25,11 @@ export default function PostGig({ onClose }) {
   const [error, setError] = useState('')
   const [showPrompt, setShowPrompt] = useState(false)
   const [locationSearch, setLocationSearch] = useState('')
-const [locationResults, setLocationResults] = useState([])
-const [locationLoading, setLocationLoading] = useState(false)
-const [locationSelected, setLocationSelected] = useState(false)
+  const [locationResults, setLocationResults] = useState([])
+  const [locationLoading, setLocationLoading] = useState(false)
+  const [locationSelected, setLocationSelected] = useState(false)
+  const debounceRef = useRef(null)
+  const abortRef = useRef(null)
 
   const [form, setForm] = useState({
     title: '',
@@ -376,29 +378,43 @@ const [locationSelected, setLocationSelected] = useState(false)
                         }}
                         placeholder="Search city, island, area..."
                         value={locationSearch}
-                        onChange={async (e) => {
+                        onChange={(e) => {
                           const val = e.target.value
                           setLocationSearch(val)
                           setLocationSelected(false)
                           update('location', '')
                           update('latitude', null)
                           update('longitude', null)
+
                           if (val.length < 3) {
                             setLocationResults([])
+                            setLocationLoading(false)
                             return
                           }
+
+                          // Cancel previous request
+                          if (abortRef.current) abortRef.current.abort()
+                          // Clear previous debounce
+                          if (debounceRef.current) clearTimeout(debounceRef.current)
+
                           setLocationLoading(true)
-                          try {
-                            const res = await fetch(
-                              `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val)}&limit=5&addressdetails=1`,
-                              { headers: { 'Accept-Language': 'en' } }
-                            )
-                            const data = await res.json()
-                            setLocationResults(data)
-                          } catch (e) {
-                            console.log('Search error:', e)
-                          }
-                          setLocationLoading(false)
+                          debounceRef.current = setTimeout(async () => {
+                            abortRef.current = new AbortController()
+                            try {
+                              const res = await fetch(
+                                `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val)}&limit=5&addressdetails=1`,
+                                {
+                                  headers: { 'Accept-Language': 'en', 'User-Agent': 'PrimaApp/1.0' },
+                                  signal: abortRef.current.signal
+                                }
+                              )
+                              const data = await res.json()
+                              setLocationResults(data)
+                            } catch (e) {
+                              if (e.name !== 'AbortError') console.log('Search error:', e)
+                            }
+                            setLocationLoading(false)
+                          }, 400)
                         }}
                       />
 
