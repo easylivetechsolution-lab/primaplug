@@ -98,7 +98,7 @@ export default function Layout() {
   }
 
   const navItems = [
-    { key: 'map', icon: 'map', label: 'Home' },
+    { key: 'map', icon: 'home', label: 'Home' },
     { key: 'feed', icon: 'feed', label: 'Feed' },
     { key: 'discover', icon: 'discover', label: 'Discover' },
     { key: 'mygigs', icon: 'mygigs', label: 'My Gigs' },
@@ -162,7 +162,7 @@ export default function Layout() {
         {/* Logo */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <img
-            src="/prima-logo.png"
+            src="/prima-logo.png?v=2"
             alt="Prima"
             style={{
               width: '40px', height: '40px',
