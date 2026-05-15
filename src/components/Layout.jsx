@@ -213,7 +213,24 @@ export default function Layout() {
         </div>
 
         {/* Right Actions */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {/* Mobile search icon — hidden on desktop */}
+          <button
+            onClick={() => setShowSearch(true)}
+            className="mobile-search-btn"
+            style={{
+              background: '#F5F4FF',
+              border: '1.5px solid #E2E0FF',
+              borderRadius: '10px',
+              width: '40px', height: '40px',
+              display: 'none',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              flexShrink: 0
+            }}>
+            <BrandIcon name="search" size={26} active={false} />
+          </button>
           <NotificationBell onNavigate={(screen) => setScreen(screen)} />
           <button
             onClick={() => setShowSearch(true)}
@@ -794,14 +811,17 @@ export default function Layout() {
             padding: 0 12px !important;
           }
           .app-logo-img {
-            width: 44px !important;
-            height: 44px !important;
-            display: block !important;
+            display: none !important;
           }
           .app-logo-text {
             font-size: 17px !important;
           }
-          .brand-subtitle { display: none !important; }
+          .brand-subtitle {
+            display: block !important;
+            font-size: 8px !important;
+            letter-spacing: 1.2px !important;
+          }
+          .mobile-search-btn { display: flex !important; }
           .desktop-nav { display: none !important; }
           .desktop-sidebar { display: none !important; }
           .desktop-action { display: none !important; }
