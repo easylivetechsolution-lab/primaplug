@@ -162,17 +162,19 @@ export default function Layout() {
         {/* Logo */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <img
-            src="/prima-logo.png?v=2"
+            src="/prima-logo.png?v=3"
             alt="Prima"
+            className="app-logo-img"
             style={{
-              width: '40px', height: '40px',
+              width: '48px', height: '48px',
               objectFit: 'contain',
               flexShrink: 0,
-              filter: 'drop-shadow(0 2px 10px rgba(108,71,255,0.4))'
+              display: 'block',
+              filter: 'drop-shadow(0 2px 12px rgba(108,71,255,0.45))'
             }}
           />
           <div>
-            <div style={{ fontSize: '20px', fontWeight: '800', color: '#14123A', letterSpacing: '-0.5px' }}>Prima</div>
+            <div className="app-logo-text" style={{ fontSize: '20px', fontWeight: '800', color: '#14123A', letterSpacing: '-0.5px' }}>Prima</div>
             <div className="brand-subtitle" style={{ fontSize: '9px', color: '#A09DC8', letterSpacing: '1.5px', textTransform: 'uppercase' }}>Real-Time Workforce Network</div>
           </div>
         </div>
@@ -791,10 +793,12 @@ export default function Layout() {
             height: 58px !important;
             padding: 0 12px !important;
           }
-          .app-topbar > div:first-child {
-            min-width: 0;
+          .app-logo-img {
+            width: 44px !important;
+            height: 44px !important;
+            display: block !important;
           }
-          .app-topbar > div:first-child > div:last-child > div:first-child {
+          .app-logo-text {
             font-size: 17px !important;
           }
           .brand-subtitle { display: none !important; }

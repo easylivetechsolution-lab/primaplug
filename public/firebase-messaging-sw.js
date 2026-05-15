@@ -18,7 +18,7 @@ self.addEventListener('message', (event) => {
         const { title, body } = payload.notification || {}
         self.registration.showNotification(title || 'PrimaPlug', {
           body: body || 'You have a new notification',
-          icon: '/prima-icon.png',
+          icon: '/prima-logo.png',
           vibrate: [200, 100, 200],
         })
       })
@@ -37,7 +37,7 @@ self.addEventListener('push', (event) => {
     event.waitUntil(
       self.registration.showNotification(title, {
         body,
-        icon: '/prima-icon.png',
+        icon: '/prima-logo.png',
         vibrate: [200, 100, 200],
       })
     )
