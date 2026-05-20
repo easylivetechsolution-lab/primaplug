@@ -18,19 +18,31 @@ export default function SelfieVerification({ onComplete, onSkip }) {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: 'user',
-          width: { ideal: 720 },
-          height: { ideal: 720 }
-        }
+          width: { ideal: 640 },
+          height: { ideal: 640 }
+        },
+        audio: false
       })
       streamRef.current = stream
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
-        videoRef.current.play()
-      }
+
       setStep('camera')
+
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream
+          videoRef.current.play().catch(e => console.log('Play error:', e))
+        }
+      }, 100)
+
     } catch (e) {
-      setError('Camera access denied. Please allow camera access and try again.')
       console.log('Camera error:', e)
+      if (e.name === 'NotAllowedError') {
+        setError('Camera permission denied. Please allow camera access in your browser settings and try again.')
+      } else if (e.name === 'NotFoundError') {
+        setError('No camera found on this device.')
+      } else {
+        setError('Could not access camera. Please try again.')
+      }
     }
   }
 
@@ -240,43 +252,77 @@ export default function SelfieVerification({ onComplete, onSkip }) {
                   background: '#F5F4FF', border: 'none',
                   borderRadius: '50%', width: '32px', height: '32px',
                   fontSize: '16px', cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                  display: 'flex', alignItems: 'center',
+                  justifyContent: 'center'
                 }}>×</button>
             </div>
 
+            {/* Camera Container */}
             <div style={{
-              position: 'relative', margin: '16px',
-              borderRadius: '16px', overflow: 'hidden',
+              margin: '16px',
+              borderRadius: '16px',
+              overflow: 'hidden',
+              position: 'relative',
+              background: '#000',
               aspectRatio: '1'
             }}>
+              {/* Video — full size, no transform issues */}
               <video
                 ref={videoRef}
                 autoPlay
                 playsInline
                 muted
                 style={{
-                  width: '100%', height: '100%',
+                  position: 'absolute',
+                  top: 0, left: 0,
+                  width: '100%',
+                  height: '100%',
                   objectFit: 'cover',
-                  transform: 'scaleX(-1)'
+                  transform: 'scaleX(-1)',
+                  display: 'block'
                 }}
               />
-              {/* Face guide overlay */}
+
+              {/* Dark overlay with oval cutout using SVG */}
+              <svg
+                style={{
+                  position: 'absolute',
+                  top: 0, left: 0,
+                  width: '100%', height: '100%',
+                  pointerEvents: 'none'
+                }}
+                viewBox="0 0 400 400"
+                preserveAspectRatio="xMidYMid slice"
+              >
+                <defs>
+                  <mask id="oval-mask">
+                    <rect width="400" height="400" fill="white" />
+                    <ellipse cx="200" cy="200" rx="140" ry="170" fill="black" />
+                  </mask>
+                </defs>
+                <rect
+                  width="400" height="400"
+                  fill="rgba(0,0,0,0.55)"
+                  mask="url(#oval-mask)"
+                />
+                <ellipse
+                  cx="200" cy="200" rx="140" ry="170"
+                  fill="none"
+                  stroke="#6C47FF"
+                  strokeWidth="3"
+                />
+              </svg>
+
+              {/* Instruction text */}
               <div style={{
-                position: 'absolute', inset: 0,
-                display: 'flex', alignItems: 'center',
-                justifyContent: 'center', pointerEvents: 'none'
-              }}>
-                <div style={{
-                  width: '200px', height: '240px',
-                  border: '3px solid rgba(108,71,255,0.8)',
-                  borderRadius: '50%',
-                  boxShadow: '0 0 0 9999px rgba(0,0,0,0.4)'
-                }} />
-              </div>
-              <div style={{
-                position: 'absolute', bottom: '16px',
-                left: 0, right: 0, textAlign: 'center',
-                color: '#fff', fontSize: '12px', fontWeight: '600'
+                position: 'absolute',
+                bottom: '16px', left: 0, right: 0,
+                textAlign: 'center',
+                color: '#fff',
+                fontSize: '12px',
+                fontWeight: '600',
+                textShadow: '0 1px 4px rgba(0,0,0,0.8)',
+                zIndex: 10
               }}>
                 Center your face in the oval
               </div>
@@ -295,12 +341,15 @@ export default function SelfieVerification({ onComplete, onSkip }) {
                   cursor: 'pointer', fontFamily: 'inherit',
                   boxShadow: '0 4px 20px rgba(108,71,255,0.4)',
                   display: 'flex', alignItems: 'center',
-                  justifyContent: 'center', gap: '8px'
+                  justifyContent: 'center', gap: '10px'
                 }}>
                 <span style={{
-                  width: '20px', height: '20px',
-                  borderRadius: '50%', background: '#fff',
-                  display: 'inline-block'
+                  width: '22px', height: '22px',
+                  borderRadius: '50%',
+                  background: 'rgba(255,255,255,0.3)',
+                  border: '3px solid #fff',
+                  display: 'inline-block',
+                  flexShrink: 0
                 }} />
                 Take Photo
               </button>
