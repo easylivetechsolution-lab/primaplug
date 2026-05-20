@@ -197,7 +197,7 @@ export default function Layout() {
             }}
           />
           <div>
-            <div className="app-logo-text" style={{ fontSize: '20px', fontWeight: '800', color: '#14123A', letterSpacing: '-0.5px' }}>Prima</div>
+            <div className="app-logo-text" style={{ fontSize: '20px', fontWeight: '800', color: '#14123A', letterSpacing: '-0.5px' }}>PrimaPlug</div>
             <div className="brand-subtitle" style={{ fontSize: '9px', color: '#A09DC8', letterSpacing: '1.5px', textTransform: 'uppercase' }}>Real-Time Workforce Network</div>
           </div>
         </div>
