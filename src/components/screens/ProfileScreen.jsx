@@ -6,6 +6,7 @@ import BrandIcon from '../BrandIcon'
 import { completeReferral } from '../../utils/referral'
 import { getProfileCompletion } from '../../utils/profileComplete'
 import { useCredits } from '../../context/CreditsContext'
+import SelfieVerification from '../SelfieVerification'
 
 const LocationSearch = ({ value, onSelect, inputStyle }) => {
   const [search, setSearch] = useState(value || '')
@@ -116,9 +117,19 @@ export default function ProfileScreen({ onLogout }) {
   const [editForm, setEditForm] = useState({})
   const [activeTab, setActiveTab] = useState('about')
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const [showSelfie, setShowSelfie] = useState(false)
   const fileRef = useRef()
 
   useEffect(() => { fetchProfile() }, [user])
+
+  useEffect(() => {
+    if (profile) {
+      const { needsSelfie, reverificationRequired } = getProfileCompletion(profile)
+      if (needsSelfie || reverificationRequired) {
+        setTimeout(() => setShowSelfie(true), 2000)
+      }
+    }
+  }, [profile])
 
   const fetchProfile = async () => {
     if (!user) return
@@ -1027,6 +1038,62 @@ export default function ProfileScreen({ onLogout }) {
         )}
       </div>
 
+      {/* Selfie Verification Card */}
+      {!profile?.selfie_verified && (
+        <div
+          onClick={() => setShowSelfie(true)}
+          style={{
+            background: 'linear-gradient(135deg, #FF6B2B, #FF4DCF)',
+            borderRadius: '16px', padding: '16px',
+            marginBottom: '16px', cursor: 'pointer',
+            display: 'flex', gap: '12px', alignItems: 'center'
+          }}>
+          <div style={{
+            width: '48px', height: '48px', borderRadius: '14px',
+            background: 'rgba(255,255,255,0.2)',
+            display: 'flex', alignItems: 'center',
+            justifyContent: 'center', fontSize: '24px', flexShrink: 0
+          }}>🤳</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: '14px', fontWeight: '800', color: '#fff', marginBottom: '3px' }}>
+              Complete Selfie Verification
+            </div>
+            <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.8)', lineHeight: '1.4' }}>
+              Required to post gigs, apply and order services
+            </div>
+          </div>
+          <div style={{ color: '#fff', fontSize: '18px', opacity: 0.8 }}>→</div>
+        </div>
+      )}
+
+      {/* Re-verification Card */}
+      {profile?.reverification_required && (
+        <div
+          onClick={() => setShowSelfie(true)}
+          style={{
+            background: '#FFE8EE', border: '1.5px solid #FF99B3',
+            borderRadius: '16px', padding: '16px',
+            marginBottom: '16px', cursor: 'pointer',
+            display: 'flex', gap: '12px', alignItems: 'center'
+          }}>
+          <div style={{
+            width: '48px', height: '48px', borderRadius: '14px',
+            background: '#FFE8EE', border: '1.5px solid #FF99B3',
+            display: 'flex', alignItems: 'center',
+            justifyContent: 'center', fontSize: '24px', flexShrink: 0
+          }}>⚠️</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: '14px', fontWeight: '800', color: '#FF3366', marginBottom: '3px' }}>
+              Re-verification Required
+            </div>
+            <div style={{ fontSize: '11px', color: '#FF3366', opacity: 0.8 }}>
+              Your account needs to be re-verified. Please take a new selfie.
+            </div>
+          </div>
+          <div style={{ color: '#FF3366', fontSize: '18px' }}>→</div>
+        </div>
+      )}
+
       {/* Verification Banner */}
       {!profile?.is_verified && (
         <div style={{
@@ -1094,6 +1161,16 @@ export default function ProfileScreen({ onLogout }) {
         color: '#FF3366', cursor: 'pointer',
         fontFamily: 'inherit', transition: 'all 0.2s'
       }}>Log Out of Prima</button>
+
+      {showSelfie && (
+        <SelfieVerification
+          onComplete={() => {
+            setShowSelfie(false)
+            fetchProfile()
+          }}
+          onSkip={() => setShowSelfie(false)}
+        />
+      )}
     </div>
   )
 }

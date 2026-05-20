@@ -10,6 +10,7 @@ import { useAuth } from '../../context/AuthContext'
 import { sendPushToUser } from '../../utils/pushNotifications'
 import { trackGigReferral } from '../../utils/referral'
 import ShareGig from '../ShareGig'
+import ReportModal from '../ReportModal'
 
 const URGENCY = {
   now: { label: 'NOW', color: '#FF3366', bg: '#FFE8EE', border: '#FF99B3' },
@@ -35,6 +36,7 @@ export default function FeedScreen() {
   const [showProfilePrompt, setShowProfilePrompt] = useState(false)
   const [savedGigIds, setSavedGigIds] = useState(new Set())
   const [sharingGig, setSharingGig] = useState(null)
+  const [reportingGig, setReportingGig] = useState(null)
 
   const cleanExpiredGigs = async () => {
     await supabase
@@ -784,6 +786,22 @@ export default function FeedScreen() {
                     <span>🔗</span> Share & Earn Credits
                   </button>
 
+                  {/* Report button */}
+                  <button
+                    onClick={() => setReportingGig(selectedGig)}
+                    style={{
+                      width: '100%',
+                      background: '#FFE8EE', border: '1.5px solid #FF99B3',
+                      borderRadius: '12px', padding: '10px',
+                      fontSize: '12px', fontWeight: '700',
+                      color: '#FF3366', cursor: 'pointer',
+                      fontFamily: 'inherit',
+                      display: 'flex', alignItems: 'center',
+                      justifyContent: 'center', gap: '6px'
+                    }}>
+                    🚨 Report This Gig
+                  </button>
+
                   {/* Skip + Save + Apply row */}
                   <div style={{ display: 'flex', gap: '10px' }}>
                   <button
@@ -809,6 +827,16 @@ export default function FeedScreen() {
                   }}>Skip</button>
                   <button
                     onClick={async () => {
+  const { data: userProfile } = await supabase
+    .from('users')
+    .select('selfie_verified')
+    .eq('id', user.id)
+    .single()
+  if (!userProfile?.selfie_verified) {
+    alert('Please complete selfie verification in your profile before applying for gigs.')
+    window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'profile' }))
+    return
+  }
   const { complete } = getProfileCompletion(profile)
   if (!complete) {
     setShowProfilePrompt(true)
@@ -958,6 +986,16 @@ export default function FeedScreen() {
 
       {sharingGig && (
         <ShareGig gig={sharingGig} onClose={() => setSharingGig(null)} />
+      )}
+
+      {reportingGig && (
+        <ReportModal
+          reportedUserId={reportingGig.poster_id}
+          reportedGigId={reportingGig.id}
+          type="gig"
+          name={`"${reportingGig.title}"`}
+          onClose={() => setReportingGig(null)}
+        />
       )}
     </div>
   )

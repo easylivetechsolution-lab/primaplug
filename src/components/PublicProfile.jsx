@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
+import ReportModal from './ReportModal'
 
 export default function PublicProfile({ userId, onClose }) {
   const { user: currentUser } = useAuth()
@@ -13,6 +14,7 @@ export default function PublicProfile({ userId, onClose }) {
   const [existingConvo, setExistingConvo] = useState(false)
 
   const isOwnProfile = currentUser?.id === userId
+  const [showReport, setShowReport] = useState(false)
 
   useEffect(() => {
     if (userId) {
@@ -266,6 +268,22 @@ export default function PublicProfile({ userId, onClose }) {
                   boxShadow: messageSent ? 'none' : '0 4px 16px rgba(108,71,255,0.3)'
                 }}>
                 {messageSent ? '✓ Opening Chat...' : messaging ? '⏳ Opening...' : existingConvo ? '💬 Continue Chat' : '💬 Message'}
+              </button>
+            )}
+            {!isOwnProfile && currentUser && (
+              <button
+                onClick={() => setShowReport(true)}
+                style={{
+                  width: '100%',
+                  background: '#FFE8EE', border: '1.5px solid #FF99B3',
+                  borderRadius: '14px', padding: '11px',
+                  fontSize: '13px', fontWeight: '700',
+                  color: '#FF3366', cursor: 'pointer',
+                  fontFamily: 'inherit', marginBottom: '16px',
+                  display: 'flex', alignItems: 'center',
+                  justifyContent: 'center', gap: '6px'
+                }}>
+                🚨 Report User
               </button>
             )}
             {isOwnProfile && (
@@ -538,6 +556,15 @@ export default function PublicProfile({ userId, onClose }) {
           }
         `}</style>
       </div>
+
+      {showReport && (
+        <ReportModal
+          reportedUserId={profile?.id}
+          type="user"
+          name={profile?.full_name}
+          onClose={() => setShowReport(false)}
+        />
+      )}
     </div>
   )
 }

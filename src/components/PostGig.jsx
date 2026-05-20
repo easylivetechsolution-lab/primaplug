@@ -81,6 +81,18 @@ export default function PostGig({ onClose }) {
 }
 
   const handleSubmit = async () => {
+    const { data: userProfile } = await supabase
+      .from('users')
+      .select('selfie_verified')
+      .eq('id', user.id)
+      .single()
+    if (!userProfile?.selfie_verified) {
+      alert('Please complete selfie verification in your profile before posting gigs.')
+      onClose()
+      window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'profile' }))
+      return
+    }
+
     const { complete } = getProfileCompletion(profile)
     if (!complete) {
       setShowPrompt(true)

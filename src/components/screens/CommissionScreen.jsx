@@ -427,9 +427,9 @@ export default function CommissionScreen() {
               }}>Transfer Details</div>
               {[
                 ['Amount', `$${selectedCommission.commission_amount.toFixed(2)}`],
-                ['Bank', 'First Bank Nigeria'],
-                ['Account Name', 'PrimaPlug Technologies'],
-                ['Account Number', '3156789012'],
+                ['Bank', 'Your actual bank name'],
+                ['Account Name', 'Your actual account name'],
+                ['Account Number', 'Your actual account number'],
                 ['Reference', `PRIMA-${selectedCommission.id.substring(0, 8).toUpperCase()}`],
               ].map(([label, value]) => (
                 <div key={label} style={{

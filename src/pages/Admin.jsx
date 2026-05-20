@@ -12,6 +12,8 @@ const TABS = [
   { key: 'disputes', label: '⚠️ Disputes', icon: '⚠️' },
   { key: 'receipts', label: '📎 Receipts', icon: '📎' },
   { key: 'withdrawals', label: '💸 Withdrawals', icon: '💸' },
+  { key: 'reports', label: '🚨 Reports', icon: '🚨' },
+  { key: 'emergency', label: '🆘 Emergency', icon: '🆘' },
 ]
 
 export default function Admin() {
@@ -26,6 +28,8 @@ export default function Admin() {
   const [disputes, setDisputes] = useState([])
   const [receipts, setReceipts] = useState([])
   const [withdrawals, setWithdrawals] = useState([])
+  const [reports, setReports] = useState([])
+  const [emergencyReports, setEmergencyReports] = useState([])
   const [loadingData, setLoadingData] = useState(false)
   const [search, setSearch] = useState('')
 
@@ -134,6 +138,28 @@ export default function Admin() {
           .order('created_at', { ascending: false })
           .limit(100)
         setWithdrawals(withdrawalsData || [])
+        break
+      case 'reports':
+        const { data: reportsData } = await supabase
+          .from('reports')
+          .select(`
+            *,
+            reporter:users!reports_reporter_id_fkey(full_name, avatar_url),
+            reported:users!reports_reported_user_id_fkey(full_name, avatar_url, email, phone, location, selfie_url)
+          `)
+          .order('created_at', { ascending: false })
+        setReports(reportsData || [])
+        break
+      case 'emergency':
+        const { data: emergencyData } = await supabase
+          .from('emergency_reports')
+          .select(`
+            *,
+            reporter:users!emergency_reports_reporter_id_fkey(full_name, avatar_url, email, phone, location, selfie_url, trust_score),
+            reported:users!emergency_reports_reported_user_id_fkey(full_name, avatar_url, email, phone, location, selfie_url)
+          `)
+          .order('created_at', { ascending: false })
+        setEmergencyReports(emergencyData || [])
         break
     }
     setLoadingData(false)
@@ -1075,6 +1101,238 @@ export default function Admin() {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* REPORTS TAB */}
+          {activeTab === 'reports' && (
+            <div>
+              <div style={{ fontSize: '20px', fontWeight: '800', color: '#14123A', marginBottom: '16px' }}>
+                Reports ({reports.length})
+              </div>
+              {reports.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '48px', background: '#fff', borderRadius: '16px', border: '1.5px solid #E2E0FF' }}>
+                  <div style={{ fontSize: '40px', marginBottom: '12px' }}>✅</div>
+                  <div style={{ fontSize: '16px', fontWeight: '700', color: '#14123A' }}>No reports</div>
+                </div>
+              ) : reports.map(report => (
+                <div key={report.id} style={{ background: '#fff', border: '1.5px solid #E2E0FF', borderRadius: '16px', padding: '18px', marginBottom: '12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
+                    <div>
+                      <div style={{ fontSize: '14px', fontWeight: '700', color: '#14123A', marginBottom: '3px' }}>
+                        {report.reason.replace(/_/g, ' ').toUpperCase()}
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#8B8FAF' }}>
+                        {report.type} report · {timeAgo(report.created_at)}
+                      </div>
+                    </div>
+                    <span style={{
+                      background: report.status === 'pending' ? '#FFF8E0' : report.status === 'actioned' ? '#DFFDF4' : '#F5F4FF',
+                      border: `1px solid ${report.status === 'pending' ? '#FFD966' : report.status === 'actioned' ? '#7EECD2' : '#E2E0FF'}`,
+                      borderRadius: '6px', padding: '3px 9px',
+                      fontSize: '10px', fontWeight: '700',
+                      color: report.status === 'pending' ? '#FFB800' : report.status === 'actioned' ? '#00C48C' : '#8B8FAF',
+                      textTransform: 'capitalize'
+                    }}>{report.status}</span>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '14px' }}>
+                    <div style={{ background: '#F5F4FF', borderRadius: '10px', padding: '12px' }}>
+                      <div style={{ fontSize: '10px', color: '#A09DC8', fontWeight: '700', marginBottom: '6px', textTransform: 'uppercase' }}>Reporter (Anonymous)</div>
+                      <div style={{ fontSize: '12px', fontWeight: '600', color: '#14123A' }}>Hidden from reported user</div>
+                    </div>
+                    <div style={{ background: '#FFE8EE', borderRadius: '10px', padding: '12px' }}>
+                      <div style={{ fontSize: '10px', color: '#FF3366', fontWeight: '700', marginBottom: '6px', textTransform: 'uppercase' }}>Reported User</div>
+                      <div style={{ fontSize: '13px', fontWeight: '700', color: '#14123A' }}>{report.reported?.full_name || '—'}</div>
+                      <div style={{ fontSize: '11px', color: '#8B8FAF' }}>{report.reported?.email}</div>
+                    </div>
+                  </div>
+
+                  {report.details && (
+                    <div style={{ background: '#F5F4FF', borderRadius: '10px', padding: '12px', marginBottom: '14px', fontSize: '12px', color: '#5B5887', lineHeight: '1.6' }}>
+                      {report.details}
+                    </div>
+                  )}
+
+                  {report.reported?.selfie_url && (
+                    <div style={{ marginBottom: '14px' }}>
+                      <div style={{ fontSize: '10px', color: '#A09DC8', fontWeight: '700', textTransform: 'uppercase', marginBottom: '8px' }}>Reported User Selfie</div>
+                      <img src={report.reported.selfie_url} alt="Reported user selfie"
+                        style={{ width: '80px', height: '80px', borderRadius: '12px', objectFit: 'cover', border: '2px solid #E2E0FF' }} />
+                    </div>
+                  )}
+
+                  {report.status === 'pending' && (
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button onClick={async () => {
+                        await supabase.from('reports').update({ status: 'reviewed' }).eq('id', report.id)
+                        fetchTabData('reports')
+                      }} style={{ flex: 1, background: '#EEE9FF', border: '1.5px solid #B8A5FF', borderRadius: '10px', padding: '10px', fontSize: '12px', fontWeight: '700', color: '#6C47FF', cursor: 'pointer', fontFamily: 'inherit' }}>
+                        Mark Reviewed
+                      </button>
+                      <button onClick={async () => {
+                        await supabase.from('users').update({ reverification_required: true }).eq('id', report.reported_user_id)
+                        await supabase.from('reports').update({ status: 'actioned' }).eq('id', report.id)
+                        await supabase.from('notifications').insert({
+                          user_id: report.reported_user_id,
+                          title: '⚠️ Verification Required',
+                          message: 'Your account requires re-verification. Please update your selfie to continue using Prima.',
+                          type: 'general'
+                        })
+                        fetchTabData('reports')
+                      }} style={{ flex: 1, background: '#FFF0E8', border: '1.5px solid #FFBC99', borderRadius: '10px', padding: '10px', fontSize: '12px', fontWeight: '700', color: '#FF6B2B', cursor: 'pointer', fontFamily: 'inherit' }}>
+                        Require Re-verify
+                      </button>
+                      <button onClick={async () => {
+                        await supabase.from('reports').update({ status: 'dismissed' }).eq('id', report.id)
+                        fetchTabData('reports')
+                      }} style={{ flex: 1, background: '#F5F4FF', border: '1.5px solid #E2E0FF', borderRadius: '10px', padding: '10px', fontSize: '12px', fontWeight: '700', color: '#8B8FAF', cursor: 'pointer', fontFamily: 'inherit' }}>
+                        Dismiss
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* EMERGENCY TAB */}
+          {activeTab === 'emergency' && (
+            <div>
+              <div style={{ fontSize: '20px', fontWeight: '800', color: '#14123A', marginBottom: '16px' }}>
+                Emergency Reports ({emergencyReports.length})
+              </div>
+              {emergencyReports.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '48px', background: '#fff', borderRadius: '16px', border: '1.5px solid #E2E0FF' }}>
+                  <div style={{ fontSize: '40px', marginBottom: '12px' }}>✅</div>
+                  <div style={{ fontSize: '16px', fontWeight: '700', color: '#14123A' }}>No emergency reports</div>
+                </div>
+              ) : emergencyReports.map(report => (
+                <div key={report.id} style={{ background: '#fff', border: `1.5px solid ${report.status === 'pending' ? '#FF99B3' : '#E2E0FF'}`, borderRadius: '16px', padding: '18px', marginBottom: '12px' }}>
+                  {report.status === 'pending' && (
+                    <div style={{ background: '#FF3366', color: '#fff', borderRadius: '8px', padding: '8px 12px', fontSize: '12px', fontWeight: '700', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      🆘 URGENT — Requires Immediate Attention
+                    </div>
+                  )}
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '14px' }}>
+                    <div style={{ background: '#F5F4FF', borderRadius: '10px', padding: '12px' }}>
+                      <div style={{ fontSize: '10px', color: '#A09DC8', fontWeight: '700', marginBottom: '6px', textTransform: 'uppercase' }}>Filed by</div>
+                      <div style={{ fontSize: '13px', fontWeight: '700', color: '#14123A', marginBottom: '3px' }}>{report.reporter?.full_name}</div>
+                      <div style={{ fontSize: '11px', color: '#8B8FAF' }}>{report.reporter?.email}</div>
+                      <div style={{ fontSize: '11px', color: '#8B8FAF' }}>{report.reporter?.phone}</div>
+                    </div>
+                    {report.reported && (
+                      <div style={{ background: '#FFE8EE', borderRadius: '10px', padding: '12px' }}>
+                        <div style={{ fontSize: '10px', color: '#FF3366', fontWeight: '700', marginBottom: '6px', textTransform: 'uppercase' }}>Reported Person</div>
+                        <div style={{ fontSize: '13px', fontWeight: '700', color: '#14123A', marginBottom: '3px' }}>{report.reported?.full_name}</div>
+                        <div style={{ fontSize: '11px', color: '#8B8FAF' }}>{report.reported?.email}</div>
+                      </div>
+                    )}
+                  </div>
+
+                  {report.location_lat && (
+                    <div style={{ background: '#DFFDF4', border: '1px solid #7EECD2', borderRadius: '10px', padding: '10px 12px', marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '12px', color: '#00C48C', fontWeight: '600' }}>
+                        📍 {report.location_lat.toFixed(6)}, {report.location_lng.toFixed(6)}
+                      </span>
+                      <a href={`https://maps.google.com/?q=${report.location_lat},${report.location_lng}`}
+                        target="_blank" rel="noreferrer"
+                        style={{ fontSize: '11px', color: '#6C47FF', fontWeight: '700', textDecoration: 'none' }}>
+                        Open in Maps →
+                      </a>
+                    </div>
+                  )}
+
+                  <div style={{ background: '#FFF5F5', border: '1px solid #FFD0D0', borderRadius: '10px', padding: '12px', marginBottom: '14px', fontSize: '13px', color: '#14123A', lineHeight: '1.6' }}>
+                    {report.description}
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '12px', marginBottom: '14px' }}>
+                    {report.reporter?.selfie_url && (
+                      <div>
+                        <div style={{ fontSize: '10px', color: '#A09DC8', fontWeight: '700', textTransform: 'uppercase', marginBottom: '6px' }}>Reporter Selfie</div>
+                        <img src={report.reporter.selfie_url} alt="" style={{ width: '70px', height: '70px', borderRadius: '10px', objectFit: 'cover', border: '2px solid #E2E0FF' }} />
+                      </div>
+                    )}
+                    {report.reported?.selfie_url && (
+                      <div>
+                        <div style={{ fontSize: '10px', color: '#FF3366', fontWeight: '700', textTransform: 'uppercase', marginBottom: '6px' }}>Reported Selfie</div>
+                        <img src={report.reported.selfie_url} alt="" style={{ width: '70px', height: '70px', borderRadius: '10px', objectFit: 'cover', border: '2px solid #FF99B3' }} />
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button onClick={async () => {
+                      const reporterData = report.reporter
+                      const reportedData = report.reported
+                      const packageText = [
+                        'PRIMA EMERGENCY REPORT — POLICE DATA PACKAGE',
+                        `Generated: ${new Date().toLocaleString()}`,
+                        `Report ID: ${report.id}`,
+                        '',
+                        '═══════════════════════════════════',
+                        'INCIDENT DESCRIPTION',
+                        '═══════════════════════════════════',
+                        report.description,
+                        '',
+                        `Date Filed: ${new Date(report.created_at).toLocaleString()}`,
+                        `Location: ${report.location_lat ? `${report.location_lat}, ${report.location_lng}` : 'Not available'}`,
+                        `Google Maps: ${report.location_lat ? `https://maps.google.com/?q=${report.location_lat},${report.location_lng}` : 'N/A'}`,
+                        '',
+                        '═══════════════════════════════════',
+                        'REPORTER DETAILS',
+                        '═══════════════════════════════════',
+                        `Full Name: ${reporterData?.full_name || 'N/A'}`,
+                        `Email: ${reporterData?.email || 'N/A'}`,
+                        `Phone: ${reporterData?.phone || 'N/A'}`,
+                        `Location: ${reporterData?.location || 'N/A'}`,
+                        `Trust Score: ${reporterData?.trust_score || 'N/A'}`,
+                        `Selfie: ${reporterData?.selfie_url || 'N/A'}`,
+                        '',
+                        '═══════════════════════════════════',
+                        'REPORTED PERSON DETAILS',
+                        '═══════════════════════════════════',
+                        `Full Name: ${reportedData?.full_name || 'N/A'}`,
+                        `Email: ${reportedData?.email || 'N/A'}`,
+                        `Phone: ${reportedData?.phone || 'N/A'}`,
+                        `Location: ${reportedData?.location || 'N/A'}`,
+                        `Selfie: ${reportedData?.selfie_url || 'N/A'}`,
+                        '',
+                        '═══════════════════════════════════',
+                        'PRIMA PLATFORM INFORMATION',
+                        '═══════════════════════════════════',
+                        'Platform: PrimaPlug (primaplug.com)',
+                        'Contact: admin@primaplug.com',
+                        `Report Reference: ${report.id}`,
+                      ].join('\n')
+
+                      const blob = new Blob([packageText], { type: 'text/plain' })
+                      const url = URL.createObjectURL(blob)
+                      const a = document.createElement('a')
+                      a.href = url
+                      a.download = `prima-police-report-${report.id.substring(0, 8)}.txt`
+                      a.click()
+
+                      await supabase.from('emergency_reports').update({
+                        police_data_generated: true,
+                        police_data_generated_at: new Date().toISOString(),
+                        status: 'actioned'
+                      }).eq('id', report.id)
+                      fetchTabData('emergency')
+                    }} style={{ flex: 2, background: '#14123A', border: 'none', borderRadius: '10px', padding: '12px', fontSize: '13px', fontWeight: '700', color: '#fff', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                      📋 Generate Police Package
+                    </button>
+                    <button onClick={async () => {
+                      await supabase.from('emergency_reports').update({ status: 'dismissed' }).eq('id', report.id)
+                      fetchTabData('emergency')
+                    }} style={{ flex: 1, background: '#F5F4FF', border: '1.5px solid #E2E0FF', borderRadius: '10px', padding: '12px', fontSize: '12px', fontWeight: '700', color: '#8B8FAF', cursor: 'pointer', fontFamily: 'inherit' }}>
+                      Dismiss
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>

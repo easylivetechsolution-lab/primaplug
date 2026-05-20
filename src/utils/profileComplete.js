@@ -40,5 +40,10 @@ export const getProfileCompletion = (profile) => {
   const missing = checks.filter(c => !c.done)
   const complete = score >= 80 // 80% minimum to take actions
 
-  return { score, missing, complete, done, total }
+  return {
+    score, missing, complete, done, total,
+    selfieVerified: profile?.selfie_verified || false,
+    needsSelfie: !profile?.selfie_verified,
+    reverificationRequired: profile?.reverification_required || false
+  }
 }

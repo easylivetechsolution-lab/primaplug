@@ -6,6 +6,7 @@ import { useLanguage } from '../../context/LanguageContext'
 import { LANGUAGES } from '../../data/languages'
 import { CURRENCIES } from '../../data/currencies'
 import { useCredits } from '../../context/CreditsContext'
+import EmergencyReport from '../EmergencyReport'
 
 export default function SettingsScreen({ onLogout }) {
   const { user } = useAuth()
@@ -23,6 +24,7 @@ export default function SettingsScreen({ onLogout }) {
   })
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [showEmergency, setShowEmergency] = useState(false)
 
   const toggle = (key) => {
     setNotifications(prev => ({ ...prev, [key]: !prev[key] }))
@@ -140,6 +142,38 @@ export default function SettingsScreen({ onLogout }) {
               fontSize: '12px', fontWeight: '700',
               color: '#fff', cursor: 'pointer', fontFamily: 'inherit'
             }}>💰 Commission</button>
+        </div>
+      </div>
+
+      {/* Emergency Report */}
+      <div style={{
+        background: '#FFE8EE', border: '1.5px solid #FF99B3',
+        borderRadius: '16px', padding: '16px',
+        marginBottom: '14px'
+      }}>
+        <div style={{
+          fontSize: '11px', fontWeight: '700', color: '#FF3366',
+          textTransform: 'uppercase', letterSpacing: '1px',
+          marginBottom: '14px'
+        }}>Safety</div>
+        <div
+          onClick={() => setShowEmergency(true)}
+          style={{ display: 'flex', gap: '12px', alignItems: 'center', cursor: 'pointer' }}>
+          <div style={{
+            width: '44px', height: '44px', borderRadius: '12px',
+            background: '#FF3366', display: 'flex',
+            alignItems: 'center', justifyContent: 'center',
+            fontSize: '22px', flexShrink: 0
+          }}>🆘</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: '14px', fontWeight: '700', color: '#FF3366', marginBottom: '2px' }}>
+              Emergency Report
+            </div>
+            <div style={{ fontSize: '11px', color: '#FF3366', opacity: 0.8 }}>
+              Report a serious incident to Prima and authorities
+            </div>
+          </div>
+          <span style={{ color: '#FF3366', fontSize: '18px' }}>→</span>
         </div>
       </div>
 
@@ -456,6 +490,10 @@ export default function SettingsScreen({ onLogout }) {
         padding: '14px', fontSize: '14px', fontWeight: '700',
         color: '#FF3366', cursor: 'pointer', fontFamily: 'inherit'
       }}>Log Out of Prima</button>
+
+      {showEmergency && (
+        <EmergencyReport onClose={() => setShowEmergency(false)} />
+      )}
     </div>
   )
 }
