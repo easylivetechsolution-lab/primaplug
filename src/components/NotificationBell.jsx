@@ -63,6 +63,14 @@ export default function NotificationBell({ onNavigate }) {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
+  useEffect(() => {
+    if (!notifDetail) return
+    window.history.pushState({ modal: 'notification-detail' }, '', '')
+    const handleBack = () => { setNotifDetail(null); setActionDone(null) }
+    window.addEventListener('popstate', handleBack)
+    return () => window.removeEventListener('popstate', handleBack)
+  }, [!!notifDetail])
+
   const fetchNotifications = async () => {
     const { data } = await supabase
       .from('notifications')
@@ -130,7 +138,10 @@ export default function NotificationBell({ onNavigate }) {
     if (notif.gig_id) query = query.eq('gig_id', notif.gig_id)
 
     const { data } = await query
-    if (!data || data.length === 0) return
+    if (!data || data.length === 0) {
+      onNavigate && onNavigate('chat')
+      return
+    }
 
     const snippet = (notif.message || '').replace(/\.\.\.$/, '')
     const convo = data.find(c => snippet && c.last_message?.startsWith(snippet)) || data[0]
@@ -269,7 +280,10 @@ export default function NotificationBell({ onNavigate }) {
                       return
                     }
 
-                    if (!notif.gig_id) return
+                    if (!notif.gig_id) {
+                      setNotifDetail({ type: 'info', notif })
+                      return
+                    }
 
                     setLoadingDetail(true)
 
@@ -295,6 +309,10 @@ export default function NotificationBell({ onNavigate }) {
                         .single()
 
                       setNotifDetail({ type: notif.type, gig })
+                    } else if (notif.type === 'receipt' || notif.type === 'review') {
+                      setLoadingDetail(false)
+                      onNavigate && onNavigate('mygigs')
+                      return
                     } else {
                       const { data: gig } = await supabase
                         .from('gigs')
@@ -877,6 +895,56 @@ export default function NotificationBell({ onNavigate }) {
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* INFO TYPE — general notifications without gig_id */}
+            {notifDetail.type === 'info' && (
+              <div style={{ textAlign: 'center', padding: '16px 8px 28px' }}>
+                <div style={{
+                  width: '72px', height: '72px', borderRadius: '50%',
+                  background: '#F5F4FF', border: '3px solid #E2E0FF',
+                  display: 'flex', alignItems: 'center',
+                  justifyContent: 'center', fontSize: '32px',
+                  margin: '0 auto 20px'
+                }}>🔔</div>
+                <div style={{
+                  fontSize: '20px', fontWeight: '800',
+                  color: '#14123A', marginBottom: '12px', lineHeight: '1.3'
+                }}>{notifDetail.notif?.title}</div>
+                <div style={{
+                  fontSize: '14px', color: '#8B8FAF',
+                  lineHeight: '1.7'
+                }}>{notifDetail.notif?.message}</div>
+              </div>
+            )}
+
+            {/* GENERAL TYPE — misc notifications with a gig_id */}
+            {notifDetail.type === 'general' && notifDetail.gig && (
+              <div style={{ marginBottom: '16px' }}>
+                <div style={{
+                  background: '#F5F4FF', borderRadius: '14px',
+                  padding: '14px', border: '1.5px solid #E2E0FF'
+                }}>
+                  <div style={{
+                    fontSize: '10px', color: '#A09DC8', fontWeight: '700',
+                    textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px'
+                  }}>Related Gig</div>
+                  <div style={{
+                    fontSize: '15px', fontWeight: '700',
+                    color: '#14123A', marginBottom: '6px'
+                  }}>{notifDetail.gig.title}</div>
+                  {notifDetail.gig.pay_min && (
+                    <div style={{ fontSize: '13px', fontWeight: '700', color: '#00C48C' }}>
+                      ${notifDetail.gig.pay_min}–${notifDetail.gig.pay_max}
+                    </div>
+                  )}
+                  {notifDetail.gig.location && (
+                    <div style={{ fontSize: '12px', color: '#FF6B2B', marginTop: '4px' }}>
+                      📍 {notifDetail.gig.location}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
