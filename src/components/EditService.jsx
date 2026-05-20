@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 import CategoryPicker from './CategoryPicker'
@@ -30,6 +30,13 @@ export default function EditService({ service, onClose, onUpdated }) {
   const [saved, setSaved] = useState(false)
   const [uploadingImages, setUploadingImages] = useState(false)
   const [activeTab, setActiveTab] = useState('details')
+
+  useEffect(() => {
+    window.history.pushState({ modal: 'open' }, '', '')
+    const handleBack = () => onClose()
+    window.addEventListener('popstate', handleBack)
+    return () => window.removeEventListener('popstate', handleBack)
+  }, [])
 
   const [form, setForm] = useState({
     title: service.title || '',

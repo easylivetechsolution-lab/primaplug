@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 import { CURRENCIES } from '../data/currencies'
 
@@ -48,6 +48,13 @@ export default function EditGig({ gig, onClose, onSaved }) {
     directions: gig.directions || '',
   })
   const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    window.history.pushState({ modal: 'open' }, '', '')
+    const handleBack = () => onClose()
+    window.addEventListener('popstate', handleBack)
+    return () => window.removeEventListener('popstate', handleBack)
+  }, [])
   const [saved, setSaved] = useState(false)
 
   const update = (key, val) => setForm(f => ({ ...f, [key]: val }))

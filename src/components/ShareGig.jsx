@@ -1,9 +1,16 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 
 export default function ShareGig({ gig, onClose }) {
   const { profile } = useAuth()
   const [copied, setCopied] = useState(false)
+
+  useEffect(() => {
+    window.history.pushState({ modal: 'open' }, '', '')
+    const handleBack = () => onClose()
+    window.addEventListener('popstate', handleBack)
+    return () => window.removeEventListener('popstate', handleBack)
+  }, [])
 
   const referralCode = profile?.referral_code || ''
   const shareLink = `https://primaplug.vercel.app/?gigref=${gig.id}&ref=${referralCode}`

@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 
@@ -11,6 +11,13 @@ export default function SelfieVerification({ onComplete, onSkip }) {
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
   const streamRef = useRef(null)
+
+  useEffect(() => {
+    window.history.pushState({ modal: 'open' }, '', '')
+    const handleBack = () => onSkip()
+    window.addEventListener('popstate', handleBack)
+    return () => window.removeEventListener('popstate', handleBack)
+  }, [])
 
   const startCamera = async () => {
     try {

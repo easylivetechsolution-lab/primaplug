@@ -32,6 +32,7 @@ export default function Layout() {
   const { hasUnpaidCommissions } = useCredits()
   const navigate = useNavigate()
   const [screen, setScreen] = useState('map')
+  const [screenHistory, setScreenHistory] = useState(['map'])
   const [showPost, setShowPost] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
   const [showMobileMore, setShowMobileMore] = useState(false)
@@ -67,7 +68,7 @@ export default function Layout() {
     const handleNavigate = (e) => {
       const { screen: targetScreen } = e.detail || {}
       if (targetScreen) {
-        setScreen(targetScreen)
+        navigateTo(targetScreen)
         setShowMobileMore(false)
       }
     }
@@ -76,9 +77,7 @@ export default function Layout() {
   }, [])
 
   useEffect(() => {
-    const handleNavigate = (e) => {
-      setScreen(e.detail)
-    }
+    const handleNavigate = (e) => navigateTo(e.detail)
     window.addEventListener('navigateTo', handleNavigate)
     return () => window.removeEventListener('navigateTo', handleNavigate)
   }, [])
@@ -92,6 +91,30 @@ export default function Layout() {
     }, 30000)
     return () => clearTimeout(timer)
   }, [user])
+
+  useEffect(() => {
+    window.history.pushState({ screen: 'map' }, '', '')
+    const handlePopState = () => {
+      if (screenHistory.length > 1) {
+        const newHistory = [...screenHistory]
+        newHistory.pop()
+        const previousScreen = newHistory[newHistory.length - 1]
+        setScreenHistory(newHistory)
+        setScreen(previousScreen)
+        window.history.pushState({ screen: previousScreen }, '', '')
+      } else {
+        window.history.pushState({ screen: 'map' }, '', '')
+      }
+    }
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [screenHistory])
+
+  const navigateTo = (newScreen) => {
+    setScreen(newScreen)
+    setScreenHistory(prev => [...prev, newScreen])
+    window.history.pushState({ screen: newScreen }, '', '')
+  }
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -108,13 +131,13 @@ export default function Layout() {
   ]
 
   const mobileMoreItems = [
-    { key: 'discover', icon: 'discover', label: 'Discover', action: () => setScreen('discover') },
-    { key: 'referral', emoji: '🎁', label: 'Refer & Earn', action: () => setScreen('referral') },
-    { key: 'commission', emoji: '💰', label: 'Commission', action: () => setScreen('commission') },
-    { key: 'withdrawal', emoji: '💸', label: 'Withdraw Credits', action: () => setScreen('withdrawal') },
-    { key: 'saved', icon: 'saved', label: 'Saved Gigs', action: () => setScreen('saved') },
-    { key: 'stats', icon: 'stats', label: 'My Stats', action: () => setScreen('stats') },
-    { key: 'settings', icon: 'settings', label: 'Settings', action: () => setScreen('settings') },
+    { key: 'discover', icon: 'discover', label: 'Discover', action: () => navigateTo('discover') },
+    { key: 'referral', emoji: '🎁', label: 'Refer & Earn', action: () => navigateTo('referral') },
+    { key: 'commission', emoji: '💰', label: 'Commission', action: () => navigateTo('commission') },
+    { key: 'withdrawal', emoji: '💸', label: 'Withdraw Credits', action: () => navigateTo('withdrawal') },
+    { key: 'saved', icon: 'saved', label: 'Saved Gigs', action: () => navigateTo('saved') },
+    { key: 'stats', icon: 'stats', label: 'My Stats', action: () => navigateTo('stats') },
+    { key: 'settings', icon: 'settings', label: 'Settings', action: () => navigateTo('settings') },
   ]
 
   const screens = {
@@ -182,7 +205,7 @@ export default function Layout() {
         {/* Desktop Nav */}
         <div style={{ display: 'flex', gap: '4px' }} className="desktop-nav">
           {navItems.map(item => (
-            <button key={item.key} onClick={() => { setScreen(item.key); setShowMobileMore(false) }}
+            <button key={item.key} onClick={() => { navigateTo(item.key); setShowMobileMore(false) }}
               style={{
                 background: screen === item.key ? '#EEE9FF' : 'transparent',
                 border: `1.5px solid ${screen === item.key ? '#B8A5FF' : 'transparent'}`,
@@ -231,7 +254,7 @@ export default function Layout() {
             }}>
             <BrandIcon name="search" size={26} active={false} />
           </button>
-          <NotificationBell onNavigate={(screen) => setScreen(screen)} />
+          <NotificationBell onNavigate={(screen) => navigateTo(screen)} />
           <button
             onClick={() => setShowSearch(true)}
             className="desktop-action"
@@ -396,7 +419,7 @@ export default function Layout() {
 
           {/* Saved Gigs */}
           <button
-            onClick={() => setScreen('saved')}
+            onClick={() => navigateTo('saved')}
             title="Saved Gigs"
             style={{
               width: '56px', height: '58px',
@@ -424,7 +447,7 @@ export default function Layout() {
 
           {/* My Stats */}
           <button
-            onClick={() => setScreen('stats')}
+            onClick={() => navigateTo('stats')}
             title="My Stats"
             style={{
               width: '56px', height: '58px',
@@ -452,7 +475,7 @@ export default function Layout() {
 
           {/* Chat */}
           <button
-            onClick={() => setScreen('chat')}
+            onClick={() => navigateTo('chat')}
             title="Messages"
             style={{
               width: '56px', height: '58px',
@@ -484,7 +507,7 @@ export default function Layout() {
 
           {/* Services */}
           <button
-            onClick={() => setScreen('services')}
+            onClick={() => navigateTo('services')}
             title="Services"
             style={{
               width: '48px', height: '48px',
@@ -515,7 +538,7 @@ export default function Layout() {
 
           {/* Referral */}
           <button
-            onClick={() => setScreen('referral')}
+            onClick={() => navigateTo('referral')}
             title="Refer & Earn"
             style={{
               width: '48px', height: '48px',
@@ -552,7 +575,7 @@ export default function Layout() {
 
           {/* Settings */}
           <button
-            onClick={() => setScreen('settings')}
+            onClick={() => navigateTo('settings')}
             title="Settings"
             style={{
               width: '56px', height: '58px',
@@ -649,7 +672,7 @@ export default function Layout() {
                 display: 'flex', justifyContent: 'space-between',
                 alignItems: 'center', gap: '12px',
                 cursor: 'pointer'
-              }} onClick={() => setScreen('profile')}>
+              }} onClick={() => navigateTo('profile')}>
                 <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flex: 1 }}>
                   <div style={{
                     width: '34px', height: '34px', borderRadius: '10px',
@@ -712,7 +735,7 @@ export default function Layout() {
         zIndex: 50
       }} className="mobile-nav">
         {navItems.filter(i => i.key !== 'services' && i.key !== 'profile' && i.key !== 'discover').map(item => (
-          <button key={item.key} onClick={() => { setScreen(item.key); setShowMobileMore(false) }}
+          <button key={item.key} onClick={() => { navigateTo(item.key); setShowMobileMore(false) }}
             style={{
               background: 'transparent',
               border: 'none',
@@ -737,7 +760,7 @@ export default function Layout() {
         ))}
         {/* Services — before Profile */}
         <button
-          onClick={() => setScreen('services')}
+          onClick={() => navigateTo('services')}
           style={{
             background: 'transparent', border: 'none',
             padding: '6px 10px', display: 'flex',
@@ -755,7 +778,7 @@ export default function Layout() {
         </button>
         {/* Profile — last */}
         <button
-          onClick={() => { setScreen('profile'); setShowMobileMore(false) }}
+          onClick={() => { navigateTo('profile'); setShowMobileMore(false) }}
           style={{
             background: 'transparent', border: 'none',
             padding: '6px 10px', display: 'flex',
@@ -864,7 +887,7 @@ export default function Layout() {
 
       {/* Floating Chat — visible on all screens */}
       <div className="floating-chat-shell">
-        <FloatingChat onOpenFullChat={() => setScreen('chat')} />
+        <FloatingChat onOpenFullChat={() => navigateTo('chat')} />
       </div>
 
       {/* Push Notification Prompt */}

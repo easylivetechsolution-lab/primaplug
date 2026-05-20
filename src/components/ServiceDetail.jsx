@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 
@@ -13,6 +13,13 @@ export default function ServiceDetail({ service, onClose, onViewProfile }) {
   const [selectedPackage, setSelectedPackage] = useState('basic')
   const [ordering, setOrdering] = useState(false)
   const [ordered, setOrdered] = useState(false)
+
+  useEffect(() => {
+    window.history.pushState({ modal: 'open' }, '', '')
+    const handleBack = () => onClose()
+    window.addEventListener('popstate', handleBack)
+    return () => window.removeEventListener('popstate', handleBack)
+  }, [])
   const [requirements, setRequirements] = useState('')
   const [currentImage, setCurrentImage] = useState(0)
   const [lightbox, setLightbox] = useState(false)

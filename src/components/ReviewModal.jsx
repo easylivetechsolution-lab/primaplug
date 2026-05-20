@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 
@@ -19,6 +19,13 @@ export default function ReviewModal({ gig, revieweeId, revieweeName, reviewType,
   const [selectedTags, setSelectedTags] = useState([])
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState(false)
+
+  useEffect(() => {
+    window.history.pushState({ modal: 'open' }, '', '')
+    const handleBack = () => onClose()
+    window.addEventListener('popstate', handleBack)
+    return () => window.removeEventListener('popstate', handleBack)
+  }, [])
 
   const tags = reviewType === 'worker' ? TAGS_FOR_WORKER : TAGS_FOR_POSTER
 

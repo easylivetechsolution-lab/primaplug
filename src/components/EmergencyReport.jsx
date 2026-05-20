@@ -10,6 +10,13 @@ export default function EmergencyReport({ onClose, gigId, reportedUserId }) {
   const [submitted, setSubmitted] = useState(false)
   const [gettingLocation, setGettingLocation] = useState(false)
 
+  useEffect(() => {
+    window.history.pushState({ modal: 'open' }, '', '')
+    const handleBack = () => onClose()
+    window.addEventListener('popstate', handleBack)
+    return () => window.removeEventListener('popstate', handleBack)
+  }, [])
+
   useEffect(() => { getLocation() }, [])
 
   const getLocation = () => {

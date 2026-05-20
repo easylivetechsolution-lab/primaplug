@@ -25,6 +25,13 @@ export default function PublicProfile({ userId, onClose }) {
   }, [userId])
 
   useEffect(() => {
+    window.history.pushState({ modal: 'open' }, '', '')
+    const handleBack = () => onClose()
+    window.addEventListener('popstate', handleBack)
+    return () => window.removeEventListener('popstate', handleBack)
+  }, [])
+
+  useEffect(() => {
     if (userId && currentUser && !isOwnProfile) {
       supabase
         .from('conversations')
