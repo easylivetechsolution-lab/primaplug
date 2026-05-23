@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
+import { Capacitor } from '@capacitor/core'
+import { Camera } from '@capacitor/camera'
 import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 
@@ -22,6 +24,18 @@ export default function SelfieVerification({ onComplete, onSkip }) {
   const startCamera = async () => {
     try {
       setError(null)
+
+      // Request camera permission on Android
+      if (Capacitor.isNativePlatform()) {
+        const permission = await Camera.requestPermissions()
+        console.log('Camera permission:', permission)
+
+        if (permission.camera !== 'granted') {
+          setError('Camera permission denied. Please allow camera access in your phone Settings → Apps → PrimaPlug → Permissions → Camera')
+          return
+        }
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: 'user',
@@ -30,8 +44,8 @@ export default function SelfieVerification({ onComplete, onSkip }) {
         },
         audio: false
       })
-      streamRef.current = stream
 
+      streamRef.current = stream
       setStep('camera')
 
       setTimeout(() => {
@@ -44,11 +58,11 @@ export default function SelfieVerification({ onComplete, onSkip }) {
     } catch (e) {
       console.log('Camera error:', e)
       if (e.name === 'NotAllowedError') {
-        setError('Camera permission denied. Please allow camera access in your browser settings and try again.')
+        setError('Camera access denied. Please go to Settings → Apps → PrimaPlug → Permissions → Camera → Allow')
       } else if (e.name === 'NotFoundError') {
         setError('No camera found on this device.')
       } else {
-        setError('Could not access camera. Please try again.')
+        setError('Could not access camera: ' + e.message)
       }
     }
   }

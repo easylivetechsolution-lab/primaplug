@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">PrimaPlug</string>
+    <string name="title_activity_main">PrimaPlug</string>
+    <string name="package_name">com.primaplug.app</string>
+    <string name="custom_url_scheme">com.primaplug.app</string>
+</resources>

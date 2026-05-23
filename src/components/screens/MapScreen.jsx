@@ -1,4 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
+import { Capacitor } from '@capacitor/core'
+import { Geolocation } from '@capacitor/geolocation'
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -149,22 +151,47 @@ export default function MapScreen() {
   const mapRef = useRef(null)
 
   useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const { latitude, longitude } = pos.coords
-          setUserPos([latitude, longitude])
-          if (mapRef.current) {
-            mapRef.current.setView([latitude, longitude], 14)
+    const getLocation = async () => {
+      try {
+        if (Capacitor.isNativePlatform()) {
+          // Request native Android permission
+          const permission = await Geolocation.requestPermissions()
+          console.log('Location permission:', permission)
+
+          if (permission.location === 'granted') {
+            const pos = await Geolocation.getCurrentPosition({
+              enableHighAccuracy: true,
+              timeout: 10000
+            })
+            setUserPos([pos.coords.latitude, pos.coords.longitude])
+
+            // Watch position
+            Geolocation.watchPosition(
+              { enableHighAccuracy: true },
+              (position) => {
+                if (position) {
+                  setUserPos([
+                    position.coords.latitude,
+                    position.coords.longitude
+                  ])
+                }
+              }
+            )
           }
-        },
-        (err) => {
-          console.log('Location error:', err)
-          setUserPos([6.5244, 3.3792])
-        },
-        { enableHighAccuracy: true, timeout: 10000 }
-      )
+        } else {
+          // Web browser
+          navigator.geolocation.getCurrentPosition(
+            (pos) => setUserPos([pos.coords.latitude, pos.coords.longitude]),
+            () => setUserPos([6.5244, 3.3792]),
+            { enableHighAccuracy: true, timeout: 10000 }
+          )
+        }
+      } catch (e) {
+        console.log('Location error:', e)
+        setUserPos([6.5244, 3.3792])
+      }
     }
+    getLocation()
   }, [])
 
   const fetchSavedIds = async () => {
