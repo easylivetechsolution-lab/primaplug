@@ -6,11 +6,14 @@ import BrandIcon from '../BrandIcon'
 import { getCurrency } from '../../data/currencies'
 import { trackGigReferral } from '../../utils/referral'
 import ShareGig from '../ShareGig'
+import { getProfileCompletion } from '../../utils/profileComplete'
+import ProfilePrompt from '../ProfilePrompt'
 
 const getCurrencySymbol = (code) => getCurrency(code || 'USD').symbol
 
 export default function SavedScreen() {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
+  const [showProfilePrompt, setShowProfilePrompt] = useState(false)
   const [savedGigs, setSavedGigs] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedGig, setSelectedGig] = useState(null)
@@ -54,6 +57,23 @@ export default function SavedScreen() {
   }
 
   const handleApply = async (gig) => {
+    // Selfie verification check
+    const { data: userProfile } = await supabase
+      .from('users')
+      .select('selfie_verified')
+      .eq('id', user.id)
+      .single()
+    if (!userProfile?.selfie_verified) {
+      alert('Please complete selfie verification in your profile before applying for gigs.')
+      window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'profile' }))
+      return
+    }
+    // Profile completion check
+    const { complete } = getProfileCompletion(profile)
+    if (!complete) {
+      setShowProfilePrompt(true)
+      return
+    }
     setApplying(true)
     try {
       const { data: existing } = await supabase
@@ -483,6 +503,10 @@ export default function SavedScreen() {
 
       {sharingGig && (
         <ShareGig gig={sharingGig} onClose={() => setSharingGig(null)} />
+      )}
+
+      {showProfilePrompt && (
+        <ProfilePrompt onClose={() => setShowProfilePrompt(false)} />
       )}
 
       <style>{`

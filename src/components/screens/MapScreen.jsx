@@ -12,6 +12,8 @@ import { getCurrency } from '../../data/currencies'
 import { CATEGORIES } from '../../data/categories'
 import { trackGigReferral } from '../../utils/referral'
 import ShareGig from '../ShareGig'
+import { getProfileCompletion } from '../../utils/profileComplete'
+import ProfilePrompt from '../ProfilePrompt'
 
 const getCurrencySymbol = (code) => getCurrency(code || 'USD').symbol
 
@@ -136,7 +138,8 @@ const SetView = ({ coords }) => {
 }
 
 export default function MapScreen() {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
+  const [showProfilePrompt, setShowProfilePrompt] = useState(false)
   const [gigs, setGigs] = useState([])
   const [userPos, setUserPos] = useState([6.5244, 3.3792])
   const [liveCount, setLiveCount] = useState(312)
@@ -964,6 +967,23 @@ export default function MapScreen() {
                   }}>Skip</button>
                   <button
                     onClick={async () => {
+  // Selfie verification check
+  const { data: userProfile } = await supabase
+    .from('users')
+    .select('selfie_verified')
+    .eq('id', user.id)
+    .single()
+  if (!userProfile?.selfie_verified) {
+    alert('Please complete selfie verification in your profile before applying for gigs.')
+    window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'profile' }))
+    return
+  }
+  // Profile completion check
+  const { complete } = getProfileCompletion(profile)
+  if (!complete) {
+    setShowProfilePrompt(true)
+    return
+  }
   setApplying(true)
   try {
     const { data: { session } } = await supabase.auth.getSession()
@@ -1045,6 +1065,10 @@ export default function MapScreen() {
 
       {sharingGig && (
         <ShareGig gig={sharingGig} onClose={() => setSharingGig(null)} />
+      )}
+
+      {showProfilePrompt && (
+        <ProfilePrompt onClose={() => setShowProfilePrompt(false)} />
       )}
 
       <style>{`
