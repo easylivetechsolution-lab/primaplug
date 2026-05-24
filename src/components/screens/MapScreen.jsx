@@ -488,36 +488,6 @@ export default function MapScreen() {
           ))}
         </div>
 
-        {/* Legend — Bottom Right */}
-        <div style={{
-          position: 'absolute', bottom: '14px', right: '14px',
-          display: 'flex', flexDirection: 'column',
-          gap: '5px', zIndex: 400
-        }}>
-          {[
-            ['#FF3366', 'Urgent NOW'],
-            ['#FF6B2B', 'Today'],
-            ['#00C48C', 'Worker live'],
-            ['#6C47FF', 'You'],
-          ].map(([color, label]) => (
-            <div key={label} style={{
-              background: 'rgba(13,27,62,0.88)',
-              backdropFilter: 'blur(6px)',
-              borderRadius: '7px', padding: '4px 10px',
-              display: 'flex', alignItems: 'center', gap: '6px',
-              border: '1px solid rgba(255,255,255,0.08)'
-            }}>
-              <div style={{
-                width: '8px', height: '8px', borderRadius: '50%',
-                background: color, flexShrink: 0
-              }} />
-              <span style={{
-                fontSize: '10px', color: 'rgba(255,255,255,0.85)',
-                fontWeight: '600'
-              }}>{label}</span>
-            </div>
-          ))}
-        </div>
       </div>
 
       {/* Happening Now Strip */}

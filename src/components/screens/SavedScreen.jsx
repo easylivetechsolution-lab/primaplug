@@ -36,7 +36,7 @@ export default function SavedScreen() {
         *,
         gigs (
           *,
-          users (
+          poster:users!gigs_poster_id_fkey (
             id, full_name, avatar_url,
             trust_score, rating, gigs_completed, location
           )
@@ -278,7 +278,7 @@ export default function SavedScreen() {
                     <div
                       onClick={(e) => {
                         e.stopPropagation()
-                        setViewingProfile(gig.users?.id)
+                        setViewingProfile(gig.poster?.id)
                       }}
                       style={{
                         width: '28px', height: '28px', borderRadius: '8px',
@@ -289,13 +289,13 @@ export default function SavedScreen() {
                         flexShrink: 0, cursor: 'pointer',
                         border: '1.5px solid #B8A5FF'
                       }}>
-                      {gig.users?.avatar_url ? (
-                        <img src={gig.users.avatar_url} alt=""
+                      {gig.poster?.avatar_url ? (
+                        <img src={gig.poster.avatar_url} alt=""
                           style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      ) : gig.users?.full_name?.charAt(0) || '?'}
+                      ) : gig.poster?.full_name?.charAt(0) || '?'}
                     </div>
                     <span style={{ fontSize: '12px', color: '#8B8FAF' }}>
-                      {gig.users?.full_name || 'Anonymous'}
+                      {gig.poster?.full_name || 'Anonymous'}
                     </span>
                     {gig.location && (
                       <span style={{ fontSize: '11px', color: '#FF6B2B' }}>
@@ -319,7 +319,7 @@ export default function SavedScreen() {
                       borderRadius: '12px', border: '1px solid #E2E0FF'
                     }}>
                       <div
-                        onClick={() => setViewingProfile(gig.users?.id)}
+                        onClick={() => setViewingProfile(gig.poster?.id)}
                         style={{
                           width: '44px', height: '44px', borderRadius: '12px',
                           background: '#EEE9FF', display: 'flex',
@@ -329,25 +329,25 @@ export default function SavedScreen() {
                           flexShrink: 0, cursor: 'pointer',
                           border: '2px solid #B8A5FF'
                         }}>
-                        {gig.users?.avatar_url ? (
-                          <img src={gig.users.avatar_url} alt=""
+                        {gig.poster?.avatar_url ? (
+                          <img src={gig.poster.avatar_url} alt=""
                             style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        ) : gig.users?.full_name?.charAt(0) || '?'}
+                        ) : gig.poster?.full_name?.charAt(0) || '?'}
                       </div>
                       <div style={{ flex: 1 }}>
                         <div
-                          onClick={() => setViewingProfile(gig.users?.id)}
+                          onClick={() => setViewingProfile(gig.poster?.id)}
                           style={{
                             fontSize: '14px', fontWeight: '700',
                             color: '#6C47FF', cursor: 'pointer',
                             marginBottom: '2px'
                           }}>
-                          {gig.users?.full_name || 'Anonymous'} →
+                          {gig.poster?.full_name || 'Anonymous'} →
                         </div>
                         <div style={{ fontSize: '11px', color: '#8B8FAF' }}>
-                          ⭐ {gig.users?.rating || 5.0} ·{' '}
-                          {gig.users?.gigs_completed || 0} gigs ·{' '}
-                          Trust {gig.users?.trust_score || 100}%
+                          ⭐ {gig.poster?.rating || 5.0} ·{' '}
+                          {gig.poster?.gigs_completed || 0} gigs ·{' '}
+                          Trust {gig.poster?.trust_score || 100}%
                         </div>
                       </div>
                     </div>
@@ -368,9 +368,9 @@ export default function SavedScreen() {
                         }}>Pay Range</div>
                         <div style={{
                           fontSize: '18px', fontWeight: '800', color: '#00C48C'
-                        }}>${gig.pay_min}</div>
+                        }}>{getCurrencySymbol(gig.currency)}{gig.pay_min}</div>
                         <div style={{ fontSize: '10px', color: '#00C48C', opacity: 0.7 }}>
-                          up to ${gig.pay_max}
+                          up to {getCurrencySymbol(gig.currency)}{gig.pay_max}
                         </div>
                       </div>
                       <div style={{

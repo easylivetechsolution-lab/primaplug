@@ -1290,7 +1290,9 @@ export default function MyGigsScreen() {
                 onEdit={setEditingGig}
                 onViewProfile={setViewingProfile}
                 onViewApplicants={setApplicantsGig}
-                onTrack={setTrackingGig}
+                onTrack={(gig) => setTrackingGig({
+                  gig, role: 'poster', workerInfo: gig.worker
+                })}
                 onRefresh={fetchAll}
                 sectionHeader={sectionHeader}
                 userId={user?.id}
@@ -1306,7 +1308,9 @@ export default function MyGigsScreen() {
                 totalOwed={totalOwed}
                 onReceipt={(gig) => setReceiptGig(gig)}
                 onViewProfile={setViewingProfile}
-                onTrack={setTrackingGig}
+                onTrack={(gig) => setTrackingGig({
+                  gig, role: 'worker', posterInfo: gig.poster
+                })}
                 onRefresh={fetchAll}
                 sectionHeader={sectionHeader}
                 userId={user?.id}
@@ -1330,7 +1334,10 @@ export default function MyGigsScreen() {
 
       {trackingGig && (
         <LiveTracking
-          gig={trackingGig}
+          gig={trackingGig.gig}
+          role={trackingGig.role}
+          workerInfo={trackingGig.workerInfo}
+          posterInfo={trackingGig.posterInfo}
           onClose={() => setTrackingGig(null)}
         />
       )}

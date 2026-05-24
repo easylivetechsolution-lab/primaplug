@@ -328,6 +328,17 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
 
         <div style={{ padding: '20px 24px 40px' }}>
 
+          {/* LOADING */}
+          {step === 'start' && (
+            <div style={{
+              textAlign: 'center', padding: '32px 20px',
+              color: '#A09DC8', fontSize: '14px', fontWeight: '600'
+            }}>
+              <div style={{ fontSize: '32px', marginBottom: '10px' }}>⏳</div>
+              Loading...
+            </div>
+          )}
+
           {/* POSTER AMOUNT STEP */}
           {step === 'poster_amount' && (
             <div>
@@ -583,7 +594,7 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
                 fontSize: '13px', color: '#8B8FAF',
                 lineHeight: '1.7', marginBottom: '20px'
               }}>
-                You confirmed payment of {currency.symbol}{receipt?.amount?.toLocaleString()}.
+                You confirmed payment of {getCurrency(receipt?.currency || gig?.currency || 'USD').symbol}{receipt?.amount?.toLocaleString()}.
                 Waiting for the worker to confirm they received this amount.
               </div>
               <div style={{
@@ -646,43 +657,55 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
                   textTransform: 'uppercase', letterSpacing: '1px',
                   marginBottom: '8px'
                 }}>Poster confirmed payment of</div>
-                <div style={{
-                  fontSize: '40px', fontWeight: '800',
-                  letterSpacing: '-2px', marginBottom: '4px'
-                }}>
-                  {currency.symbol}{receipt?.amount?.toLocaleString()}
-                </div>
-                <div style={{ fontSize: '12px', opacity: 0.7 }}>
-                  {gig?.currency || 'NGN'}
-                </div>
+                {(() => {
+                  const rc = getCurrency(receipt?.currency || gig?.currency || 'USD')
+                  return (
+                    <>
+                      <div style={{
+                        fontSize: '40px', fontWeight: '800',
+                        letterSpacing: '-2px', marginBottom: '4px'
+                      }}>
+                        {rc.symbol}{receipt?.amount?.toLocaleString()}
+                      </div>
+                      <div style={{ fontSize: '12px', opacity: 0.7 }}>
+                        {receipt?.currency || gig?.currency || 'USD'}
+                      </div>
+                    </>
+                  )
+                })()}
               </div>
 
               {/* Commission notice */}
-              <div style={{
-                background: '#FFF0E8', border: '1.5px solid #FFBC99',
-                borderRadius: '12px', padding: '14px',
-                marginBottom: '20px',
-                display: 'flex', gap: '10px', alignItems: 'flex-start'
-              }}>
-                <span style={{ fontSize: '18px', flexShrink: 0 }}>💰</span>
-                <div>
+              {(() => {
+                const rc = getCurrency(receipt?.currency || gig?.currency || 'USD')
+                const commissionAmt = calculateCommission(
+                  receipt?.amount || 0, receipt?.currency || gig?.currency
+                )
+                return (
                   <div style={{
-                    fontSize: '13px', fontWeight: '700',
-                    color: '#FF6B2B', marginBottom: '3px'
-                  }}>Platform Commission</div>
-                  <div style={{
-                    fontSize: '12px', color: '#FF6B2B',
-                    opacity: 0.8, lineHeight: '1.5'
+                    background: '#FFF0E8', border: '1.5px solid #FFBC99',
+                    borderRadius: '12px', padding: '14px',
+                    marginBottom: '20px',
+                    display: 'flex', gap: '10px', alignItems: 'flex-start'
                   }}>
-                    Confirming this receipt means you agree a 10% platform
-                    commission of {currency.symbol}{calculateCommission(
-                      receipt?.amount || 0,
-                      gig?.currency
-                    ).toLocaleString()} will be owed to Prima.
-                    You have 7 days to pay.
+                    <span style={{ fontSize: '18px', flexShrink: 0 }}>💰</span>
+                    <div>
+                      <div style={{
+                        fontSize: '13px', fontWeight: '700',
+                        color: '#FF6B2B', marginBottom: '3px'
+                      }}>Platform Commission</div>
+                      <div style={{
+                        fontSize: '12px', color: '#FF6B2B',
+                        opacity: 0.8, lineHeight: '1.5'
+                      }}>
+                        Confirming this receipt means you agree a 10% platform
+                        commission of {rc.symbol}{commissionAmt.toLocaleString()} will be owed to Prima.
+                        You have 7 days to pay.
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
+                )
+              })()}
 
               {error && (
                 <div style={{
@@ -786,7 +809,7 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
                     fontSize: '22px', fontWeight: '800',
                     color: '#FF6B2B', marginBottom: '4px'
                   }}>
-                    {currency.symbol}{receipt.commission_amount.toLocaleString()}
+                    {getCurrency(receipt?.currency || gig?.currency || 'USD').symbol}{receipt.commission_amount.toLocaleString()}
                   </div>
                   <div style={{
                     fontSize: '11px', color: '#FF6B2B',
