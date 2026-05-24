@@ -737,72 +737,55 @@ export default function Layout() {
         display: 'none',
         background: '#fff',
         borderTop: '1.5px solid #E2E0FF',
-        padding: '10px 8px 20px',
+        padding: '6px 4px 16px',
         justifyContent: 'space-around',
         alignItems: 'center',
         flexShrink: 0,
         zIndex: 50
       }} className="mobile-nav">
-        {navItems.filter(i => i.key !== 'services' && i.key !== 'profile' && i.key !== 'discover').map(item => (
-          <button key={item.key} onClick={() => { navigateTo(item.key); setShowMobileMore(false) }}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              padding: '6px 10px',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: '3px',
-              cursor: 'pointer',
-              fontFamily: 'inherit'
-            }}>
-            <BrandIcon name={item.icon} size={34} active={screen === item.key} />
-            <span style={{
-              fontSize: '9px',
-              fontWeight: screen === item.key ? '700' : '500',
-              color: screen === item.key ? '#6C47FF' : '#A09DC8'
-            }}>{item.label}</span>
-            {screen === item.key && (
-              <div style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#6C47FF' }} />
-            )}
-          </button>
-        ))}
-        {/* Services — before Profile */}
-        <button
-          onClick={() => navigateTo('services')}
-          style={{
-            background: 'transparent', border: 'none',
-            padding: '6px 10px', display: 'flex',
-            flexDirection: 'column', alignItems: 'center',
-            gap: '3px', cursor: 'pointer', fontFamily: 'inherit'
-          }}>
-          <BrandIcon name="services" size={34} active={screen === 'services'} />
-          <span style={{
-            fontSize: '9px', fontWeight: screen === 'services' ? '700' : '500',
-            color: screen === 'services' ? '#6C47FF' : '#A09DC8'
-          }}>Services</span>
-          {screen === 'services' && (
-            <div style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#6C47FF' }} />
-          )}
-        </button>
-        {/* Profile — last */}
-        <button
-          onClick={() => { navigateTo('profile'); setShowMobileMore(false) }}
-          style={{
-            background: 'transparent', border: 'none',
-            padding: '6px 10px', display: 'flex',
-            flexDirection: 'column', alignItems: 'center',
-            gap: '3px', cursor: 'pointer', fontFamily: 'inherit'
-          }}>
-          <BrandIcon name="profile" size={34} active={screen === 'profile'} />
-          <span style={{
-            fontSize: '9px', fontWeight: screen === 'profile' ? '700' : '500',
-            color: screen === 'profile' ? '#6C47FF' : '#A09DC8'
-          }}>Profile</span>
-          {screen === 'profile' && (
-            <div style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#6C47FF' }} />
-          )}
-        </button>
+        {[
+          { key: 'map', icon: 'home', label: 'Home' },
+          { key: 'feed', icon: 'feed', label: 'Feed' },
+          { key: 'mygigs', icon: 'mygigs', label: 'My Gigs' },
+          { key: 'chat', icon: 'chat', label: 'Chat' },
+          { key: 'services', icon: 'services', label: 'Services' },
+          { key: 'profile', icon: 'profile', label: 'Profile' },
+        ].map(item => {
+          const active = screen === item.key
+          return (
+            <button
+              key={item.key}
+              onClick={() => { navigateTo(item.key); setShowMobileMore(false) }}
+              style={{
+                flex: '1 1 0', minWidth: 0,
+                background: 'transparent', border: 'none',
+                padding: '4px 2px',
+                display: 'flex', flexDirection: 'column',
+                alignItems: 'center', justifyContent: 'center',
+                gap: '3px', cursor: 'pointer', fontFamily: 'inherit'
+              }}>
+              <div style={{
+                width: '40px', height: '30px', borderRadius: '10px',
+                background: active ? '#EEE9FF' : 'transparent',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'background 0.15s', position: 'relative'
+              }}>
+                <BrandIcon name={item.icon} size={26} active={active} />
+                {item.key === 'mygigs' && hasUnpaidCommissions && (
+                  <span style={{
+                    position: 'absolute', top: '2px', right: '5px',
+                    width: '6px', height: '6px', borderRadius: '50%',
+                    background: '#FF3366', border: '1.5px solid #fff'
+                  }} />
+                )}
+              </div>
+              <span style={{
+                fontSize: '9px', fontWeight: active ? '700' : '500',
+                color: active ? '#6C47FF' : '#A09DC8', lineHeight: '1'
+              }}>{item.label}</span>
+            </button>
+          )
+        })}
       </div>
 
       {/* MOBILE FAB — hidden on chat screen to avoid covering the input */}

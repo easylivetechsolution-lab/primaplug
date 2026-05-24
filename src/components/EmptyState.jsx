@@ -6,6 +6,8 @@ export default function EmptyState({
   message,
   actionLabel,
   onAction,
+  secondaryLabel,
+  onSecondary,
   compact = false,
   tone = 'default'
 }) {
@@ -77,23 +79,43 @@ export default function EmptyState({
       )}
 
       {actionLabel && (
-        <button
-          onClick={onAction}
-          style={{
-            background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
-            border: 'none',
-            borderRadius: '12px',
-            padding: '12px 20px',
-            fontSize: '13px',
-            fontWeight: '800',
-            color: '#fff',
-            cursor: 'pointer',
-            fontFamily: 'inherit',
-            boxShadow: '0 5px 18px rgba(108,71,255,0.32)'
-          }}
-        >
-          {actionLabel}
-        </button>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+          <button
+            onClick={onAction}
+            style={{
+              background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+              border: 'none',
+              borderRadius: '12px',
+              padding: '12px 24px',
+              fontSize: '13px',
+              fontWeight: '800',
+              color: '#fff',
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              boxShadow: '0 5px 18px rgba(108,71,255,0.32)'
+            }}
+          >
+            {actionLabel}
+          </button>
+          {secondaryLabel && (
+            <button
+              onClick={onSecondary}
+              style={{
+                background: 'transparent',
+                border: '1.5px solid #E2E0FF',
+                borderRadius: '12px',
+                padding: '10px 20px',
+                fontSize: '13px',
+                fontWeight: '600',
+                color: '#8B8FAF',
+                cursor: 'pointer',
+                fontFamily: 'inherit'
+              }}
+            >
+              {secondaryLabel}
+            </button>
+          )}
+        </div>
       )}
     </div>
   )

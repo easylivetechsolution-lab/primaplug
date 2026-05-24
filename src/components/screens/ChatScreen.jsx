@@ -3,6 +3,7 @@ import { supabase } from '../../supabase'
 import { useAuth } from '../../context/AuthContext'
 import PublicProfile from '../PublicProfile'
 import BrandIcon from '../BrandIcon'
+import EmptyState from '../EmptyState'
 import { playMessage } from '../../utils/sounds'
 
 const QUICK_REPLIES = [
@@ -339,19 +340,14 @@ export default function ChatScreen() {
               color: '#A09DC8', fontSize: '14px'
             }}>Loading...</div>
           ) : conversations.length === 0 ? (
-            <div style={{
-              padding: '48px 20px', textAlign: 'center'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '14px' }}>
-                <BrandIcon name="chat" size={50} />
-              </div>
-              <div style={{
-                fontSize: '15px', fontWeight: '700',
-                color: '#14123A', marginBottom: '6px'
-              }}>No messages yet</div>
-              <div style={{ fontSize: '13px', color: '#A09DC8', lineHeight: '1.5' }}>
-                Apply for a gig or accept an applicant to start a conversation
-              </div>
+            <div style={{ padding: '24px 16px' }}>
+              <EmptyState
+                icon="chat"
+                title="No messages yet"
+                message="Apply for a gig or accept an applicant to start a conversation."
+                actionLabel="Browse gigs"
+                onAction={() => window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'feed' }))}
+              />
             </div>
           ) : (
             conversations.map(convo => {
@@ -591,12 +587,18 @@ export default function ChatScreen() {
                   color: '#A09DC8', fontSize: '14px'
                 }}>Loading messages...</div>
               ) : messages.length === 0 ? (
-                <div style={{
-                  textAlign: 'center', padding: '32px'
-                }}>
-                  <div style={{ fontSize: '32px', marginBottom: '8px' }}>👋</div>
+                <div style={{ textAlign: 'center', padding: '32px' }}>
                   <div style={{
-                    fontSize: '14px', fontWeight: '600',
+                    width: '56px', height: '56px', borderRadius: '16px',
+                    background: 'linear-gradient(135deg, #EEE9FF, #F8F5FF)',
+                    border: '1.5px solid #B8A5FF',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    margin: '0 auto 12px'
+                  }}>
+                    <BrandIcon name="chat" size={36} active />
+                  </div>
+                  <div style={{
+                    fontSize: '14px', fontWeight: '700',
                     color: '#14123A', marginBottom: '4px'
                   }}>Start the conversation</div>
                   <div style={{ fontSize: '12px', color: '#A09DC8' }}>
