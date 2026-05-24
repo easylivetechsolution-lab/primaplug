@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext'
 import { payWithFlutterwave, verifyFlutterwavePayment } from '../../utils/flutterwave'
 import { useCredits } from '../../context/CreditsContext'
 import { getCurrency } from '../../data/currencies'
-import BrandIcon from '../BrandIcon'
+import EmptyState from '../EmptyState'
 
 export default function CommissionScreen() {
   const { user, profile } = useAuth()
@@ -370,25 +370,12 @@ export default function CommissionScreen() {
       )}
 
       {commissions.length === 0 && (
-        <div style={{
-          textAlign: 'center', padding: '48px 20px',
-          background: '#fff', borderRadius: '20px',
-          border: '1.5px solid #E2E0FF'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
-            <BrandIcon name="commission" size={48} active={false} />
-          </div>
-          <div style={{
-            fontSize: '16px', fontWeight: '700',
-            color: '#14123A', marginBottom: '6px'
-          }}>No commissions yet</div>
-          <div style={{
-            fontSize: '13px', color: '#A09DC8',
-            lineHeight: '1.6'
-          }}>
-            When you complete a gig and both parties confirm the receipt, your 10% platform fee will appear here.
-          </div>
-        </div>
+        <EmptyState
+          icon="commission"
+          tone="money"
+          title="No commissions yet"
+          message="When you complete a gig and both parties confirm the receipt, your 10% platform fee will appear here."
+        />
       )}
 
       {/* Bank Transfer Modal */}

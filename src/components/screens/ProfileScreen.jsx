@@ -635,19 +635,21 @@ export default function ProfileScreen({ onLogout }) {
             }}>
               {profile?.full_name || 'Your Name'}
             </div>
-            <div style={{ fontSize: '13px', opacity: 0.8, marginBottom: '5px' }}>
+            <div style={{ fontSize: '13px', opacity: 0.8, marginBottom: '8px' }}>
               @{profile?.username || 'username'}
             </div>
             {profile?.location && (
               <div style={{
-                fontSize: '12px', opacity: 0.7, marginBottom: profile?.is_verified ? '6px' : '0',
+                fontSize: '12px', opacity: 0.7, marginBottom: profile?.is_verified ? '10px' : '0',
                 display: 'flex', alignItems: 'center', gap: '6px'
               }}>
                 <BrandIcon name="location" size={22} /> {profile.location}
               </div>
             )}
             {profile?.is_verified && (
-              <VerificationBadge onDark />
+              <div style={{ marginLeft: '14px' }}>
+                <VerificationBadge onDark />
+              </div>
             )}
           </div>
         </div>

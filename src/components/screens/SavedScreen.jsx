@@ -3,6 +3,7 @@ import { supabase } from '../../supabase'
 import { useAuth } from '../../context/AuthContext'
 import PublicProfile from '../PublicProfile'
 import BrandIcon from '../BrandIcon'
+import EmptyState from '../EmptyState'
 import { getCurrency } from '../../data/currencies'
 import { trackGigReferral } from '../../utils/referral'
 import ShareGig from '../ShareGig'
@@ -169,25 +170,13 @@ export default function SavedScreen() {
           </div>
         </div>
       ) : savedGigs.length === 0 ? (
-        <div style={{
-          textAlign: 'center', padding: '48px 20px',
-          background: '#fff', borderRadius: '20px',
-          border: '1.5px solid #E2E0FF'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '14px' }}>
-            <BrandIcon name="saved" size={48} />
-          </div>
-          <div style={{
-            fontSize: '16px', fontWeight: '700',
-            color: '#14123A', marginBottom: '8px'
-          }}>No saved gigs yet</div>
-          <div style={{
-            fontSize: '13px', color: '#A09DC8',
-            lineHeight: '1.6', maxWidth: '260px', margin: '0 auto'
-          }}>
-            Tap the bookmark icon on any gig in the Feed or Map to save it here
-          </div>
-        </div>
+        <EmptyState
+          icon="saved"
+          title="No saved gigs yet"
+          message="Tap the bookmark icon on any gig in the Feed or Map to save it here."
+          actionLabel="Browse gigs"
+          onAction={() => window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'feed' }))}
+        />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {savedGigs.map(saved => {

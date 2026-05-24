@@ -6,6 +6,8 @@ import ServiceDetail from '../ServiceDetail'
 import EditService from '../EditService'
 import PublicProfile from '../PublicProfile'
 import { CATEGORIES } from '../../data/categories'
+import BrandIcon from '../BrandIcon'
+import EmptyState from '../EmptyState'
 
 export default function ServicesScreen() {
   const { user } = useAuth()
@@ -122,8 +124,11 @@ export default function ServicesScreen() {
           <span style={{
             position: 'absolute', left: '12px',
             top: '50%', transform: 'translateY(-50%)',
-            fontSize: '15px', pointerEvents: 'none'
-          }}>🔍</span>
+            pointerEvents: 'none',
+            display: 'inline-flex'
+          }}>
+            <BrandIcon name="search" size={24} active={false} />
+          </span>
         </div>
 
         {/* Type Filter */}
@@ -198,29 +203,25 @@ export default function ServicesScreen() {
             color: '#A09DC8', fontSize: '14px'
           }}>Loading services...</div>
         ) : filtered.length === 0 ? (
-          <div style={{
-            textAlign: 'center', padding: '48px 20px',
-            background: '#fff', borderRadius: '20px',
-            border: '1.5px solid #E2E0FF'
-          }}>
-            <div style={{ fontSize: '40px', marginBottom: '12px' }}>🛠</div>
-            <div style={{
-              fontSize: '16px', fontWeight: '700',
-              color: '#14123A', marginBottom: '6px'
-            }}>No services found</div>
-            <div style={{ fontSize: '13px', color: '#A09DC8', marginBottom: '20px' }}>
-              Be the first to offer a service!
-            </div>
-            <button
-              onClick={() => setShowPost(true)}
-              style={{
-                background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
-                border: 'none', borderRadius: '12px',
-                padding: '12px 24px', fontSize: '13px',
-                fontWeight: '700', color: '#fff',
-                cursor: 'pointer', fontFamily: 'inherit'
-              }}>+ Offer Your Service</button>
-          </div>
+          <EmptyState
+            icon="services"
+            title="No services found"
+            message={searchQuery.trim() || activeCategory !== 'All' || typeFilter !== 'all'
+              ? 'Try a different search or clear your filters.'
+              : 'Be the first to offer a service people can book.'}
+            actionLabel={searchQuery.trim() || activeCategory !== 'All' || typeFilter !== 'all'
+              ? 'Clear filters'
+              : 'Offer your service'}
+            onAction={() => {
+              if (searchQuery.trim() || activeCategory !== 'All' || typeFilter !== 'all') {
+                setSearchQuery('')
+                setActiveCategory('All')
+                setTypeFilter('all')
+              } else {
+                setShowPost(true)
+              }
+            }}
+          />
         ) : (
           <div style={{
             display: 'grid',

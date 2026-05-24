@@ -215,16 +215,18 @@ export default function PublicProfile({ userId, onClose }) {
                   }}>
                     {profile.full_name}
                   </div>
-                  <div style={{ fontSize: '12px', opacity: 0.8, marginBottom: '5px' }}>
+                  <div style={{ fontSize: '12px', opacity: 0.8, marginBottom: '8px' }}>
                     @{profile.username}
                   </div>
                   {profile.location && (
-                    <div style={{ fontSize: '11px', opacity: 0.7, marginBottom: '6px' }}>
+                    <div style={{ fontSize: '11px', opacity: 0.7, marginBottom: '10px' }}>
                       📍 {profile.location}
                     </div>
                   )}
                   {profile.is_verified && (
-                    <VerificationBadge onDark size="small" />
+                    <div style={{ marginLeft: '14px' }}>
+                      <VerificationBadge onDark size="small" />
+                    </div>
                   )}
                 </div>
 

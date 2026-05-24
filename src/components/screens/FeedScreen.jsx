@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../supabase'
 import PublicProfile from '../PublicProfile'
 import BrandIcon from '../BrandIcon'
+import EmptyState from '../EmptyState'
 import { CATEGORIES, ALL_FIELDS } from '../../data/categories'
 import { getCurrency } from '../../data/currencies'
 import { getProfileCompletion } from '../../utils/profileComplete'
@@ -404,22 +405,18 @@ export default function FeedScreen() {
           <div style={{ fontSize: '14px', color: '#A09DC8', fontWeight: '600' }}>Loading gigs...</div>
         </div>
       ) : filtered.length === 0 ? (
-        <div style={{
-          textAlign: 'center', padding: '48px 20px',
-          background: '#fff', borderRadius: '16px',
-          border: '1.5px solid #E2E0FF'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '14px' }}>
-            <BrandIcon name="search" size={46} />
-          </div>
-          <div style={{
-            fontSize: '15px', fontWeight: '700',
-            color: '#14123A', marginBottom: '6px'
-          }}>No gigs found</div>
-          <div style={{ fontSize: '13px', color: '#A09DC8' }}>
-            Try changing your filters or post a new gig
-          </div>
-        </div>
+        <EmptyState
+          icon="search"
+          compact
+          title="No gigs found"
+          message="Try changing your filters or post a new gig."
+          actionLabel="Clear filters"
+          onAction={() => {
+            setTypeFilter('all')
+            setUrgFilter('all')
+            setFieldFilter('All')
+          }}
+        />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {filtered.map(gig => (
