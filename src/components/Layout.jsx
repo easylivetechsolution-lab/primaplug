@@ -136,7 +136,7 @@ export default function Layout() {
     { key: 'mygigs', icon: 'mygigs', label: 'My Gigs' },
     { key: 'chat', icon: 'chat', label: 'Chat' },
     { key: 'profile', icon: 'profile', label: 'Profile' },
-    { key: 'services', label: '🛠 Services' },
+    { key: 'services', icon: 'services', label: 'Services' },
   ]
 
   const mobileMoreItems = [
@@ -538,7 +538,7 @@ export default function Layout() {
                 e.currentTarget.style.borderColor = 'transparent'
               }
             }}>
-            <span style={{ fontSize: '20px' }}>🛠</span>
+            <BrandIcon name="services" size={32} active={screen === 'services'} />
             <span style={{
               fontSize: '9px', fontWeight: '600',
               color: screen === 'services' ? '#6C47FF' : '#A09DC8'
