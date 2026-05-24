@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useAdmin } from '../hooks/useAdmin'
@@ -33,6 +33,7 @@ export default function Layout() {
   const navigate = useNavigate()
   const [screen, setScreen] = useState('map')
   const [screenHistory, setScreenHistory] = useState(['map'])
+  const screenHistoryRef = useRef(['map'])
   const [showPost, setShowPost] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
   const [showMobileMore, setShowMobileMore] = useState(false)
@@ -107,23 +108,34 @@ export default function Layout() {
     }
   }, [profile, loading, user])
 
+  // Keep ref in sync so the popstate handler always reads current history
+  useEffect(() => {
+    screenHistoryRef.current = screenHistory
+  }, [screenHistory])
+
+  // Push initial browser history entry once on mount only
   useEffect(() => {
     window.history.pushState({ screen: 'map' }, '', '')
+  }, [])
+
+  // Register back-button handler once — reads history via ref, no re-registration
+  useEffect(() => {
     const handlePopState = () => {
-      if (screenHistory.length > 1) {
-        const newHistory = [...screenHistory]
+      const history = screenHistoryRef.current
+      if (history.length > 1) {
+        const newHistory = [...history]
         newHistory.pop()
         const previousScreen = newHistory[newHistory.length - 1]
         setScreenHistory(newHistory)
         setScreen(previousScreen)
-        window.history.pushState({ screen: previousScreen }, '', '')
       } else {
-        window.history.pushState({ screen: 'map' }, '', '')
+        setScreen('map')
+        setScreenHistory(['map'])
       }
     }
     window.addEventListener('popstate', handlePopState)
     return () => window.removeEventListener('popstate', handlePopState)
-  }, [screenHistory])
+  }, [])
 
   const navigateTo = (newScreen) => {
     setScreen(newScreen)
