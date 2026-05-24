@@ -83,6 +83,12 @@ export default function Layout() {
   }, [])
 
   useEffect(() => {
+    const handleOpenPost = () => setShowPost(true)
+    window.addEventListener('openPostGig', handleOpenPost)
+    return () => window.removeEventListener('openPostGig', handleOpenPost)
+  }, [])
+
+  useEffect(() => {
     if (!user) return
     const timer = setTimeout(() => {
       if (Notification.permission === 'default') {

@@ -253,18 +253,25 @@ export default function MapScreen() {
         fetchGigs()
         playMapPing()
       })
+      .on('postgres_changes', {
+        event: 'UPDATE', schema: 'public', table: 'gigs'
+      }, () => fetchGigs())
+      .on('postgres_changes', {
+        event: 'DELETE', schema: 'public', table: 'gigs'
+      }, () => fetchGigs())
       .subscribe()
     return () => supabase.removeChannel(channel)
   }, [])
 
   const fetchGigs = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('gigs')
-      .select('*, users(full_name, avatar_url, trust_score, rating, gigs_completed)')
+      .select('*, poster:users!gigs_poster_id_fkey(full_name, avatar_url, trust_score, rating, gigs_completed, phone)')
       .eq('status', 'open')
       .eq('type', 'physical')
       .not('latitude', 'is', null)
       .not('longitude', 'is', null)
+    if (error) console.log('Map fetch error:', error.message)
     if (data) setGigs(data)
   }
 
@@ -326,9 +333,9 @@ export default function MapScreen() {
                     display:flex;align-items:center;justify-content:center;
                     font-size:16px;font-weight:800;color:#6C47FF;
                   ">
-                    ${gig.users?.avatar_url
-                      ? `<img src="${gig.users.avatar_url}" style="width:100%;height:100%;object-fit:cover"/>`
-                      : gig.users?.full_name?.charAt(0) || '?'
+                    ${gig.poster?.avatar_url
+                      ? `<img src="${gig.poster.avatar_url}" style="width:100%;height:100%;object-fit:cover"/>`
+                      : gig.poster?.full_name?.charAt(0) || '?'
                     }
                   </div>
                   ${gig.urgency === 'now' ? `
@@ -393,7 +400,7 @@ export default function MapScreen() {
                       {getCurrencySymbol(gig.currency)}{gig.pay_min}–{getCurrencySymbol(gig.currency)}{gig.pay_max}
                     </div>
                     <div style={{ fontSize: '11px', color: '#8B8FAF' }}>
-                      Posted by {gig.users?.full_name}
+                      Posted by {gig.poster?.full_name}
                     </div>
                   </div>
                 </Popup>
@@ -755,9 +762,9 @@ export default function MapScreen() {
                 )}
 
                 {/* WhatsApp button */}
-                {selectedGig.users?.phone && (
+                {selectedGig.poster?.phone && (
                   <a
-                    href={`https://wa.me/${selectedGig.users.phone.replace(/\D/g, '')}?text=Hi, I just applied for your gig "${selectedGig.title}" on Prima`}
+                    href={`https://wa.me/${selectedGig.poster.phone.replace(/\D/g, '')}?text=Hi, I just applied for your gig "${selectedGig.title}" on Prima`}
                     target="_blank" rel="noreferrer"
                     style={{
                       display: 'flex', alignItems: 'center',
@@ -789,11 +796,11 @@ export default function MapScreen() {
                     color: '#6C47FF', overflow: 'hidden', flexShrink: 0,
                     cursor: 'pointer'
                   }}>
-                    {selectedGig.users?.avatar_url ? (
-                      <img src={selectedGig.users.avatar_url} alt=""
+                    {selectedGig.poster?.avatar_url ? (
+                      <img src={selectedGig.poster.avatar_url} alt=""
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     ) : (
-                      selectedGig.users?.full_name?.charAt(0) || '?'
+                      selectedGig.poster?.full_name?.charAt(0) || '?'
                     )}
                   </div>
                   <div style={{ flex: 1 }}>
@@ -803,12 +810,12 @@ export default function MapScreen() {
                       fontSize: '14px', fontWeight: '700', color: '#14123A',
                       cursor: 'pointer'
                     }}>
-                      {selectedGig.users?.full_name || 'Anonymous'}
+                      {selectedGig.poster?.full_name || 'Anonymous'}
                     </div>
                     <div style={{ fontSize: '11px', color: '#8B8FAF' }}>
-                      ⭐ {selectedGig.users?.rating || 5.0} ·{' '}
-                      {selectedGig.users?.gigs_completed || 0} gigs ·{' '}
-                      Trust {selectedGig.users?.trust_score || 100}%
+                      ⭐ {selectedGig.poster?.rating || 5.0} ·{' '}
+                      {selectedGig.poster?.gigs_completed || 0} gigs ·{' '}
+                      Trust {selectedGig.poster?.trust_score || 100}%
                     </div>
                   </div>
                   <div style={{

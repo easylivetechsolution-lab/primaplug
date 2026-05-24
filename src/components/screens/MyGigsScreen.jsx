@@ -827,38 +827,21 @@
 
 
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../../supabase'
 import { useAuth } from '../../context/AuthContext'
 import { useCredits } from '../../context/CreditsContext'
 import { getCurrency } from '../../data/currencies'
 import PublicProfile from '../PublicProfile'
 import ReceiptFlow from '../ReceiptFlow'
-import ReviewModal from '../ReviewModal'
 import LiveTracking from '../LiveTracking'
 import EditGig from '../EditGig'
+import BrandIcon from '../BrandIcon'
 
 // ─── CONSTANTS ───────────────────────────────────────
 const TABS = [
-  { key: 'posted', label: '📋 Posted' },
-  { key: 'working', label: '⚡ Working' },
-  { key: 'history', label: '📊 History' },
-]
-
-const POSTED_FILTERS = [
-  { key: 'all', label: 'All' },
-  { key: 'action', label: '🔴 Needs Action' },
-  { key: 'inprogress', label: 'In Progress' },
-  { key: 'open', label: 'Open' },
-  { key: 'completed', label: 'Done' },
-]
-
-const WORKING_FILTERS = [
-  { key: 'all', label: 'All' },
-  { key: 'action', label: '🔴 Needs Action' },
-  { key: 'inprogress', label: 'In Progress' },
-  { key: 'pending', label: 'Pending' },
-  { key: 'completed', label: 'Done' },
+  { key: 'myposts', icon: 'mygigs', label: 'My Posts' },
+  { key: 'myjobs', icon: 'applied', label: 'My Jobs' },
 ]
 
 // ─── HELPERS ─────────────────────────────────────────
@@ -881,21 +864,17 @@ export default function MyGigsScreen() {
   const { user, profile } = useAuth()
   const { pendingCommissions, totalOwed } = useCredits()
 
-  const [tab, setTab] = useState('posted')
-  const [postedFilter, setPostedFilter] = useState('all')
-  const [workingFilter, setWorkingFilter] = useState('all')
-  const [historyFilter, setHistoryFilter] = useState('all')
+  const [tab, setTab] = useState('myposts')
 
   const [postedGigs, setPostedGigs] = useState([])
   const [workingGigs, setWorkingGigs] = useState([])
-  const [historyGigs, setHistoryGigs] = useState([])
   const [actions, setActions] = useState([])
   const [loading, setLoading] = useState(true)
   const [showActions, setShowActions] = useState(false)
 
   // Modals
   const [receiptGig, setReceiptGig] = useState(null)
-  const [reviewGig, setReviewGig] = useState(null)
+
   const [trackingGig, setTrackingGig] = useState(null)
   const [editingGig, setEditingGig] = useState(null)
   const [viewingProfile, setViewingProfile] = useState(null)
@@ -904,17 +883,13 @@ export default function MyGigsScreen() {
   useEffect(() => {
     if (user) {
       fetchAll()
-      subscribeToUpdates()
+      return subscribeToUpdates()
     }
   }, [user])
 
   const fetchAll = async () => {
     setLoading(true)
-    await Promise.all([
-      fetchPostedGigs(),
-      fetchWorkingGigs(),
-      fetchActions(),
-    ])
+    await Promise.all([fetchPostedGigs(), fetchWorkingGigs(), fetchActions()])
     setLoading(false)
   }
 
@@ -990,28 +965,6 @@ export default function MyGigsScreen() {
       console.log('Actions error:', e)
     }
   }
-
-  const fetchHistory = async () => {
-    const { data } = await supabase
-      .from('gigs')
-      .select(`
-        *,
-        receipts(amount, currency, commission_amount, completed),
-        worker:users!gigs_worker_id_fkey(full_name, avatar_url),
-        reviews(id, rating, reviewer_id)
-      `)
-      .or(`poster_id.eq.${user.id},worker_id.eq.${user.id}`)
-      .eq('status', 'completed')
-      .order('created_at', { ascending: false })
-    if (data) setHistoryGigs(data)
-  }
-
-  // Fetch history when tab changes
-  useEffect(() => {
-    if (tab === 'history' && historyGigs.length === 0) {
-      fetchHistory()
-    }
-  }, [tab])
 
   // ─── ACTIONS ───────────────────────────────────────
 
@@ -1123,26 +1076,6 @@ export default function MyGigsScreen() {
     return 'pending'
   }
 
-  const filteredPostedGigs = postedGigs.filter(gig => {
-    const status = getPostedGigStatus(gig)
-    if (postedFilter === 'all') return true
-    if (postedFilter === 'action') return ['hasapplicants', 'waiting'].includes(status)
-    if (postedFilter === 'inprogress') return status === 'inprogress'
-    if (postedFilter === 'open') return status === 'open'
-    if (postedFilter === 'completed') return status === 'completed'
-    return true
-  })
-
-  const filteredWorkingGigs = workingGigs.filter(app => {
-    const status = getWorkingGigStatus(app)
-    if (workingFilter === 'all') return true
-    if (workingFilter === 'action') return status === 'confirmreceipt'
-    if (workingFilter === 'inprogress') return status === 'inprogress'
-    if (workingFilter === 'pending') return status === 'pending'
-    if (workingFilter === 'completed') return status === 'completed'
-    return true
-  })
-
   // ─── ACTION COUNTS ─────────────────────────────────
 
   const postedActionCount = postedGigs.filter(g =>
@@ -1182,34 +1115,13 @@ export default function MyGigsScreen() {
         background: '#fff', padding: '16px 20px 0',
         borderBottom: '1.5px solid #E2E0FF', flexShrink: 0
       }}>
-        <div style={{
-          display: 'flex', justifyContent: 'space-between',
-          alignItems: 'center', marginBottom: '14px'
-        }}>
-          <div>
-            <div style={{
-              fontSize: '20px', fontWeight: '800', color: '#14123A'
-            }}>My Gigs</div>
-            <div style={{ fontSize: '12px', color: '#8B8FAF' }}>
-              Manage your work
-            </div>
+        <div style={{ marginBottom: '14px' }}>
+          <div style={{
+            fontSize: '20px', fontWeight: '800', color: '#14123A'
+          }}>My Gigs</div>
+          <div style={{ fontSize: '12px', color: '#8B8FAF' }}>
+            Manage your work
           </div>
-          <button
-            onClick={() => window.dispatchEvent(
-              new CustomEvent('openPostGig')
-            )}
-            style={{
-              background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
-              border: 'none', borderRadius: '12px',
-              padding: '10px 16px', fontSize: '13px',
-              fontWeight: '700', color: '#fff',
-              cursor: 'pointer', fontFamily: 'inherit',
-              display: 'flex', alignItems: 'center',
-              gap: '6px',
-              boxShadow: '0 4px 16px rgba(108,71,255,0.35)'
-            }}>
-            + Post Gig
-          </button>
         </div>
 
         {/* Smart Action Banner */}
@@ -1314,43 +1226,44 @@ export default function MyGigsScreen() {
 
         {/* Tabs */}
         <div style={{ display: 'flex', gap: '0' }}>
-          {TABS.map(t => (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              style={{
-                flex: 1, background: 'transparent', border: 'none',
-                borderBottom: `2.5px solid ${tab === t.key ? '#6C47FF' : 'transparent'}`,
-                padding: '10px 4px', fontSize: '12px',
-                fontWeight: tab === t.key ? '700' : '500',
-                color: tab === t.key ? '#6C47FF' : '#8B8FAF',
-                cursor: 'pointer', fontFamily: 'inherit',
-                position: 'relative', transition: 'all 0.15s'
-              }}>
-              {t.label}
-              {/* Action badge on tabs */}
-              {t.key === 'posted' && postedActionCount > 0 && (
+          {TABS.map(t => {
+            const active = tab === t.key
+            const badge = t.key === 'myposts'
+              ? postedActionCount
+              : t.key === 'myjobs'
+                ? workingActionCount
+                : 0
+            return (
+              <button
+                key={t.key}
+                onClick={() => setTab(t.key)}
+                style={{
+                  flex: 1, background: 'transparent', border: 'none',
+                  borderBottom: `2.5px solid ${active ? '#6C47FF' : 'transparent'}`,
+                  padding: '8px 4px', cursor: 'pointer',
+                  fontFamily: 'inherit', position: 'relative',
+                  transition: 'all 0.15s',
+                  display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', gap: '3px'
+                }}>
+                <BrandIcon name={t.icon} size={26} active={active} />
                 <span style={{
-                  position: 'absolute', top: '6px', right: '8px',
-                  background: '#FF3366', color: '#fff',
-                  borderRadius: '50%', width: '16px', height: '16px',
-                  fontSize: '9px', fontWeight: '800',
-                  display: 'flex', alignItems: 'center',
-                  justifyContent: 'center'
-                }}>{postedActionCount}</span>
-              )}
-              {t.key === 'working' && workingActionCount > 0 && (
-                <span style={{
-                  position: 'absolute', top: '6px', right: '8px',
-                  background: '#FF3366', color: '#fff',
-                  borderRadius: '50%', width: '16px', height: '16px',
-                  fontSize: '9px', fontWeight: '800',
-                  display: 'flex', alignItems: 'center',
-                  justifyContent: 'center'
-                }}>{workingActionCount}</span>
-              )}
-            </button>
-          ))}
+                  fontSize: '11px', fontWeight: active ? '700' : '500',
+                  color: active ? '#6C47FF' : '#8B8FAF'
+                }}>{t.label}</span>
+                {badge > 0 && (
+                  <span style={{
+                    position: 'absolute', top: '4px', right: '12px',
+                    background: '#FF3366', color: '#fff',
+                    borderRadius: '50%', width: '16px', height: '16px',
+                    fontSize: '9px', fontWeight: '800',
+                    display: 'flex', alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>{badge}</span>
+                )}
+              </button>
+            )
+          })}
         </div>
       </div>
 
@@ -1365,14 +1278,10 @@ export default function MyGigsScreen() {
           }}>Loading...</div>
         ) : (
           <>
-            {/* ── POSTED TAB ── */}
-            {tab === 'posted' && (
+            {/* ── MY POSTS TAB ── */}
+            {tab === 'myposts' && (
               <PostedTab
-                gigs={filteredPostedGigs}
-                allGigs={postedGigs}
-                filter={postedFilter}
-                setFilter={setPostedFilter}
-                filters={POSTED_FILTERS}
+                gigs={postedGigs}
                 getStatus={getPostedGigStatus}
                 onAccept={acceptApplication}
                 onDecline={declineApplication}
@@ -1388,14 +1297,10 @@ export default function MyGigsScreen() {
               />
             )}
 
-            {/* ── WORKING TAB ── */}
-            {tab === 'working' && (
+            {/* ── MY JOBS TAB ── */}
+            {tab === 'myjobs' && (
               <WorkingTab
-                applications={filteredWorkingGigs}
-                allApplications={workingGigs}
-                filter={workingFilter}
-                setFilter={setWorkingFilter}
-                filters={WORKING_FILTERS}
+                applications={workingGigs}
                 getStatus={getWorkingGigStatus}
                 pendingCommissions={pendingCommissions}
                 totalOwed={totalOwed}
@@ -1404,18 +1309,6 @@ export default function MyGigsScreen() {
                 onTrack={setTrackingGig}
                 onRefresh={fetchAll}
                 sectionHeader={sectionHeader}
-                userId={user?.id}
-              />
-            )}
-
-            {/* ── HISTORY TAB ── */}
-            {tab === 'history' && (
-              <HistoryTab
-                gigs={historyGigs}
-                filter={historyFilter}
-                setFilter={setHistoryFilter}
-                onReview={setReviewGig}
-                onViewProfile={setViewingProfile}
                 userId={user?.id}
               />
             )}
@@ -1430,17 +1323,6 @@ export default function MyGigsScreen() {
           onClose={() => setReceiptGig(null)}
           onComplete={() => {
             setReceiptGig(null)
-            fetchAll()
-          }}
-        />
-      )}
-
-      {reviewGig && (
-        <ReviewModal
-          gig={reviewGig}
-          onClose={() => setReviewGig(null)}
-          onSubmit={() => {
-            setReviewGig(null)
             fetchAll()
           }}
         />
@@ -1494,8 +1376,7 @@ export default function MyGigsScreen() {
 // POSTED TAB
 // ══════════════════════════════════════════
 function PostedTab({
-  gigs, allGigs, filter, setFilter, filters,
-  getStatus, onAccept, onDecline, onDelete,
+  gigs, getStatus, onAccept, onDecline, onDelete,
   onReceipt, onEdit, onViewProfile, onViewApplicants,
   onTrack, onRefresh, sectionHeader, userId
 }) {
@@ -1506,7 +1387,7 @@ function PostedTab({
   const openGigs = gigs.filter(g => getStatus(g) === 'open')
   const completedGigs = gigs.filter(g => getStatus(g) === 'completed')
 
-  if (allGigs.length === 0) {
+  if (gigs.length === 0) {
     return (
       <EmptyState
         icon="📋"
@@ -1518,106 +1399,43 @@ function PostedTab({
     )
   }
 
+  const renderGig = (gig) => (
+    <PostedGigCard
+      key={gig.id} gig={gig}
+      status={getStatus(gig)}
+      onAccept={onAccept} onDecline={onDecline}
+      onDelete={onDelete} onReceipt={onReceipt}
+      onEdit={onEdit} onViewProfile={onViewProfile}
+      onViewApplicants={onViewApplicants}
+      onTrack={onTrack}
+    />
+  )
+
   return (
     <div>
-      {/* Filter chips */}
-      <FilterChips
-        filters={filters}
-        active={filter}
-        onChange={setFilter}
-        counts={{
-          action: allGigs.filter(g =>
-            ['hasapplicants', 'waiting'].includes(getStatus(g))
-          ).length
-        }}
-      />
-
-      {filter === 'all' ? (
+      {actionGigs.length > 0 && (
         <>
-          {actionGigs.length > 0 && (
-            <>
-              {sectionHeader('🔴 Needs Action', '#FF3366')}
-              {actionGigs.map(gig => (
-                <PostedGigCard
-                  key={gig.id} gig={gig}
-                  status={getStatus(gig)}
-                  onAccept={onAccept} onDecline={onDecline}
-                  onDelete={onDelete} onReceipt={onReceipt}
-                  onEdit={onEdit} onViewProfile={onViewProfile}
-                  onViewApplicants={onViewApplicants}
-                  onTrack={onTrack}
-                />
-              ))}
-            </>
-          )}
-          {inProgressGigs.length > 0 && (
-            <>
-              {sectionHeader('🟡 In Progress', '#FF6B2B')}
-              {inProgressGigs.map(gig => (
-                <PostedGigCard
-                  key={gig.id} gig={gig}
-                  status={getStatus(gig)}
-                  onAccept={onAccept} onDecline={onDecline}
-                  onDelete={onDelete} onReceipt={onReceipt}
-                  onEdit={onEdit} onViewProfile={onViewProfile}
-                  onViewApplicants={onViewApplicants}
-                  onTrack={onTrack}
-                />
-              ))}
-            </>
-          )}
-          {openGigs.length > 0 && (
-            <>
-              {sectionHeader('🟢 Open', '#00C48C')}
-              {openGigs.map(gig => (
-                <PostedGigCard
-                  key={gig.id} gig={gig}
-                  status={getStatus(gig)}
-                  onAccept={onAccept} onDecline={onDecline}
-                  onDelete={onDelete} onReceipt={onReceipt}
-                  onEdit={onEdit} onViewProfile={onViewProfile}
-                  onViewApplicants={onViewApplicants}
-                  onTrack={onTrack}
-                />
-              ))}
-            </>
-          )}
-          {completedGigs.length > 0 && (
-            <>
-              {sectionHeader('✅ Completed', '#8B8FAF')}
-              {completedGigs.map(gig => (
-                <PostedGigCard
-                  key={gig.id} gig={gig}
-                  status={getStatus(gig)}
-                  onAccept={onAccept} onDecline={onDecline}
-                  onDelete={onDelete} onReceipt={onReceipt}
-                  onEdit={onEdit} onViewProfile={onViewProfile}
-                  onViewApplicants={onViewApplicants}
-                  onTrack={onTrack}
-                />
-              ))}
-            </>
-          )}
+          {sectionHeader('🔴 Needs Action', '#FF3366')}
+          {actionGigs.map(renderGig)}
         </>
-      ) : (
-        gigs.length === 0 ? (
-          <div style={{
-            textAlign: 'center', padding: '32px',
-            color: '#A09DC8', fontSize: '13px'
-          }}>Nothing here</div>
-        ) : (
-          gigs.map(gig => (
-            <PostedGigCard
-              key={gig.id} gig={gig}
-              status={getStatus(gig)}
-              onAccept={onAccept} onDecline={onDecline}
-              onDelete={onDelete} onReceipt={onReceipt}
-              onEdit={onEdit} onViewProfile={onViewProfile}
-              onViewApplicants={onViewApplicants}
-              onTrack={onTrack}
-            />
-          ))
-        )
+      )}
+      {inProgressGigs.length > 0 && (
+        <>
+          {sectionHeader('🟡 In Progress', '#FF6B2B')}
+          {inProgressGigs.map(renderGig)}
+        </>
+      )}
+      {openGigs.length > 0 && (
+        <>
+          {sectionHeader('🟢 Open', '#00C48C')}
+          {openGigs.map(renderGig)}
+        </>
+      )}
+      {completedGigs.length > 0 && (
+        <>
+          {sectionHeader('✅ Completed', '#8B8FAF')}
+          {completedGigs.map(renderGig)}
+        </>
       )}
     </div>
   )
@@ -1850,23 +1668,25 @@ function PostedGigCard({
                   border: '1.5px solid #E2E0FF',
                   borderRadius: '10px', padding: '10px',
                   fontSize: '12px', fontWeight: '700',
-                  color: '#6C47FF', cursor: 'pointer',
-                  fontFamily: 'inherit'
+                  color: '#6C47FF', cursor: 'pointer', fontFamily: 'inherit',
+                  display: 'flex', alignItems: 'center',
+                  justifyContent: 'center', gap: '5px'
                 }}>
-                💬 Message
+                <BrandIcon name="chat" size={18} active /> Message
               </button>
               {gig.type === 'physical' && (
                 <button
                   onClick={() => onTrack(gig)}
                   style={{
-                    flex: 1, background: '#F5F4FF',
-                    border: '1.5px solid #E2E0FF',
+                    flex: 1, background: '#FFF0E8',
+                    border: '1.5px solid #FFBC99',
                     borderRadius: '10px', padding: '10px',
                     fontSize: '12px', fontWeight: '700',
-                    color: '#FF6B2B', cursor: 'pointer',
-                    fontFamily: 'inherit'
+                    color: '#FF6B2B', cursor: 'pointer', fontFamily: 'inherit',
+                    display: 'flex', alignItems: 'center',
+                    justifyContent: 'center', gap: '5px'
                   }}>
-                  📍 Track
+                  <BrandIcon name="location" size={18} active /> Track
                 </button>
               )}
             </div>
@@ -1878,23 +1698,25 @@ function PostedGigCard({
           <div>
             <div style={{
               background: '#EEE9FF', border: '1.5px solid #B8A5FF',
-              borderRadius: '12px', padding: '12px',
-              marginBottom: '10px', textAlign: 'center'
+              borderRadius: '12px', padding: '14px',
+              marginBottom: '10px'
             }}>
               <div style={{
-                fontSize: '20px', marginBottom: '4px'
-              }}>⏳</div>
-              <div style={{
-                fontSize: '12px', fontWeight: '700', color: '#6C47FF'
+                display: 'flex', alignItems: 'center', gap: '8px',
+                marginBottom: '6px'
               }}>
-                Waiting for {gig.worker?.full_name?.split(' ')[0]} to confirm
-              </div>
-              <div style={{
-                fontSize: '11px', color: '#6C47FF',
-                opacity: 0.8, marginTop: '2px'
-              }}>
-                You confirmed {getCurrency(receipt?.currency || 'USD').symbol}
-                {receipt?.amount?.toLocaleString()}
+                <BrandIcon name="receipt" size={28} active />
+                <div>
+                  <div style={{
+                    fontSize: '12px', fontWeight: '700', color: '#6C47FF'
+                  }}>
+                    Waiting for {gig.worker?.full_name?.split(' ')[0]} to confirm
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#6C47FF', opacity: 0.8 }}>
+                    You confirmed {getCurrency(receipt?.currency || 'USD').symbol}
+                    {receipt?.amount?.toLocaleString()}
+                  </div>
+                </div>
               </div>
             </div>
             <button
@@ -1907,10 +1729,12 @@ function PostedGigCard({
                 border: '1.5px solid #E2E0FF',
                 borderRadius: '10px', padding: '10px',
                 fontSize: '12px', fontWeight: '700',
-                color: '#6C47FF', cursor: 'pointer',
-                fontFamily: 'inherit'
+                color: '#6C47FF', cursor: 'pointer', fontFamily: 'inherit',
+                display: 'flex', alignItems: 'center',
+                justifyContent: 'center', gap: '5px'
               }}>
-              💬 Message {gig.worker?.full_name?.split(' ')[0]}
+              <BrandIcon name="chat" size={18} active />
+              Message {gig.worker?.full_name?.split(' ')[0]}
             </button>
           </div>
         )}
@@ -1925,32 +1749,36 @@ function PostedGigCard({
                 border: '1.5px solid #E2E0FF',
                 borderRadius: '10px', padding: '10px',
                 fontSize: '12px', fontWeight: '700',
-                color: '#8B8FAF', cursor: 'pointer',
-                fontFamily: 'inherit'
-              }}>✏️ Edit</button>
+                color: '#8B8FAF', cursor: 'pointer', fontFamily: 'inherit',
+                display: 'flex', alignItems: 'center',
+                justifyContent: 'center', gap: '5px'
+              }}>
+              <BrandIcon name="edit" size={18} active={false} /> Edit
+            </button>
             <button
               onClick={() => onDelete(gig.id)}
               style={{
                 background: '#FFE8EE',
                 border: '1.5px solid #FF99B3',
                 borderRadius: '10px', padding: '10px 14px',
-                fontSize: '14px', cursor: 'pointer',
-                fontFamily: 'inherit'
-              }}>🗑</button>
+                cursor: 'pointer', fontFamily: 'inherit',
+                display: 'flex', alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+              <span style={{ fontSize: '16px', lineHeight: 1 }}>🗑</span>
+            </button>
           </div>
         )}
 
         {/* COMPLETED */}
         {status === 'completed' && (
           <div style={{
-            display: 'flex', gap: '8px', alignItems: 'center'
+            display: 'flex', alignItems: 'center', gap: '6px',
+            fontSize: '12px', color: '#00C48C', fontWeight: '600'
           }}>
-            <div style={{
-              flex: 1, fontSize: '12px', color: '#8B8FAF'
-            }}>
-              ✅ {getCurrency(receipt?.currency || 'USD').symbol}
-              {receipt?.amount?.toLocaleString()} · Completed
-            </div>
+            <BrandIcon name="completed" size={20} active />
+            {getCurrency(receipt?.currency || 'USD').symbol}
+            {receipt?.amount?.toLocaleString()} · Completed
           </div>
         )}
       </div>
@@ -1969,25 +1797,16 @@ function PostedGigCard({
 // WORKING TAB
 // ══════════════════════════════════════════
 function WorkingTab({
-  applications, allApplications, filter, setFilter,
-  filters, getStatus, pendingCommissions, totalOwed,
+  applications, getStatus, pendingCommissions, totalOwed,
   onReceipt, onViewProfile, onTrack, onRefresh,
   sectionHeader, userId
 }) {
-  const actionApps = allApplications.filter(a =>
-    getStatus(a) === 'confirmreceipt'
-  )
-  const inProgressApps = allApplications.filter(a =>
-    getStatus(a) === 'inprogress'
-  )
-  const pendingApps = allApplications.filter(a =>
-    getStatus(a) === 'pending'
-  )
-  const completedApps = allApplications.filter(a =>
-    getStatus(a) === 'completed'
-  )
+  const actionApps = applications.filter(a => getStatus(a) === 'confirmreceipt')
+  const inProgressApps = applications.filter(a => getStatus(a) === 'inprogress')
+  const pendingApps = applications.filter(a => getStatus(a) === 'pending')
+  const completedApps = applications.filter(a => getStatus(a) === 'completed')
 
-  if (allApplications.length === 0) {
+  if (applications.length === 0) {
     return (
       <EmptyState
         icon="⚡"
@@ -2001,19 +1820,17 @@ function WorkingTab({
     )
   }
 
-  const renderApps = (apps) => apps.map(app => (
+  const renderApp = (app) => (
     <WorkingGigCard
       key={app.id}
       application={app}
       status={getStatus(app)}
-      commission={pendingCommissions.find(
-        c => c.gig_id === app.gigs?.id
-      )}
+      commission={pendingCommissions.find(c => c.gig_id === app.gigs?.id)}
       onReceipt={onReceipt}
       onViewProfile={onViewProfile}
       onTrack={onTrack}
     />
-  ))
+  )
 
   return (
     <div>
@@ -2038,8 +1855,7 @@ function WorkingTab({
             <div style={{
               fontSize: '11px', color: '#FF3366', opacity: 0.8
             }}>
-              {pendingCommissions.length} pending ·
-              Pay to maintain account
+              {pendingCommissions.length} pending · Pay to maintain account
             </div>
           </div>
           <div style={{
@@ -2050,50 +1866,29 @@ function WorkingTab({
         </div>
       )}
 
-      {/* Filter chips */}
-      <FilterChips
-        filters={filters}
-        active={filter}
-        onChange={setFilter}
-        counts={{
-          action: actionApps.length
-        }}
-      />
-
-      {filter === 'all' ? (
+      {actionApps.length > 0 && (
         <>
-          {actionApps.length > 0 && (
-            <>
-              {sectionHeader('🔴 Action Required', '#FF3366')}
-              {renderApps(actionApps)}
-            </>
-          )}
-          {inProgressApps.length > 0 && (
-            <>
-              {sectionHeader('🟡 In Progress', '#FF6B2B')}
-              {renderApps(inProgressApps)}
-            </>
-          )}
-          {pendingApps.length > 0 && (
-            <>
-              {sectionHeader('🔵 Pending', '#6C47FF')}
-              {renderApps(pendingApps)}
-            </>
-          )}
-          {completedApps.length > 0 && (
-            <>
-              {sectionHeader('✅ Completed', '#8B8FAF')}
-              {renderApps(completedApps)}
-            </>
-          )}
+          {sectionHeader('🔴 Action Required', '#FF3366')}
+          {actionApps.map(renderApp)}
         </>
-      ) : (
-        applications.length === 0 ? (
-          <div style={{
-            textAlign: 'center', padding: '32px',
-            color: '#A09DC8', fontSize: '13px'
-          }}>Nothing here</div>
-        ) : renderApps(applications)
+      )}
+      {inProgressApps.length > 0 && (
+        <>
+          {sectionHeader('🟡 In Progress', '#FF6B2B')}
+          {inProgressApps.map(renderApp)}
+        </>
+      )}
+      {pendingApps.length > 0 && (
+        <>
+          {sectionHeader('🔵 Pending', '#6C47FF')}
+          {pendingApps.map(renderApp)}
+        </>
+      )}
+      {completedApps.length > 0 && (
+        <>
+          {sectionHeader('✅ Completed', '#8B8FAF')}
+          {completedApps.map(renderApp)}
+        </>
       )}
     </div>
   )
@@ -2199,14 +1994,9 @@ function WorkingGigCard({
 
         {/* PENDING */}
         {status === 'pending' && (
-          <div style={{
-            display: 'flex', gap: '8px', alignItems: 'center'
-          }}>
-            <div style={{
-              flex: 1, fontSize: '12px', color: '#8B8FAF'
-            }}>
-              ⏳ Waiting for poster to respond ·{' '}
-              Applied {timeAgo(application.created_at)}
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <div style={{ flex: 1, fontSize: '12px', color: '#8B8FAF' }}>
+              Waiting for a response · Applied {timeAgo(application.created_at)}
             </div>
             <button
               onClick={() => window.dispatchEvent(new CustomEvent(
@@ -2215,11 +2005,13 @@ function WorkingGigCard({
               ))}
               style={{
                 background: '#F5F4FF', border: '1.5px solid #E2E0FF',
-                borderRadius: '8px', padding: '7px 12px',
-                fontSize: '11px', fontWeight: '700',
-                color: '#6C47FF', cursor: 'pointer',
-                fontFamily: 'inherit'
-              }}>💬</button>
+                borderRadius: '8px', padding: '8px 12px',
+                fontSize: '12px', fontWeight: '700',
+                color: '#6C47FF', cursor: 'pointer', fontFamily: 'inherit',
+                display: 'flex', alignItems: 'center', gap: '5px'
+              }}>
+              <BrandIcon name="chat" size={18} active /> Message
+            </button>
           </div>
         )}
 
@@ -2232,8 +2024,8 @@ function WorkingGigCard({
               marginBottom: '10px', fontSize: '12px',
               color: '#00C48C', fontWeight: '600'
             }}>
-              ⏳ Waiting for {poster?.full_name?.split(' ')[0]} to
-              confirm payment after work is done
+              You've been accepted! Do the work and wait for{' '}
+              {poster?.full_name?.split(' ')[0] || 'the poster'} to confirm payment.
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button
@@ -2246,20 +2038,26 @@ function WorkingGigCard({
                   border: '1.5px solid #E2E0FF',
                   borderRadius: '10px', padding: '10px',
                   fontSize: '12px', fontWeight: '700',
-                  color: '#6C47FF', cursor: 'pointer',
-                  fontFamily: 'inherit'
-                }}>💬 Message</button>
+                  color: '#6C47FF', cursor: 'pointer', fontFamily: 'inherit',
+                  display: 'flex', alignItems: 'center',
+                  justifyContent: 'center', gap: '5px'
+                }}>
+                <BrandIcon name="chat" size={18} active /> Message
+              </button>
               {gig?.type === 'physical' && (
                 <button
                   onClick={() => onTrack(gig)}
                   style={{
-                    flex: 1, background: '#F5F4FF',
-                    border: '1.5px solid #E2E0FF',
+                    flex: 1, background: '#FFF0E8',
+                    border: '1.5px solid #FFBC99',
                     borderRadius: '10px', padding: '10px',
                     fontSize: '12px', fontWeight: '700',
-                    color: '#FF6B2B', cursor: 'pointer',
-                    fontFamily: 'inherit'
-                  }}>📍 Directions</button>
+                    color: '#FF6B2B', cursor: 'pointer', fontFamily: 'inherit',
+                    display: 'flex', alignItems: 'center',
+                    justifyContent: 'center', gap: '5px'
+                  }}>
+                  <BrandIcon name="location" size={18} active /> Directions
+                </button>
               )}
             </div>
           </div>
@@ -2269,29 +2067,26 @@ function WorkingGigCard({
         {status === 'confirmreceipt' && (
           <div>
             <div style={{
-              background: '#FFE8EE', border: '1.5px solid #FF99B3',
-              borderRadius: '12px', padding: '12px',
+              background: 'linear-gradient(135deg, #FFF0E8, #FFE8EE)',
+              border: '1.5px solid #FF99B3',
+              borderRadius: '12px', padding: '14px',
               marginBottom: '10px'
             }}>
               <div style={{
-                fontSize: '13px', fontWeight: '800',
-                color: '#FF3366', marginBottom: '4px'
+                fontSize: '11px', fontWeight: '700', color: '#FF6B2B',
+                textTransform: 'uppercase', letterSpacing: '0.8px',
+                marginBottom: '6px'
               }}>
-                {poster?.full_name?.split(' ')[0]} confirmed payment
+                {poster?.full_name?.split(' ')[0] || 'Poster'} confirmed your payment
               </div>
               <div style={{
-                fontSize: '22px', fontWeight: '800',
-                color: '#FF3366', marginBottom: '4px'
+                fontSize: '28px', fontWeight: '800',
+                color: '#14123A', lineHeight: 1, marginBottom: '2px'
               }}>
-                {currency.symbol}{receipt?.amount?.toLocaleString()}{' '}
-                <span style={{ fontSize: '14px' }}>
-                  {receipt?.currency || 'USD'}
-                </span>
+                {currency.symbol}{receipt?.amount?.toLocaleString()}
               </div>
-              <div style={{
-                fontSize: '11px', color: '#FF3366', opacity: 0.8
-              }}>
-                Is this the amount you received?
+              <div style={{ fontSize: '12px', color: '#8B8FAF' }}>
+                {receipt?.currency || 'USD'} · Is this what you received?
               </div>
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
@@ -2302,8 +2097,7 @@ function WorkingGigCard({
                   border: '1.5px solid #FF99B3',
                   borderRadius: '10px', padding: '12px',
                   fontSize: '12px', fontWeight: '700',
-                  color: '#FF3366', cursor: 'pointer',
-                  fontFamily: 'inherit'
+                  color: '#FF3366', cursor: 'pointer', fontFamily: 'inherit'
                 }}>✗ Dispute</button>
               <button
                 onClick={() => onReceipt(gig)}
@@ -2314,7 +2108,7 @@ function WorkingGigCard({
                   fontSize: '13px', fontWeight: '700', color: '#fff',
                   cursor: 'pointer', fontFamily: 'inherit',
                   boxShadow: '0 3px 12px rgba(0,196,140,0.35)'
-                }}>✓ Confirm Receipt →</button>
+                }}>✓ Confirm & Complete →</button>
             </div>
           </div>
         )}
@@ -2326,9 +2120,12 @@ function WorkingGigCard({
               display: 'flex', justifyContent: 'space-between',
               alignItems: 'center', marginBottom: commission ? '10px' : '0'
             }}>
-              <div style={{ fontSize: '12px', color: '#8B8FAF' }}>
-                ✅ Earned {currency.symbol}
-                {receipt?.amount?.toLocaleString()}
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: '6px',
+                fontSize: '13px', color: '#00C48C', fontWeight: '700'
+              }}>
+                <BrandIcon name="completed" size={20} active />
+                Earned {currency.symbol}{receipt?.amount?.toLocaleString() || gig?.pay_max}
               </div>
               <div style={{ fontSize: '11px', color: '#A09DC8' }}>
                 {timeAgo(application.accepted_at)}
@@ -2338,193 +2135,47 @@ function WorkingGigCard({
             {/* Commission status */}
             {commission && (
               <div style={{
-                background: '#FFE8EE', border: '1.5px solid #FF99B3',
-                borderRadius: '10px', padding: '10px 12px',
-                marginBottom: '8px',
-                display: 'flex', justifyContent: 'space-between',
-                alignItems: 'center'
+                background: 'linear-gradient(135deg, #FFE8EE, #FFF0E8)',
+                border: '1.5px solid #FF99B3',
+                borderRadius: '12px', padding: '12px 14px',
+                marginTop: '10px'
               }}>
-                <div>
-                  <div style={{
-                    fontSize: '11px', fontWeight: '700',
-                    color: '#FF3366', marginBottom: '1px'
-                  }}>💰 Commission owed</div>
-                  <div style={{
-                    fontSize: '16px', fontWeight: '800', color: '#FF3366'
-                  }}>
-                    {getCurrency(commission.currency || 'USD').symbol}
-                    {commission.commission_amount?.toLocaleString()}
+                <div style={{
+                  display: 'flex', justifyContent: 'space-between',
+                  alignItems: 'flex-start', marginBottom: '10px'
+                }}>
+                  <div>
+                    <div style={{
+                      fontSize: '11px', fontWeight: '700',
+                      color: '#FF6B2B', textTransform: 'uppercase',
+                      letterSpacing: '0.8px', marginBottom: '3px'
+                    }}>Platform Commission Due</div>
+                    <div style={{
+                      fontSize: '22px', fontWeight: '800', color: '#FF3366'
+                    }}>
+                      {getCurrency(commission.currency || 'USD').symbol}
+                      {commission.commission_amount?.toLocaleString()}
+                    </div>
                   </div>
+                  <BrandIcon name="commission" size={34} active />
                 </div>
                 <button
                   onClick={() => window.dispatchEvent(
                     new CustomEvent('navigateTo', { detail: 'commission' })
                   )}
                   style={{
-                    background: '#FF3366', color: '#fff',
-                    border: 'none', borderRadius: '8px',
-                    padding: '7px 12px', fontSize: '11px',
-                    fontWeight: '700', cursor: 'pointer',
-                    fontFamily: 'inherit'
-                  }}>Pay →</button>
+                    width: '100%',
+                    background: 'linear-gradient(135deg, #FF3366, #FF6B2B)',
+                    color: '#fff', border: 'none', borderRadius: '10px',
+                    padding: '11px', fontSize: '13px', fontWeight: '700',
+                    cursor: 'pointer', fontFamily: 'inherit',
+                    boxShadow: '0 3px 12px rgba(255,51,102,0.35)'
+                  }}>Pay Commission Now →</button>
               </div>
             )}
           </div>
         )}
       </div>
-    </div>
-  )
-}
-
-// ══════════════════════════════════════════
-// HISTORY TAB
-// ══════════════════════════════════════════
-function HistoryTab({
-  gigs, filter, setFilter, onReview, onViewProfile, userId
-}) {
-  const totalEarned = gigs
-    .filter(g => g.worker_id === userId)
-    .reduce((sum, g) => sum + (g.receipts?.[0]?.amount || 0), 0)
-
-  const totalPosted = gigs
-    .filter(g => g.poster_id === userId)
-    .reduce((sum, g) => sum + (g.receipts?.[0]?.amount || 0), 0)
-
-  const filteredGigs = gigs.filter(g => {
-    if (filter === 'posted') return g.poster_id === userId
-    if (filter === 'worked') return g.worker_id === userId
-    return true
-  })
-
-  return (
-    <div>
-      {/* Summary Card */}
-      <div style={{
-        background: 'linear-gradient(135deg, #14123A, #1E1B4B)',
-        borderRadius: '16px', padding: '18px',
-        marginTop: '12px', marginBottom: '16px', color: '#fff'
-      }}>
-        <div style={{
-          fontSize: '11px', opacity: 0.6,
-          textTransform: 'uppercase', letterSpacing: '1px',
-          marginBottom: '12px'
-        }}>All Time Summary</div>
-        <div style={{
-          display: 'grid', gridTemplateColumns: '1fr 1fr',
-          gap: '12px'
-        }}>
-          {[
-            { label: 'Total Earned', value: `$${totalEarned.toFixed(0)}`, icon: '💰' },
-            { label: 'Total Spent', value: `$${totalPosted.toFixed(0)}`, icon: '📋' },
-            { label: 'Gigs Worked', value: gigs.filter(g => g.worker_id === userId).length, icon: '⚡' },
-            { label: 'Gigs Posted', value: gigs.filter(g => g.poster_id === userId).length, icon: '📌' },
-          ].map(({ label, value, icon }) => (
-            <div key={label} style={{
-              background: 'rgba(255,255,255,0.08)',
-              borderRadius: '12px', padding: '12px'
-            }}>
-              <div style={{ fontSize: '18px', marginBottom: '4px' }}>{icon}</div>
-              <div style={{
-                fontSize: '18px', fontWeight: '800',
-                marginBottom: '2px'
-              }}>{value}</div>
-              <div style={{
-                fontSize: '10px', opacity: 0.6,
-                textTransform: 'uppercase', letterSpacing: '0.5px'
-              }}>{label}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Filter */}
-      <div style={{
-        display: 'flex', gap: '6px', marginBottom: '16px'
-      }}>
-        {[
-          { key: 'all', label: '✦ All' },
-          { key: 'worked', label: '⚡ Worked' },
-          { key: 'posted', label: '📋 Posted' },
-        ].map(f => (
-          <button
-            key={f.key}
-            onClick={() => setFilter(f.key)}
-            style={{
-              background: filter === f.key ? '#6C47FF' : '#fff',
-              border: `1.5px solid ${filter === f.key ? '#6C47FF' : '#E2E0FF'}`,
-              borderRadius: '20px', padding: '6px 14px',
-              fontSize: '12px', fontWeight: '600',
-              color: filter === f.key ? '#fff' : '#8B8FAF',
-              cursor: 'pointer', fontFamily: 'inherit'
-            }}>{f.label}</button>
-        ))}
-      </div>
-
-      {filteredGigs.length === 0 ? (
-        <EmptyState
-          icon="📊"
-          title="No history yet"
-          subtitle="Completed gigs will appear here"
-        />
-      ) : filteredGigs.map(gig => {
-        const isWorker = gig.worker_id === userId
-        const receipt = gig.receipts?.[0]
-        const hasReview = gig.reviews?.some(r => r.reviewer_id === userId)
-        const currency = getCurrency(receipt?.currency || gig.currency || 'USD')
-
-        return (
-          <div key={gig.id} style={{
-            background: '#fff', border: '1.5px solid #E2E0FF',
-            borderRadius: '14px', padding: '14px 16px',
-            marginBottom: '10px'
-          }}>
-            <div style={{
-              display: 'flex', justifyContent: 'space-between',
-              alignItems: 'flex-start', marginBottom: '8px'
-            }}>
-              <div style={{ flex: 1 }}>
-                <div style={{
-                  fontSize: '11px', color: isWorker ? '#6C47FF' : '#FF6B2B',
-                  fontWeight: '700', marginBottom: '3px',
-                  textTransform: 'uppercase', letterSpacing: '0.5px'
-                }}>
-                  {isWorker ? '⚡ Worked' : '📋 Posted'}
-                </div>
-                <div style={{
-                  fontSize: '14px', fontWeight: '700',
-                  color: '#14123A', marginBottom: '3px'
-                }}>{gig.title}</div>
-                <div style={{
-                  fontSize: '11px', color: '#8B8FAF'
-                }}>
-                  {timeAgo(gig.accepted_at)}
-                </div>
-              </div>
-              {receipt?.amount && (
-                <div style={{
-                  fontSize: '16px', fontWeight: '800',
-                  color: isWorker ? '#00C48C' : '#14123A'
-                }}>
-                  {isWorker ? '+' : ''}{currency.symbol}
-                  {receipt.amount.toLocaleString()}
-                </div>
-              )}
-            </div>
-
-            {!hasReview && (
-              <button
-                onClick={() => onReview(gig)}
-                style={{
-                  background: '#FFF8E0', border: '1.5px solid #FFD966',
-                  borderRadius: '8px', padding: '7px 14px',
-                  fontSize: '12px', fontWeight: '700',
-                  color: '#FFB800', cursor: 'pointer',
-                  fontFamily: 'inherit'
-                }}>⭐ Leave Review</button>
-            )}
-          </div>
-        )
-      })}
     </div>
   )
 }
@@ -2677,44 +2328,6 @@ function ApplicantsSheet({
 // ══════════════════════════════════════════
 // SHARED COMPONENTS
 // ══════════════════════════════════════════
-function FilterChips({ filters, active, onChange, counts = {} }) {
-  return (
-    <div style={{
-      display: 'flex', gap: '6px',
-      overflowX: 'auto', scrollbarWidth: 'none',
-      padding: '12px 0', flexShrink: 0
-    }}>
-      {filters.map(f => (
-        <button
-          key={f.key}
-          onClick={() => onChange(f.key)}
-          style={{
-            background: active === f.key ? '#6C47FF' : '#fff',
-            border: `1.5px solid ${active === f.key ? '#6C47FF' : '#E2E0FF'}`,
-            borderRadius: '20px', padding: '6px 14px',
-            fontSize: '12px', fontWeight: '600',
-            color: active === f.key ? '#fff' : '#8B8FAF',
-            cursor: 'pointer', whiteSpace: 'nowrap',
-            fontFamily: 'inherit', flexShrink: 0,
-            position: 'relative'
-          }}>
-          {f.label}
-          {f.key === 'action' && counts.action > 0 && (
-            <span style={{
-              position: 'absolute', top: '-6px', right: '-6px',
-              background: '#FF3366', color: '#fff',
-              borderRadius: '50%', width: '16px', height: '16px',
-              fontSize: '9px', fontWeight: '800',
-              display: 'flex', alignItems: 'center',
-              justifyContent: 'center'
-            }}>{counts.action}</span>
-          )}
-        </button>
-      ))}
-    </div>
-  )
-}
-
 function EmptyState({ icon, title, subtitle, action, onAction }) {
   return (
     <div style={{

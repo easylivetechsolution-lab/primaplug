@@ -68,14 +68,15 @@ export default function FeedScreen() {
       .from('gigs')
       .select(`
         *,
-        users (
+        poster:users!gigs_poster_id_fkey (
           full_name,
           username,
           avatar_url,
           trust_score,
           rating,
           gigs_completed,
-          location
+          location,
+          phone
         )
       `)
       .eq('status', 'open')
@@ -516,21 +517,21 @@ export default function FeedScreen() {
                     fontSize: '14px', fontWeight: '800', color: '#6C47FF',
                     overflow: 'hidden', flexShrink: 0
                   }}>
-                    {gig.users?.avatar_url ? (
-                      <img src={gig.users.avatar_url} alt=""
+                    {gig.poster?.avatar_url ? (
+                      <img src={gig.poster.avatar_url} alt=""
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     ) : (
-                      gig.users?.full_name?.charAt(0) || '?'
+                      gig.poster?.full_name?.charAt(0) || '?'
                     )}
                   </div>
                   <div>
                     <div style={{
                       fontSize: '12px', fontWeight: '600', color: '#14123A'
                     }}>
-                      {gig.users?.full_name || 'Anonymous'}
+                      {gig.poster?.full_name || 'Anonymous'}
                     </div>
                     <div style={{ fontSize: '10px', color: '#A09DC8' }}>
-                      ⭐ {gig.users?.rating || 5.0} · {gig.users?.gigs_completed || 0} gigs
+                      ⭐ {gig.poster?.rating || 5.0} · {gig.poster?.gigs_completed || 0} gigs
                     </div>
                   </div>
                 </div>
@@ -638,11 +639,11 @@ export default function FeedScreen() {
                         fontSize: '18px', fontWeight: '800', color: '#6C47FF',
                         overflow: 'hidden', flexShrink: 0, cursor: 'pointer'
                     }}>
-                    {selectedGig.users?.avatar_url ? (
-                        <img src={selectedGig.users.avatar_url} alt=""
+                    {selectedGig.poster?.avatar_url ? (
+                        <img src={selectedGig.poster.avatar_url} alt=""
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     ) : (
-                        selectedGig.users?.full_name?.charAt(0) || '?'
+                        selectedGig.poster?.full_name?.charAt(0) || '?'
                     )}
                     </div>
                   <div style={{ flex: 1 }}>
@@ -654,11 +655,11 @@ export default function FeedScreen() {
                     cursor: 'pointer', textDecoration: 'underline',
                     textDecorationStyle: 'dotted'
                     }}>
-                    {selectedGig.users?.full_name || 'Anonymous'} →
+                    {selectedGig.poster?.full_name || 'Anonymous'} →
                     </div>
                     <div style={{ fontSize: '11px', color: '#8B8FAF' }}>
-                      ⭐ {selectedGig.users?.rating || 5.0} rating ·{' '}
-                      {selectedGig.users?.gigs_completed || 0} gigs completed
+                      ⭐ {selectedGig.poster?.rating || 5.0} rating ·{' '}
+                      {selectedGig.poster?.gigs_completed || 0} gigs completed
                     </div>
                   </div>
                   <div style={{
@@ -668,7 +669,7 @@ export default function FeedScreen() {
                     <div style={{
                       fontSize: '14px', fontWeight: '800', color: '#6C47FF'
                     }}>
-                      {selectedGig.users?.trust_score || 100}%
+                      {selectedGig.poster?.trust_score || 100}%
                     </div>
                     <div style={{
                       fontSize: '8px', color: '#A09DC8',
