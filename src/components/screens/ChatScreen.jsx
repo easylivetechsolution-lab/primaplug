@@ -324,8 +324,10 @@ export default function ChatScreen() {
               width: '36px', height: '36px', borderRadius: '10px',
               background: '#EEE9FF', display: 'flex',
               alignItems: 'center', justifyContent: 'center',
-              fontSize: '18px', cursor: 'pointer'
-            }}>✏️</div>
+              cursor: 'pointer'
+            }}>
+              <BrandIcon name="compose" size={28} active />
+            </div>
           </div>
         </div>
 
@@ -792,9 +794,11 @@ export default function ChatScreen() {
                   background: showQuickReplies ? '#EEE9FF' : '#F5F4FF',
                   border: `1.5px solid ${showQuickReplies ? '#B8A5FF' : '#E2E0FF'}`,
                   display: 'flex', alignItems: 'center',
-                  justifyContent: 'center', fontSize: '18px',
+                  justifyContent: 'center',
                   cursor: 'pointer', flexShrink: 0, fontFamily: 'inherit'
-                }}>⚡</button>
+                }}>
+                <BrandIcon name="suggest" size={26} active={showQuickReplies} />
+              </button>
 
               {/* Input */}
               <div style={{
@@ -848,7 +852,7 @@ export default function ChatScreen() {
                     ? '0 4px 16px rgba(108,71,255,0.4)'
                     : 'none'
                 }}>
-                {sending ? '⏳' : '➤'}
+                <BrandIcon name="send" size={28} active={Boolean(newMessage.trim()) && !sending} />
               </button>
             </div>
           </>

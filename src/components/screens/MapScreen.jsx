@@ -14,6 +14,7 @@ import { trackGigReferral } from '../../utils/referral'
 import ShareGig from '../ShareGig'
 import { getProfileCompletion } from '../../utils/profileComplete'
 import ProfilePrompt from '../ProfilePrompt'
+import BrandIcon from '../BrandIcon'
 
 const getCurrencySymbol = (code) => getCurrency(code || 'USD').symbol
 
@@ -149,6 +150,7 @@ export default function MapScreen() {
   const [applying, setApplying] = useState(false)
   const [applied, setApplied] = useState(false)
   const [savedGigIds, setSavedGigIds] = useState(new Set())
+  const [saveNotice, setSaveNotice] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('All')
   const [sharingGig, setSharingGig] = useState(null)
   const mapRef = useRef(null)
@@ -208,6 +210,7 @@ export default function MapScreen() {
 
   const toggleSave = async (e, gigId) => {
     e.stopPropagation()
+    if (!user) return
     if (savedGigIds.has(gigId)) {
       await supabase
         .from('saved_gigs')
@@ -219,12 +222,15 @@ export default function MapScreen() {
         next.delete(gigId)
         return next
       })
+      setSaveNotice('Gig removed')
     } else {
       await supabase
         .from('saved_gigs')
         .insert({ user_id: user.id, gig_id: gigId })
       setSavedGigIds(prev => new Set([...prev, gigId]))
+      setSaveNotice('Gig saved')
     }
+    setTimeout(() => setSaveNotice(''), 1800)
   }
 
   const cleanExpiredGigs = async () => {
@@ -948,11 +954,16 @@ export default function MapScreen() {
                     style={{
                       background: savedGigIds.has(selectedGig?.id) ? '#EEE9FF' : '#F5F4FF',
                       border: `1.5px solid ${savedGigIds.has(selectedGig?.id) ? '#B8A5FF' : '#E2E0FF'}`,
-                      borderRadius: '12px', padding: '13px 16px',
-                      fontSize: '16px', cursor: 'pointer', flexShrink: 0,
-                      fontFamily: 'inherit'
+                      borderRadius: '12px', padding: '10px 13px',
+                      cursor: 'pointer', flexShrink: 0,
+                      fontFamily: 'inherit',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center'
                     }}>
-                    {savedGigIds.has(selectedGig?.id) ? '🔖' : '🏷️'}
+                    <BrandIcon
+                      name={savedGigIds.has(selectedGig?.id) ? 'saved' : 'unsaved'}
+                      size={28}
+                      active={savedGigIds.has(selectedGig?.id)}
+                    />
                   </button>
                   <button onClick={() => {
                     setSelectedGig(null)
@@ -1076,6 +1087,29 @@ export default function MapScreen() {
             window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'profile' }))
           }}
         />
+      )}
+
+      {saveNotice && (
+        <div style={{
+          position: 'fixed',
+          left: '50%',
+          bottom: '92px',
+          transform: 'translateX(-50%)',
+          zIndex: 12000,
+          background: '#14123A',
+          color: '#fff',
+          borderRadius: '12px',
+          padding: '10px 14px',
+          fontSize: '13px',
+          fontWeight: '700',
+          boxShadow: '0 10px 28px rgba(20,18,58,0.28)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}>
+          <BrandIcon name={saveNotice === 'Gig saved' ? 'saved' : 'unsaved'} size={22} />
+          {saveNotice}
+        </div>
       )}
 
       <style>{`

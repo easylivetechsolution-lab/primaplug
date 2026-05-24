@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 import ReportModal from './ReportModal'
+import BrandIcon from './BrandIcon'
 
 export default function PublicProfile({ userId, onClose }) {
   const { user: currentUser } = useAuth()
@@ -272,9 +273,18 @@ export default function PublicProfile({ userId, onClose }) {
                   cursor: messaging || messageSent ? 'default' : 'pointer',
                   fontFamily: 'inherit', transition: 'all 0.2s',
                   marginBottom: '16px',
-                  boxShadow: messageSent ? 'none' : '0 4px 16px rgba(108,71,255,0.3)'
+                  boxShadow: messageSent ? 'none' : '0 4px 16px rgba(108,71,255,0.3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
                 }}>
-                {messageSent ? '✓ Opening Chat...' : messaging ? '⏳ Opening...' : existingConvo ? '💬 Continue Chat' : '💬 Message'}
+                <BrandIcon
+                  name={messageSent ? 'accepted' : 'compose'}
+                  size={24}
+                  active={!messageSent}
+                />
+                {messageSent ? 'Opening Chat...' : messaging ? 'Opening...' : existingConvo ? 'Continue Chat' : 'Message'}
               </button>
             )}
             {!isOwnProfile && currentUser && (

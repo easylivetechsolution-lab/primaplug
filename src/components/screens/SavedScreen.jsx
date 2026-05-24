@@ -21,6 +21,7 @@ export default function SavedScreen() {
   const [applying, setApplying] = useState(false)
   const [applied, setApplied] = useState(null)
   const [sharingGig, setSharingGig] = useState(null)
+  const [saveNotice, setSaveNotice] = useState('')
 
   useEffect(() => {
     fetchSavedGigs()
@@ -54,6 +55,8 @@ export default function SavedScreen() {
       .eq('gig_id', gigId)
     setSavedGigs(prev => prev.filter(s => s.gig_id !== gigId))
     if (selectedGig?.id === gigId) setSelectedGig(null)
+    setSaveNotice('Gig removed')
+    setTimeout(() => setSaveNotice(''), 1800)
   }
 
   const handleApply = async (gig) => {
@@ -275,8 +278,8 @@ export default function SavedScreen() {
                           fontFamily: 'inherit',
                           display: 'flex', alignItems: 'center', gap: '5px'
                         }}>
-                        <BrandIcon name="saved" size={16} />
-                        Saved
+                        <BrandIcon name="unsaved" size={18} active={false} />
+                        Remove
                       </button>
                     </div>
                   </div>
@@ -514,6 +517,29 @@ export default function SavedScreen() {
             window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'profile' }))
           }}
         />
+      )}
+
+      {saveNotice && (
+        <div style={{
+          position: 'fixed',
+          left: '50%',
+          bottom: '92px',
+          transform: 'translateX(-50%)',
+          zIndex: 12000,
+          background: '#14123A',
+          color: '#fff',
+          borderRadius: '12px',
+          padding: '10px 14px',
+          fontSize: '13px',
+          fontWeight: '700',
+          boxShadow: '0 10px 28px rgba(20,18,58,0.28)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}>
+          <BrandIcon name="unsaved" size={22} />
+          {saveNotice}
+        </div>
       )}
 
       <style>{`

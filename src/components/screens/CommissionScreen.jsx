@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext'
 import { payWithFlutterwave, verifyFlutterwavePayment } from '../../utils/flutterwave'
 import { useCredits } from '../../context/CreditsContext'
 import { getCurrency } from '../../data/currencies'
+import BrandIcon from '../BrandIcon'
 
 export default function CommissionScreen() {
   const { user, profile } = useAuth()
@@ -374,7 +375,9 @@ export default function CommissionScreen() {
           background: '#fff', borderRadius: '20px',
           border: '1.5px solid #E2E0FF'
         }}>
-          <div style={{ fontSize: '40px', marginBottom: '12px' }}>💰</div>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
+            <BrandIcon name="commission" size={48} active={false} />
+          </div>
           <div style={{
             fontSize: '16px', fontWeight: '700',
             color: '#14123A', marginBottom: '6px'
