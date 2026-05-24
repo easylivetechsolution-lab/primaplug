@@ -1,164 +1,209 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
-import { playComplete, playReceipt } from '../utils/sounds'
 import { getCurrency } from '../data/currencies'
 import { rewardGigReferral } from '../utils/referral'
 
-export default function ReceiptFlow({ gig, userRole, workerId, onClose, onComplete }) {
-  // userRole = 'poster' or 'worker'
-  // workerId  = the specific worker this receipt belongs to
-  const { user } = useAuth()
-  const [receipt, setReceipt] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [uploading, setUploading] = useState(false)
-  const [confirming, setConfirming] = useState(false)
-  const [amount, setAmount] = useState('')
-  const [notes, setNotes] = useState('')
-  const [step, setStep] = useState('upload') // upload | review | confirm | done | dispute
-  const fileRef = useRef()
+const MINIMUM_COMMISSION_USD = 2 // $2 minimum for all currencies
+const MINIMUM_COMMISSION_NGN = 500 // ₦500 for NGN gigs
 
-  const targetWorkerId = workerId || user.id
+const getMinimumCommission = (currency) => {
+  switch (currency) {
+    case 'NGN': return 500
+    case 'USD': return 2
+    case 'GBP': return 2
+    case 'EUR': return 2
+    case 'GHS': return 25
+    case 'KES': return 250
+    case 'ZAR': return 35
+    default: return 2
+  }
+}
+
+export default function ReceiptFlow({ gig, onClose, onComplete }) {
+  const { user } = useAuth()
+  const [step, setStep] = useState('start')
+  const [receipt, setReceipt] = useState(null)
+  const [amount, setAmount] = useState('')
+  const [workerAmount, setWorkerAmount] = useState('')
+  const [receiptFile, setReceiptFile] = useState(null)
+  const [uploading, setUploading] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState(null)
+
+  const isPoster = gig?.poster_id === user?.id
+  const isWorker = gig?.worker_id === user?.id
+  const currency = getCurrency(gig?.currency || 'NGN')
 
   useEffect(() => {
     fetchReceipt()
-    const channel = supabase
-      .channel(`receipt-${gig.id}-${targetWorkerId}`)
-      .on('postgres_changes', {
-        event: '*', schema: 'public',
-        table: 'receipts',
-        filter: `gig_id=eq.${gig.id}`
-      }, () => fetchReceipt())
-      .subscribe()
-    return () => supabase.removeChannel(channel)
-  }, [gig.id, targetWorkerId])
+  }, [gig])
 
   const fetchReceipt = async () => {
+    if (!gig) return
     const { data } = await supabase
       .from('receipts')
       .select('*')
       .eq('gig_id', gig.id)
-      .eq('worker_id', targetWorkerId)
       .maybeSingle()
     if (data) {
       setReceipt(data)
-      // Determine step
+      // Determine step based on receipt state
       if (data.completed) {
         setStep('done')
       } else if (data.disputed) {
-        setStep('dispute')
-      } else if (
-        (userRole === 'poster' && data.poster_receipt_url) ||
-        (userRole === 'worker' && data.worker_receipt_url)
-      ) {
-        setStep('review')
+        setStep('disputed')
+      } else if (isPoster && !data.poster_confirmed) {
+        setStep('poster_amount')
+      } else if (isWorker && data.poster_confirmed && !data.worker_confirmed) {
+        setStep('worker_confirm')
+      } else if (isPoster && data.poster_confirmed) {
+        setStep('waiting_worker')
       } else {
-        setStep('upload')
+        setStep('start')
       }
+    } else {
+      setStep(isPoster ? 'poster_amount' : 'waiting_poster')
     }
-    setLoading(false)
   }
 
-  const handleUpload = async (e) => {
-    const file = e.target.files[0]
-    if (!file) return
-    setUploading(true)
+  const calculateCommission = (gigAmount, currencyCode) => {
+    const commission = gigAmount * 0.10
+    const minimum = getMinimumCommission(currencyCode || 'USD')
+    return Math.max(commission, minimum)
+  }
 
-    const ext = file.name.split('.').pop()
-    const fileName = `${gig.id}-${targetWorkerId}-${userRole}-${Date.now()}.${ext}`
-
-    const { error: uploadError } = await supabase.storage
-      .from('receipts')
-      .upload(fileName, file, { upsert: true })
-
-    if (uploadError) {
-      alert('Upload failed: ' + uploadError.message)
-      setUploading(false)
+  const handlePosterSubmit = async () => {
+    if (!amount || parseFloat(amount) <= 0) {
+      setError('Please enter the amount you paid')
       return
     }
+    setSubmitting(true)
+    setError(null)
 
-    const { data: urlData } = supabase.storage
-      .from('receipts')
-      .getPublicUrl(fileName)
+    try {
+      const gigAmount = parseFloat(amount)
+      const commissionAmount = calculateCommission(gigAmount, gig?.currency)
 
-    // Create or update receipt record
-    const existing = receipt
-    if (existing) {
-      const updateData = userRole === 'poster'
-        ? { poster_receipt_url: urlData.publicUrl, amount: parseFloat(amount) || existing.amount, notes }
-        : { worker_receipt_url: urlData.publicUrl, amount: parseFloat(amount) || existing.amount, notes }
-
-      await supabase
+      // Check if receipt exists
+      const { data: existing } = await supabase
         .from('receipts')
-        .update(updateData)
-        .eq('id', existing.id)
-    } else {
-      const insertData = {
-        gig_id: gig.id,
-        poster_id: gig.poster_id,
-        worker_id: targetWorkerId,
-        amount: parseFloat(amount) || 0,
-        notes,
-        status: 'pending'
-      }
-      if (userRole === 'poster') {
-        insertData.poster_receipt_url = urlData.publicUrl
-      } else {
-        insertData.worker_receipt_url = urlData.publicUrl
-      }
-      await supabase.from('receipts').insert(insertData)
-    }
+        .select('id')
+        .eq('gig_id', gig.id)
+        .maybeSingle()
 
-    // Notify other party
-    const otherUserId = userRole === 'poster' ? receipt?.worker_id : gig.poster_id
-    if (otherUserId) {
+      if (existing) {
+        // Update existing receipt
+        await supabase
+          .from('receipts')
+          .update({
+            amount: gigAmount,
+            poster_confirmed: true,
+            poster_confirmed_at: new Date().toISOString(),
+            currency: gig?.currency || 'NGN'
+          })
+          .eq('id', existing.id)
+      } else {
+        // Create new receipt
+        await supabase.from('receipts').insert({
+          gig_id: gig.id,
+          poster_id: gig.poster_id,
+          worker_id: gig.worker_id,
+          amount: gigAmount,
+          currency: gig?.currency || 'NGN',
+          poster_confirmed: true,
+          poster_confirmed_at: new Date().toISOString(),
+          worker_confirmed: false,
+          completed: false,
+          commission_amount: commissionAmount
+        })
+      }
+
+      // Notify worker
       await supabase.from('notifications').insert({
-        user_id: otherUserId,
-        title: 'Receipt Uploaded!',
-        message: `${userRole === 'poster' ? 'Client' : 'Worker'} uploaded a receipt for "${gig.title}". Please review and confirm.`,
+        user_id: gig.worker_id,
+        title: '📎 Receipt Submitted',
+        message: `${gig.poster_name || 'Poster'} has confirmed payment of ${currency.symbol}${gigAmount.toLocaleString()} for "${gig.title}". Please confirm you received this amount.`,
         type: 'receipt',
         gig_id: gig.id
       })
-    }
 
-    playReceipt()
-    setUploading(false)
-    await fetchReceipt()
-    setStep('review')
+      setStep('waiting_worker')
+    } catch (e) {
+      setError('Error submitting receipt: ' + e.message)
+    }
+    setSubmitting(false)
   }
 
-  const handleConfirm = async () => {
-    if (!receipt) return
-    setConfirming(true)
+  const handleWorkerConfirm = async (agreed) => {
+    setSubmitting(true)
+    setError(null)
 
-    const updateData = userRole === 'poster'
-      ? { poster_confirmed: true, poster_confirmed_at: new Date().toISOString() }
-      : { worker_confirmed: true, worker_confirmed_at: new Date().toISOString() }
+    try {
+      const { data: currentReceipt } = await supabase
+        .from('receipts')
+        .select('*')
+        .eq('gig_id', gig.id)
+        .single()
 
-    await supabase
-      .from('receipts')
-      .update(updateData)
-      .eq('id', receipt.id)
+      if (!agreed) {
+        // Worker disputes the amount
+        await supabase
+          .from('receipts')
+          .update({
+            disputed: true,
+            dispute_reason: `Worker disputes amount. Poster claimed ${currency.symbol}${currentReceipt.amount}`,
+            worker_confirmed: false
+          })
+          .eq('id', currentReceipt.id)
 
-    // Check if both confirmed
-    const { data: updated } = await supabase
-      .from('receipts')
-      .select('*')
-      .eq('id', receipt.id)
-      .single()
+        // Notify admin
+        const { data: admins } = await supabase
+          .from('users')
+          .select('id')
+          .eq('is_admin', true)
 
-    if (updated.poster_confirmed && updated.worker_confirmed) {
-      playComplete()
+        if (admins?.length > 0) {
+          await supabase.from('notifications').insert(
+            admins.map(admin => ({
+              user_id: admin.id,
+              title: '⚠️ Receipt Dispute',
+              message: `Amount dispute on "${gig.title}". Poster claimed ${currency.symbol}${currentReceipt.amount}`,
+              type: 'general',
+              gig_id: gig.id
+            }))
+          )
+        }
 
-      // Mark receipt complete
+        // Notify poster
+        await supabase.from('notifications').insert({
+          user_id: gig.poster_id,
+          title: '⚠️ Receipt Disputed',
+          message: `The worker has disputed the amount for "${gig.title}". Our team will review and resolve this.`,
+          type: 'general',
+          gig_id: gig.id
+        })
+
+        setStep('disputed')
+        setSubmitting(false)
+        return
+      }
+
+      // Worker agrees — complete the receipt
+      const gigAmount = currentReceipt.amount
+      const commissionAmount = calculateCommission(gigAmount, gig?.currency)
+
       await supabase
         .from('receipts')
         .update({
+          worker_confirmed: true,
+          worker_confirmed_at: new Date().toISOString(),
           completed: true,
           completed_at: new Date().toISOString(),
-          status: 'completed'
+          status: 'completed',
+          commission_amount: commissionAmount
         })
-        .eq('id', receipt.id)
+        .eq('id', currentReceipt.id)
 
       // Mark gig complete
       await supabase
@@ -166,586 +211,546 @@ export default function ReceiptFlow({ gig, userRole, workerId, onClose, onComple
         .update({ status: 'completed' })
         .eq('id', gig.id)
 
-      // ── COMMISSION CALCULATION ──
-      const gigAmount = updated.amount || 0
-      if (gigAmount > 0) {
-        const commissionAmount = gigAmount * 0.10
-        const dueDate = new Date()
-        dueDate.setDate(dueDate.getDate() + 7)
+      // Create commission record
+      await supabase.from('commissions').insert({
+        gig_id: gig.id,
+        worker_id: gig.worker_id,
+        gig_amount: gigAmount,
+        commission_amount: commissionAmount,
+        currency: gig?.currency || 'NGN',
+        status: 'pending',
+        due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+      })
 
-        await supabase.from('commissions').insert({
-          gig_id: gig.id,
-          worker_id: updated.worker_id,
-          gig_amount: gigAmount,
-          commission_amount: commissionAmount,
-          currency: gig.currency || 'USD',
-          status: 'pending',
-          due_date: dueDate.toISOString()
-        })
-
-        await supabase.from('notifications').insert({
-          user_id: updated.worker_id,
-          title: '💰 Platform Commission Due',
-          message: `You earned on "${gig.title}". A 10% platform fee of ${getCurrency(gig.currency || 'USD').symbol}${commissionAmount.toFixed(2)} is now due. Pay within 7 days to maintain your account.`,
-          type: 'commission',
-          gig_id: gig.id
-        })
-
-        await rewardGigReferral(gig.id, gigAmount, gig.currency || 'USD')
-      }
-
-      // ── CREDITS BONUS FOR COMPLETION ──
+      // Give worker completion bonus credits
       await supabase.rpc('add_credits', {
-        p_user_id: updated.worker_id,
+        p_user_id: gig.worker_id,
         p_amount: 5,
         p_type: 'completion_bonus',
-        p_description: `Bonus credits for completing "${gig.title}"`,
+        p_description: `Completion bonus for "${gig.title}"`,
         p_gig_id: gig.id
       })
 
-      // Update worker gigs_completed
+      // Reward gig referral if applicable
+      if (gigAmount > 0) {
+        await rewardGigReferral(gig.id, gigAmount, gig.currency || 'NGN')
+      }
+
+      // Update worker gigs completed
       await supabase.rpc('increment_gigs_completed', {
-        worker_id: updated.worker_id
+        worker_id: gig.worker_id
       }).catch(() => null)
 
-      // Notify both
+      // Notify both parties
       await supabase.from('notifications').insert([
         {
-          user_id: updated.poster_id,
-          title: 'Gig Completed! ✅',
-          message: `"${gig.title}" is complete. Please leave a review!`,
+          user_id: gig.poster_id,
+          title: '✅ Gig Completed!',
+          message: `"${gig.title}" is complete. Please leave a review for the worker!`,
           type: 'review',
           gig_id: gig.id
         },
         {
-          user_id: updated.worker_id,
-          title: 'Gig Completed! ✅',
-          message: `"${gig.title}" is complete. You earned +5 Prima Credits bonus!`,
-          type: 'review',
+          user_id: gig.worker_id,
+          title: '✅ Gig Completed!',
+          message: `"${gig.title}" complete! You owe ${currency.symbol}${commissionAmount.toLocaleString()} platform commission. Pay within 7 days to maintain your account standing.`,
+          type: 'commission',
           gig_id: gig.id
         }
       ])
 
       setStep('done')
       onComplete && onComplete()
-    } else {
-      // Notify other party to confirm
-      const otherUserId = userRole === 'poster' ? updated.worker_id : updated.poster_id
-      await supabase.from('notifications').insert({
-        user_id: otherUserId,
-        title: 'Confirmation Needed!',
-        message: `${userRole === 'poster' ? 'Client' : 'Worker'} confirmed the receipt for "${gig.title}". Please confirm yours too.`,
-        type: 'receipt',
-        gig_id: gig.id
-      })
-      await fetchReceipt()
+
+    } catch (e) {
+      setError('Error confirming receipt: ' + e.message)
     }
-
-    setConfirming(false)
+    setSubmitting(false)
   }
 
-  const handleDispute = async () => {
-    const reason = window.prompt('Please describe the issue briefly:')
-    if (!reason) return
-
-    await supabase
-      .from('receipts')
-      .update({
-        disputed: true,
-        dispute_reason: reason,
-        status: 'disputed'
-      })
-      .eq('id', receipt.id)
-
-    await supabase.from('notifications').insert({
-      user_id: userRole === 'poster' ? receipt.worker_id : gig.poster_id,
-      title: '⚠️ Dispute Raised',
-      message: `A dispute was raised for "${gig.title}". Prima will review.`,
-      type: 'general',
-      gig_id: gig.id
-    })
-
-    setStep('dispute')
+  const uploadReceipt = async (file) => {
+    setUploading(true)
+    try {
+      const ext = file.name.split('.').pop()
+      const name = `receipt-${gig.id}-${user.id}-${Date.now()}.${ext}`
+      const { error } = await supabase.storage
+        .from('receipts')
+        .upload(name, file, { upsert: true })
+      if (!error) {
+        const { data } = supabase.storage
+          .from('receipts')
+          .getPublicUrl(name)
+        setReceiptFile(data.publicUrl)
+      }
+    } catch (e) {
+      console.log('Upload error:', e)
+    }
+    setUploading(false)
   }
 
-  const myReceiptUrl = userRole === 'poster'
-    ? receipt?.poster_receipt_url
-    : receipt?.worker_receipt_url
-
-  const otherReceiptUrl = userRole === 'poster'
-    ? receipt?.worker_receipt_url
-    : receipt?.poster_receipt_url
-
-  const myConfirmed = userRole === 'poster'
-    ? receipt?.poster_confirmed
-    : receipt?.worker_confirmed
-
-  const otherConfirmed = userRole === 'poster'
-    ? receipt?.worker_confirmed
-    : receipt?.poster_confirmed
-
-  const otherLabel = userRole === 'poster' ? 'Worker' : 'Client'
-  const myLabel = userRole === 'poster' ? 'Your' : 'Your'
+  const inputStyle = {
+    width: '100%', background: '#F5F4FF',
+    border: '1.5px solid #E2E0FF', borderRadius: '12px',
+    padding: '14px 16px', fontSize: '18px',
+    color: '#14123A', fontFamily: 'inherit',
+    outline: 'none', boxSizing: 'border-box',
+    fontWeight: '700', textAlign: 'center'
+  }
 
   return (
     <div style={{
       position: 'fixed', inset: 0,
       background: 'rgba(20,18,58,0.75)',
       backdropFilter: 'blur(4px)',
-      zIndex: 9999, display: 'flex',
-      alignItems: 'center', justifyContent: 'center',
-      padding: '20px',
+      zIndex: 9999,
+      display: 'flex', alignItems: 'flex-end',
+      justifyContent: 'center',
       fontFamily: "'Plus Jakarta Sans', sans-serif"
     }} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} style={{
-        background: '#fff', borderRadius: '24px',
-        padding: '28px', width: '100%', maxWidth: '480px',
-        maxHeight: '90vh', overflowY: 'auto',
-        border: '1.5px solid #E2E0FF',
-        boxShadow: '0 20px 60px rgba(108,71,255,0.25)',
+        background: '#fff',
+        borderRadius: '22px 22px 0 0',
+        width: '100%', maxWidth: '540px',
+        maxHeight: '92vh', overflowY: 'auto',
         animation: 'slideUp 0.3s cubic-bezier(0.16,1,0.3,1)'
       }}>
-
-        {/* Header */}
+        {/* Handle */}
         <div style={{
-          display: 'flex', justifyContent: 'space-between',
-          alignItems: 'flex-start', marginBottom: '20px'
-        }}>
-          <div>
-            <div style={{
-              fontSize: '10px', color: '#6C47FF', fontWeight: '700',
-              letterSpacing: '1.5px', textTransform: 'uppercase',
-              marginBottom: '3px'
-            }}>Receipt Confirmation</div>
-            <div style={{
-              fontSize: '18px', fontWeight: '800', color: '#14123A'
-            }}>{gig.title}</div>
-          </div>
-          <button onClick={onClose} style={{
-            background: '#F5F4FF', border: '1.5px solid #E2E0FF',
-            borderRadius: '8px', width: '32px', height: '32px',
-            fontSize: '16px', color: '#8B8FAF', cursor: 'pointer',
-            display: 'flex', alignItems: 'center',
-            justifyContent: 'center', fontFamily: 'inherit'
-          }}>×</button>
-        </div>
+          width: '40px', height: '4px',
+          background: '#E2E0FF', borderRadius: '2px',
+          margin: '12px auto 0'
+        }} />
 
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: '32px', color: '#A09DC8' }}>
-            Loading...
-          </div>
-        ) : (
-          <>
+        <div style={{ padding: '20px 24px 40px' }}>
 
-            {/* Progress Steps */}
-            <div style={{
-              display: 'flex', gap: '0', marginBottom: '24px',
-              background: '#F5F4FF', borderRadius: '12px',
-              padding: '4px', overflow: 'hidden'
-            }}>
-              {[
-                { key: 'upload', label: '1. Upload', icon: '📎' },
-                { key: 'review', label: '2. Review', icon: '👁' },
-                { key: 'confirm', label: '3. Confirm', icon: '✓' },
-                { key: 'done', label: '4. Done', icon: '✅' },
-              ].map((s, i) => {
-                const steps = ['upload', 'review', 'confirm', 'done']
-                const currentIndex = steps.indexOf(step)
-                const thisIndex = steps.indexOf(s.key)
-                const isDone = thisIndex < currentIndex
-                const isCurrent = s.key === step ||
-                  (step === 'review' && s.key === 'review')
-                return (
-                  <div key={s.key} style={{
-                    flex: 1, textAlign: 'center',
-                    padding: '8px 4px', borderRadius: '9px',
-                    background: isCurrent ? '#6C47FF' : isDone ? '#EEE9FF' : 'transparent',
-                    transition: 'all 0.2s'
-                  }}>
-                    <div style={{ fontSize: '14px', marginBottom: '2px' }}>
-                      {isDone ? '✓' : s.icon}
-                    </div>
-                    <div style={{
-                      fontSize: '9px', fontWeight: '700',
-                      color: isCurrent ? '#fff' : isDone ? '#6C47FF' : '#A09DC8',
-                      letterSpacing: '0.3px'
-                    }}>{s.label}</div>
-                  </div>
-                )
-              })}
-            </div>
+          {/* POSTER AMOUNT STEP */}
+          {step === 'poster_amount' && (
+            <div>
+              <div style={{
+                fontSize: '10px', color: '#6C47FF',
+                fontWeight: '700', textTransform: 'uppercase',
+                letterSpacing: '1.5px', marginBottom: '6px'
+              }}>Receipt Confirmation</div>
+              <div style={{
+                fontSize: '22px', fontWeight: '800',
+                color: '#14123A', marginBottom: '6px'
+              }}>How much did you pay?</div>
+              <div style={{
+                fontSize: '13px', color: '#8B8FAF',
+                marginBottom: '24px', lineHeight: '1.6'
+              }}>
+                Enter the exact amount you paid the worker for "{gig?.title}"
+              </div>
 
-            {/* STEP — UPLOAD */}
-            {step === 'upload' && (
-              <div>
+              {/* Amount input */}
+              <div style={{
+                background: '#F5F4FF', borderRadius: '16px',
+                padding: '20px', marginBottom: '16px'
+              }}>
                 <div style={{
-                  background: '#EEE9FF', borderRadius: '14px',
-                  padding: '16px', marginBottom: '20px',
-                  border: '1.5px solid #B8A5FF'
+                  fontSize: '11px', fontWeight: '700',
+                  color: '#A09DC8', textTransform: 'uppercase',
+                  letterSpacing: '0.8px', marginBottom: '10px',
+                  textAlign: 'center'
+                }}>Amount Paid</div>
+                <div style={{
+                  display: 'flex', alignItems: 'center',
+                  gap: '8px'
                 }}>
                   <div style={{
-                    fontSize: '13px', fontWeight: '700',
-                    color: '#14123A', marginBottom: '8px'
-                  }}>📋 What your receipt must show:</div>
-                  {[
-                    'Your full name',
-                    'Amount paid',
-                    'Date of transaction',
-                    'Description or reference',
-                  ].map(item => (
-                    <div key={item} style={{
-                      display: 'flex', gap: '8px',
-                      alignItems: 'center', marginBottom: '5px'
-                    }}>
-                      <div style={{
-                        width: '16px', height: '16px', borderRadius: '50%',
-                        background: '#6C47FF', display: 'flex',
-                        alignItems: 'center', justifyContent: 'center',
-                        fontSize: '9px', color: '#fff', fontWeight: '700',
-                        flexShrink: 0
-                      }}>✓</div>
-                      <span style={{ fontSize: '12px', color: '#5B5887' }}>
-                        {item}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-
-                <div style={{ marginBottom: '14px' }}>
-                  <label style={{
-                    fontSize: '10px', fontWeight: '700', color: '#8B8FAF',
-                    textTransform: 'uppercase', letterSpacing: '0.8px',
-                    display: 'block', marginBottom: '6px'
-                  }}>Amount Paid ($)</label>
+                    fontSize: '24px', fontWeight: '800',
+                    color: '#6C47FF', flexShrink: 0
+                  }}>{currency.symbol}</div>
                   <input
                     type="number"
                     value={amount}
-                    onChange={e => setAmount(e.target.value)}
-                    placeholder="Enter exact amount paid"
-                    style={{
-                      width: '100%', background: '#F5F4FF',
-                      border: '1.5px solid #E2E0FF', borderRadius: '10px',
-                      padding: '11px 14px', fontSize: '14px',
-                      color: '#14123A', fontFamily: 'inherit',
-                      outline: 'none', boxSizing: 'border-box'
+                    onChange={e => {
+                      setAmount(e.target.value)
+                      setError(null)
                     }}
+                    placeholder="0"
+                    style={inputStyle}
                     onFocus={e => e.target.style.borderColor = '#B8A5FF'}
                     onBlur={e => e.target.style.borderColor = '#E2E0FF'}
                   />
                 </div>
 
-                <div style={{ marginBottom: '20px' }}>
-                  <label style={{
-                    fontSize: '10px', fontWeight: '700', color: '#8B8FAF',
-                    textTransform: 'uppercase', letterSpacing: '0.8px',
-                    display: 'block', marginBottom: '6px'
-                  }}>Notes (optional)</label>
-                  <input
-                    value={notes}
-                    onChange={e => setNotes(e.target.value)}
-                    placeholder="e.g. Paid via bank transfer, ref: ABC123"
-                    style={{
-                      width: '100%', background: '#F5F4FF',
-                      border: '1.5px solid #E2E0FF', borderRadius: '10px',
-                      padding: '11px 14px', fontSize: '13px',
-                      color: '#14123A', fontFamily: 'inherit',
-                      outline: 'none', boxSizing: 'border-box'
-                    }}
-                    onFocus={e => e.target.style.borderColor = '#B8A5FF'}
-                    onBlur={e => e.target.style.borderColor = '#E2E0FF'}
-                  />
-                </div>
+                {/* Commission preview */}
+                {amount && parseFloat(amount) > 0 && (
+                  <div style={{
+                    marginTop: '14px', padding: '12px',
+                    background: '#fff', borderRadius: '10px',
+                    border: '1px solid #E2E0FF'
+                  }}>
+                    <div style={{
+                      display: 'flex', justifyContent: 'space-between',
+                      fontSize: '12px', marginBottom: '6px'
+                    }}>
+                      <span style={{ color: '#8B8FAF' }}>Gig amount</span>
+                      <span style={{ fontWeight: '700', color: '#14123A' }}>
+                        {currency.symbol}{parseFloat(amount).toLocaleString()}
+                      </span>
+                    </div>
+                    <div style={{
+                      display: 'flex', justifyContent: 'space-between',
+                      fontSize: '12px', paddingTop: '6px',
+                      borderTop: '1px solid #F5F4FF'
+                    }}>
+                      <span style={{ color: '#FF6B2B' }}>
+                        Worker commission (10%
+                        {gig?.currency === 'NGN' || !gig?.currency
+                          ? ', min ₦500' : ''})
+                      </span>
+                      <span style={{
+                        fontWeight: '800', color: '#FF6B2B'
+                      }}>
+                        {currency.symbol}{calculateCommission(
+                          parseFloat(amount),
+                          gig?.currency
+                        ).toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
 
+              {/* Receipt upload (optional) */}
+              <div style={{ marginBottom: '16px' }}>
+                <div style={{
+                  fontSize: '11px', fontWeight: '700',
+                  color: '#A09DC8', textTransform: 'uppercase',
+                  letterSpacing: '0.8px', marginBottom: '8px'
+                }}>Payment Proof (Optional)</div>
                 <div
-                  onClick={() => fileRef.current.click()}
+                  onClick={() => document.getElementById('receipt-upload').click()}
                   style={{
-                    background: '#F5F4FF',
-                    border: '2px dashed #B8A5FF',
-                    borderRadius: '14px', padding: '32px',
-                    textAlign: 'center', cursor: 'pointer',
-                    transition: 'all 0.15s', marginBottom: '16px'
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#EEE9FF'}
-                  onMouseLeave={e => e.currentTarget.style.background = '#F5F4FF'}
-                >
-                  <div style={{ fontSize: '36px', marginBottom: '8px' }}>
-                    {uploading ? '⏳' : '📎'}
-                  </div>
-                  <div style={{
-                    fontSize: '14px', fontWeight: '700', color: '#6C47FF',
-                    marginBottom: '4px'
+                    background: receiptFile ? '#DFFDF4' : '#F5F4FF',
+                    border: `2px dashed ${receiptFile ? '#7EECD2' : '#B8A5FF'}`,
+                    borderRadius: '12px', padding: '16px',
+                    textAlign: 'center', cursor: 'pointer'
                   }}>
-                    {uploading ? 'Uploading...' : 'Upload Your Receipt'}
-                  </div>
-                  <div style={{ fontSize: '11px', color: '#A09DC8' }}>
-                    Photo, screenshot or PDF · Max 10MB
-                  </div>
+                  {receiptFile ? (
+                    <div style={{
+                      fontSize: '13px', fontWeight: '700',
+                      color: '#00C48C'
+                    }}>✓ Receipt uploaded</div>
+                  ) : (
+                    <>
+                      <div style={{ fontSize: '24px', marginBottom: '4px' }}>
+                        {uploading ? '⏳' : '📸'}
+                      </div>
+                      <div style={{
+                        fontSize: '12px', color: '#6C47FF',
+                        fontWeight: '600'
+                      }}>
+                        {uploading ? 'Uploading...' : 'Upload bank screenshot'}
+                      </div>
+                    </>
+                  )}
                   <input
-                    ref={fileRef}
+                    id="receipt-upload"
                     type="file"
-                    accept="image/*,.pdf"
+                    accept="image/*"
                     style={{ display: 'none' }}
-                    onChange={handleUpload}
+                    onChange={e => {
+                      if (e.target.files[0]) uploadReceipt(e.target.files[0])
+                    }}
                   />
                 </div>
+              </div>
 
+              {error && (
                 <div style={{
-                  background: '#FFF8E0', border: '1.5px solid #FFD966',
-                  borderRadius: '10px', padding: '12px 14px',
-                  fontSize: '12px', color: '#FF6B2B', lineHeight: '1.5'
+                  background: '#FFE8EE', border: '1.5px solid #FF99B3',
+                  borderRadius: '10px', padding: '10px 14px',
+                  fontSize: '12px', color: '#FF3366',
+                  marginBottom: '14px'
+                }}>{error}</div>
+              )}
+
+              <button
+                onClick={handlePosterSubmit}
+                disabled={!amount || parseFloat(amount) <= 0 || submitting}
+                style={{
+                  width: '100%',
+                  background: !amount || parseFloat(amount) <= 0 || submitting
+                    ? '#E2E0FF'
+                    : 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+                  border: 'none', borderRadius: '14px', padding: '16px',
+                  fontSize: '15px', fontWeight: '700',
+                  color: !amount || parseFloat(amount) <= 0 || submitting
+                    ? '#A09DC8' : '#fff',
+                  cursor: !amount || parseFloat(amount) <= 0 || submitting
+                    ? 'not-allowed' : 'pointer',
+                  fontFamily: 'inherit',
+                  boxShadow: amount && parseFloat(amount) > 0 && !submitting
+                    ? '0 4px 20px rgba(108,71,255,0.35)' : 'none'
                 }}>
-                  ⚠️ Both parties must upload receipts. The transaction is only confirmed when both sides submit proof and confirm.
+                {submitting ? '⏳ Submitting...' : '✓ Confirm Payment'}
+              </button>
+            </div>
+          )}
+
+          {/* WAITING FOR WORKER */}
+          {step === 'waiting_worker' && (
+            <div style={{ textAlign: 'center', padding: '20px 0' }}>
+              <div style={{ fontSize: '56px', marginBottom: '16px' }}>⏳</div>
+              <div style={{
+                fontSize: '20px', fontWeight: '800',
+                color: '#14123A', marginBottom: '8px'
+              }}>Waiting for Worker</div>
+              <div style={{
+                fontSize: '13px', color: '#8B8FAF',
+                lineHeight: '1.7', marginBottom: '20px'
+              }}>
+                You confirmed payment of {currency.symbol}{receipt?.amount?.toLocaleString()}.
+                Waiting for the worker to confirm they received this amount.
+              </div>
+              <div style={{
+                background: '#F5F4FF', borderRadius: '14px',
+                padding: '14px', fontSize: '12px',
+                color: '#6C47FF', lineHeight: '1.6'
+              }}>
+                The worker will be notified to confirm the receipt.
+                You'll get notified once they confirm.
+              </div>
+            </div>
+          )}
+
+          {/* WAITING FOR POSTER */}
+          {step === 'waiting_poster' && (
+            <div style={{ textAlign: 'center', padding: '20px 0' }}>
+              <div style={{ fontSize: '56px', marginBottom: '16px' }}>⏳</div>
+              <div style={{
+                fontSize: '20px', fontWeight: '800',
+                color: '#14123A', marginBottom: '8px'
+              }}>Waiting for Poster</div>
+              <div style={{
+                fontSize: '13px', color: '#8B8FAF',
+                lineHeight: '1.7'
+              }}>
+                The poster needs to confirm the payment amount first.
+                You'll be notified when they do.
+              </div>
+            </div>
+          )}
+
+          {/* WORKER CONFIRM STEP */}
+          {step === 'worker_confirm' && (
+            <div>
+              <div style={{
+                fontSize: '10px', color: '#6C47FF',
+                fontWeight: '700', textTransform: 'uppercase',
+                letterSpacing: '1.5px', marginBottom: '6px'
+              }}>Confirm Receipt</div>
+              <div style={{
+                fontSize: '22px', fontWeight: '800',
+                color: '#14123A', marginBottom: '6px'
+              }}>Did you receive this amount?</div>
+              <div style={{
+                fontSize: '13px', color: '#8B8FAF',
+                marginBottom: '24px'
+              }}>
+                The poster confirmed they paid for "{gig?.title}"
+              </div>
+
+              {/* Amount display */}
+              <div style={{
+                background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+                borderRadius: '16px', padding: '24px',
+                textAlign: 'center', color: '#fff',
+                marginBottom: '20px'
+              }}>
+                <div style={{
+                  fontSize: '11px', opacity: 0.8,
+                  textTransform: 'uppercase', letterSpacing: '1px',
+                  marginBottom: '8px'
+                }}>Poster confirmed payment of</div>
+                <div style={{
+                  fontSize: '40px', fontWeight: '800',
+                  letterSpacing: '-2px', marginBottom: '4px'
+                }}>
+                  {currency.symbol}{receipt?.amount?.toLocaleString()}
+                </div>
+                <div style={{ fontSize: '12px', opacity: 0.7 }}>
+                  {gig?.currency || 'NGN'}
                 </div>
               </div>
-            )}
 
-            {/* STEP — REVIEW */}
-            {step === 'review' && (
-              <div>
-                {/* My receipt status */}
-                <div style={{
-                  background: myReceiptUrl ? '#DFFDF4' : '#FFE8EE',
-                  border: `1.5px solid ${myReceiptUrl ? '#7EECD2' : '#FF99B3'}`,
-                  borderRadius: '14px', padding: '16px',
-                  marginBottom: '12px'
-                }}>
+              {/* Commission notice */}
+              <div style={{
+                background: '#FFF0E8', border: '1.5px solid #FFBC99',
+                borderRadius: '12px', padding: '14px',
+                marginBottom: '20px',
+                display: 'flex', gap: '10px', alignItems: 'flex-start'
+              }}>
+                <span style={{ fontSize: '18px', flexShrink: 0 }}>💰</span>
+                <div>
                   <div style={{
-                    display: 'flex', justifyContent: 'space-between',
-                    alignItems: 'center', marginBottom: myReceiptUrl ? '10px' : '0'
-                  }}>
-                    <div style={{
-                      fontSize: '13px', fontWeight: '700',
-                      color: myReceiptUrl ? '#00C48C' : '#FF3366'
-                    }}>
-                      {myReceiptUrl ? '✓ Your receipt uploaded' : '⚠️ Your receipt missing'}
-                    </div>
-                    {myConfirmed && (
-                      <span style={{
-                        background: '#fff', border: '1px solid #7EECD2',
-                        borderRadius: '6px', padding: '2px 8px',
-                        fontSize: '10px', fontWeight: '700', color: '#00C48C'
-                      }}>✓ Confirmed</span>
-                    )}
-                  </div>
-                  {myReceiptUrl && (
-                    <a href={myReceiptUrl} target="_blank" rel="noreferrer"
-                      style={{
-                        display: 'inline-flex', alignItems: 'center', gap: '6px',
-                        fontSize: '12px', color: '#00C48C',
-                        fontWeight: '600', textDecoration: 'none'
-                      }}>
-                      View my receipt →
-                    </a>
-                  )}
-                  {!myReceiptUrl && (
-                    <button
-                      onClick={() => setStep('upload')}
-                      style={{
-                        marginTop: '8px', background: '#FF3366',
-                        border: 'none', borderRadius: '8px',
-                        padding: '8px 16px', fontSize: '12px',
-                        fontWeight: '700', color: '#fff',
-                        cursor: 'pointer', fontFamily: 'inherit'
-                      }}>Upload Now</button>
-                  )}
-                </div>
-
-                {/* Other party receipt status */}
-                <div style={{
-                  background: otherReceiptUrl ? '#DFFDF4' : '#F5F4FF',
-                  border: `1.5px solid ${otherReceiptUrl ? '#7EECD2' : '#E2E0FF'}`,
-                  borderRadius: '14px', padding: '16px',
-                  marginBottom: '20px'
-                }}>
+                    fontSize: '13px', fontWeight: '700',
+                    color: '#FF6B2B', marginBottom: '3px'
+                  }}>Platform Commission</div>
                   <div style={{
-                    display: 'flex', justifyContent: 'space-between',
-                    alignItems: 'center', marginBottom: otherReceiptUrl ? '10px' : '0'
-                  }}>
-                    <div style={{
-                      fontSize: '13px', fontWeight: '700',
-                      color: otherReceiptUrl ? '#00C48C' : '#A09DC8'
-                    }}>
-                      {otherReceiptUrl
-                        ? `✓ ${otherLabel}'s receipt uploaded`
-                        : `⏳ Waiting for ${otherLabel}'s receipt`}
-                    </div>
-                    {otherConfirmed && (
-                      <span style={{
-                        background: '#fff', border: '1px solid #7EECD2',
-                        borderRadius: '6px', padding: '2px 8px',
-                        fontSize: '10px', fontWeight: '700', color: '#00C48C'
-                      }}>✓ Confirmed</span>
-                    )}
-                  </div>
-                  {otherReceiptUrl && (
-                    <a href={otherReceiptUrl} target="_blank" rel="noreferrer"
-                      style={{
-                        display: 'inline-flex', alignItems: 'center', gap: '6px',
-                        fontSize: '12px', color: '#00C48C',
-                        fontWeight: '600', textDecoration: 'none'
-                      }}>
-                      View {otherLabel.toLowerCase()}'s receipt →
-                    </a>
-                  )}
-                </div>
-
-                {/* Amount display */}
-                {receipt?.amount > 0 && (
-                  <div style={{
-                    background: 'linear-gradient(135deg, #E8FFE4, #DFFDF4)',
-                    border: '1.5px solid #7EECD2', borderRadius: '12px',
-                    padding: '14px', marginBottom: '20px', textAlign: 'center'
-                  }}>
-                    <div style={{
-                      fontSize: '10px', color: '#00C48C', fontWeight: '700',
-                      textTransform: 'uppercase', letterSpacing: '0.8px',
-                      marginBottom: '4px'
-                    }}>Transaction Amount</div>
-                    <div style={{
-                      fontSize: '28px', fontWeight: '800',
-                      color: '#00C48C', letterSpacing: '-1px'
-                    }}>${receipt.amount}</div>
-                  </div>
-                )}
-
-                {/* Confirm button */}
-                {myReceiptUrl && otherReceiptUrl && !myConfirmed && (
-                  <button
-                    onClick={handleConfirm}
-                    disabled={confirming}
-                    style={{
-                      width: '100%',
-                      background: confirming
-                        ? '#B8A5FF'
-                        : 'linear-gradient(135deg, #6C47FF, #9B59FF)',
-                      border: 'none', borderRadius: '12px',
-                      padding: '14px', fontSize: '14px',
-                      fontWeight: '700', color: '#fff',
-                      cursor: confirming ? 'not-allowed' : 'pointer',
-                      boxShadow: '0 4px 20px rgba(108,71,255,0.35)',
-                      fontFamily: 'inherit', marginBottom: '10px'
-                    }}>
-                    {confirming ? '⏳ Confirming...' : '✓ I Confirm This Transaction'}
-                  </button>
-                )}
-
-                {myReceiptUrl && !otherReceiptUrl && (
-                  <div style={{
-                    background: '#FFF8E0', border: '1.5px solid #FFD966',
-                    borderRadius: '12px', padding: '14px',
                     fontSize: '12px', color: '#FF6B2B',
-                    lineHeight: '1.5', marginBottom: '10px'
+                    opacity: 0.8, lineHeight: '1.5'
                   }}>
-                    ⏳ Waiting for {otherLabel} to upload their receipt before you can confirm.
+                    Confirming this receipt means you agree a 10% platform
+                    commission of {currency.symbol}{calculateCommission(
+                      receipt?.amount || 0,
+                      gig?.currency
+                    ).toLocaleString()} will be owed to Prima.
+                    You have 7 days to pay.
                   </div>
-                )}
-
-                {myConfirmed && !otherConfirmed && (
-                  <div style={{
-                    background: '#DFFDF4', border: '1.5px solid #7EECD2',
-                    borderRadius: '12px', padding: '14px',
-                    fontSize: '12px', color: '#00C48C',
-                    lineHeight: '1.5', marginBottom: '10px'
-                  }}>
-                    ✓ You confirmed! Waiting for {otherLabel} to confirm.
-                  </div>
-                )}
-
-                {/* Dispute button */}
-                {myReceiptUrl && (
-                  <button
-                    onClick={handleDispute}
-                    style={{
-                      width: '100%', background: 'transparent',
-                      border: '1.5px solid #FF99B3',
-                      borderRadius: '12px', padding: '12px',
-                      fontSize: '12px', fontWeight: '600',
-                      color: '#FF3366', cursor: 'pointer',
-                      fontFamily: 'inherit'
-                    }}>
-                    ⚠️ Raise a Dispute
-                  </button>
-                )}
-              </div>
-            )}
-
-            {/* STEP — DONE */}
-            {step === 'done' && (
-              <div style={{ textAlign: 'center', padding: '24px 0' }}>
-                <div style={{ fontSize: '56px', marginBottom: '16px' }}>🎉</div>
-                <div style={{
-                  fontSize: '22px', fontWeight: '800',
-                  color: '#00C48C', marginBottom: '8px'
-                }}>Transaction Complete!</div>
-                <div style={{
-                  fontSize: '13px', color: '#8B8FAF',
-                  lineHeight: '1.6', marginBottom: '24px'
-                }}>
-                  Both parties confirmed. The gig is officially complete.
-                  Please leave a review for each other.
                 </div>
-                {receipt?.amount > 0 && (
-                  <div style={{
-                    background: 'linear-gradient(135deg, #E8FFE4, #DFFDF4)',
-                    border: '1.5px solid #7EECD2', borderRadius: '14px',
-                    padding: '16px', marginBottom: '20px'
+              </div>
+
+              {error && (
+                <div style={{
+                  background: '#FFE8EE', border: '1.5px solid #FF99B3',
+                  borderRadius: '10px', padding: '10px 14px',
+                  fontSize: '12px', color: '#FF3366',
+                  marginBottom: '14px'
+                }}>{error}</div>
+              )}
+
+              {/* Action buttons */}
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  onClick={() => handleWorkerConfirm(false)}
+                  disabled={submitting}
+                  style={{
+                    flex: 1, background: '#FFE8EE',
+                    border: '1.5px solid #FF99B3',
+                    borderRadius: '12px', padding: '14px',
+                    fontSize: '13px', fontWeight: '700',
+                    color: '#FF3366', cursor: 'pointer',
+                    fontFamily: 'inherit'
                   }}>
-                    <div style={{
-                      fontSize: '10px', color: '#00C48C', fontWeight: '700',
-                      textTransform: 'uppercase', letterSpacing: '0.8px',
-                      marginBottom: '4px'
-                    }}>Amount Confirmed</div>
-                    <div style={{
-                      fontSize: '28px', fontWeight: '800', color: '#00C48C'
-                    }}>${receipt.amount}</div>
+                  ✗ Dispute Amount
+                </button>
+                <button
+                  onClick={() => handleWorkerConfirm(true)}
+                  disabled={submitting}
+                  style={{
+                    flex: 2,
+                    background: submitting
+                      ? '#B8A5FF'
+                      : 'linear-gradient(135deg, #00C48C, #00A878)',
+                    border: 'none', borderRadius: '12px', padding: '14px',
+                    fontSize: '13px', fontWeight: '700', color: '#fff',
+                    cursor: submitting ? 'not-allowed' : 'pointer',
+                    fontFamily: 'inherit',
+                    boxShadow: submitting
+                      ? 'none' : '0 4px 20px rgba(0,196,140,0.35)'
+                  }}>
+                  {submitting ? '⏳...' : '✓ Yes, I Received It'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* DISPUTED */}
+          {step === 'disputed' && (
+            <div style={{ textAlign: 'center', padding: '20px 0' }}>
+              <div style={{ fontSize: '56px', marginBottom: '16px' }}>⚠️</div>
+              <div style={{
+                fontSize: '20px', fontWeight: '800',
+                color: '#14123A', marginBottom: '8px'
+              }}>Amount Disputed</div>
+              <div style={{
+                fontSize: '13px', color: '#8B8FAF',
+                lineHeight: '1.7', marginBottom: '20px'
+              }}>
+                The worker has disputed the payment amount.
+                Our team will review and resolve this within 24 hours.
+                Both parties will be notified of the outcome.
+              </div>
+              <div style={{
+                background: '#FFF0E8', border: '1.5px solid #FFBC99',
+                borderRadius: '12px', padding: '14px',
+                fontSize: '12px', color: '#FF6B2B', lineHeight: '1.6'
+              }}>
+                In the meantime please have your payment proof ready.
+                Our admin team may contact you for more information.
+              </div>
+            </div>
+          )}
+
+          {/* DONE */}
+          {step === 'done' && (
+            <div style={{ textAlign: 'center', padding: '20px 0' }}>
+              <div style={{ fontSize: '64px', marginBottom: '16px' }}>🎉</div>
+              <div style={{
+                fontSize: '24px', fontWeight: '800',
+                color: '#14123A', marginBottom: '8px'
+              }}>Gig Complete!</div>
+              <div style={{
+                fontSize: '13px', color: '#8B8FAF',
+                lineHeight: '1.7', marginBottom: '20px'
+              }}>
+                Both parties have confirmed the receipt.
+                The gig is now complete!
+              </div>
+
+              {isWorker && receipt?.commission_amount && (
+                <div style={{
+                  background: '#FFF0E8', border: '1.5px solid #FFBC99',
+                  borderRadius: '14px', padding: '16px',
+                  marginBottom: '16px', textAlign: 'left'
+                }}>
+                  <div style={{
+                    fontSize: '13px', fontWeight: '700',
+                    color: '#FF6B2B', marginBottom: '6px'
+                  }}>💰 Commission Due</div>
+                  <div style={{
+                    fontSize: '22px', fontWeight: '800',
+                    color: '#FF6B2B', marginBottom: '4px'
+                  }}>
+                    {currency.symbol}{receipt.commission_amount.toLocaleString()}
                   </div>
-                )}
-                <button onClick={onClose} style={{
+                  <div style={{
+                    fontSize: '11px', color: '#FF6B2B',
+                    opacity: 0.8, lineHeight: '1.5'
+                  }}>
+                    10% platform fee due within 7 days.
+                    Pay via Flutterwave or Prima Credits to maintain
+                    your account standing.
+                  </div>
+                  <button
+                    onClick={() => {
+                      onClose()
+                      window.dispatchEvent(
+                        new CustomEvent('navigateTo', { detail: 'commission' })
+                      )
+                    }}
+                    style={{
+                      width: '100%', marginTop: '12px',
+                      background: 'linear-gradient(135deg, #FF6B2B, #FF4DCF)',
+                      border: 'none', borderRadius: '10px',
+                      padding: '12px', fontSize: '13px',
+                      fontWeight: '700', color: '#fff',
+                      cursor: 'pointer', fontFamily: 'inherit'
+                    }}>
+                    Pay Commission Now →
+                  </button>
+                </div>
+              )}
+
+              <button
+                onClick={onClose}
+                style={{
                   width: '100%',
                   background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
-                  border: 'none', borderRadius: '12px', padding: '14px',
-                  fontSize: '14px', fontWeight: '700', color: '#fff',
+                  border: 'none', borderRadius: '14px', padding: '16px',
+                  fontSize: '15px', fontWeight: '700', color: '#fff',
                   cursor: 'pointer', fontFamily: 'inherit',
                   boxShadow: '0 4px 20px rgba(108,71,255,0.35)'
-                }}>Close & Leave Review</button>
-              </div>
-            )}
-
-            {/* STEP — DISPUTE */}
-            {step === 'dispute' && (
-              <div style={{ textAlign: 'center', padding: '24px 0' }}>
-                <div style={{ fontSize: '48px', marginBottom: '16px' }}>⚠️</div>
-                <div style={{
-                  fontSize: '20px', fontWeight: '800',
-                  color: '#FF3366', marginBottom: '8px'
-                }}>Dispute Raised</div>
-                <div style={{
-                  fontSize: '13px', color: '#8B8FAF',
-                  lineHeight: '1.6', marginBottom: '16px'
                 }}>
-                  This transaction is under review. Prima will examine both receipts and resolve within 48 hours.
-                </div>
-                {receipt?.dispute_reason && (
-                  <div style={{
-                    background: '#FFE8EE', border: '1.5px solid #FF99B3',
-                    borderRadius: '12px', padding: '14px',
-                    fontSize: '13px', color: '#FF3366',
-                    lineHeight: '1.5', marginBottom: '16px',
-                    textAlign: 'left'
-                  }}>
-                    <strong>Reason:</strong> {receipt.dispute_reason}
-                  </div>
-                )}
-                <button onClick={onClose} style={{
-                  width: '100%', background: '#F5F4FF',
-                  border: '1.5px solid #E2E0FF', borderRadius: '12px',
-                  padding: '14px', fontSize: '13px', fontWeight: '600',
-                  color: '#8B8FAF', cursor: 'pointer', fontFamily: 'inherit'
-                }}>Close</button>
-              </div>
-            )}
-          </>
-        )}
+                ✓ Done
+              </button>
+            </div>
+          )}
+        </div>
 
         <style>{`
           @keyframes slideUp {

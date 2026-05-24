@@ -189,7 +189,7 @@ export default function CommissionScreen() {
           {pendingCommissions.map((commission, i) => {
             const colors = getStatusColor(commission)
             const days = daysUntilDue(commission.due_date)
-            const curr = getCurrency(commission.currency || 'USD')
+            const curr = getCurrency(commission.currency || 'NGN')
             const creditsNeeded = commission.commission_amount * 50
             const canPayWithCredits = (credits?.balance || 0) >= creditsNeeded
 
@@ -199,6 +199,7 @@ export default function CommissionScreen() {
                 borderBottom: i < pendingCommissions.length - 1
                   ? '1px solid #F5F4FF' : 'none'
               }}>
+                {/* Commission amount display */}
                 <div style={{
                   display: 'flex', justifyContent: 'space-between',
                   alignItems: 'flex-start', marginBottom: '10px'
@@ -209,8 +210,15 @@ export default function CommissionScreen() {
                       color: '#14123A', marginBottom: '3px'
                     }}>{commission.gigs?.title || 'Gig'}</div>
                     <div style={{ fontSize: '11px', color: '#8B8FAF' }}>
-                      Earned: {curr.symbol}{commission.gig_amount} ·
-                      Fee: {curr.symbol}{commission.commission_amount.toFixed(2)}
+                      You earned: {getCurrency(commission.currency || 'NGN').symbol}
+                      {commission.gig_amount?.toLocaleString()} ·
+                      Fee: {getCurrency(commission.currency || 'NGN').symbol}
+                      {commission.commission_amount?.toLocaleString()}
+                      {commission.currency === 'NGN' && commission.commission_amount === 500
+                        ? ' (minimum ₦500)'
+                        : commission.commission_amount === 2
+                          ? ' (minimum $2)'
+                          : ' (10%)'}
                     </div>
                   </div>
                   <div style={{
@@ -221,9 +229,8 @@ export default function CommissionScreen() {
                   }}>
                     {days < 0
                       ? `${Math.abs(days)}d overdue`
-                      : days === 0
-                        ? 'Due today'
-                        : `${days}d left`}
+                      : days === 0 ? 'Due today'
+                      : `${days}d left`}
                   </div>
                 </div>
 
@@ -334,7 +341,7 @@ export default function CommissionScreen() {
             marginBottom: '14px'
           }}>Payment History ({paidCommissions.length})</div>
           {paidCommissions.map((commission, i) => {
-            const curr = getCurrency(commission.currency || 'USD')
+            const curr = getCurrency(commission.currency || 'NGN')
             return (
               <div key={commission.id} style={{
                 display: 'flex', justifyContent: 'space-between',
