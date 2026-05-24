@@ -93,6 +93,15 @@ export default function Layout() {
   }, [user])
 
   useEffect(() => {
+    if (!profile) return
+    const { complete } = getProfileCompletion(profile)
+    if (!complete) {
+      const timer = setTimeout(() => setShowProfilePrompt(true), 2000)
+      return () => clearTimeout(timer)
+    }
+  }, [profile])
+
+  useEffect(() => {
     window.history.pushState({ screen: 'map' }, '', '')
     const handlePopState = () => {
       if (screenHistory.length > 1) {
@@ -948,6 +957,17 @@ export default function Layout() {
             </div>
           </div>
         </div>
+      )}
+
+      {showProfilePrompt && (
+        <ProfilePrompt
+          profile={profile}
+          onClose={() => setShowProfilePrompt(false)}
+          onGoToProfile={() => {
+            setShowProfilePrompt(false)
+            navigateTo('profile')
+          }}
+        />
       )}
     </div>
   )
