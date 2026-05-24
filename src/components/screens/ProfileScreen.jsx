@@ -7,6 +7,7 @@ import { completeReferral } from '../../utils/referral'
 import { getProfileCompletion } from '../../utils/profileComplete'
 import { useCredits } from '../../context/CreditsContext'
 import SelfieVerification from '../SelfieVerification'
+import VerificationBadge from '../VerificationBadge'
 
 const LocationSearch = ({ value, onSelect, inputStyle }) => {
   const [search, setSearch] = useState(value || '')
@@ -646,16 +647,7 @@ export default function ProfileScreen({ onLogout }) {
               </div>
             )}
             {profile?.is_verified && (
-              <span style={{
-                display: 'inline-flex', alignItems: 'center', gap: '4px',
-                background: 'linear-gradient(135deg, #FFB800, #FF8C00)',
-                borderRadius: '8px', padding: '3px 8px 3px 3px',
-                fontSize: '9px', fontWeight: '700',
-                letterSpacing: '.8px', color: '#fff'
-              }}>
-                <BrandIcon name="level" size={16} active={true} />
-                VERIFIED
-              </span>
+              <VerificationBadge onDark />
             )}
           </div>
         </div>

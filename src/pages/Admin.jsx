@@ -3,6 +3,7 @@ import { supabase } from '../supabase'
 import { useAdmin } from '../hooks/useAdmin'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
+import VerificationBadge from '../components/VerificationBadge'
 
 const TABS = [
   { key: 'overview', label: '📊 Overview', icon: '📊' },
@@ -496,11 +497,7 @@ export default function Admin() {
                         }}>{u.full_name || '—'}</div>
                         <div style={{ display: 'flex', gap: '4px' }}>
                           {u.is_verified && (
-                            <span style={{
-                              fontSize: '8px', background: '#EEE9FF',
-                              color: '#6C47FF', borderRadius: '3px',
-                              padding: '1px 4px', fontWeight: '700'
-                            }}>✓ VER</span>
+                            <VerificationBadge compact />
                           )}
                           {u.is_admin && (
                             <span style={{

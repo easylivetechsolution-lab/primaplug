@@ -3,6 +3,7 @@ import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 import ReportModal from './ReportModal'
 import BrandIcon from './BrandIcon'
+import VerificationBadge from './VerificationBadge'
 
 export default function PublicProfile({ userId, onClose }) {
   const { user: currentUser } = useAuth()
@@ -223,12 +224,7 @@ export default function PublicProfile({ userId, onClose }) {
                     </div>
                   )}
                   {profile.is_verified && (
-                    <span style={{
-                      background: '#FFB800',
-                      borderRadius: '4px', padding: '2px 7px',
-                      fontSize: '9px', fontWeight: '700',
-                      letterSpacing: '.5px', color: '#fff'
-                    }}>✓ VERIFIED</span>
+                    <VerificationBadge onDark size="small" />
                   )}
                 </div>
 
