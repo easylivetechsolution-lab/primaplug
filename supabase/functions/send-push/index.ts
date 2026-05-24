@@ -108,10 +108,10 @@ const sendToToken = async (
               icon: '/prima-icon.png',
               badge: '/prima-badge.png',
               vibrate: [200, 100, 200],
-              click_action: 'https://primaplug.vercel.app/dashboard',
+              click_action: 'https://primaplug.com/dashboard',
             },
             fcm_options: {
-              link: 'https://primaplug.vercel.app/dashboard',
+              link: 'https://primaplug.com/dashboard',
             },
           },
           data: Object.fromEntries(

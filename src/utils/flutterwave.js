@@ -21,7 +21,7 @@ export const payWithFlutterwave = (options) => {
       customizations: {
         title,
         description,
-        logo: 'https://primaplug.vercel.app/prima-icon.png',
+        logo: 'https://primaplug.com/prima-icon.png',
       },
       callback: (response) => {
         console.log('Flutterwave response:', response)

@@ -5,7 +5,8 @@ const config: CapacitorConfig = {
   appName: 'PrimaPlug',
   webDir: 'dist',
   server: {
-    androidScheme: 'https'
+    androidScheme: 'https',
+    hostname: 'primaplug.com'
   },
   plugins: {
     Geolocation: {

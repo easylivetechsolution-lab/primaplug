@@ -12,7 +12,7 @@ export default function ReferralScreen() {
   const [loading, setLoading] = useState(true)
 
   const referralCode = profile?.referral_code || ''
-  const referralLink = `https://primaplug.vercel.app/?ref=${referralCode}`
+  const referralLink = `https://primaplug.com/?ref=${referralCode}`
 
   useEffect(() => {
     fetchReferrals()

@@ -53,7 +53,7 @@ self.addEventListener('notificationclick', (event) => {
       for (const client of clientList) {
         if ('focus' in client) return client.focus()
       }
-      return clients.openWindow('https://primaplug.vercel.app/dashboard')
+      return clients.openWindow('https://primaplug.com/dashboard')
     })
   )
 })

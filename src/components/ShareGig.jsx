@@ -13,7 +13,7 @@ export default function ShareGig({ gig, onClose }) {
   }, [])
 
   const referralCode = profile?.referral_code || ''
-  const shareLink = `https://primaplug.vercel.app/?gigref=${gig.id}&ref=${referralCode}`
+  const shareLink = `https://primaplug.com/?gigref=${gig.id}&ref=${referralCode}`
 
   const copyLink = () => {
     navigator.clipboard.writeText(shareLink)
