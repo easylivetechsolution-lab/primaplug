@@ -136,7 +136,7 @@ export default function Layout() {
     { key: 'mygigs', icon: 'mygigs', label: 'My Gigs' },
     { key: 'chat', icon: 'chat', label: 'Chat' },
     { key: 'profile', icon: 'profile', label: 'Profile' },
-    { key: 'services', icon: 'services', label: 'Services' },
+    { key: 'services', emoji: '🛠️', label: 'Services' },
   ]
 
   const mobileMoreItems = [
@@ -231,7 +231,10 @@ export default function Layout() {
                 fontFamily: 'inherit',
                 position: 'relative'
               }}>
-              <BrandIcon name={item.icon} size={28} active={screen === item.key} />
+              {item.emoji
+                ? <span style={{ fontSize: '18px', lineHeight: '1' }}>{item.emoji}</span>
+                : <BrandIcon name={item.icon} size={28} active={screen === item.key} />
+              }
               {item.label}
               {item.key === 'mygigs' && hasUnpaidCommissions && (
                 <span style={{
@@ -538,7 +541,7 @@ export default function Layout() {
                 e.currentTarget.style.borderColor = 'transparent'
               }
             }}>
-            <BrandIcon name="services" size={32} active={screen === 'services'} />
+            <span style={{ fontSize: '22px', lineHeight: '1' }}>🛠️</span>
             <span style={{
               fontSize: '9px', fontWeight: '600',
               color: screen === 'services' ? '#6C47FF' : '#A09DC8'
@@ -748,7 +751,7 @@ export default function Layout() {
           { key: 'feed', icon: 'feed', label: 'Feed' },
           { key: 'mygigs', icon: 'mygigs', label: 'My Gigs' },
           { key: 'chat', icon: 'chat', label: 'Chat' },
-          { key: 'services', icon: 'services', label: 'Services' },
+          { key: 'services', emoji: '🛠️', label: 'Services' },
           { key: 'profile', icon: 'profile', label: 'Profile' },
         ].map(item => {
           const active = screen === item.key
@@ -765,22 +768,25 @@ export default function Layout() {
                 gap: '3px', cursor: 'pointer', fontFamily: 'inherit'
               }}>
               <div style={{
-                width: '40px', height: '30px', borderRadius: '10px',
+                width: '48px', height: '40px', borderRadius: '12px',
                 background: active ? '#EEE9FF' : 'transparent',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 transition: 'background 0.15s', position: 'relative'
               }}>
-                <BrandIcon name={item.icon} size={26} active={active} />
+                {item.emoji
+                  ? <span style={{ fontSize: active ? '26px' : '24px', lineHeight: '1', filter: active ? 'none' : 'grayscale(20%)' }}>{item.emoji}</span>
+                  : <BrandIcon name={item.icon} size={36} active={active} />
+                }
                 {item.key === 'mygigs' && hasUnpaidCommissions && (
                   <span style={{
-                    position: 'absolute', top: '2px', right: '5px',
-                    width: '6px', height: '6px', borderRadius: '50%',
+                    position: 'absolute', top: '4px', right: '6px',
+                    width: '7px', height: '7px', borderRadius: '50%',
                     background: '#FF3366', border: '1.5px solid #fff'
                   }} />
                 )}
               </div>
               <span style={{
-                fontSize: '9px', fontWeight: active ? '700' : '500',
+                fontSize: '10px', fontWeight: active ? '700' : '500',
                 color: active ? '#6C47FF' : '#A09DC8', lineHeight: '1'
               }}>{item.label}</span>
             </button>
