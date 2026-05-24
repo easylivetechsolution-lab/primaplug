@@ -27,7 +27,7 @@ import { initPushNotifications } from '../utils/pushNotifications'
 import { useCredits } from '../context/CreditsContext'
 
 export default function Layout() {
-  const { user, profile } = useAuth()
+  const { user, profile, loading } = useAuth()
   const { isAdmin } = useAdmin()
   const { hasUnpaidCommissions } = useCredits()
   const navigate = useNavigate()
@@ -93,13 +93,13 @@ export default function Layout() {
   }, [user])
 
   useEffect(() => {
-    if (!profile) return
+    if (loading || !user) return
     const { complete } = getProfileCompletion(profile)
     if (!complete) {
       const timer = setTimeout(() => setShowProfilePrompt(true), 2000)
       return () => clearTimeout(timer)
     }
-  }, [profile])
+  }, [profile, loading, user])
 
   useEffect(() => {
     window.history.pushState({ screen: 'map' }, '', '')
@@ -668,7 +668,7 @@ export default function Layout() {
         <div style={{ flex: 1, minWidth: 0, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
 
           {/* Profile Completion Banner */}
-          {profile && (() => {
+          {!loading && user && (() => {
             const { score, complete } = getProfileCompletion(profile)
             if (complete) return null
             return (
