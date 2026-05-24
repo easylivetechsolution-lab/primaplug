@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
-import { getCurrency } from '../data/currencies'
+import { CURRENCIES, getCurrency } from '../data/currencies'
 import { rewardGigReferral } from '../utils/referral'
 
 const MINIMUM_COMMISSION_USD = 2 // $2 minimum for all currencies
@@ -10,12 +10,15 @@ const MINIMUM_COMMISSION_NGN = 500 // ₦500 for NGN gigs
 const getMinimumCommission = (currency) => {
   switch (currency) {
     case 'NGN': return 500
-    case 'USD': return 2
-    case 'GBP': return 2
-    case 'EUR': return 2
     case 'GHS': return 25
     case 'KES': return 250
     case 'ZAR': return 35
+    case 'TZS': return 5000
+    case 'EGP': return 60
+    case 'XOF': case 'XAF': return 1200
+    case 'INR': return 165
+    case 'BRL': case 'MXN': return 10
+    case 'JPY': case 'CNY': return 280
     default: return 2
   }
 }
@@ -25,6 +28,8 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
   const [step, setStep] = useState('start')
   const [receipt, setReceipt] = useState(null)
   const [amount, setAmount] = useState('')
+  const [selectedCurrency, setSelectedCurrency] = useState(gig?.currency || 'USD')
+  const [showCurrencyPicker, setShowCurrencyPicker] = useState(false)
   const [workerAmount, setWorkerAmount] = useState('')
   const [receiptFile, setReceiptFile] = useState(null)
   const [uploading, setUploading] = useState(false)
@@ -83,7 +88,7 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
 
     try {
       const gigAmount = parseFloat(amount)
-      const commissionAmount = calculateCommission(gigAmount, gig?.currency)
+      const commissionAmount = calculateCommission(gigAmount, selectedCurrency)
 
       // Check if receipt exists
       const { data: existing } = await supabase
@@ -93,37 +98,37 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
         .maybeSingle()
 
       if (existing) {
-        // Update existing receipt
         await supabase
           .from('receipts')
           .update({
             amount: gigAmount,
+            currency: selectedCurrency,
+            commission_amount: commissionAmount,
             poster_confirmed: true,
             poster_confirmed_at: new Date().toISOString(),
-            currency: gig?.currency || 'NGN'
           })
           .eq('id', existing.id)
       } else {
-        // Create new receipt
         await supabase.from('receipts').insert({
           gig_id: gig.id,
           poster_id: gig.poster_id,
           worker_id: gig.worker_id,
           amount: gigAmount,
-          currency: gig?.currency || 'NGN',
+          currency: selectedCurrency,
+          commission_amount: commissionAmount,
           poster_confirmed: true,
           poster_confirmed_at: new Date().toISOString(),
           worker_confirmed: false,
           completed: false,
-          commission_amount: commissionAmount
         })
       }
 
-      // Notify worker
+      // Notify worker with currency info
+      const currSymbol = CURRENCIES.find(c => c.code === selectedCurrency)?.symbol
       await supabase.from('notifications').insert({
         user_id: gig.worker_id,
         title: '📎 Receipt Submitted',
-        message: `${gig.poster_name || 'Poster'} has confirmed payment of ${currency.symbol}${gigAmount.toLocaleString()} for "${gig.title}". Please confirm you received this amount.`,
+        message: `Poster confirmed payment of ${currSymbol}${gigAmount.toLocaleString()} ${selectedCurrency} for "${gig.title}". Please confirm you received this amount.`,
         type: 'receipt',
         gig_id: gig.id
       })
@@ -342,6 +347,85 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
                 Enter the exact amount you paid the worker for "{gig?.title}"
               </div>
 
+              {/* Currency Selector */}
+              <div style={{ marginBottom: '14px' }}>
+                <div style={{
+                  fontSize: '11px', fontWeight: '700',
+                  color: '#A09DC8', textTransform: 'uppercase',
+                  letterSpacing: '0.8px', marginBottom: '8px'
+                }}>Currency Paid In</div>
+
+                <div style={{ position: 'relative' }}>
+                  <button
+                    onClick={() => setShowCurrencyPicker(s => !s)}
+                    style={{
+                      width: '100%', background: '#F5F4FF',
+                      border: '1.5px solid #E2E0FF',
+                      borderRadius: '12px', padding: '12px 16px',
+                      fontSize: '14px', fontWeight: '700',
+                      color: '#14123A', cursor: 'pointer',
+                      fontFamily: 'inherit',
+                      display: 'flex', alignItems: 'center',
+                      justifyContent: 'space-between', gap: '10px'
+                    }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span style={{ fontSize: '20px' }}>
+                        {CURRENCIES.find(c => c.code === selectedCurrency)?.flag}
+                      </span>
+                      <span>
+                        {selectedCurrency} —{' '}
+                        {CURRENCIES.find(c => c.code === selectedCurrency)?.name}
+                      </span>
+                    </div>
+                    <span style={{ fontSize: '12px', color: '#A09DC8' }}>▼</span>
+                  </button>
+
+                  {showCurrencyPicker && (
+                    <div style={{
+                      position: 'absolute', top: '50px', left: 0, right: 0,
+                      background: '#fff', border: '1.5px solid #E2E0FF',
+                      borderRadius: '14px', padding: '8px',
+                      zIndex: 100, maxHeight: '250px', overflowY: 'auto',
+                      boxShadow: '0 8px 32px rgba(108,71,255,0.15)'
+                    }}>
+                      {CURRENCIES.map(curr => (
+                        <div
+                          key={curr.code}
+                          onClick={() => {
+                            setSelectedCurrency(curr.code)
+                            setShowCurrencyPicker(false)
+                          }}
+                          style={{
+                            display: 'flex', gap: '10px',
+                            alignItems: 'center', padding: '10px 12px',
+                            borderRadius: '10px', cursor: 'pointer',
+                            background: selectedCurrency === curr.code
+                              ? '#EEE9FF' : 'transparent'
+                          }}
+                          onMouseEnter={e =>
+                            e.currentTarget.style.background = '#F5F4FF'}
+                          onMouseLeave={e =>
+                            e.currentTarget.style.background =
+                              selectedCurrency === curr.code ? '#EEE9FF' : 'transparent'}
+                        >
+                          <span style={{ fontSize: '20px' }}>{curr.flag}</span>
+                          <div style={{ flex: 1 }}>
+                            <div style={{
+                              fontSize: '13px', fontWeight: '600',
+                              color: selectedCurrency === curr.code ? '#6C47FF' : '#14123A'
+                            }}>{curr.code} — {curr.symbol}</div>
+                            <div style={{ fontSize: '10px', color: '#A09DC8' }}>{curr.name}</div>
+                          </div>
+                          {selectedCurrency === curr.code && (
+                            <span style={{ color: '#6C47FF' }}>✓</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
               {/* Amount input */}
               <div style={{
                 background: '#F5F4FF', borderRadius: '16px',
@@ -353,14 +437,13 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
                   letterSpacing: '0.8px', marginBottom: '10px',
                   textAlign: 'center'
                 }}>Amount Paid</div>
-                <div style={{
-                  display: 'flex', alignItems: 'center',
-                  gap: '8px'
-                }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <div style={{
                     fontSize: '24px', fontWeight: '800',
                     color: '#6C47FF', flexShrink: 0
-                  }}>{currency.symbol}</div>
+                  }}>
+                    {CURRENCIES.find(c => c.code === selectedCurrency)?.symbol || '$'}
+                  </div>
                   <input
                     type="number"
                     value={amount}
@@ -386,9 +469,10 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
                       display: 'flex', justifyContent: 'space-between',
                       fontSize: '12px', marginBottom: '6px'
                     }}>
-                      <span style={{ color: '#8B8FAF' }}>Gig amount</span>
+                      <span style={{ color: '#8B8FAF' }}>Amount paid</span>
                       <span style={{ fontWeight: '700', color: '#14123A' }}>
-                        {currency.symbol}{parseFloat(amount).toLocaleString()}
+                        {CURRENCIES.find(c => c.code === selectedCurrency)?.symbol}
+                        {parseFloat(amount).toLocaleString()} {selectedCurrency}
                       </span>
                     </div>
                     <div style={{
@@ -397,17 +481,13 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
                       borderTop: '1px solid #F5F4FF'
                     }}>
                       <span style={{ color: '#FF6B2B' }}>
-                        Worker commission (10%
-                        {gig?.currency === 'NGN' || !gig?.currency
-                          ? ', min ₦500' : ''})
+                        Worker commission (10%, min {CURRENCIES.find(c => c.code === selectedCurrency)?.symbol}{getMinimumCommission(selectedCurrency)})
                       </span>
-                      <span style={{
-                        fontWeight: '800', color: '#FF6B2B'
-                      }}>
-                        {currency.symbol}{calculateCommission(
-                          parseFloat(amount),
-                          gig?.currency
-                        ).toLocaleString()}
+                      <span style={{ fontWeight: '800', color: '#FF6B2B' }}>
+                        {CURRENCIES.find(c => c.code === selectedCurrency)?.symbol}
+                        {calculateCommission(
+                          parseFloat(amount), selectedCurrency
+                        ).toLocaleString()} {selectedCurrency}
                       </span>
                     </div>
                   </div>
