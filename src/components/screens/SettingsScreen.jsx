@@ -460,6 +460,55 @@ export default function SettingsScreen({ onLogout }) {
         </div>
       </div>
 
+      {/* Legal */}
+      <div style={{
+        background: '#fff', border: '1.5px solid #E2E0FF',
+        borderRadius: '16px', padding: '16px 18px',
+        marginBottom: '14px'
+      }}>
+        <div style={{
+          fontSize: '11px', fontWeight: '700', color: '#A09DC8',
+          textTransform: 'uppercase', letterSpacing: '1px',
+          marginBottom: '4px'
+        }}>Legal</div>
+
+        {[
+          { icon: '🔒', label: 'Privacy Policy', sub: 'How we handle your data', url: 'https://primaplug.com/privacy' },
+          { icon: '📄', label: 'Terms of Service', sub: 'Rules and agreements for using Prima', url: 'https://primaplug.com/terms' },
+        ].map(({ icon, label, sub, url }, i, arr) => (
+          <a
+            key={label}
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'flex', justifyContent: 'space-between',
+              alignItems: 'center', padding: '13px 0',
+              borderBottom: i < arr.length - 1 ? '1px solid #F5F4FF' : 'none',
+              textDecoration: 'none'
+            }}
+          >
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+              <div style={{
+                width: '34px', height: '34px', borderRadius: '10px',
+                background: '#F5F4FF', display: 'flex',
+                alignItems: 'center', justifyContent: 'center',
+                fontSize: '16px', flexShrink: 0
+              }}>{icon}</div>
+              <div>
+                <div style={{ fontSize: '13px', fontWeight: '600', color: '#14123A' }}>
+                  {label}
+                </div>
+                <div style={{ fontSize: '11px', color: '#A09DC8', marginTop: '1px' }}>
+                  {sub}
+                </div>
+              </div>
+            </div>
+            <span style={{ color: '#A09DC8', fontSize: '16px' }}>›</span>
+          </a>
+        ))}
+      </div>
+
       {/* Save button */}
       <button
         onClick={handleSave}

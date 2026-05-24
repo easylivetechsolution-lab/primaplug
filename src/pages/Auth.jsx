@@ -20,6 +20,10 @@ export default function Auth() {
       setError('Please fill in all fields')
       return
     }
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters')
+      return
+    }
     setLoading(true)
     setError('')
     const { data, error } = await supabase.auth.signUp({
@@ -28,9 +32,15 @@ export default function Auth() {
       options: { data: { full_name: fullName } }
     })
     if (error) {
-      setError(error.message)
+      if (error.message.toLowerCase().includes('email')) {
+        setError('Could not send confirmation email. Please try again or contact support.')
+      } else {
+        setError(error.message)
+      }
+    } else if (data.session) {
+      // Email confirmation is disabled — user is logged in automatically
     } else {
-      setMessage('Check your email to confirm your account!')
+      setMessage('Account created! Check your email to confirm before logging in.')
     }
     setLoading(false)
   }
