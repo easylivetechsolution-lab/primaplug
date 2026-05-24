@@ -1,10 +1,12 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
 import BrandIcon from '../components/BrandIcon'
 import { LANGUAGES } from '../data/languages'
 import { useLanguage } from '../context/LanguageContext'
 
 export default function Auth() {
+  const navigate = useNavigate()
   const { language, setLanguage, t } = useLanguage()
   const [showLangPicker, setShowLangPicker] = useState(false)
   const [mode, setMode] = useState('signup')
@@ -38,7 +40,8 @@ export default function Auth() {
         setError(error.message)
       }
     } else if (data.session) {
-      // Email confirmation is disabled — user is logged in automatically
+      // Email confirmation is disabled — send new user straight to onboarding
+      navigate('/onboarding')
     } else {
       setMessage('Account created! Check your email to confirm before logging in.')
     }

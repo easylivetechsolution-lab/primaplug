@@ -92,7 +92,7 @@ const LocationSearch = ({ value, onSelect, inputStyle }) => {
 }
 
 export default function Onboarding() {
-  const { user } = useAuth()
+  const { user, refreshProfile } = useAuth()
   const navigate = useNavigate()
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
@@ -180,6 +180,9 @@ export default function Onboarding() {
 
       // Process any pending referral
       await processReferral(user.id)
+
+      // Sync AuthContext so Layout gets the fresh profile immediately
+      refreshProfile()
 
       navigate('/dashboard')
     } catch (e) {

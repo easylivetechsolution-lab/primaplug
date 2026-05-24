@@ -506,7 +506,14 @@ export default function SavedScreen() {
       )}
 
       {showProfilePrompt && (
-        <ProfilePrompt onClose={() => setShowProfilePrompt(false)} />
+        <ProfilePrompt
+          profile={profile}
+          onClose={() => setShowProfilePrompt(false)}
+          onGoToProfile={() => {
+            setShowProfilePrompt(false)
+            window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'profile' }))
+          }}
+        />
       )}
 
       <style>{`
