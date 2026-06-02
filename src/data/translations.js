@@ -1,7 +1,7 @@
 export const TRANSLATIONS = {
   en: {
     // Navigation
-    map: 'Map', feed: 'Feed', discover: 'Discover',
+    home: 'Home', map: 'Map', feed: 'Feed', discover: 'Discover',
     myGigs: 'My Gigs', profile: 'Profile', services: 'Services',
     chat: 'Chat', saved: 'Saved', stats: 'Stats', settings: 'Settings',
 
@@ -54,7 +54,7 @@ export const TRANSLATIONS = {
   },
 
   fr: {
-    map: 'Carte', feed: 'Fil', discover: 'Découvrir',
+    home: 'Accueil', map: 'Carte', feed: 'Fil', discover: 'Découvrir',
     myGigs: 'Mes Missions', profile: 'Profil', services: 'Services',
     chat: 'Messages', saved: 'Sauvegardé', stats: 'Stats', settings: 'Paramètres',
     signIn: 'Connexion', signUp: "S'inscrire", logout: 'Déconnexion',
@@ -91,7 +91,7 @@ export const TRANSLATIONS = {
   },
 
   es: {
-    map: 'Mapa', feed: 'Feed', discover: 'Descubrir',
+    home: 'Inicio', map: 'Mapa', feed: 'Feed', discover: 'Descubrir',
     myGigs: 'Mis Trabajos', profile: 'Perfil', services: 'Servicios',
     chat: 'Mensajes', saved: 'Guardado', stats: 'Estadísticas', settings: 'Ajustes',
     signIn: 'Iniciar sesión', signUp: 'Registrarse', logout: 'Cerrar sesión',
@@ -128,7 +128,7 @@ export const TRANSLATIONS = {
   },
 
   yo: {
-    map: 'Maapu', feed: 'Ifunni', discover: 'Ṣàwárí',
+    home: 'Ilé', map: 'Maapu', feed: 'Ifunni', discover: 'Ṣàwárí',
     myGigs: 'Iṣẹ Mi', profile: 'Profaili', services: 'Iṣẹ',
     chat: 'Ifiranṣẹ', saved: 'Fipamọ', stats: 'Iṣiro', settings: 'Eto',
     signIn: 'Wọle', signUp: 'Forukọsilẹ', logout: 'Jade',
@@ -165,7 +165,7 @@ export const TRANSLATIONS = {
   },
 
   ha: {
-    map: 'Taswira', feed: 'Labari', discover: 'Gano',
+    home: 'Gida', map: 'Taswira', feed: 'Labari', discover: 'Gano',
     myGigs: 'Aikina', profile: 'Bayani', services: 'Aiyuka',
     chat: 'Saƙo', saved: 'Ajiye', stats: 'Kidaya', settings: 'Saituna',
     signIn: 'Shiga', signUp: 'Yi rijista', logout: 'Fita',

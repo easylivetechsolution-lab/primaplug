@@ -25,11 +25,13 @@ import CommissionScreen from './screens/CommissionScreen'
 import WithdrawalScreen from './screens/WithdrawalScreen'
 import { initPushNotifications } from '../utils/pushNotifications'
 import { useCredits } from '../context/CreditsContext'
+import { useLanguage } from '../context/LanguageContext'
 
 export default function Layout() {
   const { user, profile, loading } = useAuth()
   const { isAdmin } = useAdmin()
   const { hasUnpaidCommissions } = useCredits()
+  const { t } = useLanguage()
   const navigate = useNavigate()
   const [screen, setScreen] = useState('map')
   const [screenHistory, setScreenHistory] = useState(['map'])
@@ -148,13 +150,13 @@ export default function Layout() {
   }
 
   const navItems = [
-    { key: 'map', icon: 'home', label: 'Home' },
-    { key: 'feed', icon: 'feed', label: 'Feed' },
-    { key: 'discover', icon: 'discover', label: 'Discover' },
-    { key: 'mygigs', icon: 'mygigs', label: 'My Gigs' },
-    { key: 'chat', icon: 'chat', label: 'Chat' },
-    { key: 'profile', icon: 'profile', label: 'Profile' },
-    { key: 'services', emoji: '🛠️', label: 'Services' },
+    { key: 'map', icon: 'home', label: t('home') },
+    { key: 'feed', icon: 'feed', label: t('feed') },
+    { key: 'discover', icon: 'discover', label: t('discover') },
+    { key: 'mygigs', icon: 'mygigs', label: t('myGigs') },
+    { key: 'chat', icon: 'chat', label: t('chat') },
+    { key: 'profile', icon: 'profile', label: t('profile') },
+    { key: 'services', emoji: '🛠️', label: t('services') },
   ]
 
   const mobileMoreItems = [

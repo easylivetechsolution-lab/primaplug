@@ -856,6 +856,44 @@ export default function NotificationBell({ onNavigate }) {
                 )}
 
                 {/* Phone + WhatsApp — if accepted */}
+                {notifDetail.type === 'accepted' && notifDetail.gig?.poster_id && (
+                  <button
+                    onClick={() => {
+                      const targetUserId = notifDetail.gig.poster_id
+                      const gigId = notifDetail.gig.id
+
+                      setActionDone(null)
+                      setNotifDetail(null)
+                      setOpen(false)
+
+                      requestAnimationFrame(() => {
+                        window.dispatchEvent(new CustomEvent('openChatWithUser', {
+                          detail: { userId: targetUserId, gigId: gigId || null }
+                        }))
+                      })
+                    }}
+                    style={{
+                      width: '100%',
+                      background: 'linear-gradient(135deg, #6C47FF 0%, #9B59FF 100%)',
+                      border: 'none',
+                      borderRadius: '12px',
+                      padding: '12px 14px',
+                      marginBottom: '12px',
+                      fontSize: '13px',
+                      fontWeight: '800',
+                      color: '#fff',
+                      cursor: 'pointer',
+                      fontFamily: 'inherit',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      boxShadow: '0 4px 16px rgba(108,71,255,0.28)'
+                    }}>
+                    <BrandIcon name="chat" size={18} active /> Message Client
+                  </button>
+                )}
+
                 {notifDetail.type === 'accepted' && notifDetail.gig?.users?.phone && (
                   <div style={{
                     background: '#F5F4FF', border: '1.5px solid #E2E0FF',

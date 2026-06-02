@@ -3,6 +3,7 @@ import { supabase } from '../supabase'
 import { useAuth } from './AuthContext'
 import { t as translate } from '../data/translations'
 import { getCurrency } from '../data/currencies'
+import { normalizeLanguage } from '../data/languages'
 
 const LanguageContext = createContext({})
 
@@ -11,7 +12,7 @@ export const useLanguage = () => useContext(LanguageContext)
 export const LanguageProvider = ({ children }) => {
   const { user, profile } = useAuth()
   const [language, setLanguageState] = useState(
-    localStorage.getItem('prima_language') || 'en'
+    normalizeLanguage(localStorage.getItem('prima_language') || 'en')
   )
   const [currency, setCurrencyState] = useState(
     localStorage.getItem('prima_currency') || 'USD'
@@ -19,18 +20,20 @@ export const LanguageProvider = ({ children }) => {
 
   useEffect(() => {
     if (profile?.language) {
-      setLanguageState(profile.language)
-      localStorage.setItem('prima_language', profile.language)
+      const normalizedLanguage = normalizeLanguage(profile.language)
+      setLanguageState(normalizedLanguage)
+      localStorage.setItem('prima_language', normalizedLanguage)
     }
   }, [profile])
 
   const setLanguage = async (code) => {
-    setLanguageState(code)
-    localStorage.setItem('prima_language', code)
+    const normalizedLanguage = normalizeLanguage(code)
+    setLanguageState(normalizedLanguage)
+    localStorage.setItem('prima_language', normalizedLanguage)
     if (user) {
       await supabase
         .from('users')
-        .update({ language: code })
+        .update({ language: normalizedLanguage })
         .eq('id', user.id)
     }
   }

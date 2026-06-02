@@ -1,5 +1,9 @@
 import { supabase } from '../supabase'
 
+const throwIfSupabaseError = ({ error }) => {
+  if (error) throw error
+}
+
 // Save referral code from URL to localStorage
 export const captureReferralCode = () => {
   const params = new URLSearchParams(window.location.search)
@@ -63,45 +67,41 @@ export const completeReferral = async (userId) => {
 
     if (!referral) return
 
-    // Mark referral complete
-    await supabase
+    // Reward referrer — +5 trust score + 20 credits
+    throwIfSupabaseError(await supabase.rpc('increment_trust', {
+      user_id: referral.referrer_id,
+      amount: 5
+    }))
+
+    throwIfSupabaseError(await supabase.rpc('add_credits', {
+      p_user_id: referral.referrer_id,
+      p_amount: 20,
+      p_type: 'referral_reward',
+      p_description: `Referral reward — ${referral.referrer?.full_name || 'Someone'} joined Prima`,
+    }))
+
+    // Reward new user — +3 trust score + 10 credits
+    throwIfSupabaseError(await supabase.rpc('increment_trust', {
+      user_id: userId,
+      amount: 3
+    }))
+
+    throwIfSupabaseError(await supabase.rpc('add_credits', {
+      p_user_id: userId,
+      p_amount: 10,
+      p_type: 'referral_joined',
+      p_description: 'Welcome bonus for joining via referral',
+    }))
+
+    // Mark referral complete only after rewards have succeeded.
+    throwIfSupabaseError(await supabase
       .from('referrals')
       .update({
         status: 'completed',
         reward_given: true,
         completed_at: new Date().toISOString()
       })
-      .eq('id', referral.id)
-
-    // Reward referrer — +5 trust score + 20 credits
-    await supabase
-      .from('users')
-      .update({
-        trust_score: supabase.raw('least(100, trust_score + 5)')
-      })
-      .eq('id', referral.referrer_id)
-
-    await supabase.rpc('add_credits', {
-      p_user_id: referral.referrer_id,
-      p_amount: 20,
-      p_type: 'referral_reward',
-      p_description: `Referral reward — ${referral.referrer?.full_name || 'Someone'} joined Prima`,
-    })
-
-    // Reward new user — +3 trust score + 10 credits
-    await supabase
-      .from('users')
-      .update({
-        trust_score: supabase.raw('least(100, trust_score + 3)')
-      })
-      .eq('id', userId)
-
-    await supabase.rpc('add_credits', {
-      p_user_id: userId,
-      p_amount: 10,
-      p_type: 'referral_joined',
-      p_description: 'Welcome bonus for joining via referral',
-    })
+      .eq('id', referral.id))
 
     // Notify referrer
     await supabase.from('notifications').insert({
@@ -158,7 +158,7 @@ export const getCapturedGigReferral = () => {
   try {
     const data = localStorage.getItem('prima_gig_referral')
     return data ? JSON.parse(data) : null
-  } catch (e) {
+  } catch {
     return null
   }
 }
@@ -205,7 +205,7 @@ export const trackGigReferral = async (gigId, referredUserId) => {
   }
 }
 
-export const rewardGigReferral = async (gigId, gigAmount, currency) => {
+export const rewardGigReferral = async (gigId, gigAmount) => {
   try {
     const { data: referral } = await supabase
       .from('gig_referrals')

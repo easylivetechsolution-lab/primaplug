@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
 import BrandIcon from '../components/BrandIcon'
-import { LANGUAGES } from '../data/languages'
+import { SUPPORTED_LANGUAGES } from '../data/languages'
 import { useLanguage } from '../context/LanguageContext'
 
 export default function Auth() {
@@ -98,8 +98,8 @@ export default function Auth() {
               cursor: 'pointer', fontFamily: 'inherit',
               display: 'flex', alignItems: 'center', gap: '7px'
             }}>
-            <span>{LANGUAGES.find(l => l.code === language)?.flag || '🇬🇧'}</span>
-            <span>{LANGUAGES.find(l => l.code === language)?.native || 'English'}</span>
+            <span>{SUPPORTED_LANGUAGES.find(l => l.code === language)?.flag || '🇬🇧'}</span>
+            <span>{SUPPORTED_LANGUAGES.find(l => l.code === language)?.native || 'English'}</span>
             <span style={{ fontSize: '10px', color: '#A09DC8' }}>▼</span>
           </button>
 
@@ -117,7 +117,7 @@ export default function Auth() {
                 textTransform: 'uppercase', letterSpacing: '0.8px',
                 padding: '4px 8px 8px'
               }}>{t('chooseLanguage')}</div>
-              {LANGUAGES.map(lang => (
+              {SUPPORTED_LANGUAGES.map(lang => (
                 <div
                   key={lang.code}
                   onClick={() => {
@@ -324,7 +324,20 @@ export default function Auth() {
         </button>
 
         <div style={{ textAlign: 'center', marginTop: '20px', fontSize: '12px', color: '#A09DC8' }}>
-          By continuing you agree to Prima's Terms of Service
+          By continuing you agree to Prima's{' '}
+          <Link
+            to="/terms"
+            style={{ color: '#6C47FF', fontWeight: '700', textDecoration: 'none' }}
+          >
+            Terms of Service
+          </Link>
+          {' '}and{' '}
+          <Link
+            to="/privacy"
+            style={{ color: '#6C47FF', fontWeight: '700', textDecoration: 'none' }}
+          >
+            Privacy Policy
+          </Link>
         </div>
       </div>
     </div>

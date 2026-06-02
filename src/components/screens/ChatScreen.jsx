@@ -77,13 +77,42 @@ export default function ChatScreen() {
           `and(participant_1.eq.${user.id},participant_2.eq.${targetUserId}),` +
           `and(participant_1.eq.${targetUserId},participant_2.eq.${user.id})`
         )
-        .maybeSingle()
+        .order('last_message_at', { ascending: false })
+        .limit(10)
 
-      if (existing) {
-        setActiveConvo(existing)
+      const matchedExisting = existing?.find(convo =>
+        gigId ? convo.gig_id === gigId : true
+      ) || existing?.[0]
+
+      if (matchedExisting) {
+        setActiveConvo(matchedExisting)
         setConversations(prev =>
-          prev.find(c => c.id === existing.id) ? prev : [existing, ...prev]
+          prev.find(c => c.id === matchedExisting.id) ? prev : [matchedExisting, ...prev]
         )
+        return
+      }
+
+      const { data: newConvo } = await supabase
+        .from('conversations')
+        .insert({
+          gig_id: gigId || null,
+          participant_1: user.id,
+          participant_2: targetUserId,
+          last_message: '',
+          last_message_at: new Date().toISOString()
+        })
+        .select(`
+          *,
+          gigs(id, title, pay_min, pay_max, status),
+          p1:users!conversations_participant_1_fkey(id, full_name, avatar_url, trust_score),
+          p2:users!conversations_participant_2_fkey(id, full_name, avatar_url, trust_score)
+        `)
+        .single()
+
+      if (newConvo) {
+        setActiveConvo(newConvo)
+        setMessages([])
+        setConversations(prev => [newConvo, ...prev])
       }
     }
 

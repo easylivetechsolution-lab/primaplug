@@ -6,6 +6,11 @@ export const payWithFlutterwave = (options) => {
     onSuccess, onClose,
   } = options
 
+  if (!publicKey) {
+    alert('Payment is not available right now. Please contact support.')
+    return
+  }
+
   const launch = () => {
     window.FlutterwaveCheckout({
       public_key: publicKey,
@@ -50,10 +55,10 @@ export const payWithFlutterwave = (options) => {
 }
 
 // Verify payment via Supabase Edge Function
-export const verifyFlutterwavePayment = async (txRef, supabase) => {
+export const verifyFlutterwavePayment = async (txRef, supabase, expected = {}) => {
   try {
     const { data, error } = await supabase.functions.invoke('verify-payment', {
-      body: { tx_ref: txRef }
+      body: { tx_ref: txRef, ...expected }
     })
     if (error) throw error
     return data

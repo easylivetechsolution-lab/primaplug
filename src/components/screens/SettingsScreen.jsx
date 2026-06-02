@@ -1,9 +1,10 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { supabase } from '../../supabase'
 import { useAuth } from '../../context/AuthContext'
 import BrandIcon from '../BrandIcon'
 import { useLanguage } from '../../context/LanguageContext'
-import { LANGUAGES } from '../../data/languages'
+import { SUPPORTED_LANGUAGES } from '../../data/languages'
 import { CURRENCIES } from '../../data/currencies'
 import { useCredits } from '../../context/CreditsContext'
 import EmergencyReport from '../EmergencyReport'
@@ -345,8 +346,8 @@ export default function SettingsScreen({ onLogout }) {
               cursor: 'pointer', fontFamily: 'inherit',
               display: 'flex', alignItems: 'center', gap: '7px'
             }}>
-            <span>{LANGUAGES.find(l => l.code === language)?.flag}</span>
-            <span>{LANGUAGES.find(l => l.code === language)?.native}</span>
+            <span>{SUPPORTED_LANGUAGES.find(l => l.code === language)?.flag}</span>
+            <span>{SUPPORTED_LANGUAGES.find(l => l.code === language)?.native}</span>
             <span style={{ fontSize: '10px', color: '#A09DC8' }}>▼</span>
           </button>
 
@@ -359,7 +360,7 @@ export default function SettingsScreen({ onLogout }) {
               boxShadow: '0 8px 32px rgba(108,71,255,0.15)',
               maxHeight: '280px', overflowY: 'auto'
             }}>
-              {LANGUAGES.map(lang => (
+              {SUPPORTED_LANGUAGES.map(lang => (
                 <div
                   key={lang.code}
                   onClick={() => { setLanguage(lang.code); setShowLangPicker(false) }}
@@ -473,14 +474,12 @@ export default function SettingsScreen({ onLogout }) {
         }}>Legal</div>
 
         {[
-          { icon: '🔒', label: 'Privacy Policy', sub: 'How we handle your data', url: 'https://primaplug.com/privacy' },
-          { icon: '📄', label: 'Terms of Service', sub: 'Rules and agreements for using Prima', url: 'https://primaplug.com/terms' },
+          { icon: '🔒', label: 'Privacy Policy', sub: 'How we handle your data', url: '/privacy' },
+          { icon: '📄', label: 'Terms of Service', sub: 'Rules and agreements for using Prima', url: '/terms' },
         ].map(({ icon, label, sub, url }, i, arr) => (
-          <a
+          <Link
             key={label}
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
+            to={url}
             style={{
               display: 'flex', justifyContent: 'space-between',
               alignItems: 'center', padding: '13px 0',
@@ -505,7 +504,7 @@ export default function SettingsScreen({ onLogout }) {
               </div>
             </div>
             <span style={{ color: '#A09DC8', fontSize: '16px' }}>›</span>
-          </a>
+          </Link>
         ))}
       </div>
 

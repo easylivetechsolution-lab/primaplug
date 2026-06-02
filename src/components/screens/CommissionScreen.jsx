@@ -252,20 +252,14 @@ export default function CommissionScreen() {
                         title: 'PrimaPlug Commission',
                         description: `10% platform fee — ${commission.gigs?.title || 'Gig'}`,
                         onSuccess: async (response) => {
-                          const verified = await verifyFlutterwavePayment(txRef, supabase)
+                          const verified = await verifyFlutterwavePayment(txRef, supabase, {
+                            expected_amount: commission.commission_amount,
+                            expected_currency: commission.currency || 'NGN'
+                          })
                           if (verified?.verified) {
                             await fetchCommissions()
                           } else {
-                            await supabase
-                              .from('commissions')
-                              .update({
-                                status: 'paid',
-                                paid_at: new Date().toISOString(),
-                                payment_method: 'flutterwave',
-                                flw_ref: response.flw_ref
-                              })
-                              .eq('id', commission.id)
-                            await fetchCommissions()
+                            alert('Payment received by Flutterwave, but Prima could not verify the final details yet. Please contact payments@primaplug.com with reference ' + (response.tx_ref || txRef) + '.')
                           }
                           setPaying(null)
                         },

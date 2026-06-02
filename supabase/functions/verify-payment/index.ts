@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { tx_ref } = await req.json()
+    const { tx_ref, expected_amount, expected_currency } = await req.json()
 
     if (!tx_ref) {
       return new Response(
@@ -22,6 +22,12 @@ serve(async (req) => {
     }
 
     const secretKey = Deno.env.get('FLUTTERWAVE_SECRET_KEY')
+    if (!secretKey) {
+      return new Response(
+        JSON.stringify({ verified: false, message: 'Payment verification is not configured' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
 
     // Verify with Flutterwave
     const response = await fetch(
@@ -45,30 +51,51 @@ serve(async (req) => {
     }
 
     const transaction = data.data
+    const parts = tx_ref.split('-')
+    const paymentType = parts[1] // COMM or WITH
+    const paymentId = parts[2]
+    const expectedAmount = Number(expected_amount)
+    const expectedCurrency = String(expected_currency || '').toUpperCase()
+
     const isSuccessful =
       transaction.status === 'successful' &&
-      transaction.amount > 0
+      transaction.tx_ref === tx_ref &&
+      transaction.amount > 0 &&
+      (!expectedAmount || Number(transaction.amount) >= expectedAmount) &&
+      (!expectedCurrency || String(transaction.currency).toUpperCase() === expectedCurrency)
 
     if (!isSuccessful) {
       return new Response(
-        JSON.stringify({ verified: false, message: 'Payment not successful' }),
+        JSON.stringify({ verified: false, message: 'Payment details did not match' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    // Parse tx_ref to determine payment type
-    // Format: PRIMA-COMM-{commissionId}-{timestamp}
-    // Format: PRIMA-WITH-{withdrawalId}-{timestamp}
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const parts = tx_ref.split('-')
-    const paymentType = parts[1] // COMM or WITH
-
     if (paymentType === 'COMM') {
-      const commissionId = parts[2]
+      const commissionId = paymentId
+
+      const { data: commission, error: commissionError } = await supabase
+        .from('commissions')
+        .select('id, worker_id, commission_amount, currency, status')
+        .eq('id', commissionId)
+        .single()
+
+      if (
+        commissionError ||
+        !commission ||
+        Number(transaction.amount) < Number(commission.commission_amount) ||
+        String(transaction.currency).toUpperCase() !== String(commission.currency || 'NGN').toUpperCase()
+      ) {
+        return new Response(
+          JSON.stringify({ verified: false, message: 'Payment does not match commission record' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
 
       // Update commission as paid
       await supabase
@@ -80,13 +107,6 @@ serve(async (req) => {
           flw_ref: transaction.flw_ref
         })
         .eq('id', commissionId)
-
-      // Get worker id
-      const { data: commission } = await supabase
-        .from('commissions')
-        .select('worker_id')
-        .eq('id', commissionId)
-        .single()
 
       if (commission) {
         // Update account status

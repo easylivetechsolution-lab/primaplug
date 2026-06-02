@@ -6,6 +6,7 @@ import Auth from './pages/Auth'
 import Onboarding from './pages/Onboarding'
 import Dashboard from './pages/Dashboard'
 import Admin from './pages/Admin'
+import LegalPage from './pages/LegalPage'
 import BrandIcon from './components/BrandIcon'
 import { LanguageProvider } from './context/LanguageContext'
 import { CreditsProvider } from './context/CreditsContext'
@@ -201,6 +202,8 @@ function AppRoutes() {
       } />
       <Route path="/auth/callback" element={<AuthCallback />} />
       <Route path="/auth/confirm" element={<AuthCallback />} />
+      <Route path="/privacy" element={<LegalPage type="privacy" />} />
+      <Route path="/terms" element={<LegalPage type="terms" />} />
       <Route path="/onboarding" element={
         <ProtectedRoute><Onboarding /></ProtectedRoute>
       } />

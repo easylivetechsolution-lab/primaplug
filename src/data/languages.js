@@ -18,5 +18,14 @@ export const LANGUAGES = [
 
 export const DEFAULT_LANGUAGE = 'en'
 
+export const SUPPORTED_LANGUAGE_CODES = ['en', 'fr', 'es', 'yo', 'ha']
+
+export const SUPPORTED_LANGUAGES = LANGUAGES.filter(language =>
+  SUPPORTED_LANGUAGE_CODES.includes(language.code)
+)
+
 export const getLanguage = (code) =>
   LANGUAGES.find(l => l.code === code) || LANGUAGES[0]
+
+export const normalizeLanguage = (code) =>
+  SUPPORTED_LANGUAGE_CODES.includes(code) ? code : DEFAULT_LANGUAGE
