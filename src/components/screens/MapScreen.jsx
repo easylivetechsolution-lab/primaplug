@@ -905,141 +905,154 @@ export default function MapScreen() {
                   </div>
                 </div>
 
-                {/* Action Buttons */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <button
-                    onClick={() => setSharingGig(selectedGig)}
-                    style={{
-                      width: '100%',
-                      background: '#F5F4FF',
-                      border: '1.5px solid #B8A5FF',
-                      borderRadius: '12px', padding: '13px',
-                      fontSize: '14px', fontWeight: '700',
-                      color: '#6C47FF', cursor: 'pointer',
-                      fontFamily: 'inherit',
-                      display: 'flex', alignItems: 'center',
-                      justifyContent: 'center', gap: '8px',
-                      transition: 'all 0.15s'
-                    }}
-                    onMouseEnter={e => { e.currentTarget.style.background = '#EEE9FF' }}
-                    onMouseLeave={e => { e.currentTarget.style.background = '#F5F4FF' }}>
-                    <span>🔗</span> Share & Earn Credits
-                  </button>
-                  <div style={{ display: 'flex', gap: '10px' }}>
+                {/* Save + Share row */}
+                <div style={{
+                  display: 'flex', gap: '8px', marginBottom: '8px'
+                }}>
                   <button
                     onClick={(e) => toggleSave(e, selectedGig.id)}
                     style={{
-                      background: savedGigIds.has(selectedGig?.id) ? '#EEE9FF' : '#F5F4FF',
-                      border: `1.5px solid ${savedGigIds.has(selectedGig?.id) ? '#B8A5FF' : '#E2E0FF'}`,
-                      borderRadius: '12px', padding: '10px 13px',
-                      cursor: 'pointer', flexShrink: 0,
-                      fontFamily: 'inherit',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center'
+                      flex: 1, background: savedGigIds.has(selectedGig?.id)
+                        ? '#EEE9FF' : '#F5F4FF',
+                      border: `1.5px solid ${savedGigIds.has(selectedGig?.id)
+                        ? '#B8A5FF' : '#E2E0FF'}`,
+                      borderRadius: '12px', padding: '11px',
+                      fontSize: '13px', fontWeight: '700',
+                      color: savedGigIds.has(selectedGig?.id)
+                        ? '#6C47FF' : '#8B8FAF',
+                      cursor: 'pointer', fontFamily: 'inherit'
                     }}>
-                    <BrandIcon
-                      name={savedGigIds.has(selectedGig?.id) ? 'saved' : 'unsaved'}
-                      size={28}
-                      active={savedGigIds.has(selectedGig?.id)}
-                    />
+                    {savedGigIds.has(selectedGig?.id) ? '🔖 Saved' : '🏷️ Save'}
                   </button>
-                  <button onClick={() => {
-                    setSelectedGig(null)
-                    setApplied(false)
-                  }} style={{
-                    flex: 1, background: '#F5F4FF',
-                    border: '1.5px solid #E2E0FF',
-                    borderRadius: '12px', padding: '14px',
-                    fontSize: '13px', fontWeight: '600',
-                    color: '#8B8FAF', cursor: 'pointer',
-                    fontFamily: 'inherit'
-                  }}>Skip</button>
+
+                  <button
+                    onClick={() => setSharingGig(selectedGig)}
+                    style={{
+                      flex: 1, background: '#F5F4FF',
+                      border: '1.5px solid #E2E0FF',
+                      borderRadius: '12px', padding: '11px',
+                      fontSize: '13px', fontWeight: '700',
+                      color: '#8B8FAF', cursor: 'pointer',
+                      fontFamily: 'inherit'
+                    }}>
+                    🔗 Share
+                  </button>
+                </div>
+
+                {/* Action buttons */}
+                <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                  {/* Message button */}
+                  <button
+                    onClick={() => {
+                      setSelectedGig(null)
+                      window.dispatchEvent(new CustomEvent('openChatWithUser', {
+                        detail: {
+                          userId: selectedGig.poster_id,
+                          gigId: selectedGig.id
+                        }
+                      }))
+                    }}
+                    style={{
+                      flex: 1, background: '#F5F4FF',
+                      border: '1.5px solid #B8A5FF',
+                      borderRadius: '12px', padding: '13px',
+                      fontSize: '13px', fontWeight: '700',
+                      color: '#6C47FF', cursor: 'pointer',
+                      fontFamily: 'inherit',
+                      display: 'flex', alignItems: 'center',
+                      justifyContent: 'center', gap: '6px'
+                    }}>
+                    💬 Message
+                  </button>
+
+                  {/* Apply button */}
                   <button
                     onClick={async () => {
-  // Selfie verification check
-  const { data: userProfile } = await supabase
-    .from('users')
-    .select('selfie_verified')
-    .eq('id', user.id)
-    .single()
-  if (!userProfile?.selfie_verified) {
-    alert('Please complete selfie verification in your profile before applying for gigs.')
-    window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'profile' }))
-    return
-  }
-  // Profile completion check
-  const { complete } = getProfileCompletion(profile)
-  if (!complete) {
-    setShowProfilePrompt(true)
-    return
-  }
-  setApplying(true)
-  try {
-    const { data: { session } } = await supabase.auth.getSession()
-    const userId = session?.user?.id
-    if (!userId) {
-      alert('Please log in to apply')
-      setApplying(false)
-      return
-    }
-    // Check if already applied
-    const { data: existing } = await supabase
-      .from('applications')
-      .select('id')
-      .eq('gig_id', selectedGig.id)
-      .eq('worker_id', userId)
-      .maybeSingle()
-    if (existing) {
-      alert('You already applied for this gig!')
-      setApplying(false)
-      return
-    }
-    // Save application
-    const { error } = await supabase
-      .from('applications')
-      .insert({
-        gig_id: selectedGig.id,
-        worker_id: userId,
-        status: 'pending'
-      })
-    if (error) {
-      alert('Error applying: ' + error.message)
-      setApplying(false)
-      return
-    }
-    // Notify the gig poster
-    await supabase.from('notifications').insert({
-      user_id: selectedGig.poster_id,
-      title: 'New Application!',
-      message: `Someone applied for your gig "${selectedGig.title}"`,
-      type: 'application',
-      gig_id: selectedGig.id
-    })
-    setApplied(true)
-    await trackGigReferral(selectedGig.id, userId)
-  } catch (e) {
-    console.log('Apply error:', e)
-  }
-  setApplying(false)
-}}
+                      // Selfie verification check
+                      const { data: userProfile } = await supabase
+                        .from('users')
+                        .select('selfie_verified')
+                        .eq('id', user.id)
+                        .single()
+                      if (!userProfile?.selfie_verified) {
+                        alert('Please complete selfie verification in your profile before applying for gigs.')
+                        window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'profile' }))
+                        return
+                      }
+                      // Profile completion check
+                      const { complete } = getProfileCompletion(profile)
+                      if (!complete) {
+                        setShowProfilePrompt(true)
+                        return
+                      }
+                      setApplying(true)
+                      try {
+                        const { data: { session } } = await supabase.auth.getSession()
+                        const userId = session?.user?.id
+                        if (!userId) {
+                          alert('Please log in to apply')
+                          setApplying(false)
+                          return
+                        }
+                        // Check if already applied
+                        const { data: existing } = await supabase
+                          .from('applications')
+                          .select('id')
+                          .eq('gig_id', selectedGig.id)
+                          .eq('worker_id', userId)
+                          .maybeSingle()
+                        if (existing) {
+                          alert('You already applied for this gig!')
+                          setApplying(false)
+                          return
+                        }
+                        // Save application
+                        const { error } = await supabase
+                          .from('applications')
+                          .insert({
+                            gig_id: selectedGig.id,
+                            worker_id: userId,
+                            status: 'pending'
+                          })
+                        if (error) {
+                          alert('Error applying: ' + error.message)
+                          setApplying(false)
+                          return
+                        }
+                        // Notify the gig poster
+                        await supabase.from('notifications').insert({
+                          user_id: selectedGig.poster_id,
+                          title: 'New Application!',
+                          message: `Someone applied for your gig "${selectedGig.title}"`,
+                          type: 'application',
+                          gig_id: selectedGig.id
+                        })
+                        setApplied(true)
+                        await trackGigReferral(selectedGig.id, userId)
+                      } catch (e) {
+                        console.log('Apply error:', e)
+                      }
+                      setApplying(false)
+                    }}
                     disabled={applying}
                     style={{
                       flex: 2,
                       background: applying
                         ? '#B8A5FF'
                         : 'linear-gradient(135deg, #6C47FF, #9B59FF)',
-                      border: 'none', borderRadius: '12px',
-                      padding: '14px', fontSize: '14px',
-                      fontWeight: '700', color: '#fff',
+                      border: 'none', borderRadius: '12px', padding: '13px',
+                      fontSize: '14px', fontWeight: '700', color: '#fff',
                       cursor: applying ? 'not-allowed' : 'pointer',
-                      boxShadow: '0 4px 20px rgba(108,71,255,0.35)',
-                      fontFamily: 'inherit', transition: 'all 0.2s'
+                      fontFamily: 'inherit',
+                      display: 'flex', alignItems: 'center',
+                      justifyContent: 'center', gap: '6px'
                     }}>
-                    {applying ? '⏳ Applying...' : '⚡ Apply for This Gig'}
+                    {applying ? '⏳ Applying...' : '⚡ Apply Now'}
                   </button>
-                  </div>
                 </div>
               </>
             )}
+
           </div>
         </div>
       )}

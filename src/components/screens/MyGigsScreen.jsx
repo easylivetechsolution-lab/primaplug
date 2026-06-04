@@ -937,7 +937,7 @@ export default function MyGigsScreen() {
     const { data } = await supabase
       .from('applications')
       .select(`
-        id, status, created_at, accepted_at,
+        id, status, created_at, accepted_at, worker_id,
         gigs(
           *,
           receipts(
@@ -951,8 +951,13 @@ export default function MyGigsScreen() {
         )
       `)
       .eq('worker_id', user.id)
+      .in('status', ['pending', 'accepted'])
       .order('created_at', { ascending: false })
-    if (data) setWorkingGigs(data.filter(a => a.gigs))
+
+    if (data) {
+      const valid = data.filter(a => a.gigs)
+      setWorkingGigs(valid)
+    }
   }
 
   const fetchActions = async () => {
@@ -1006,10 +1011,26 @@ export default function MyGigsScreen() {
         gig_id: gig.id
       })
 
+      // Send push notification
+      try {
+        await supabase.functions.invoke('send-push', {
+          body: {
+            userId: application.worker_id,
+            title: '🎉 You Got The Job!',
+            body: `Your application for "${gig.title}" was accepted!`,
+            data: { type: 'accepted', gigId: gig.id }
+          }
+        })
+      } catch (e) {
+        console.log('Push error:', e)
+      }
+
       // Notify declined workers
       const declinedApps = gig.applications?.filter(
-        a => a.id !== application.id
+        a => a.id !== application.id &&
+        a.status === 'pending'
       ) || []
+
       if (declinedApps.length > 0) {
         await supabase.from('notifications').insert(
           declinedApps.map(a => ({
@@ -1024,6 +1045,7 @@ export default function MyGigsScreen() {
 
       await fetchAll()
     } catch (e) {
+      console.error('Accept error:', e)
       alert('Error accepting: ' + e.message)
     }
   }
