@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+﻿import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 import CategoryPicker from './CategoryPicker'
@@ -230,7 +230,7 @@ export default function PostGig({ onClose }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
               <div>
                 <div style={{ fontSize: '10px', color: '#6C47FF', fontWeight: '700', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '3px' }}>
-                  Post a Gig · Step {step} of 3
+                  Post a Gig ┬╖ Step {step} of 3
                 </div>
                 <div style={{ fontSize: '20px', fontWeight: '800', color: '#14123A' }}>
                   {step === 1 ? 'What do you need?' : step === 2 ? 'Details & Pay' : 'Review & Post'}
@@ -242,7 +242,7 @@ export default function PostGig({ onClose }) {
                 fontSize: '18px', color: '#8B8FAF', cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontFamily: 'inherit'
-              }}>×</button>
+              }}>├ù</button>
             </div>
 
             {/* Progress */}
@@ -378,7 +378,7 @@ export default function PostGig({ onClose }) {
                   </div>
                 </div>
 
-                {/* Location — only for physical gigs */}
+                {/* Location ΓÇö only for physical gigs */}
                 {form.type === 'physical' && (
                   <div>
                     <label style={labelStyle}>
@@ -387,7 +387,7 @@ export default function PostGig({ onClose }) {
                         marginLeft: '6px', fontSize: '10px',
                         color: '#A09DC8', fontWeight: '500',
                         textTransform: 'none', letterSpacing: 0
-                      }}>— shown publicly on map</span>
+                      }}>ΓÇö shown publicly on map</span>
                     </label>
                     <div style={{ position: 'relative' }}>
                       <input
@@ -442,7 +442,7 @@ export default function PostGig({ onClose }) {
                           position: 'absolute', right: '12px',
                           top: '50%', transform: 'translateY(-50%)',
                           fontSize: '14px'
-                        }}>⏳</div>
+                        }}>ΓÅ│</div>
                       )}
 
                       {locationSelected && (
@@ -450,7 +450,7 @@ export default function PostGig({ onClose }) {
                           position: 'absolute', right: '12px',
                           top: '50%', transform: 'translateY(-50%)',
                           fontSize: '16px', color: '#00C48C'
-                        }}>✓</div>
+                        }}>Γ£ô</div>
                       )}
 
                       {locationResults.length > 0 && !locationSelected && (
@@ -516,7 +516,7 @@ export default function PostGig({ onClose }) {
                         fontSize: '11px', color: '#00C48C',
                         marginTop: '5px', display: 'flex',
                         alignItems: 'center', gap: '4px'
-                      }}>✓ Pin placed on map</div>
+                      }}>Γ£ô Pin placed on map</div>
                     )}
 
                     {/* Exact Address */}
@@ -642,12 +642,12 @@ export default function PostGig({ onClose }) {
                   marginBottom: '16px'
                 }}>
                   {[
-                    ['Title', form.title || '—'],
+                    ['Title', form.title || 'ΓÇö'],
                     ['Type', form.type],
                     ['Field', form.field],
                     ['Urgency', form.urgency.toUpperCase()],
-                    ['Pay Range', `$${form.pay_min || '?'} – $${form.pay_max || '?'}`],
-                    ['Location', form.type === 'digital' ? 'Remote' : (form.location || '—')],
+                    ['Pay Range', `$${form.pay_min || '?'} ΓÇô $${form.pay_max || '?'}`],
+                    ['Location', form.type === 'digital' ? 'Remote' : (form.location || 'ΓÇö')],
                     ['Slots', form.slots],
                   ].map(([k, v]) => (
                     <div key={k} style={{
@@ -697,7 +697,7 @@ export default function PostGig({ onClose }) {
                   fontSize: '13px', fontWeight: '600',
                   color: '#8B8FAF', cursor: 'pointer',
                   fontFamily: 'inherit'
-                }}>← Back</button>
+                }}>ΓåÉ Back</button>
               )}
               <button
                 onClick={step < 3 ? () => setStep(s => s + 1) : handleSubmit}
@@ -712,7 +712,7 @@ export default function PostGig({ onClose }) {
                   boxShadow: '0 4px 20px rgba(108,71,255,0.35)',
                   fontFamily: 'inherit', transition: 'all 0.2s'
                 }}>
-                {loading ? '⏳ Posting...' : step < 3 ? 'Continue →' : (
+                {loading ? 'ΓÅ│ Posting...' : step < 3 ? 'Continue ΓåÆ' : (
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
                     <BrandIcon name="post" size={26} />
                     Go Live

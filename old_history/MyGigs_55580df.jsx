@@ -1,4 +1,4 @@
-// import { useState, useEffect } from 'react'
+﻿// import { useState, useEffect } from 'react'
 // import { supabase } from '../../supabase'
 // import { useAuth } from '../../context/AuthContext'
 // import { getCurrency } from '../../data/currencies'
@@ -33,7 +33,7 @@
 //   )
 // }
 
-// // ── APPLICANT ROW ── completely standalone, no parent click interference
+// // ΓöÇΓöÇ APPLICANT ROW ΓöÇΓöÇ completely standalone, no parent click interference
 // const ApplicantRow = ({ app, gig, onAccept, onDecline, onReview, onReceipt, onViewProfile }) => (
 //   <div style={{
 //     display: 'flex', alignItems: 'center',
@@ -81,10 +81,10 @@
 //             color: '#6C47FF', cursor: 'pointer',
 //             marginBottom: '3px'
 //           }}>
-//           {app.users?.full_name || 'Unknown'} →
+//           {app.users?.full_name || 'Unknown'} ΓåÆ
 //         </div>
 //         <div style={{ fontSize: '10px', color: '#A09DC8' }}>
-//           Trust: {app.users?.trust_score || 100}% ·{' '}
+//           Trust: {app.users?.trust_score || 100}% ┬╖{' '}
 //           <span style={{
 //             fontWeight: '700',
 //             color: app.status === 'accepted' ? '#00C48C'
@@ -97,7 +97,7 @@
 //       </div>
 //     </div>
 
-//     {/* Right — actions */}
+//     {/* Right ΓÇö actions */}
 //     <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
 //       {app.status === 'pending' && (
 //         <>
@@ -109,7 +109,7 @@
 //               borderRadius: '8px', padding: '8px 12px',
 //               fontSize: '12px', fontWeight: '700',
 //               color: '#00C48C', cursor: 'pointer', fontFamily: 'inherit'
-//             }}>✓ Accept</button>
+//             }}>Γ£ô Accept</button>
 //           <button
 //             onMouseDown={(e) => { e.stopPropagation(); e.preventDefault() }}
 //             onClick={() => onDecline(app)}
@@ -118,7 +118,7 @@
 //               borderRadius: '8px', padding: '8px 12px',
 //               fontSize: '12px', fontWeight: '700',
 //               color: '#FF3366', cursor: 'pointer', fontFamily: 'inherit'
-//             }}>✗ Decline</button>
+//             }}>Γ£ù Decline</button>
 //         </>
 //       )}
 //       {app.status === 'accepted' && (
@@ -127,7 +127,7 @@
 //             background: '#DFFDF4', border: '1.5px solid #7EECD2',
 //             borderRadius: '8px', padding: '7px 12px',
 //             fontSize: '11px', fontWeight: '700', color: '#00C48C'
-//           }}>✓ Accepted</span>
+//           }}>Γ£ô Accepted</span>
 //           <button
 //             onMouseDown={(e) => { e.stopPropagation(); e.preventDefault() }}
 //             onClick={() => onReceipt(app)}
@@ -136,7 +136,7 @@
 //               borderRadius: '8px', padding: '7px 10px',
 //               fontSize: '11px', fontWeight: '700',
 //               color: '#6C47FF', cursor: 'pointer', fontFamily: 'inherit'
-//             }}>📎</button>
+//             }}>≡ƒôÄ</button>
 //           <button
 //             onMouseDown={(e) => { e.stopPropagation(); e.preventDefault() }}
 //             onClick={() => onReview(app)}
@@ -145,7 +145,7 @@
 //               borderRadius: '8px', padding: '7px 10px',
 //               fontSize: '11px', fontWeight: '700',
 //               color: '#6C47FF', cursor: 'pointer', fontFamily: 'inherit'
-//             }}>⭐</button>
+//             }}>Γ¡É</button>
 //         </>
 //       )}
 //       {app.status === 'rejected' && (
@@ -153,7 +153,7 @@
 //           background: '#FFE8EE', border: '1.5px solid #FF99B3',
 //           borderRadius: '8px', padding: '7px 12px',
 //           fontSize: '11px', fontWeight: '700', color: '#FF3366'
-//         }}>✗ Declined</span>
+//         }}>Γ£ù Declined</span>
 //       )}
 //     </div>
 //   </div>
@@ -242,14 +242,14 @@
 
 //     await supabase.from('notifications').insert({
 //       user_id: app.worker_id,
-//       title: 'Application Accepted! 🎉',
+//       title: 'Application Accepted! ≡ƒÄë',
 //       message: `Your application for "${gig.title}" was accepted`,
 //       type: 'accepted',
 //       gig_id: gig.id
 //     })
 //     await sendPushToUser(
 //       app.worker_id,
-//       '🎉 Application Accepted!',
+//       '≡ƒÄë Application Accepted!',
 //       `Your application for "${gig.title}" was accepted`,
 //       { type: 'accepted', gigId: gig.id }
 //     )
@@ -336,13 +336,13 @@
 //             alignItems: 'center', gap: '10px'
 //           }}>
 //           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-//             <span style={{ fontSize: '18px' }}>⚠️</span>
+//             <span style={{ fontSize: '18px' }}>ΓÜá∩╕Å</span>
 //             <div>
 //               <div style={{ fontSize: '12px', fontWeight: '700', color: '#FF3366' }}>
 //                 Platform commission due
 //               </div>
 //               <div style={{ fontSize: '10px', color: '#FF3366', opacity: 0.8 }}>
-//                 ${totalOwed.toFixed(2)} owed · {pendingCommissions.length} pending
+//                 ${totalOwed.toFixed(2)} owed ┬╖ {pendingCommissions.length} pending
 //               </div>
 //             </div>
 //           </div>
@@ -350,7 +350,7 @@
 //             background: '#FF3366', color: '#fff',
 //             borderRadius: '8px', padding: '5px 10px',
 //             fontSize: '11px', fontWeight: '700', flexShrink: 0
-//           }}>Pay Now →</div>
+//           }}>Pay Now ΓåÆ</div>
 //         </div>
 //       )}
 
@@ -384,7 +384,7 @@
 //         </div>
 //       ) : (
 //         <>
-//           {/* ── POSTED GIGS ── */}
+//           {/* ΓöÇΓöÇ POSTED GIGS ΓöÇΓöÇ */}
 //           {tab === 'posted' && (
 //             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
 //               {postedGigs.length === 0 ? (
@@ -407,7 +407,7 @@
 //                   borderRadius: '16px', overflow: 'hidden'
 //                 }}>
 
-//                   {/* Header — click to expand */}
+//                   {/* Header ΓÇö click to expand */}
 //                   <div
 //                     onClick={() => setExpandedGigId(
 //                       expandedGigId === gig.id ? null : gig.id
@@ -431,7 +431,7 @@
 //                           borderRadius: '5px', padding: '2px 8px',
 //                           fontSize: '9px', fontWeight: '600', color: '#8B8FAF'
 //                         }}>
-//                           {gig.type === 'physical' ? '📌 LOCAL' : '💻 REMOTE'}
+//                           {gig.type === 'physical' ? '≡ƒôî LOCAL' : '≡ƒÆ╗ REMOTE'}
 //                         </span>
 //                         {gig.slots > 1 && (
 //                           <span style={{
@@ -447,7 +447,7 @@
 //                     <div style={{ textAlign: 'right', flexShrink: 0, paddingLeft: '10px' }}>
 //                       <div style={{
 //                         fontSize: '15px', fontWeight: '800', color: '#00C48C'
-//                       }}>{getCurrencySymbol(gig.currency)}{gig.pay_min}–{getCurrencySymbol(gig.currency)}{gig.pay_max}</div>
+//                       }}>{getCurrencySymbol(gig.currency)}{gig.pay_min}ΓÇô{getCurrencySymbol(gig.currency)}{gig.pay_max}</div>
 //                       <div style={{ fontSize: '10px', color: '#A09DC8', marginTop: '2px' }}>
 //                         {new Date(gig.created_at).toLocaleDateString()}
 //                         {gig.expires_at && (
@@ -456,14 +456,14 @@
 //                             color: new Date(gig.expires_at) < new Date(Date.now() + 86400000)
 //                               ? '#FF3366' : '#A09DC8'
 //                           }}>
-//                             · Expires {new Date(gig.expires_at).toLocaleDateString('en-US', {
+//                             ┬╖ Expires {new Date(gig.expires_at).toLocaleDateString('en-US', {
 //                               month: 'short', day: 'numeric'
 //                             })}
 //                           </span>
 //                         )}
 //                       </div>
 //                       <div style={{ fontSize: '11px', color: '#A09DC8', marginTop: '4px' }}>
-//                         {expandedGigId === gig.id ? '▲' : '▼'}
+//                         {expandedGigId === gig.id ? 'Γû▓' : 'Γû╝'}
 //                       </div>
 //                     </div>
 //                   </div>
@@ -488,7 +488,7 @@
 //                           }}>Pay Range</div>
 //                           <div style={{
 //                             fontSize: '15px', fontWeight: '800', color: '#00C48C'
-//                           }}>{getCurrencySymbol(gig.currency)}{gig.pay_min}–{getCurrencySymbol(gig.currency)}{gig.pay_max}</div>
+//                           }}>{getCurrencySymbol(gig.currency)}{gig.pay_min}ΓÇô{getCurrencySymbol(gig.currency)}{gig.pay_max}</div>
 //                         </div>
 //                         <div style={{
 //                           background: '#fff', borderRadius: '10px', padding: '10px'
@@ -500,7 +500,7 @@
 //                           }}>Field</div>
 //                           <div style={{
 //                             fontSize: '13px', fontWeight: '700', color: '#14123A'
-//                           }}>{gig.field || '—'}</div>
+//                           }}>{gig.field || 'ΓÇö'}</div>
 //                         </div>
 //                       </div>
 //                       {gig.location && (
@@ -515,7 +515,7 @@
 //                           }}>Location</div>
 //                           <div style={{
 //                             fontSize: '13px', fontWeight: '600', color: '#14123A'
-//                           }}>📍 {gig.location}</div>
+//                           }}>≡ƒôì {gig.location}</div>
 //                         </div>
 //                       )}
 //                       {gig.description && (
@@ -535,7 +535,7 @@
 //                     </div>
 //                   )}
 
-//                   {/* Applicants — rendered as separate component, no parent click */}
+//                   {/* Applicants ΓÇö rendered as separate component, no parent click */}
 //                   {gig.applications && gig.applications.length > 0 && (
 //                     <div style={{
 //                       borderTop: '1px solid #E2E0FF',
@@ -589,7 +589,7 @@
 //                                 display: 'flex', alignItems: 'center',
 //                                 justifyContent: 'center', gap: '6px'
 //                               }}>
-//                               📍 Track Worker
+//                               ≡ƒôì Track Worker
 //                             </button>
 //                           )}
 //                         </div>
@@ -610,7 +610,7 @@
 //                         borderRadius: '10px', padding: '10px 14px',
 //                         fontSize: '13px', fontWeight: '700',
 //                         color: '#6C47FF', cursor: 'pointer', fontFamily: 'inherit'
-//                       }}>✏️ Edit</button>
+//                       }}>Γ£Å∩╕Å Edit</button>
 //                     <button
 //                       onClick={() => handleDeleteGig(gig.id)}
 //                       style={{
@@ -618,14 +618,14 @@
 //                         borderRadius: '10px', padding: '10px 14px',
 //                         fontSize: '13px', fontWeight: '700',
 //                         color: '#FF3366', cursor: 'pointer', fontFamily: 'inherit'
-//                       }}>🗑 Delete</button>
+//                       }}>≡ƒùæ Delete</button>
 //                   </div>
 //                 </div>
 //               ))}
 //             </div>
 //           )}
 
-//           {/* ── APPLIED GIGS ── */}
+//           {/* ΓöÇΓöÇ APPLIED GIGS ΓöÇΓöÇ */}
 //           {tab === 'applied' && (
 //             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
 //               {appliedGigs.length === 0 ? (
@@ -670,18 +670,18 @@
 //                           : app.status === 'rejected' ? '#FF3366' : '#6C47FF',
 //                         letterSpacing: '0.8px', textTransform: 'uppercase'
 //                       }}>
-//                         {app.status === 'accepted' ? '✓ Accepted'
-//                           : app.status === 'rejected' ? '✗ Declined' : '⏳ Pending'}
+//                         {app.status === 'accepted' ? 'Γ£ô Accepted'
+//                           : app.status === 'rejected' ? 'Γ£ù Declined' : 'ΓÅ│ Pending'}
 //                       </span>
 //                     </div>
 //                     <div style={{
 //                       fontSize: '15px', fontWeight: '800', color: '#00C48C'
 //                     }}>
-//                       {getCurrencySymbol(app.gigs?.currency)}{app.gigs?.pay_min}–{getCurrencySymbol(app.gigs?.currency)}{app.gigs?.pay_max}
+//                       {getCurrencySymbol(app.gigs?.currency)}{app.gigs?.pay_min}ΓÇô{getCurrencySymbol(app.gigs?.currency)}{app.gigs?.pay_max}
 //                     </div>
 //                   </div>
 //                   <div style={{ fontSize: '11px', color: '#8B8FAF' }}>
-//                     Posted by {app.gigs?.users?.full_name || 'Unknown'} ·{' '}
+//                     Posted by {app.gigs?.users?.full_name || 'Unknown'} ┬╖{' '}
 //                     Applied {new Date(app.created_at).toLocaleDateString()}
 //                   </div>
 //                   {app.status === 'accepted' && (
@@ -697,7 +697,7 @@
 //                         borderRadius: '10px', padding: '10px',
 //                         fontSize: '12px', fontWeight: '700',
 //                         color: '#6C47FF', cursor: 'pointer', fontFamily: 'inherit'
-//                       }}>📎 Upload Completion Receipt</button>
+//                       }}>≡ƒôÄ Upload Completion Receipt</button>
 //                   )}
 //                   {app.status === 'accepted' && app.gigs?.type === 'physical' && (
 //                     <button
@@ -717,7 +717,7 @@
 //                         justifyContent: 'center', gap: '8px',
 //                         boxShadow: '0 4px 16px rgba(108,71,255,0.35)'
 //                       }}>
-//                       🧭 Navigate to Gig
+//                       ≡ƒº¡ Navigate to Gig
 //                     </button>
 //                   )}
 //                 </div>
@@ -837,15 +837,14 @@ import ReceiptFlow from '../ReceiptFlow'
 import LiveTracking from '../LiveTracking'
 import EditGig from '../EditGig'
 import BrandIcon from '../BrandIcon'
-import { sendPushToUser } from '../../utils/pushNotifications'
 
-// ─── CONSTANTS ───────────────────────────────────────
+// ΓöÇΓöÇΓöÇ CONSTANTS ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 const TABS = [
   { key: 'myposts', icon: 'mygigs', label: 'My Posts' },
   { key: 'myjobs', icon: 'applied', label: 'My Jobs' },
 ]
 
-// ─── HELPERS ─────────────────────────────────────────
+// ΓöÇΓöÇΓöÇ HELPERS ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 const timeAgo = (date) => {
   if (!date) return ''
   const s = Math.floor((new Date() - new Date(date)) / 1000)
@@ -860,7 +859,7 @@ const daysSince = (date) => {
   return Math.floor((new Date() - new Date(date)) / (1000 * 60 * 60 * 24))
 }
 
-// ─── MAIN COMPONENT ───────────────────────────────────
+// ΓöÇΓöÇΓöÇ MAIN COMPONENT ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 export default function MyGigsScreen() {
   const { user, profile } = useAuth()
   const { pendingCommissions, totalOwed } = useCredits()
@@ -938,7 +937,7 @@ export default function MyGigsScreen() {
     const { data } = await supabase
       .from('applications')
       .select(`
-        id, status, created_at, accepted_at, worker_id,
+        id, status, created_at, accepted_at,
         gigs(
           *,
           receipts(
@@ -952,13 +951,8 @@ export default function MyGigsScreen() {
         )
       `)
       .eq('worker_id', user.id)
-      .in('status', ['pending', 'accepted'])
       .order('created_at', { ascending: false })
-
-    if (data) {
-      const valid = data.filter(a => a.gigs)
-      setWorkingGigs(valid)
-    }
+    if (data) setWorkingGigs(data.filter(a => a.gigs))
   }
 
   const fetchActions = async () => {
@@ -972,7 +966,7 @@ export default function MyGigsScreen() {
     }
   }
 
-  // ─── ACTIONS ───────────────────────────────────────
+  // ΓöÇΓöÇΓöÇ ACTIONS ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
   const acceptApplication = async (gig, application) => {
     try {
@@ -985,53 +979,37 @@ export default function MyGigsScreen() {
         })
         .eq('id', application.id)
 
-      const { data: accepted } = await supabase
+      // Decline all others
+      await supabase
         .from('applications')
-        .select('id')
+        .update({ status: 'declined' })
         .eq('gig_id', gig.id)
-        .eq('status', 'accepted')
+        .neq('id', application.id)
 
-      const filled = accepted?.length || 0
-
-      if (filled >= gig.slots) {
-        await supabase
-          .from('gigs')
-          .update({ status: 'in_progress', slots_filled: filled })
-          .eq('id', gig.id)
-      } else {
-        await supabase
-          .from('gigs')
-          .update({ slots_filled: filled })
-          .eq('id', gig.id)
-      }
+      // Update gig with worker
+      await supabase
+        .from('gigs')
+        .update({
+          status: 'in_progress',
+          worker_id: application.worker_id,
+          worker_name: application.users?.full_name,
+          accepted_at: new Date().toISOString()
+        })
+        .eq('id', gig.id)
 
       // Notify accepted worker
       await supabase.from('notifications').insert({
         user_id: application.worker_id,
-        title: '🎉 You Got The Job!',
+        title: '≡ƒÄë You Got The Job!',
         message: `Your application for "${gig.title}" was accepted! Get in touch with the poster and get started.`,
         type: 'accepted',
         gig_id: gig.id
       })
 
-      // Send push notification
-      try {
-        await sendPushToUser(
-          application.worker_id,
-          '🎉 You Got The Job!',
-          `Your application for "${gig.title}" was accepted!`,
-          { type: 'accepted', gigId: gig.id }
-        )
-      } catch (e) {
-        console.log('Push error:', e)
-      }
-
       // Notify declined workers
       const declinedApps = gig.applications?.filter(
-        a => a.id !== application.id &&
-        a.status === 'pending'
+        a => a.id !== application.id
       ) || []
-
       if (declinedApps.length > 0) {
         await supabase.from('notifications').insert(
           declinedApps.map(a => ({
@@ -1046,7 +1024,6 @@ export default function MyGigsScreen() {
 
       await fetchAll()
     } catch (e) {
-      console.error('Accept error:', e)
       alert('Error accepting: ' + e.message)
     }
   }
@@ -1061,20 +1038,9 @@ export default function MyGigsScreen() {
       user_id: application.worker_id,
       title: 'Application Update',
       message: `Your application for "${gigTitle}" was not selected.`,
-      type: 'rejected',
+      type: 'declined',
       gig_id: application.gig_id
     })
-
-    try {
-      await sendPushToUser(
-        application.worker_id,
-        'Application Update',
-        `Your application for "${gigTitle}" was not selected.`,
-        { type: 'rejected', gigId: application.gig_id }
-      )
-    } catch (e) {
-      console.log('Push error:', e)
-    }
 
     await fetchAll()
   }
@@ -1085,7 +1051,7 @@ export default function MyGigsScreen() {
     await fetchAll()
   }
 
-  // ─── FILTER LOGIC ──────────────────────────────────
+  // ΓöÇΓöÇΓöÇ FILTER LOGIC ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
   const getPostedGigStatus = (gig) => {
     const receipt = gig.receipts?.[0]
@@ -1110,7 +1076,7 @@ export default function MyGigsScreen() {
     return 'pending'
   }
 
-  // ─── ACTION COUNTS ─────────────────────────────────
+  // ΓöÇΓöÇΓöÇ ACTION COUNTS ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
   const postedActionCount = postedGigs.filter(g =>
     ['hasapplicants', 'waiting'].includes(getPostedGigStatus(g))
@@ -1122,7 +1088,7 @@ export default function MyGigsScreen() {
 
   const totalActionCount = postedActionCount + workingActionCount
 
-  // ─── STYLES ────────────────────────────────────────
+  // ΓöÇΓöÇΓöÇ STYLES ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
   const sectionHeader = (label, color = '#A09DC8') => (
     <div style={{
@@ -1135,7 +1101,7 @@ export default function MyGigsScreen() {
     </div>
   )
 
-  // ─── RENDER ────────────────────────────────────────
+  // ΓöÇΓöÇΓöÇ RENDER ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
   return (
     <div style={{
@@ -1188,7 +1154,7 @@ export default function MyGigsScreen() {
             <span style={{
               fontSize: '12px', color: '#FF3366',
               fontWeight: '600'
-            }}>{showActions ? '▲' : '▼'}</span>
+            }}>{showActions ? 'Γû▓' : 'Γû╝'}</span>
           </div>
         )}
 
@@ -1252,7 +1218,7 @@ export default function MyGigsScreen() {
                 </div>
                 <span style={{
                   fontSize: '12px', color: '#A09DC8'
-                }}>→</span>
+                }}>ΓåÆ</span>
               </div>
             ))}
           </div>
@@ -1312,7 +1278,7 @@ export default function MyGigsScreen() {
           }}>Loading...</div>
         ) : (
           <>
-            {/* ── MY POSTS TAB ── */}
+            {/* ΓöÇΓöÇ MY POSTS TAB ΓöÇΓöÇ */}
             {tab === 'myposts' && (
               <PostedTab
                 gigs={postedGigs}
@@ -1333,7 +1299,7 @@ export default function MyGigsScreen() {
               />
             )}
 
-            {/* ── MY JOBS TAB ── */}
+            {/* ΓöÇΓöÇ MY JOBS TAB ΓöÇΓöÇ */}
             {tab === 'myjobs' && (
               <WorkingTab
                 applications={workingGigs}
@@ -1354,7 +1320,7 @@ export default function MyGigsScreen() {
         )}
       </div>
 
-      {/* ── MODALS ── */}
+      {/* ΓöÇΓöÇ MODALS ΓöÇΓöÇ */}
       {receiptGig && (
         <ReceiptFlow
           gig={receiptGig}
@@ -1413,9 +1379,9 @@ export default function MyGigsScreen() {
   )
 }
 
-// ══════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 // POSTED TAB
-// ══════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 function PostedTab({
   gigs, getStatus, onAccept, onDecline, onDelete,
   onReceipt, onEdit, onViewProfile, onViewApplicants,
@@ -1431,7 +1397,7 @@ function PostedTab({
   if (gigs.length === 0) {
     return (
       <EmptyState
-        icon="📋"
+        icon="≡ƒôï"
         title="No gigs posted yet"
         subtitle="Post your first gig to find workers"
         action="Post a Gig"
@@ -1456,25 +1422,25 @@ function PostedTab({
     <div>
       {actionGigs.length > 0 && (
         <>
-          {sectionHeader('🔴 Needs Action', '#FF3366')}
+          {sectionHeader('≡ƒö┤ Needs Action', '#FF3366')}
           {actionGigs.map(renderGig)}
         </>
       )}
       {inProgressGigs.length > 0 && (
         <>
-          {sectionHeader('🟡 In Progress', '#FF6B2B')}
+          {sectionHeader('≡ƒƒí In Progress', '#FF6B2B')}
           {inProgressGigs.map(renderGig)}
         </>
       )}
       {openGigs.length > 0 && (
         <>
-          {sectionHeader('🟢 Open', '#00C48C')}
+          {sectionHeader('≡ƒƒó Open', '#00C48C')}
           {openGigs.map(renderGig)}
         </>
       )}
       {completedGigs.length > 0 && (
         <>
-          {sectionHeader('✅ Completed', '#8B8FAF')}
+          {sectionHeader('Γ£à Completed', '#8B8FAF')}
           {completedGigs.map(renderGig)}
         </>
       )}
@@ -1482,9 +1448,9 @@ function PostedTab({
   )
 }
 
-// ══════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 // POSTED GIG CARD
-// ══════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 function PostedGigCard({
   gig, status, onAccept, onDecline, onDelete,
   onReceipt, onEdit, onViewProfile, onViewApplicants, onTrack
@@ -1548,15 +1514,15 @@ function PostedGigCard({
             <div style={{
               fontSize: '11px', color: '#8B8FAF', marginTop: '3px'
             }}>
-              {currency.symbol}{gig.pay_min}–{currency.symbol}{gig.pay_max} ·{' '}
-              {gig.location || 'Remote'} · {timeAgo(gig.created_at)}
+              {currency.symbol}{gig.pay_min}ΓÇô{currency.symbol}{gig.pay_max} ┬╖{' '}
+              {gig.location || 'Remote'} ┬╖ {timeAgo(gig.created_at)}
             </div>
           </div>
           <span style={{
             fontSize: '14px', color: '#A09DC8',
             transform: expanded ? 'rotate(180deg)' : 'rotate(0)',
             transition: 'transform 0.2s'
-          }}>▼</span>
+          }}>Γû╝</span>
         </div>
 
         {/* Worker info if in progress */}
@@ -1590,7 +1556,7 @@ function PostedGigCard({
                 fontSize: '12px', fontWeight: '600', color: '#14123A'
               }}>{gig.worker?.full_name}</div>
               <div style={{ fontSize: '10px', color: '#8B8FAF' }}>
-                ⭐ {gig.worker?.rating || 5.0} · Working since {timeAgo(gig.accepted_at)}
+                Γ¡É {gig.worker?.rating || 5.0} ┬╖ Working since {timeAgo(gig.accepted_at)}
               </div>
             </div>
           </div>
@@ -1647,11 +1613,11 @@ function PostedGigCard({
               display: 'flex', alignItems: 'center',
               justifyContent: 'center', gap: '8px'
             }}>
-            👥 Review {pendingApps.length} Applicant{pendingApps.length > 1 ? 's' : ''} →
+            ≡ƒæÑ Review {pendingApps.length} Applicant{pendingApps.length > 1 ? 's' : ''} ΓåÆ
           </button>
         )}
 
-        {/* IN PROGRESS — Receipt Upload */}
+        {/* IN PROGRESS ΓÇö Receipt Upload */}
         {status === 'inprogress' && (
           <div>
             {daysSinceAccepted >= 3 && (
@@ -1662,7 +1628,7 @@ function PostedGigCard({
                 fontWeight: '600', marginBottom: '10px',
                 display: 'flex', gap: '6px', alignItems: 'center'
               }}>
-                <span>⚠️</span>
+                <span>ΓÜá∩╕Å</span>
                 <span>
                   {gig.worker?.full_name?.split(' ')[0]} has been working
                   {daysSinceAccepted} days. Have you paid them?
@@ -1677,7 +1643,7 @@ function PostedGigCard({
               <div style={{
                 fontSize: '12px', fontWeight: '700',
                 color: '#6C47FF', marginBottom: '3px'
-              }}>📎 Ready to upload receipt?</div>
+              }}>≡ƒôÄ Ready to upload receipt?</div>
               <div style={{
                 fontSize: '11px', color: '#6C47FF',
                 opacity: 0.8, marginBottom: '8px'
@@ -1695,7 +1661,7 @@ function PostedGigCard({
                   cursor: 'pointer', fontFamily: 'inherit',
                   boxShadow: '0 3px 12px rgba(108,71,255,0.35)'
                 }}>
-                Upload Receipt →
+                Upload Receipt ΓåÆ
               </button>
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
@@ -1806,7 +1772,7 @@ function PostedGigCard({
                 display: 'flex', alignItems: 'center',
                 justifyContent: 'center'
               }}>
-              <span style={{ fontSize: '16px', lineHeight: 1 }}>🗑</span>
+              <span style={{ fontSize: '16px', lineHeight: 1 }}>≡ƒùæ</span>
             </button>
           </div>
         )}
@@ -1819,7 +1785,7 @@ function PostedGigCard({
           }}>
             <BrandIcon name="completed" size={20} active />
             {getCurrency(receipt?.currency || 'USD').symbol}
-            {receipt?.amount?.toLocaleString()} · Completed
+            {receipt?.amount?.toLocaleString()} ┬╖ Completed
           </div>
         )}
       </div>
@@ -1834,9 +1800,9 @@ function PostedGigCard({
   )
 }
 
-// ══════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 // WORKING TAB
-// ══════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 function WorkingTab({
   applications, getStatus, pendingCommissions, totalOwed,
   onReceipt, onViewProfile, onTrack, onRefresh,
@@ -1850,7 +1816,7 @@ function WorkingTab({
   if (applications.length === 0) {
     return (
       <EmptyState
-        icon="⚡"
+        icon="ΓÜí"
         title="No applications yet"
         subtitle="Browse gigs on the Feed or Map and apply"
         action="Browse Gigs"
@@ -1892,42 +1858,42 @@ function WorkingTab({
           <div>
             <div style={{
               fontSize: '12px', fontWeight: '700', color: '#FF3366'
-            }}>💰 Commission due</div>
+            }}>≡ƒÆ░ Commission due</div>
             <div style={{
               fontSize: '11px', color: '#FF3366', opacity: 0.8
             }}>
-              {pendingCommissions.length} pending · Pay to maintain account
+              {pendingCommissions.length} pending ┬╖ Pay to maintain account
             </div>
           </div>
           <div style={{
             background: '#FF3366', color: '#fff',
             borderRadius: '8px', padding: '6px 12px',
             fontSize: '12px', fontWeight: '700'
-          }}>Pay Now →</div>
+          }}>Pay Now ΓåÆ</div>
         </div>
       )}
 
       {actionApps.length > 0 && (
         <>
-          {sectionHeader('🔴 Action Required', '#FF3366')}
+          {sectionHeader('≡ƒö┤ Action Required', '#FF3366')}
           {actionApps.map(renderApp)}
         </>
       )}
       {inProgressApps.length > 0 && (
         <>
-          {sectionHeader('🟡 In Progress', '#FF6B2B')}
+          {sectionHeader('≡ƒƒí In Progress', '#FF6B2B')}
           {inProgressApps.map(renderApp)}
         </>
       )}
       {pendingApps.length > 0 && (
         <>
-          {sectionHeader('🔵 Pending', '#6C47FF')}
+          {sectionHeader('≡ƒö╡ Pending', '#6C47FF')}
           {pendingApps.map(renderApp)}
         </>
       )}
       {completedApps.length > 0 && (
         <>
-          {sectionHeader('✅ Completed', '#8B8FAF')}
+          {sectionHeader('Γ£à Completed', '#8B8FAF')}
           {completedApps.map(renderApp)}
         </>
       )}
@@ -1935,9 +1901,9 @@ function WorkingTab({
   )
 }
 
-// ══════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 // WORKING GIG CARD
-// ══════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 function WorkingGigCard({
   application, status, commission,
   onReceipt, onViewProfile, onTrack
@@ -1949,9 +1915,9 @@ function WorkingGigCard({
 
   const statusConfig = {
     pending: { color: '#6C47FF', bg: '#EEE9FF', border: '#B8A5FF', label: 'Applied' },
-    inprogress: { color: '#FF6B2B', bg: '#FFF0E8', border: '#FFBC99', label: '🎉 You Got This Job!' },
-    confirmreceipt: { color: '#FF3366', bg: '#FFE8EE', border: '#FF99B3', label: '⚡ Action Required' },
-    completed: { color: '#00C48C', bg: '#DFFDF4', border: '#7EECD2', label: '✅ Completed' },
+    inprogress: { color: '#FF6B2B', bg: '#FFF0E8', border: '#FFBC99', label: '≡ƒÄë You Got This Job!' },
+    confirmreceipt: { color: '#FF3366', bg: '#FFE8EE', border: '#FF99B3', label: 'ΓÜí Action Required' },
+    completed: { color: '#00C48C', bg: '#DFFDF4', border: '#7EECD2', label: 'Γ£à Completed' },
     declined: { color: '#8B8FAF', bg: '#F5F4FF', border: '#E2E0FF', label: 'Not Selected' },
   }
 
@@ -2014,7 +1980,7 @@ function WorkingGigCard({
           <span style={{ fontSize: '12px', color: '#8B8FAF' }}>
             {poster?.full_name || 'Poster'}
           </span>
-          <span style={{ fontSize: '11px', color: '#A09DC8' }}>·</span>
+          <span style={{ fontSize: '11px', color: '#A09DC8' }}>┬╖</span>
           <span style={{ fontSize: '12px', color: '#8B8FAF' }}>
             {gig?.location || 'Remote'}
           </span>
@@ -2022,7 +1988,7 @@ function WorkingGigCard({
 
         <div style={{ fontSize: '12px', color: '#00C48C', fontWeight: '700' }}>
           {getCurrency(gig?.currency || 'USD').symbol}
-          {gig?.pay_min}–{getCurrency(gig?.currency || 'USD').symbol}
+          {gig?.pay_min}ΓÇô{getCurrency(gig?.currency || 'USD').symbol}
           {gig?.pay_max}
         </div>
       </div>
@@ -2037,7 +2003,7 @@ function WorkingGigCard({
         {status === 'pending' && (
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             <div style={{ flex: 1, fontSize: '12px', color: '#8B8FAF' }}>
-              Waiting for a response · Applied {timeAgo(application.created_at)}
+              Waiting for a response ┬╖ Applied {timeAgo(application.created_at)}
             </div>
             <button
               onClick={() => window.dispatchEvent(new CustomEvent(
@@ -2127,7 +2093,7 @@ function WorkingGigCard({
                 {currency.symbol}{receipt?.amount?.toLocaleString()}
               </div>
               <div style={{ fontSize: '12px', color: '#8B8FAF' }}>
-                {receipt?.currency || 'USD'} · Is this what you received?
+                {receipt?.currency || 'USD'} ┬╖ Is this what you received?
               </div>
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
@@ -2139,7 +2105,7 @@ function WorkingGigCard({
                   borderRadius: '10px', padding: '12px',
                   fontSize: '12px', fontWeight: '700',
                   color: '#FF3366', cursor: 'pointer', fontFamily: 'inherit'
-                }}>✗ Dispute</button>
+                }}>Γ£ù Dispute</button>
               <button
                 onClick={() => onReceipt(gig)}
                 style={{
@@ -2149,7 +2115,7 @@ function WorkingGigCard({
                   fontSize: '13px', fontWeight: '700', color: '#fff',
                   cursor: 'pointer', fontFamily: 'inherit',
                   boxShadow: '0 3px 12px rgba(0,196,140,0.35)'
-                }}>✓ Confirm & Complete →</button>
+                }}>Γ£ô Confirm & Complete ΓåÆ</button>
             </div>
           </div>
         )}
@@ -2211,7 +2177,7 @@ function WorkingGigCard({
                     padding: '11px', fontSize: '13px', fontWeight: '700',
                     cursor: 'pointer', fontFamily: 'inherit',
                     boxShadow: '0 3px 12px rgba(255,51,102,0.35)'
-                  }}>Pay Commission Now →</button>
+                  }}>Pay Commission Now ΓåÆ</button>
               </div>
             )}
           </div>
@@ -2221,9 +2187,9 @@ function WorkingGigCard({
   )
 }
 
-// ══════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 // APPLICANTS SHEET
-// ══════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 function ApplicantsSheet({
   gig, onClose, onAccept, onDecline, onViewProfile
 }) {
@@ -2304,13 +2270,13 @@ function ApplicantsSheet({
                       color: '#6C47FF', cursor: 'pointer',
                       marginBottom: '2px'
                     }}>
-                    {app.users?.full_name || 'Unknown'} →
+                    {app.users?.full_name || 'Unknown'} ΓåÆ
                   </div>
                   <div style={{
                     fontSize: '11px', color: '#8B8FAF'
                   }}>
-                    ⭐ {app.users?.rating || 5.0} ·
-                    Trust {app.users?.trust_score || 100}% ·
+                    Γ¡É {app.users?.rating || 5.0} ┬╖
+                    Trust {app.users?.trust_score || 100}% ┬╖
                     {app.users?.level || 'New'}
                   </div>
                 </div>
@@ -2330,7 +2296,7 @@ function ApplicantsSheet({
                     fontSize: '12px', fontWeight: '700',
                     color: '#6C47FF', cursor: 'pointer',
                     fontFamily: 'inherit'
-                  }}>💬 Chat</button>
+                  }}>≡ƒÆ¼ Chat</button>
                 <button
                   onClick={() => onDecline(app)}
                   style={{
@@ -2340,7 +2306,7 @@ function ApplicantsSheet({
                     fontSize: '12px', fontWeight: '700',
                     color: '#FF3366', cursor: 'pointer',
                     fontFamily: 'inherit'
-                  }}>✗ Decline</button>
+                  }}>Γ£ù Decline</button>
                 <button
                   onClick={() => onAccept(app)}
                   style={{
@@ -2350,7 +2316,7 @@ function ApplicantsSheet({
                     fontSize: '13px', fontWeight: '700', color: '#fff',
                     cursor: 'pointer', fontFamily: 'inherit',
                     boxShadow: '0 3px 12px rgba(0,196,140,0.3)'
-                  }}>✓ Accept</button>
+                  }}>Γ£ô Accept</button>
               </div>
             </div>
           ))}
@@ -2366,9 +2332,9 @@ function ApplicantsSheet({
   )
 }
 
-// ══════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 // SHARED COMPONENTS
-// ══════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 function EmptyState({ icon, title, subtitle, action, onAction }) {
   return (
     <div style={{
