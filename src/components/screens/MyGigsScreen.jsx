@@ -837,6 +837,7 @@ import ReceiptFlow from '../ReceiptFlow'
 import LiveTracking from '../LiveTracking'
 import EditGig from '../EditGig'
 import BrandIcon from '../BrandIcon'
+import { sendPushToUser } from '../../utils/pushNotifications'
 
 // ─── CONSTANTS ───────────────────────────────────────
 const TABS = [
@@ -1013,14 +1014,12 @@ export default function MyGigsScreen() {
 
       // Send push notification
       try {
-        await supabase.functions.invoke('send-push', {
-          body: {
-            userId: application.worker_id,
-            title: '🎉 You Got The Job!',
-            body: `Your application for "${gig.title}" was accepted!`,
-            data: { type: 'accepted', gigId: gig.id }
-          }
-        })
+        await sendPushToUser(
+          application.worker_id,
+          '🎉 You Got The Job!',
+          `Your application for "${gig.title}" was accepted!`,
+          { type: 'accepted', gigId: gig.id }
+        )
       } catch (e) {
         console.log('Push error:', e)
       }

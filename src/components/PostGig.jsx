@@ -124,6 +124,27 @@ export default function PostGig({ onClose }) {
     const expiresAt = new Date()
     expiresAt.setDate(expiresAt.getDate() + form.duration_days)
 
+    // Prevent accidental duplicate posts: same poster + title within 2 minutes
+    const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString()
+    const { data: existing } = await supabase
+      .from('gigs')
+      .select('id, created_at')
+      .eq('poster_id', user.id)
+      .eq('title', form.title)
+      .gte('created_at', twoMinutesAgo)
+      .maybeSingle()
+
+    if (existing) {
+      // Already posted recently — treat as success to avoid duplicate
+      setDone(true)
+      setLoading(false)
+      setTimeout(() => {
+        onClose()
+        window.location.reload()
+      }, 1500)
+      return
+    }
+
     const { error: err } = await supabase.from('gigs').insert({
   poster_id: user.id,
   title: form.title,
