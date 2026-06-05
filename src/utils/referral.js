@@ -127,18 +127,44 @@ export const completeReferral = async (userId) => {
 
 // Generate referral code for new user
 export const generateReferralCode = async (userId, username, fullName) => {
-  const base = (username || fullName || 'user')
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, '')
-    .substring(0, 8)
-  const code = base + Math.floor(1000 + Math.random() * 9000)
+  try {
+    // Check if user already has a code
+    const { data: existing } = await supabase
+      .from('users')
+      .select('referral_code')
+      .eq('id', userId)
+      .single()
 
-  await supabase
-    .from('users')
-    .update({ referral_code: code })
-    .eq('id', userId)
+    if (existing?.referral_code) {
+      console.log('User already has referral code:', existing.referral_code)
+      return existing.referral_code
+    }
 
-  return code
+    // Generate new code
+    const base = (username || fullName || 'user')
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '')
+      .substring(0, 8)
+
+    const code = base + Math.floor(1000 + Math.random() * 9000)
+
+    const { error } = await supabase
+      .from('users')
+      .update({ referral_code: code })
+      .eq('id', userId)
+
+    if (error) {
+      console.error('Referral code update error:', error)
+      return null
+    }
+
+    console.log('Referral code generated:', code)
+    return code
+
+  } catch (e) {
+    console.error('generateReferralCode error:', e)
+    return null
+  }
 }
 
 // Capture gig referral from URL

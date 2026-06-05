@@ -977,7 +977,7 @@ export default function MyGigsScreen() {
   const acceptApplication = async (gig, application) => {
     try {
       // Accept this application
-      await supabase
+      const { error: acceptError } = await supabase
         .from('applications')
         .update({
           status: 'accepted',
@@ -985,34 +985,33 @@ export default function MyGigsScreen() {
         })
         .eq('id', application.id)
 
-      const { data: accepted } = await supabase
-        .from('applications')
-        .select('id')
-        .eq('gig_id', gig.id)
-        .eq('status', 'accepted')
+      if (acceptError) throw acceptError
 
-      const filled = accepted?.length || 0
+      // Update gig with worker_id
+      const { error: gigError } = await supabase
+        .from('gigs')
+        .update({
+          status: 'in_progress',
+          worker_id: application.worker_id,
+          worker_name: application.users?.full_name,
+          accepted_at: new Date().toISOString()
+        })
+        .eq('id', gig.id)
 
-      if (filled >= gig.slots) {
-        await supabase
-          .from('gigs')
-          .update({ status: 'in_progress', slots_filled: filled })
-          .eq('id', gig.id)
-      } else {
-        await supabase
-          .from('gigs')
-          .update({ slots_filled: filled })
-          .eq('id', gig.id)
-      }
+      if (gigError) throw gigError
 
       // Notify accepted worker
-      await supabase.from('notifications').insert({
-        user_id: application.worker_id,
-        title: '🎉 You Got The Job!',
-        message: `Your application for "${gig.title}" was accepted! Get in touch with the poster and get started.`,
-        type: 'accepted',
-        gig_id: gig.id
-      })
+      const { error: notifError } = await supabase
+        .from('notifications')
+        .insert({
+          user_id: application.worker_id,
+          title: '🎉 You Got The Job!',
+          message: `Your application for "${gig.title}" was accepted! Contact the poster and get started.`,
+          type: 'accepted',
+          gig_id: gig.id
+        })
+
+      if (notifError) console.error('Notification error:', notifError)
 
       // Send push notification
       try {
@@ -1026,25 +1025,33 @@ export default function MyGigsScreen() {
         console.log('Push error:', e)
       }
 
-      // Notify declined workers
-      const declinedApps = gig.applications?.filter(
-        a => a.id !== application.id &&
-        a.status === 'pending'
+      // Decline all other pending applications
+      const otherPendingApps = gig.applications?.filter(
+        a => a.id !== application.id && a.status === 'pending'
       ) || []
 
-      if (declinedApps.length > 0) {
+      if (otherPendingApps.length > 0) {
+        await supabase
+          .from('applications')
+          .update({ status: 'declined' })
+          .eq('gig_id', gig.id)
+          .neq('id', application.id)
+          .eq('status', 'pending')
+
         await supabase.from('notifications').insert(
-          declinedApps.map(a => ({
+          otherPendingApps.map(a => ({
             user_id: a.worker_id,
             title: 'Application Update',
             message: `Your application for "${gig.title}" was not selected this time.`,
-            type: 'declined',
+            type: 'rejected',
             gig_id: gig.id
           }))
         )
       }
 
       await fetchAll()
+      alert('Application accepted! Worker has been notified.')
+
     } catch (e) {
       console.error('Accept error:', e)
       alert('Error accepting: ' + e.message)
@@ -1780,9 +1787,9 @@ function PostedGigCard({
           </div>
         )}
 
-        {/* OPEN */}
-        {status === 'open' && (
-          <div style={{ display: 'flex', gap: '8px' }}>
+        {/* ACTIONS */}
+        {['open', 'hasapplicants', 'waiting', 'inprogress'].includes(status) && (
+          <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
             <button
               onClick={() => onEdit(gig)}
               style={{
@@ -2342,7 +2349,10 @@ function ApplicantsSheet({
                     fontFamily: 'inherit'
                   }}>✗ Decline</button>
                 <button
-                  onClick={() => onAccept(app)}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onAccept(app)
+                  }}
                   style={{
                     flex: 2,
                     background: 'linear-gradient(135deg, #00C48C, #00A878)',
