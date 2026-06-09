@@ -1,75 +1,117 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '../../supabase'
 import { useAuth } from '../../context/AuthContext'
 import { useCredits } from '../../context/CreditsContext'
+import { generateReferralCode, REFERRAL_REWARDS } from '../../utils/referral'
 
 export default function ReferralScreen() {
-  const { user, profile } = useAuth()
+  const { user, profile, refreshProfile } = useAuth()
   const { credits } = useCredits()
   const [referrals, setReferrals] = useState([])
   const [leaderboard, setLeaderboard] = useState([])
   const [copied, setCopied] = useState(false)
-  const [loading, setLoading] = useState(true)
+  const [generatingCode, setGeneratingCode] = useState(false)
+  const generationStartedRef = useRef(false)
 
   const referralCode = profile?.referral_code || ''
   const referralLink = `https://primaplug.com/?ref=${referralCode}`
 
-  useEffect(() => {
+  const loadReferralData = useCallback(async () => {
+    if (!user) return
+
+    const fetchReferrals = async () => {
+      const { data } = await supabase
+        .from('referrals')
+        .select('*, referred:users!referrals_referred_id_fkey(full_name, avatar_url, joined_at)')
+        .eq('referrer_id', user.id)
+        .order('created_at', { ascending: false })
+      if (data) setReferrals(data)
+    }
+
+    const fetchLeaderboard = async () => {
+      const { data } = await supabase
+        .from('referrals')
+        .select('referrer_id, users!referrals_referrer_id_fkey(full_name, avatar_url, trust_score)')
+        .eq('status', 'completed')
+
+      if (data) {
+        const counts = {}
+        data.forEach(r => {
+          const id = r.referrer_id
+          if (!counts[id]) {
+            counts[id] = {
+              id,
+              user: r.users,
+              count: 0
+            }
+          }
+          counts[id].count++
+        })
+
+        const sorted = Object.values(counts)
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 10)
+
+        setLeaderboard(sorted)
+      }
+    }
+
     fetchReferrals()
     fetchLeaderboard()
   }, [user])
 
-  const fetchReferrals = async () => {
+  useEffect(() => {
+    loadReferralData()
+  }, [loadReferralData])
+
+  useEffect(() => {
     if (!user) return
-    const { data } = await supabase
-      .from('referrals')
-      .select('*, referred:users!referrals_referred_id_fkey(full_name, avatar_url, joined_at)')
-      .eq('referrer_id', user.id)
-      .order('created_at', { ascending: false })
-    if (data) setReferrals(data)
-    setLoading(false)
-  }
 
-  const fetchLeaderboard = async () => {
-    const { data } = await supabase
-      .from('referrals')
-      .select('referrer_id, users!referrals_referrer_id_fkey(full_name, avatar_url, trust_score)')
-      .eq('status', 'completed')
-
-    if (data) {
-      const counts = {}
-      data.forEach(r => {
-        const id = r.referrer_id
-        if (!counts[id]) {
-          counts[id] = {
-            id,
-            user: r.users,
-            count: 0
-          }
-        }
-        counts[id].count++
+    const channel = supabase
+      .channel('referrals-' + user.id)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'referrals',
+        filter: `referrer_id=eq.${user.id}`
+      }, () => {
+        loadReferralData()
       })
+      .subscribe()
 
-      const sorted = Object.values(counts)
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 10)
+    return () => supabase.removeChannel(channel)
+  }, [user, loadReferralData])
 
-      setLeaderboard(sorted)
+  useEffect(() => {
+    const ensureReferralCode = async () => {
+      if (!user || !profile || profile.referral_code || generationStartedRef.current) return
+
+      generationStartedRef.current = true
+      setGeneratingCode(true)
+      const code = await generateReferralCode(user.id, profile.username, profile.full_name)
+      if (code) refreshProfile()
+      if (!code) generationStartedRef.current = false
+      setGeneratingCode(false)
     }
-  }
+
+    ensureReferralCode()
+  }, [user, profile, refreshProfile])
 
   const copyLink = () => {
+    if (!referralCode) return
     navigator.clipboard.writeText(referralLink)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
 
   const shareWhatsApp = () => {
+    if (!referralCode) return
     const text = `Join me on PrimaPlug — the real-time labor marketplace! Find work or hire skilled people near you. Sign up here: ${referralLink}`
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank')
   }
 
   const shareTwitter = () => {
+    if (!referralCode) return
     const text = `I'm on PrimaPlug — find work or hire skilled people in real time! Join with my link:`
     window.open(
       `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(referralLink)}`,
@@ -78,8 +120,7 @@ export default function ReferralScreen() {
   }
 
   const completed = referrals.filter(r => r.status === 'completed').length
-  const pending = referrals.filter(r => r.status === 'pending').length
-  const creditsFromReferrals = completed * 20
+  const creditsFromReferrals = completed * REFERRAL_REWARDS.referrerCredits
 
   return (
     <div style={{
@@ -118,7 +159,7 @@ export default function ReferralScreen() {
           }}>
             <div style={{
               fontSize: '28px', fontWeight: '800', marginBottom: '3px'
-            }}>+5</div>
+            }}>+{REFERRAL_REWARDS.referrerTrust}</div>
             <div style={{ fontSize: '11px', opacity: 0.8 }}>Trust Score</div>
             <div style={{ fontSize: '10px', opacity: 0.6, marginTop: '2px' }}>
               You get
@@ -130,7 +171,7 @@ export default function ReferralScreen() {
           }}>
             <div style={{
               fontSize: '28px', fontWeight: '800', marginBottom: '3px'
-            }}>20</div>
+            }}>{REFERRAL_REWARDS.referrerCredits}</div>
             <div style={{ fontSize: '11px', opacity: 0.8 }}>Prima Credits</div>
             <div style={{ fontSize: '10px', opacity: 0.6, marginTop: '2px' }}>
               You get
@@ -142,7 +183,7 @@ export default function ReferralScreen() {
           borderRadius: '10px', padding: '10px 14px',
           fontSize: '11px', opacity: 0.9, lineHeight: '1.5'
         }}>
-          🎁 Your friend gets +3 trust score and 10 Prima Credits when they complete their profile
+          🎁 Your friend gets +{REFERRAL_REWARDS.referredTrust} trust score and {REFERRAL_REWARDS.referredCredits} Prima Credits when they complete their profile
         </div>
       </div>
 
@@ -198,16 +239,18 @@ export default function ReferralScreen() {
             fontWeight: '600', overflow: 'hidden',
             textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             flex: 1
-          }}>{referralLink}</div>
+          }}>{referralCode ? referralLink : 'Generating your referral link...'}</div>
           <button
             onClick={copyLink}
+            disabled={!referralCode}
             style={{
               background: copied ? '#DFFDF4' : '#EEE9FF',
               border: `1.5px solid ${copied ? '#7EECD2' : '#B8A5FF'}`,
               borderRadius: '8px', padding: '6px 12px',
               fontSize: '12px', fontWeight: '700',
               color: copied ? '#00C48C' : '#6C47FF',
-              cursor: 'pointer', fontFamily: 'inherit',
+              cursor: referralCode ? 'pointer' : 'not-allowed', fontFamily: 'inherit',
+              opacity: referralCode ? 1 : 0.65,
               whiteSpace: 'nowrap', transition: 'all 0.2s',
               flexShrink: 0
             }}>
@@ -227,7 +270,7 @@ export default function ReferralScreen() {
             color: '#6C47FF', letterSpacing: '2px',
             flex: 1, textAlign: 'center'
           }}>
-            {referralCode.toUpperCase()}
+            {referralCode ? referralCode.toUpperCase() : generatingCode ? 'CREATING...' : 'PENDING'}
           </div>
           <div style={{
             fontSize: '11px', color: '#A09DC8', flex: 1,
@@ -241,11 +284,13 @@ export default function ReferralScreen() {
         <div style={{ display: 'flex', gap: '8px' }}>
           <button
             onClick={shareWhatsApp}
+            disabled={!referralCode}
             style={{
               flex: 1, background: '#25D366',
               border: 'none', borderRadius: '12px', padding: '12px',
               fontSize: '13px', fontWeight: '700', color: '#fff',
-              cursor: 'pointer', fontFamily: 'inherit',
+              cursor: referralCode ? 'pointer' : 'not-allowed', fontFamily: 'inherit',
+              opacity: referralCode ? 1 : 0.65,
               display: 'flex', alignItems: 'center',
               justifyContent: 'center', gap: '6px'
             }}>
@@ -253,11 +298,13 @@ export default function ReferralScreen() {
           </button>
           <button
             onClick={shareTwitter}
+            disabled={!referralCode}
             style={{
               flex: 1, background: '#14123A',
               border: 'none', borderRadius: '12px', padding: '12px',
               fontSize: '13px', fontWeight: '700', color: '#fff',
-              cursor: 'pointer', fontFamily: 'inherit',
+              cursor: referralCode ? 'pointer' : 'not-allowed', fontFamily: 'inherit',
+              opacity: referralCode ? 1 : 0.65,
               display: 'flex', alignItems: 'center',
               justifyContent: 'center', gap: '6px'
             }}>
@@ -265,12 +312,14 @@ export default function ReferralScreen() {
           </button>
           <button
             onClick={copyLink}
+            disabled={!referralCode}
             style={{
               flex: 1, background: '#F5F4FF',
               border: '1.5px solid #E2E0FF',
               borderRadius: '12px', padding: '12px',
               fontSize: '13px', fontWeight: '700',
-              color: '#8B8FAF', cursor: 'pointer',
+              color: '#8B8FAF', cursor: referralCode ? 'pointer' : 'not-allowed',
+              opacity: referralCode ? 1 : 0.65,
               fontFamily: 'inherit',
               display: 'flex', alignItems: 'center',
               justifyContent: 'center', gap: '6px'
@@ -368,7 +417,7 @@ export default function ReferralScreen() {
                 fontSize: '10px', fontWeight: '700',
                 color: ref.status === 'completed' ? '#00C48C' : '#FFB800'
               }}>
-                {ref.status === 'completed' ? '✓ +20 credits' : '⏳ Pending'}
+                {ref.status === 'completed' ? `✓ +${REFERRAL_REWARDS.referrerCredits} credits` : '⏳ Pending'}
               </div>
             </div>
           ))}
@@ -435,7 +484,6 @@ export default function ReferralScreen() {
             return (
               <div key={item.id} style={{
                 display: 'flex', gap: '10px', alignItems: 'center',
-                padding: '10px 0',
                 borderBottom: i < leaderboard.length - 1
                   ? '1px solid #F5F4FF' : 'none',
                 background: isMe ? '#F8F7FF' : 'transparent',

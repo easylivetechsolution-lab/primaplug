@@ -1,5 +1,12 @@
 import { supabase } from '../supabase'
 
+export const REFERRAL_REWARDS = {
+  referrerTrust: 3,
+  referrerCredits: 20,
+  referredTrust: 3,
+  referredCredits: 10,
+}
+
 const throwIfSupabaseError = ({ error }) => {
   if (error) throw error
 }
@@ -67,28 +74,28 @@ export const completeReferral = async (userId) => {
 
     if (!referral) return
 
-    // Reward referrer — +5 trust score + 20 credits
+    // Reward referrer
     throwIfSupabaseError(await supabase.rpc('increment_trust', {
       user_id: referral.referrer_id,
-      amount: 5
+      amount: REFERRAL_REWARDS.referrerTrust
     }))
 
     throwIfSupabaseError(await supabase.rpc('add_credits', {
       p_user_id: referral.referrer_id,
-      p_amount: 20,
+      p_amount: REFERRAL_REWARDS.referrerCredits,
       p_type: 'referral_reward',
       p_description: `Referral reward — ${referral.referrer?.full_name || 'Someone'} joined Prima`,
     }))
 
-    // Reward new user — +3 trust score + 10 credits
+    // Reward new user
     throwIfSupabaseError(await supabase.rpc('increment_trust', {
       user_id: userId,
-      amount: 3
+      amount: REFERRAL_REWARDS.referredTrust
     }))
 
     throwIfSupabaseError(await supabase.rpc('add_credits', {
       p_user_id: userId,
-      p_amount: 10,
+      p_amount: REFERRAL_REWARDS.referredCredits,
       p_type: 'referral_joined',
       p_description: 'Welcome bonus for joining via referral',
     }))
@@ -107,7 +114,7 @@ export const completeReferral = async (userId) => {
     await supabase.from('notifications').insert({
       user_id: referral.referrer_id,
       title: '🎉 Referral Completed!',
-      message: `Your referral completed their profile! You earned +5 trust score and 20 Prima Credits.`,
+      message: `Your referral completed their profile! You earned +${REFERRAL_REWARDS.referrerTrust} trust score and ${REFERRAL_REWARDS.referrerCredits} Prima Credits.`,
       type: 'general'
     })
 
@@ -115,7 +122,7 @@ export const completeReferral = async (userId) => {
     await supabase.from('notifications').insert({
       user_id: userId,
       title: '🎁 Welcome Bonus!',
-      message: 'You joined via referral and earned +3 trust score and 10 Prima Credits!',
+      message: `You joined via referral and earned +${REFERRAL_REWARDS.referredTrust} trust score and ${REFERRAL_REWARDS.referredCredits} Prima Credits!`,
       type: 'general'
     })
 
@@ -129,37 +136,50 @@ export const completeReferral = async (userId) => {
 export const generateReferralCode = async (userId, username, fullName) => {
   try {
     // Check if user already has a code
-    const { data: existing } = await supabase
+    const { data: existing, error: fetchError } = await supabase
       .from('users')
       .select('referral_code')
       .eq('id', userId)
       .maybeSingle()
+
+    if (fetchError) {
+      console.error('Referral code fetch error:', fetchError)
+      return null
+    }
 
     if (existing?.referral_code) {
       console.log('User already has referral code:', existing.referral_code)
       return existing.referral_code
     }
 
-    // Generate new code
     const base = (username || fullName || 'user')
       .toLowerCase()
       .replace(/[^a-z0-9]/g, '')
-      .substring(0, 8)
+      .substring(0, 8) || 'user'
 
-    const code = base + Math.floor(1000 + Math.random() * 9000)
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const code = base + Math.floor(1000 + Math.random() * 9000)
 
-    const { error } = await supabase
-      .from('users')
-      .update({ referral_code: code })
-      .eq('id', userId)
+      const { data: updated, error: updateError } = await supabase
+        .from('users')
+        .update({ referral_code: code })
+        .eq('id', userId)
+        .select('referral_code')
+        .maybeSingle()
 
-    if (error) {
-      console.error('Referral code update error:', error)
-      return null
+      if (!updateError && updated?.referral_code) {
+        console.log('Referral code generated:', code)
+        return code
+      }
+
+      if (updateError?.code !== '23505') {
+        console.error('Referral code update error:', updateError)
+        return null
+      }
     }
 
-    console.log('Referral code generated:', code)
-    return code
+    console.error('Referral code generation failed after multiple attempts')
+    return null
 
   } catch (e) {
     console.error('generateReferralCode error:', e)

@@ -4,8 +4,20 @@ import { Camera } from '@capacitor/camera'
 import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 
+const SELFIE_QUALITY = {
+  minBrightness: 70,
+  maxBrightness: 220,
+  minContrast: 28,
+  minSharpness: 16,
+  minSkinRatio: 0.07,
+  minFaceWidthRatio: 0.22,
+  minFaceHeightRatio: 0.28,
+  maxFaceWidthRatio: 0.88,
+  maxFaceHeightRatio: 0.95,
+}
+
 export default function SelfieVerification({ onComplete, onSkip }) {
-  const { user, profile } = useAuth()
+  const { user } = useAuth()
   const [step, setStep] = useState('intro') // intro, camera, preview, uploading, done
   const [selfieImage, setSelfieImage] = useState(null)
   const [uploading, setUploading] = useState(false)
@@ -14,12 +26,162 @@ export default function SelfieVerification({ onComplete, onSkip }) {
   const canvasRef = useRef(null)
   const streamRef = useRef(null)
 
+  const getImageQuality = (imageData) => {
+    const { data, width, height } = imageData
+    let luminanceSum = 0
+    let luminanceSqSum = 0
+    let sampled = 0
+    let skinPixels = 0
+
+    const centerX = width / 2
+    const centerY = height / 2
+    const ovalRx = width * 0.35
+    const ovalRy = height * 0.43
+    const step = Math.max(1, Math.floor(Math.min(width, height) / 180))
+
+    for (let y = 0; y < height; y += step) {
+      for (let x = 0; x < width; x += step) {
+        const dx = (x - centerX) / ovalRx
+        const dy = (y - centerY) / ovalRy
+        if ((dx * dx) + (dy * dy) > 1) continue
+
+        const index = (y * width + x) * 4
+        const r = data[index]
+        const g = data[index + 1]
+        const b = data[index + 2]
+        const luminance = (0.2126 * r) + (0.7152 * g) + (0.0722 * b)
+
+        luminanceSum += luminance
+        luminanceSqSum += luminance * luminance
+        sampled += 1
+
+        const max = Math.max(r, g, b)
+        const min = Math.min(r, g, b)
+        const looksLikeSkin = r > 55 && g > 35 && b > 20 && max - min > 15 && r > g && r > b && Math.abs(r - g) > 8
+        if (looksLikeSkin) skinPixels += 1
+      }
+    }
+
+    const brightness = sampled ? luminanceSum / sampled : 0
+    const variance = sampled ? (luminanceSqSum / sampled) - (brightness * brightness) : 0
+    const contrast = Math.sqrt(Math.max(variance, 0))
+    const skinRatio = sampled ? skinPixels / sampled : 0
+
+    return {
+      brightness,
+      contrast,
+      skinRatio,
+      sharpness: getSharpness(imageData),
+    }
+  }
+
+  const getSharpness = (imageData) => {
+    const { data, width, height } = imageData
+    const step = Math.max(2, Math.floor(Math.min(width, height) / 120))
+    let sum = 0
+    let sumSq = 0
+    let count = 0
+
+    for (let y = step; y < height - step; y += step) {
+      for (let x = step; x < width - step; x += step) {
+        const center = getLuminanceAt(data, width, x, y)
+        const laplacian =
+          (getLuminanceAt(data, width, x - step, y) +
+            getLuminanceAt(data, width, x + step, y) +
+            getLuminanceAt(data, width, x, y - step) +
+            getLuminanceAt(data, width, x, y + step)) -
+          (4 * center)
+
+        sum += laplacian
+        sumSq += laplacian * laplacian
+        count += 1
+      }
+    }
+
+    if (!count) return 0
+    const mean = sum / count
+    return (sumSq / count) - (mean * mean)
+  }
+
+  const getLuminanceAt = (data, width, x, y) => {
+    const index = (y * width + x) * 4
+    return (0.2126 * data[index]) + (0.7152 * data[index + 1]) + (0.0722 * data[index + 2])
+  }
+
+  const validateDetectedFace = (face, canvas) => {
+    const box = face.boundingBox
+    if (!box) return 'Face could not be measured. Try again with your face clearly visible.'
+
+    const faceCenterX = box.x + (box.width / 2)
+    const faceCenterY = box.y + (box.height / 2)
+    const frameCenterX = canvas.width / 2
+    const frameCenterY = canvas.height / 2
+    const centeredEnough =
+      Math.abs(faceCenterX - frameCenterX) < canvas.width * 0.18 &&
+      Math.abs(faceCenterY - frameCenterY) < canvas.height * 0.2
+
+    if (!centeredEnough) return 'Center your face inside the oval and try again.'
+
+    const widthRatio = box.width / canvas.width
+    const heightRatio = box.height / canvas.height
+    if (widthRatio < SELFIE_QUALITY.minFaceWidthRatio || heightRatio < SELFIE_QUALITY.minFaceHeightRatio) {
+      return 'Move closer so your face fills more of the oval.'
+    }
+
+    if (widthRatio > SELFIE_QUALITY.maxFaceWidthRatio || heightRatio > SELFIE_QUALITY.maxFaceHeightRatio) {
+      return 'Move back a little so your full face fits inside the oval.'
+    }
+
+    return null
+  }
+
+  const validateSelfie = async (canvas) => {
+    const ctx = canvas.getContext('2d')
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+    const quality = getImageQuality(imageData)
+
+    if (quality.brightness < SELFIE_QUALITY.minBrightness) {
+      return 'The photo is too dark. Move to better lighting and keep your face visible.'
+    }
+
+    if (quality.brightness > SELFIE_QUALITY.maxBrightness) {
+      return 'The photo is too bright. Reduce glare or move away from direct light.'
+    }
+
+    if (quality.contrast < SELFIE_QUALITY.minContrast) {
+      return 'The photo is too flat or unclear. Use better lighting and face the camera.'
+    }
+
+    if (quality.sharpness < SELFIE_QUALITY.minSharpness) {
+      return 'The photo looks blurry. Hold still and retake it.'
+    }
+
+    if ('FaceDetector' in window) {
+      try {
+        const detector = new window.FaceDetector({ fastMode: true, maxDetectedFaces: 2 })
+        const faces = await detector.detect(canvas)
+
+        if (faces.length === 0) return 'No face detected. Please take a real selfie with your face in the oval.'
+        if (faces.length > 1) return 'Only one face should be visible. Please retake the selfie alone.'
+
+        const faceProblem = validateDetectedFace(faces[0], canvas)
+        if (faceProblem) return faceProblem
+      } catch (e) {
+        console.log('Face detection unavailable:', e)
+      }
+    } else if (quality.skinRatio < SELFIE_QUALITY.minSkinRatio) {
+      return 'No clear face detected. Make sure your face is visible, uncovered, and well-lit.'
+    }
+
+    return null
+  }
+
   useEffect(() => {
     window.history.pushState({ modal: 'open' }, '', '')
     const handleBack = () => onSkip()
     window.addEventListener('popstate', handleBack)
     return () => window.removeEventListener('popstate', handleBack)
-  }, [])
+  }, [onSkip])
 
   const startCamera = async () => {
     try {
@@ -67,17 +229,35 @@ export default function SelfieVerification({ onComplete, onSkip }) {
     }
   }
 
-  const takeSelfie = () => {
+  const takeSelfie = async () => {
     if (!videoRef.current || !canvasRef.current) return
     const video = videoRef.current
     const canvas = canvasRef.current
+
+    if (!video.videoWidth || !video.videoHeight) {
+      setError('Camera is still starting. Please wait a moment and try again.')
+      return
+    }
+
     canvas.width = video.videoWidth
     canvas.height = video.videoHeight
     const ctx = canvas.getContext('2d')
+
+    setError(null)
+
     // Mirror the image for natural selfie feel
+    ctx.save()
     ctx.translate(canvas.width, 0)
     ctx.scale(-1, 1)
     ctx.drawImage(video, 0, 0)
+    ctx.restore()
+
+    const validationError = await validateSelfie(canvas)
+    if (validationError) {
+      setError(validationError)
+      return
+    }
+
     const imageData = canvas.toDataURL('image/jpeg', 0.85)
     setSelfieImage(imageData)
     // Stop camera
@@ -352,6 +532,15 @@ export default function SelfieVerification({ onComplete, onSkip }) {
             <canvas ref={canvasRef} style={{ display: 'none' }} />
 
             <div style={{ padding: '0 24px 28px' }}>
+              {error && (
+                <div style={{
+                  background: '#FFE8EE', border: '1.5px solid #FF99B3',
+                  borderRadius: '10px', padding: '10px 14px',
+                  fontSize: '12px', color: '#FF3366',
+                  marginBottom: '12px'
+                }}>{error}</div>
+              )}
+
               <button
                 onClick={takeSelfie}
                 style={{

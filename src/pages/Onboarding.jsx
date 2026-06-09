@@ -3,7 +3,8 @@ import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import CategoryPicker from '../components/CategoryPicker'
-import { processReferral, generateReferralCode } from '../utils/referral'
+import { processReferral, generateReferralCode, completeReferral } from '../utils/referral'
+import { getProfileCompletion } from '../utils/profileComplete'
 
 const LocationSearch = ({ value, onSelect, inputStyle }) => {
   const [search, setSearch] = useState(value || '')
@@ -116,15 +117,6 @@ export default function Onboarding() {
 
   const update = (key, val) => setForm(f => ({ ...f, [key]: val }))
 
-  const toggleSkill = (skill) => {
-    setForm(f => ({
-      ...f,
-      skills: f.skills.includes(skill)
-        ? f.skills.filter(s => s !== skill)
-        : [...f.skills, skill]
-    }))
-  }
-
   const handleSubmit = async () => {
     if (!form.full_name || !form.username) {
       setError('Please fill in your name and username')
@@ -181,11 +173,16 @@ export default function Onboarding() {
       // Process any pending referral
       await processReferral(user.id)
 
+      const { complete } = getProfileCompletion(payload)
+      if (complete) {
+        await completeReferral(user.id)
+      }
+
       // Sync AuthContext so Layout gets the fresh profile immediately
       refreshProfile()
 
       navigate('/dashboard')
-    } catch (e) {
+    } catch {
       setError('Something went wrong. Please try again.')
       setLoading(false)
     }
