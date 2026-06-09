@@ -133,7 +133,7 @@ export const generateReferralCode = async (userId, username, fullName) => {
       .from('users')
       .select('referral_code')
       .eq('id', userId)
-      .single()
+      .maybeSingle()
 
     if (existing?.referral_code) {
       console.log('User already has referral code:', existing.referral_code)
