@@ -87,7 +87,7 @@ export default function MyGigsScreen() {
       .select(`
         *,
         applications(
-          id, status, worker_id,
+          id, status, worker_id, accepted_at,
           users(id, full_name, avatar_url, rating, trust_score, level)
         ),
         receipts(
@@ -273,6 +273,7 @@ export default function MyGigsScreen() {
     if (receipt?.completed) return 'completed'
     if (receipt?.poster_confirmed && !receipt?.worker_confirmed) return 'waiting'
     if (gig.status === 'in_progress') return 'inprogress'
+    if (acceptedApp) return 'inprogress'
     if (pendingApps.length > 0) return 'hasapplicants'
     return 'open'
   }
@@ -673,8 +674,11 @@ function PostedGigCard({
     a => a.status === 'pending'
   ) || []
   const acceptedApp = gig.applications?.find(a => a.status === 'accepted')
+  const acceptedWorkerId = gig.worker_id || acceptedApp?.worker_id
+  const acceptedWorker = gig.worker || acceptedApp?.users
+  const acceptedAt = gig.accepted_at || acceptedApp?.accepted_at
   const currency = getCurrency(gig.currency || 'USD')
-  const daysSinceAccepted = daysSince(gig.accepted_at)
+  const daysSinceAccepted = daysSince(acceptedAt)
 
   const statusConfig = {
     open: { color: '#00C48C', bg: '#DFFDF4', border: '#7EECD2', label: 'Open' },
@@ -738,7 +742,7 @@ function PostedGigCard({
         </div>
 
         {/* Worker info if in progress */}
-        {(status === 'inprogress' || status === 'waiting') && gig.worker && (
+        {(status === 'inprogress' || status === 'waiting') && acceptedWorker && (
           <div style={{
             display: 'flex', gap: '8px', alignItems: 'center',
             background: '#F5F4FF', borderRadius: '10px',
@@ -747,7 +751,7 @@ function PostedGigCard({
             <div
               onClick={(e) => {
                 e.stopPropagation()
-                onViewProfile(gig.worker_id)
+                onViewProfile(acceptedWorkerId)
               }}
               style={{
                 width: '28px', height: '28px', borderRadius: '8px',
@@ -758,17 +762,17 @@ function PostedGigCard({
                 justifyContent: 'center', fontSize: '11px',
                 fontWeight: '800', color: '#6C47FF'
               }}>
-              {gig.worker?.avatar_url ? (
-                <img src={gig.worker.avatar_url} alt=""
+              {acceptedWorker?.avatar_url ? (
+                <img src={acceptedWorker.avatar_url} alt=""
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              ) : gig.worker?.full_name?.charAt(0)}
+              ) : acceptedWorker?.full_name?.charAt(0)}
             </div>
             <div style={{ flex: 1 }}>
               <div style={{
                 fontSize: '12px', fontWeight: '600', color: '#14123A'
-              }}>{gig.worker?.full_name}</div>
+              }}>{acceptedWorker?.full_name}</div>
               <div style={{ fontSize: '10px', color: '#8B8FAF' }}>
-                ⭐ {gig.worker?.rating || 5.0} · Working since {timeAgo(gig.accepted_at)}
+                ⭐ {acceptedWorker?.rating || 5.0} · Working since {timeAgo(acceptedAt)}
               </div>
             </div>
           </div>
@@ -842,7 +846,7 @@ function PostedGigCard({
               }}>
                 <span>⚠️</span>
                 <span>
-                  {gig.worker?.full_name?.split(' ')[0]} has been working
+                  {acceptedWorker?.full_name?.split(' ')[0]} has been working
                   {daysSinceAccepted} days. Have you paid them?
                 </span>
               </div>
@@ -860,7 +864,7 @@ function PostedGigCard({
                 fontSize: '11px', color: '#6C47FF',
                 opacity: 0.8, marginBottom: '8px'
               }}>
-                When you've paid {gig.worker?.full_name?.split(' ')[0]},
+                When you've paid {acceptedWorker?.full_name?.split(' ')[0]},
                 confirm the payment here.
               </div>
               <button
@@ -880,7 +884,7 @@ function PostedGigCard({
               <button
                 onClick={() => window.dispatchEvent(new CustomEvent(
                   'openChatWithUser',
-                  { detail: { userId: gig.worker_id, gigId: gig.id } }
+                  { detail: { userId: acceptedWorkerId, gigId: gig.id } }
                 ))}
                 style={{
                   flex: 1, background: '#F5F4FF',
@@ -929,7 +933,7 @@ function PostedGigCard({
                   <div style={{
                     fontSize: '12px', fontWeight: '700', color: '#6C47FF'
                   }}>
-                    Waiting for {gig.worker?.full_name?.split(' ')[0]} to confirm
+                    Waiting for {acceptedWorker?.full_name?.split(' ')[0]} to confirm
                   </div>
                   <div style={{ fontSize: '11px', color: '#6C47FF', opacity: 0.8 }}>
                     You confirmed {getCurrency(receipt?.currency || 'USD').symbol}
@@ -941,7 +945,7 @@ function PostedGigCard({
             <button
               onClick={() => window.dispatchEvent(new CustomEvent(
                 'openChatWithUser',
-                { detail: { userId: gig.worker_id, gigId: gig.id } }
+                { detail: { userId: acceptedWorkerId, gigId: gig.id } }
               ))}
               style={{
                 width: '100%', background: '#F5F4FF',
@@ -953,7 +957,7 @@ function PostedGigCard({
                 justifyContent: 'center', gap: '5px'
               }}>
               <BrandIcon name="chat" size={18} active />
-              Message {gig.worker?.full_name?.split(' ')[0]}
+              Message {acceptedWorker?.full_name?.split(' ')[0]}
             </button>
           </div>
         )}

@@ -3,6 +3,7 @@ import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 import PublicProfile from './PublicProfile'
 import BrandIcon from './BrandIcon'
+import { ensureGigConversation } from '../utils/gigApplications'
 import {
   playNotification,
   playAccepted,
@@ -529,17 +530,17 @@ export default function NotificationBell({ onNavigate }) {
                           </div>
                           <div style={{
                             background: app.status === 'accepted' ? '#DFFDF4'
-                              : app.status === 'rejected' ? '#FFE8EE' : '#EEE9FF',
+                              : ['rejected', 'declined'].includes(app.status) ? '#FFE8EE' : '#EEE9FF',
                             border: `1px solid ${app.status === 'accepted' ? '#7EECD2'
-                              : app.status === 'rejected' ? '#FF99B3' : '#B8A5FF'}`,
+                              : ['rejected', 'declined'].includes(app.status) ? '#FF99B3' : '#B8A5FF'}`,
                             borderRadius: '7px', padding: '4px 10px',
                             fontSize: '10px', fontWeight: '700',
                             color: app.status === 'accepted' ? '#00C48C'
-                              : app.status === 'rejected' ? '#FF3366' : '#6C47FF',
+                              : ['rejected', 'declined'].includes(app.status) ? '#FF3366' : '#6C47FF',
                             flexShrink: 0
                           }}>
                             {app.status === 'accepted' ? '✓ Accepted'
-                              : app.status === 'rejected' ? '✗ Declined' : '⏳ Pending'}
+                              : ['rejected', 'declined'].includes(app.status) ? '✗ Declined' : '⏳ Pending'}
                           </div>
                         </div>
 
@@ -605,35 +606,45 @@ export default function NotificationBell({ onNavigate }) {
                           <div style={{ display: 'flex', gap: '8px' }}>
                             <button
                               onClick={async () => {
+                                const acceptedAt = new Date().toISOString()
+
                                 await supabase
                                   .from('applications')
-                                  .update({ status: 'accepted' })
+                                  .update({
+                                    status: 'accepted',
+                                    accepted_at: acceptedAt
+                                  })
                                   .eq('id', app.id)
+                                  .eq('status', 'pending')
 
-                                const { data: accepted } = await supabase
+                                await supabase
+                                  .from('gigs')
+                                  .update({
+                                    status: 'in_progress',
+                                    worker_id: app.worker_id,
+                                    worker_name: app.users?.full_name,
+                                    accepted_at: acceptedAt,
+                                    slots_filled: 1
+                                  })
+                                  .eq('id', notifDetail.gig.id)
+
+                                await supabase
                                   .from('applications')
-                                  .select('id')
+                                  .update({ status: 'declined' })
                                   .eq('gig_id', notifDetail.gig.id)
-                                  .eq('status', 'accepted')
+                                  .neq('id', app.id)
+                                  .eq('status', 'pending')
 
-                                const filled = (accepted?.length || 0) + 1
-
-                                if (filled >= notifDetail.gig.slots) {
-                                  await supabase
-                                    .from('gigs')
-                                    .update({ status: 'in_progress', slots_filled: filled })
-                                    .eq('id', notifDetail.gig.id)
-                                } else {
-                                  await supabase
-                                    .from('gigs')
-                                    .update({ slots_filled: filled })
-                                    .eq('id', notifDetail.gig.id)
-                                }
+                                await ensureGigConversation({
+                                  gigId: notifDetail.gig.id,
+                                  posterId: notifDetail.gig.poster_id,
+                                  workerId: app.worker_id
+                                })
 
                                 await supabase.from('notifications').insert({
                                   user_id: app.worker_id,
-                                  title: 'Application Accepted! 🎉',
-                                  message: `Your application for "${notifDetail.gig.title}" was accepted`,
+                                  title: 'You Got The Job!',
+                                  message: `Your application for "${notifDetail.gig.title}" was accepted! Contact the poster and get started.`,
                                   type: 'accepted',
                                   gig_id: notifDetail.gig.id
                                 })
@@ -658,7 +669,7 @@ export default function NotificationBell({ onNavigate }) {
                               onClick={async () => {
                                 await supabase
                                   .from('applications')
-                                  .update({ status: 'rejected' })
+                                  .update({ status: 'declined', declined_at: new Date().toISOString() })
                                   .eq('id', app.id)
 
                                 await supabase.from('notifications').insert({

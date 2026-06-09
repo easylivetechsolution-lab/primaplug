@@ -61,6 +61,9 @@ export default function SavedScreen() {
   }
 
   const handleApply = async (gig) => {
+    if (applying) return
+    setApplying(true)
+
     // Selfie verification check
     const { data: userProfile } = await supabase
       .from('users')
@@ -70,24 +73,25 @@ export default function SavedScreen() {
     if (!userProfile?.selfie_verified) {
       alert('Please complete selfie verification in your profile before applying for gigs.')
       window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'profile' }))
+      setApplying(false)
       return
     }
     // Profile completion check
     const { complete } = getProfileCompletion(profile)
     if (!complete) {
       setShowProfilePrompt(true)
+      setApplying(false)
       return
     }
-    setApplying(true)
     try {
-      const { data: existing } = await supabase
+      const { data: existingApps } = await supabase
         .from('applications')
         .select('id')
         .eq('gig_id', gig.id)
         .eq('worker_id', user.id)
-        .maybeSingle()
+        .limit(1)
 
-      if (existing) {
+      if (existingApps?.length > 0) {
         alert('You already applied for this gig!')
         setApplying(false)
         return

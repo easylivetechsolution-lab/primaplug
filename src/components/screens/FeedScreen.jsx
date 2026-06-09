@@ -840,6 +840,8 @@ export default function FeedScreen() {
                   }}>Skip</button>
                   <button
                     onClick={async () => {
+  if (applying) return
+  setApplying(true)
   const { data: userProfile } = await supabase
     .from('users')
     .select('selfie_verified')
@@ -848,11 +850,13 @@ export default function FeedScreen() {
   if (!userProfile?.selfie_verified) {
     alert('Please complete selfie verification in your profile before applying for gigs.')
     window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'profile' }))
+    setApplying(false)
     return
   }
   const { complete } = getProfileCompletion(profile)
   if (!complete) {
     setShowProfilePrompt(true)
+    setApplying(false)
     return
   }
   setApplying(true)
@@ -876,13 +880,13 @@ export default function FeedScreen() {
       return
     }
     // Check if already applied
-    const { data: existing } = await supabase
+    const { data: existingApps } = await supabase
       .from('applications')
       .select('id')
       .eq('gig_id', selectedGig.id)
       .eq('worker_id', userId)
-      .maybeSingle()
-    if (existing) {
+      .limit(1)
+    if (existingApps?.length > 0) {
       alert('You already applied for this gig!')
       setApplying(false)
       return
