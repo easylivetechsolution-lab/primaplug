@@ -86,34 +86,42 @@ export default function ChatScreen() {
 
       if (matchedExisting) {
         setActiveConvo(matchedExisting)
-        setConversations(prev =>
-          prev.find(c => c.id === matchedExisting.id) ? prev : [matchedExisting, ...prev]
-        )
+        if (matchedExisting.last_message) {
+          setConversations(prev =>
+            prev.find(c => c.id === matchedExisting.id) ? prev : [matchedExisting, ...prev]
+          )
+        }
         return
       }
 
-      const { data: newConvo } = await supabase
-        .from('conversations')
-        .insert({
-          gig_id: gigId || null,
-          participant_1: user.id,
-          participant_2: targetUserId,
-          last_message: '',
-          last_message_at: new Date().toISOString()
-        })
-        .select(`
-          *,
-          gigs(id, title, pay_min, pay_max, status),
-          p1:users!conversations_participant_1_fkey(id, full_name, avatar_url, trust_score),
-          p2:users!conversations_participant_2_fkey(id, full_name, avatar_url, trust_score)
-        `)
+      const { data: targetUser } = await supabase
+        .from('users')
+        .select('id, full_name, avatar_url, trust_score')
+        .eq('id', targetUserId)
         .single()
 
-      if (newConvo) {
-        setActiveConvo(newConvo)
-        setMessages([])
-        setConversations(prev => [newConvo, ...prev])
-      }
+      const { data: gig } = gigId
+        ? await supabase
+          .from('gigs')
+          .select('id, title, pay_min, pay_max, status')
+          .eq('id', gigId)
+          .single()
+        : { data: null }
+
+      setActiveConvo({
+        id: null,
+        gig_id: gigId || null,
+        participant_1: user.id,
+        participant_2: targetUserId,
+        p1: { id: user.id, full_name: user.email?.split('@')[0] || 'You' },
+        p2: targetUser || { id: targetUserId, full_name: 'User' },
+        gigs: gig,
+        last_message: '',
+        last_message_at: new Date().toISOString(),
+        unread_count_1: 0,
+        unread_count_2: 0
+      })
+      setMessages([])
     }
 
     window.addEventListener('openChat', handleOpenChat)
@@ -137,10 +145,12 @@ export default function ChatScreen() {
   }, [user])
 
   useEffect(() => {
-    if (activeConvo) {
+    if (activeConvo?.id) {
       fetchMessages(activeConvo.id)
       markAsRead(activeConvo)
       subscribeToMessages(activeConvo.id)
+    } else if (activeConvo && !activeConvo.id) {
+      setMessages([])
     }
     return () => {
       if (channelRef.current) {
@@ -168,6 +178,7 @@ export default function ChatScreen() {
         p2:users!conversations_participant_2_fkey(id, full_name, avatar_url, trust_score)
       `)
       .or(`participant_1.eq.${user.id},participant_2.eq.${user.id}`)
+      .neq('last_message', '')
       .order('last_message_at', { ascending: false })
 
     if (data) setConversations(data)
@@ -230,11 +241,40 @@ export default function ChatScreen() {
     const text = content.trim()
     setNewMessage('')
     setShowQuickReplies(false)
+    let convo = activeConvo
+
+    if (!convo.id) {
+      const { data: created, error: createError } = await supabase
+        .from('conversations')
+        .insert({
+          gig_id: convo.gig_id || null,
+          participant_1: user.id,
+          participant_2: convo.participant_2,
+          last_message: text,
+          last_message_at: new Date().toISOString()
+        })
+        .select(`
+          *,
+          gigs(id, title, pay_min, pay_max, status),
+          p1:users!conversations_participant_1_fkey(id, full_name, avatar_url, trust_score),
+          p2:users!conversations_participant_2_fkey(id, full_name, avatar_url, trust_score)
+        `)
+        .single()
+
+      if (createError || !created) {
+        alert('Could not start chat: ' + (createError?.message || 'Please try again.'))
+        setSending(false)
+        return
+      }
+
+      convo = created
+      setActiveConvo(created)
+    }
 
     const { data: msg } = await supabase
       .from('messages')
       .insert({
-        conversation_id: activeConvo.id,
+        conversation_id: convo.id,
         sender_id: user.id,
         content: text,
         type: 'text'
@@ -243,11 +283,11 @@ export default function ChatScreen() {
       .single()
 
     // Update conversation last message
-    const otherUserId = activeConvo.participant_1 === user.id
-      ? activeConvo.participant_2
-      : activeConvo.participant_1
-    const isOtherP1 = activeConvo.participant_1 !== user.id
-    const sender = activeConvo.participant_1 === user.id ? activeConvo.p1 : activeConvo.p2
+    const otherUserId = convo.participant_1 === user.id
+      ? convo.participant_2
+      : convo.participant_1
+    const isOtherP1 = convo.participant_1 !== user.id
+    const sender = convo.participant_1 === user.id ? convo.p1 : convo.p2
     const senderName = sender?.full_name || user.email?.split('@')[0] || 'Someone'
 
     await supabase
@@ -256,10 +296,10 @@ export default function ChatScreen() {
         last_message: text,
         last_message_at: new Date().toISOString(),
         ...(isOtherP1
-          ? { unread_count_1: (activeConvo.unread_count_1 || 0) + 1 }
-          : { unread_count_2: (activeConvo.unread_count_2 || 0) + 1 })
+          ? { unread_count_1: (convo.unread_count_1 || 0) + 1 }
+          : { unread_count_2: (convo.unread_count_2 || 0) + 1 })
       })
-      .eq('id', activeConvo.id)
+      .eq('id', convo.id)
 
     // Send notification
     await supabase.from('notifications').insert({
@@ -267,11 +307,99 @@ export default function ChatScreen() {
       title: `${senderName} sent you a message`,
       message: `${text.length > 40 ? text.substring(0, 40) + '...' : text}`,
       type: 'message',
-      gig_id: activeConvo.gig_id
+      gig_id: convo.gig_id
     })
 
     setSending(false)
     fetchConversations()
+  }
+
+  const updateConversationPreview = async (convoId, fallbackMessages = messages) => {
+    const latest = [...fallbackMessages].sort(
+      (a, b) => new Date(b.created_at) - new Date(a.created_at)
+    )[0]
+
+    await supabase
+      .from('conversations')
+      .update({
+        last_message: latest?.content || '',
+        last_message_at: latest?.created_at || new Date().toISOString()
+      })
+      .eq('id', convoId)
+
+    fetchConversations()
+  }
+
+  const editMessage = async (msg) => {
+    if (msg.sender_id !== user.id) return
+    const next = window.prompt('Edit message', msg.content)
+    if (next === null) return
+    const text = next.trim()
+    if (!text) return
+
+    const { error } = await supabase
+      .from('messages')
+      .update({ content: text })
+      .eq('id', msg.id)
+      .eq('sender_id', user.id)
+
+    if (error) {
+      alert('Could not edit message: ' + error.message)
+      return
+    }
+
+    const nextMessages = messages.map(m => m.id === msg.id ? { ...m, content: text } : m)
+    setMessages(nextMessages)
+    if (messages[messages.length - 1]?.id === msg.id) {
+      await updateConversationPreview(activeConvo.id, nextMessages)
+    }
+  }
+
+  const deleteMessage = async (msg) => {
+    if (msg.sender_id !== user.id) return
+    if (!window.confirm('Delete this message?')) return
+
+    const { error } = await supabase
+      .from('messages')
+      .delete()
+      .eq('id', msg.id)
+      .eq('sender_id', user.id)
+
+    if (error) {
+      alert('Could not delete message: ' + error.message)
+      return
+    }
+
+    const nextMessages = messages.filter(m => m.id !== msg.id)
+    setMessages(nextMessages)
+    await updateConversationPreview(activeConvo.id, nextMessages)
+  }
+
+  const deleteConversation = async (convo, e) => {
+    e?.stopPropagation()
+    if (!convo?.id) {
+      setActiveConvo(null)
+      setMessages([])
+      return
+    }
+    if (!window.confirm('Delete this chat?')) return
+
+    await supabase.from('messages').delete().eq('conversation_id', convo.id)
+    const { error } = await supabase
+      .from('conversations')
+      .delete()
+      .eq('id', convo.id)
+
+    if (error) {
+      alert('Could not delete chat: ' + error.message)
+      return
+    }
+
+    setConversations(prev => prev.filter(c => c.id !== convo.id))
+    if (activeConvo?.id === convo.id) {
+      setActiveConvo(null)
+      setMessages([])
+    }
   }
 
   const handleTyping = () => {
