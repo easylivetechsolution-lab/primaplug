@@ -3,8 +3,6 @@ import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 import PublicProfile from './PublicProfile'
 import BrandIcon from './BrandIcon'
-import { ensureGigConversation } from '../utils/gigApplications'
-import { sendPushToUser } from '../utils/pushNotifications'
 import {
   playNotification,
   playAccepted,
@@ -531,17 +529,17 @@ export default function NotificationBell({ onNavigate }) {
                           </div>
                           <div style={{
                             background: app.status === 'accepted' ? '#DFFDF4'
-                              : ['rejected', 'declined'].includes(app.status) ? '#FFE8EE' : '#EEE9FF',
+                              : app.status === 'rejected' ? '#FFE8EE' : '#EEE9FF',
                             border: `1px solid ${app.status === 'accepted' ? '#7EECD2'
-                              : ['rejected', 'declined'].includes(app.status) ? '#FF99B3' : '#B8A5FF'}`,
+                              : app.status === 'rejected' ? '#FF99B3' : '#B8A5FF'}`,
                             borderRadius: '7px', padding: '4px 10px',
                             fontSize: '10px', fontWeight: '700',
                             color: app.status === 'accepted' ? '#00C48C'
-                              : ['rejected', 'declined'].includes(app.status) ? '#FF3366' : '#6C47FF',
+                              : app.status === 'rejected' ? '#FF3366' : '#6C47FF',
                             flexShrink: 0
                           }}>
                             {app.status === 'accepted' ? '✓ Accepted'
-                              : ['rejected', 'declined'].includes(app.status) ? '✗ Declined' : '⏳ Pending'}
+                              : app.status === 'rejected' ? '✗ Declined' : '⏳ Pending'}
                           </div>
                         </div>
 
@@ -607,124 +605,47 @@ export default function NotificationBell({ onNavigate }) {
                           <div style={{ display: 'flex', gap: '8px' }}>
                             <button
                               onClick={async () => {
-                                const acceptedAt = new Date().toISOString()
-                                const gig = notifDetail.gig
-                                const acceptedApp = app
-
-                                setNotifDetail(prev => ({
-                                  ...prev,
-                                  gig: {
-                                    ...prev.gig,
-                                    status: 'in_progress',
-                                    worker_id: acceptedApp.worker_id,
-                                    worker_name: acceptedApp.users?.full_name,
-                                    accepted_at: acceptedAt,
-                                    slots_filled: 1
-                                  },
-                                  applications: prev.applications.map(a => {
-                                    if (a.id === acceptedApp.id) {
-                                      return { ...a, status: 'accepted', accepted_at: acceptedAt }
-                                    }
-                                    if (a.status === 'pending') {
-                                      return { ...a, status: 'declined' }
-                                    }
-                                    return a
-                                  })
-                                }))
-                                setActionDone('accepted')
-
-                                try {
-                                const { error: acceptError } = await supabase
+                                await supabase
                                   .from('applications')
-                                  .update({
-                                    status: 'accepted',
-                                    accepted_at: acceptedAt
-                                  })
+                                  .update({ status: 'accepted' })
                                   .eq('id', app.id)
-                                if (acceptError) throw acceptError
 
-                                const { error: gigError } = await supabase
-                                  .from('gigs')
-                                  .update({
-                                    status: 'in_progress',
-                                    worker_id: app.worker_id,
-                                    worker_name: app.users?.full_name,
-                                    accepted_at: acceptedAt,
-                                    slots_filled: 1
-                                  })
-                                  .eq('id', gig.id)
-                                if (gigError) throw gigError
-
-                                const otherPendingApps = notifDetail.applications.filter(
-                                  a => a.id !== app.id && a.status === 'pending'
-                                )
-
-                                const { error: declineError } = await supabase
+                                const { data: accepted } = await supabase
                                   .from('applications')
-                                  .update({ status: 'declined' })
-                                  .eq('gig_id', gig.id)
-                                  .neq('id', app.id)
-                                  .eq('status', 'pending')
-                                if (declineError) throw declineError
+                                  .select('id')
+                                  .eq('gig_id', notifDetail.gig.id)
+                                  .eq('status', 'accepted')
 
-                                await ensureGigConversation({
-                                  gigId: gig.id,
-                                  posterId: gig.poster_id,
-                                  workerId: app.worker_id
-                                })
+                                const filled = (accepted?.length || 0) + 1
 
-                                const { error: notifError } = await supabase.from('notifications').insert({
+                                if (filled >= notifDetail.gig.slots) {
+                                  await supabase
+                                    .from('gigs')
+                                    .update({ status: 'in_progress', slots_filled: filled })
+                                    .eq('id', notifDetail.gig.id)
+                                } else {
+                                  await supabase
+                                    .from('gigs')
+                                    .update({ slots_filled: filled })
+                                    .eq('id', notifDetail.gig.id)
+                                }
+
+                                await supabase.from('notifications').insert({
                                   user_id: app.worker_id,
-                                  title: 'You Got The Job!',
-                                  message: `Your application for "${gig.title}" was accepted! Contact the poster and get started.`,
+                                  title: 'Application Accepted! 🎉',
+                                  message: `Your application for "${notifDetail.gig.title}" was accepted`,
                                   type: 'accepted',
-                                  gig_id: gig.id
+                                  gig_id: notifDetail.gig.id
                                 })
-                                if (notifError) console.error('Notification error:', notifError)
-
-                                try {
-                                  await sendPushToUser(
-                                    app.worker_id,
-                                    'You Got The Job!',
-                                    `Your application for "${gig.title}" was accepted!`,
-                                    { type: 'accepted', gigId: gig.id }
-                                  )
-                                } catch (e) {
-                                  console.log('Push error:', e)
-                                }
-
-                                if (otherPendingApps.length > 0) {
-                                  await supabase.from('notifications').insert(
-                                    otherPendingApps.map(a => ({
-                                      user_id: a.worker_id,
-                                      title: 'Application Update',
-                                      message: `Your application for "${gig.title}" was not selected this time.`,
-                                      type: 'rejected',
-                                      gig_id: gig.id
-                                    }))
-                                  )
-                                }
 
                                 const { data: apps } = await supabase
                                   .from('applications')
                                   .select('*, users(id, full_name, avatar_url, trust_score, rating, gigs_completed, bio, skills, location, phone)')
-                                  .eq('gig_id', gig.id)
+                                  .eq('gig_id', notifDetail.gig.id)
                                   .order('created_at', { ascending: false })
 
-                                  if (apps) setNotifDetail(prev => ({ ...prev, applications: apps }))
-                                } catch (e) {
-                                  console.error('Accept error:', e)
-                                  setActionDone(null)
-
-                                  const { data: apps } = await supabase
-                                    .from('applications')
-                                    .select('*, users(id, full_name, avatar_url, trust_score, rating, gigs_completed, bio, skills, location, phone)')
-                                    .eq('gig_id', gig.id)
-                                    .order('created_at', { ascending: false })
-
-                                  if (apps) setNotifDetail(prev => ({ ...prev, applications: apps }))
-                                  alert('Error accepting: ' + e.message)
-                                }
+                                setNotifDetail(prev => ({ ...prev, applications: apps || [] }))
+                                setActionDone('accepted')
                               }}
                               style={{
                                 flex: 1, background: '#DFFDF4',
@@ -737,7 +658,7 @@ export default function NotificationBell({ onNavigate }) {
                               onClick={async () => {
                                 await supabase
                                   .from('applications')
-                                  .update({ status: 'declined', declined_at: new Date().toISOString() })
+                                  .update({ status: 'rejected' })
                                   .eq('id', app.id)
 
                                 await supabase.from('notifications').insert({
@@ -935,44 +856,6 @@ export default function NotificationBell({ onNavigate }) {
                 )}
 
                 {/* Phone + WhatsApp — if accepted */}
-                {notifDetail.type === 'accepted' && notifDetail.gig?.poster_id && (
-                  <button
-                    onClick={() => {
-                      const targetUserId = notifDetail.gig.poster_id
-                      const gigId = notifDetail.gig.id
-
-                      setActionDone(null)
-                      setNotifDetail(null)
-                      setOpen(false)
-
-                      requestAnimationFrame(() => {
-                        window.dispatchEvent(new CustomEvent('openChatWithUser', {
-                          detail: { userId: targetUserId, gigId: gigId || null }
-                        }))
-                      })
-                    }}
-                    style={{
-                      width: '100%',
-                      background: 'linear-gradient(135deg, #6C47FF 0%, #9B59FF 100%)',
-                      border: 'none',
-                      borderRadius: '12px',
-                      padding: '12px 14px',
-                      marginBottom: '12px',
-                      fontSize: '13px',
-                      fontWeight: '800',
-                      color: '#fff',
-                      cursor: 'pointer',
-                      fontFamily: 'inherit',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px',
-                      boxShadow: '0 4px 16px rgba(108,71,255,0.28)'
-                    }}>
-                    <BrandIcon name="chat" size={18} active /> Message Client
-                  </button>
-                )}
-
                 {notifDetail.type === 'accepted' && notifDetail.gig?.users?.phone && (
                   <div style={{
                     background: '#F5F4FF', border: '1.5px solid #E2E0FF',
