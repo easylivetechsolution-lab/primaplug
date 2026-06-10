@@ -681,7 +681,7 @@ export default function ChatScreen() {
                         background: '#F5F4FF', border: '1.5px solid #E2E0FF',
                         color: '#6C47FF', fontSize: '18px', cursor: 'pointer',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        padding: 0
+                        padding: 0, zIndex: 10000
                       }}>
                       ⋯
                     </button>
@@ -690,7 +690,7 @@ export default function ChatScreen() {
                         position: 'absolute', top: '48px', right: '0',
                         background: '#fff', border: '1.5px solid #E2E0FF',
                         borderRadius: '14px', boxShadow: '0 12px 28px rgba(108,71,255,0.15)',
-                        zIndex: 10, minWidth: '160px', overflow: 'hidden'
+                        zIndex: 10001, minWidth: '160px', overflow: 'hidden'
                       }}>
                         <button
                           onClick={(e) => {
@@ -838,7 +838,7 @@ export default function ChatScreen() {
                           background: '#F5F4FF', color: '#6C47FF',
                           cursor: 'pointer', fontSize: '20px', display: 'flex',
                           alignItems: 'center', justifyContent: 'center', padding: 0,
-                          fontFamily: 'inherit'
+                          fontFamily: 'inherit', zIndex: 10000
                         }}>
                         ⋯
                       </button>
@@ -847,7 +847,7 @@ export default function ChatScreen() {
                           position: 'absolute', top: '52px', right: '0',
                           background: '#fff', border: '1.5px solid #E2E0FF',
                           borderRadius: '14px', boxShadow: '0 12px 28px rgba(108,71,255,0.15)',
-                          zIndex: 10, minWidth: '160px', overflow: 'hidden'
+                          zIndex: 10001, minWidth: '160px', overflow: 'hidden'
                         }}>
                           <button
                             onClick={(e) => {
@@ -977,7 +977,7 @@ export default function ChatScreen() {
                               {msg.content}
                             </div>
                             {isMe && (
-                              <div style={{ position: 'absolute', top: '10px', left: '-34px' }} className="message-menu">
+                              <div style={{ position: 'absolute', top: '10px', left: '-34px', zIndex: 10000 }} className="message-menu">
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation()
@@ -988,7 +988,7 @@ export default function ChatScreen() {
                                     border: '1px solid #E2E0FF', background: '#fff',
                                     color: '#6C47FF', cursor: 'pointer', fontSize: '20px',
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    padding: 0
+                                    padding: 0, zIndex: 10000
                                   }}>
                                   ⋯
                                 </button>
@@ -997,7 +997,7 @@ export default function ChatScreen() {
                                     position: 'absolute', top: '34px', left: '0',
                                     background: '#fff', border: '1.5px solid #E2E0FF',
                                     borderRadius: '14px', boxShadow: '0 12px 28px rgba(108,71,255,0.15)',
-                                    zIndex: 10, minWidth: '140px', overflow: 'hidden'
+                                    zIndex: 10001, minWidth: '140px', overflow: 'hidden'
                                   }}>
                                     <button
                                       onClick={(e) => {
