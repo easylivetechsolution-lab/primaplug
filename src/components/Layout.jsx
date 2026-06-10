@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useAdmin } from '../hooks/useAdmin'
@@ -33,14 +33,18 @@ export default function Layout() {
   const { hasUnpaidCommissions } = useCredits()
   const { t } = useLanguage()
   const navigate = useNavigate()
-  const [screen, setScreen] = useState('map')
-  const [screenHistory, setScreenHistory] = useState(['map'])
-  const screenHistoryRef = useRef(['map'])
+  const [screen, setScreen] = useState(() => window.history.state?.screen || 'map')
   const [showPost, setShowPost] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
   const [showMobileMore, setShowMobileMore] = useState(false)
   const [showProfilePrompt, setShowProfilePrompt] = useState(false)
   const [showPushPrompt, setShowPushPrompt] = useState(false)
+
+  const navigateTo = useCallback((newScreen) => {
+    if (!newScreen || newScreen === screen) return
+    setScreen(newScreen)
+    window.history.pushState({ screen: newScreen }, '', '')
+  }, [screen])
 
   useEffect(() => {
     const handleKey = (e) => {
@@ -77,13 +81,13 @@ export default function Layout() {
     }
     window.addEventListener('navigateToScreen', handleNavigate)
     return () => window.removeEventListener('navigateToScreen', handleNavigate)
-  }, [])
+  }, [navigateTo])
 
   useEffect(() => {
     const handleNavigate = (e) => navigateTo(e.detail)
     window.addEventListener('navigateTo', handleNavigate)
     return () => window.removeEventListener('navigateTo', handleNavigate)
-  }, [])
+  }, [navigateTo])
 
   useEffect(() => {
     const handleOpenPost = () => setShowPost(true)
@@ -110,40 +114,27 @@ export default function Layout() {
     }
   }, [profile, loading, user])
 
-  // Keep ref in sync so the popstate handler always reads current history
+  // Mark the current dashboard history entry without adding an extra Back step.
   useEffect(() => {
-    screenHistoryRef.current = screenHistory
-  }, [screenHistory])
-
-  // Push initial browser history entry once on mount only
-  useEffect(() => {
-    window.history.pushState({ screen: 'map' }, '', '')
+    const currentScreen = window.history.state?.screen || 'map'
+    window.history.replaceState(
+      { ...(window.history.state || {}), screen: currentScreen },
+      '',
+      ''
+    )
   }, [])
 
-  // Register back-button handler once — reads history via ref, no re-registration
+  // Restore dashboard screens from the browser's own history state.
   useEffect(() => {
-    const handlePopState = () => {
-      const history = screenHistoryRef.current
-      if (history.length > 1) {
-        const newHistory = [...history]
-        newHistory.pop()
-        const previousScreen = newHistory[newHistory.length - 1]
-        setScreenHistory(newHistory)
+    const handlePopState = (event) => {
+      const previousScreen = event.state?.screen
+      if (previousScreen) {
         setScreen(previousScreen)
-      } else {
-        setScreen('map')
-        setScreenHistory(['map'])
       }
     }
     window.addEventListener('popstate', handlePopState)
     return () => window.removeEventListener('popstate', handlePopState)
   }, [])
-
-  const navigateTo = (newScreen) => {
-    setScreen(newScreen)
-    setScreenHistory(prev => [...prev, newScreen])
-    window.history.pushState({ screen: newScreen }, '', '')
-  }
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
