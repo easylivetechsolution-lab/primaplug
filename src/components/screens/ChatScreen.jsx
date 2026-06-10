@@ -28,6 +28,8 @@ export default function ChatScreen() {
   const [otherTyping, setOtherTyping] = useState(false)
   const [viewingProfile, setViewingProfile] = useState(null)
   const [showQuickReplies, setShowQuickReplies] = useState(false)
+  const [conversationMenu, setConversationMenu] = useState(null)
+  const [messageMenu, setMessageMenu] = useState(null)
   const messagesEndRef = useRef()
   const inputRef = useRef()
   const typingTimeoutRef = useRef()
@@ -158,6 +160,17 @@ export default function ChatScreen() {
       }
     }
   }, [activeConvo?.id])
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!event.target.closest('.conversation-menu') && !event.target.closest('.message-menu')) {
+        setConversationMenu(null)
+        setMessageMenu(null)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   useEffect(() => {
     scrollToBottom()
@@ -598,7 +611,7 @@ export default function ChatScreen() {
                       }}>
                         {convo.last_message || 'No messages yet'}
                       </div>
-                      {unread > 0 && (
+                          {unread > 0 && (
                         <div style={{
                           background: '#6C47FF', color: '#fff',
                           borderRadius: '50%', width: '20px', height: '20px',
@@ -610,6 +623,45 @@ export default function ChatScreen() {
                         </div>
                       )}
                     </div>
+                  </div>
+                  <div style={{ position: 'relative' }} className="conversation-menu">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setConversationMenu(prev => prev === convo.id ? null : convo.id)
+                      }}
+                      style={{
+                        position: 'absolute', top: '14px', right: '14px',
+                        width: '28px', height: '28px', borderRadius: '50%',
+                        background: '#F5F4FF', border: '1.5px solid #E2E0FF',
+                        color: '#6C47FF', fontSize: '18px', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        padding: 0
+                      }}>
+                      ⋯
+                    </button>
+                    {conversationMenu === convo.id && (
+                      <div style={{
+                        position: 'absolute', top: '48px', right: '0',
+                        background: '#fff', border: '1.5px solid #E2E0FF',
+                        borderRadius: '14px', boxShadow: '0 12px 28px rgba(108,71,255,0.15)',
+                        zIndex: 10, minWidth: '160px', overflow: 'hidden'
+                      }}>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            deleteConversation(convo, e)
+                            setConversationMenu(null)
+                          }}
+                          style={{
+                            width: '100%', textAlign: 'left', padding: '12px 14px',
+                            border: 'none', background: 'transparent', color: '#14123A',
+                            fontSize: '13px', cursor: 'pointer', fontFamily: 'inherit'
+                          }}>
+                          Delete conversation
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               )
@@ -727,6 +779,48 @@ export default function ChatScreen() {
                       </div>
                     </div>
                   )}
+
+                  {activeConvo.id && (
+                    <div style={{ position: 'relative' }} className="conversation-menu">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setConversationMenu(prev => prev === activeConvo.id ? null : activeConvo.id)
+                        }}
+                        style={{
+                          marginLeft: 'auto', width: '40px', height: '40px',
+                          borderRadius: '50%', border: '1.5px solid #E2E0FF',
+                          background: '#F5F4FF', color: '#6C47FF',
+                          cursor: 'pointer', fontSize: '20px', display: 'flex',
+                          alignItems: 'center', justifyContent: 'center', padding: 0,
+                          fontFamily: 'inherit'
+                        }}>
+                        ⋯
+                      </button>
+                      {conversationMenu === activeConvo.id && (
+                        <div style={{
+                          position: 'absolute', top: '52px', right: '0',
+                          background: '#fff', border: '1.5px solid #E2E0FF',
+                          borderRadius: '14px', boxShadow: '0 12px 28px rgba(108,71,255,0.15)',
+                          zIndex: 10, minWidth: '160px', overflow: 'hidden'
+                        }}>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              deleteConversation(activeConvo, e)
+                              setConversationMenu(null)
+                            }}
+                            style={{
+                              width: '100%', textAlign: 'left', padding: '12px 14px',
+                              border: 'none', background: 'transparent', color: '#14123A',
+                              fontSize: '13px', cursor: 'pointer', fontFamily: 'inherit'
+                            }}>
+                            Delete chat
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )
             })()}
@@ -817,7 +911,7 @@ export default function ChatScreen() {
                             </div>
                           )}
 
-                          <div style={{ maxWidth: '70%' }}>
+                          <div style={{ maxWidth: '70%', position: 'relative' }}>
                             {/* Message bubble */}
                             <div style={{
                               background: isMe
@@ -837,6 +931,46 @@ export default function ChatScreen() {
                             }}>
                               {msg.content}
                             </div>
+                            {isMe && (
+                              <div style={{ position: 'absolute', top: '-14px', right: '0' }} className="message-menu">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setMessageMenu(prev => prev === msg.id ? null : msg.id)
+                                  }}
+                                  style={{
+                                    width: '26px', height: '26px', borderRadius: '50%',
+                                    border: '1px solid rgba(255,255,255,0.5)', background: '#fff',
+                                    color: '#6C47FF', cursor: 'pointer', fontSize: '20px',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    padding: 0
+                                  }}>
+                                  ⋯
+                                </button>
+                                {messageMenu === msg.id && (
+                                  <div style={{
+                                    position: 'absolute', top: '34px', right: '0',
+                                    background: '#fff', border: '1.5px solid #E2E0FF',
+                                    borderRadius: '14px', boxShadow: '0 12px 28px rgba(108,71,255,0.15)',
+                                    zIndex: 10, minWidth: '140px', overflow: 'hidden'
+                                  }}>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        deleteMessage(msg)
+                                        setMessageMenu(null)
+                                      }}
+                                      style={{
+                                        width: '100%', textAlign: 'left', padding: '10px 12px',
+                                        border: 'none', background: 'transparent', color: '#14123A',
+                                        fontSize: '13px', cursor: 'pointer', fontFamily: 'inherit'
+                                      }}>
+                                      Delete message
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            )}
 
                             {/* Time + read receipt */}
                             {showTime && (
