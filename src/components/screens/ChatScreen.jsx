@@ -29,6 +29,7 @@ export default function ChatScreen() {
   const [viewingProfile, setViewingProfile] = useState(null)
   const [showQuickReplies, setShowQuickReplies] = useState(false)
   const [conversationMenu, setConversationMenu] = useState(null)
+  const [chatHeaderMenuOpen, setChatHeaderMenuOpen] = useState(false)
   const [messageMenu, setMessageMenu] = useState(null)
   const messagesEndRef = useRef()
   const inputRef = useRef()
@@ -165,6 +166,7 @@ export default function ChatScreen() {
     const handleClickOutside = (event) => {
       if (!event.target.closest('.conversation-menu') && !event.target.closest('.message-menu')) {
         setConversationMenu(null)
+        setChatHeaderMenuOpen(false)
         setMessageMenu(null)
       }
     }
@@ -329,7 +331,7 @@ export default function ChatScreen() {
 
   const updateConversationPreview = async (convoId, fallbackMessages = messages) => {
     const latest = [...fallbackMessages].sort(
-      (a, b) => new Date(b.created_at) - new Date(a.created_at)
+      (a, b) => parseTimestamp(b.created_at) - parseTimestamp(a.created_at)
     )[0]
 
     await supabase
@@ -395,7 +397,7 @@ export default function ChatScreen() {
       setMessages([])
       return
     }
-    if (!window.confirm('Delete this chat?')) return
+    if (!window.confirm('Delete this conversation? This removes the whole chat thread.')) return
 
     await supabase.from('messages').delete().eq('conversation_id', convo.id)
     const { error } = await supabase
@@ -404,13 +406,48 @@ export default function ChatScreen() {
       .eq('id', convo.id)
 
     if (error) {
-      alert('Could not delete chat: ' + error.message)
+      alert('Could not delete conversation: ' + error.message)
       return
     }
 
     setConversations(prev => prev.filter(c => c.id !== convo.id))
     if (activeConvo?.id === convo.id) {
       setActiveConvo(null)
+      setMessages([])
+    }
+  }
+
+  const clearConversation = async (convo, e) => {
+    e?.stopPropagation()
+    if (!convo?.id) {
+      setActiveConvo(null)
+      setMessages([])
+      return
+    }
+    if (!window.confirm('Clear this chat?')) return
+
+    await supabase.from('messages').delete().eq('conversation_id', convo.id)
+    const now = new Date().toISOString()
+    const { error } = await supabase
+      .from('conversations')
+      .update({
+        last_message: 'Chat cleared',
+        last_message_at: now,
+        unread_count_1: 0,
+        unread_count_2: 0
+      })
+      .eq('id', convo.id)
+
+    if (error) {
+      alert('Could not clear chat: ' + error.message)
+      return
+    }
+
+    setConversations(prev => prev.map(c =>
+      c.id === convo.id ? { ...c, last_message: 'Chat cleared', last_message_at: now, unread_count_1: 0, unread_count_2: 0 } : c
+    ))
+    if (activeConvo?.id === convo.id) {
+      setActiveConvo(prev => prev ? { ...prev, last_message: 'Chat cleared', last_message_at: now, unread_count_1: 0, unread_count_2: 0 } : prev)
       setMessages([])
     }
   }
@@ -435,16 +472,24 @@ export default function ChatScreen() {
       : convo.unread_count_2 || 0
   }
 
+  const parseTimestamp = (value) => {
+    if (!value) return new Date()
+    if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?$/.test(value)) {
+      return new Date(value + 'Z')
+    }
+    return new Date(value)
+  }
+
   const timeAgo = (date) => {
-    const seconds = Math.floor((new Date() - new Date(date)) / 1000)
+    const seconds = Math.floor((new Date() - parseTimestamp(date)) / 1000)
     if (seconds < 60) return 'now'
     if (seconds < 3600) return `${Math.floor(seconds / 60)}m`
     if (seconds < 86400) return `${Math.floor(seconds / 3600)}h`
-    return new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    return parseTimestamp(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
   }
 
   const formatTime = (date) => {
-    return new Date(date).toLocaleTimeString('en-US', {
+    return parseTimestamp(date).toLocaleTimeString('en-US', {
       hour: '2-digit', minute: '2-digit'
     })
   }
@@ -655,7 +700,7 @@ export default function ChatScreen() {
                           }}
                           style={{
                             width: '100%', textAlign: 'left', padding: '12px 14px',
-                            border: 'none', background: 'transparent', color: '#14123A',
+                            border: 'none', background: 'transparent', color: '#FF3366',
                             fontSize: '13px', cursor: 'pointer', fontFamily: 'inherit'
                           }}>
                           Delete conversation
@@ -785,7 +830,7 @@ export default function ChatScreen() {
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
-                          setConversationMenu(prev => prev === activeConvo.id ? null : activeConvo.id)
+                          setChatHeaderMenuOpen(prev => !prev)
                         }}
                         style={{
                           marginLeft: 'auto', width: '40px', height: '40px',
@@ -797,7 +842,7 @@ export default function ChatScreen() {
                         }}>
                         ⋯
                       </button>
-                      {conversationMenu === activeConvo.id && (
+                      {chatHeaderMenuOpen && (
                         <div style={{
                           position: 'absolute', top: '52px', right: '0',
                           background: '#fff', border: '1.5px solid #E2E0FF',
@@ -807,15 +852,15 @@ export default function ChatScreen() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
-                              deleteConversation(activeConvo, e)
-                              setConversationMenu(null)
+                              clearConversation(activeConvo, e)
+                              setChatHeaderMenuOpen(false)
                             }}
                             style={{
                               width: '100%', textAlign: 'left', padding: '12px 14px',
                               border: 'none', background: 'transparent', color: '#14123A',
                               fontSize: '13px', cursor: 'pointer', fontFamily: 'inherit'
                             }}>
-                            Delete chat
+                            Clear chat
                           </button>
                         </div>
                       )}
@@ -863,22 +908,22 @@ export default function ChatScreen() {
                     const prevMsg = messages[i - 1]
                     const nextMsg = messages[i + 1]
                     const showTime = !nextMsg ||
-                      new Date(nextMsg.created_at) - new Date(msg.created_at) > 300000
+                      parseTimestamp(nextMsg.created_at) - parseTimestamp(msg.created_at) > 300000
                     const isGrouped = prevMsg &&
                       prevMsg.sender_id === msg.sender_id &&
-                      new Date(msg.created_at) - new Date(prevMsg.created_at) < 60000
+                      parseTimestamp(msg.created_at) - parseTimestamp(prevMsg.created_at) < 60000
 
                     return (
                       <div key={msg.id}>
                         {/* Date divider */}
                         {(!prevMsg ||
-                          new Date(msg.created_at).toDateString() !==
-                          new Date(prevMsg.created_at).toDateString()) && (
+                          parseTimestamp(msg.created_at).toDateString() !==
+                          parseTimestamp(prevMsg.created_at).toDateString()) && (
                           <div style={{
                             textAlign: 'center', margin: '12px 0',
                             fontSize: '11px', color: '#A09DC8', fontWeight: '600'
                           }}>
-                            {new Date(msg.created_at).toLocaleDateString('en-US', {
+                            {parseTimestamp(msg.created_at).toLocaleDateString('en-US', {
                               weekday: 'long', month: 'short', day: 'numeric'
                             })}
                           </div>
@@ -932,7 +977,7 @@ export default function ChatScreen() {
                               {msg.content}
                             </div>
                             {isMe && (
-                              <div style={{ position: 'absolute', top: '-14px', right: '0' }} className="message-menu">
+                              <div style={{ position: 'absolute', top: '10px', left: '-34px' }} className="message-menu">
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation()
@@ -940,7 +985,7 @@ export default function ChatScreen() {
                                   }}
                                   style={{
                                     width: '26px', height: '26px', borderRadius: '50%',
-                                    border: '1px solid rgba(255,255,255,0.5)', background: '#fff',
+                                    border: '1px solid #E2E0FF', background: '#fff',
                                     color: '#6C47FF', cursor: 'pointer', fontSize: '20px',
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                                     padding: 0
@@ -949,7 +994,7 @@ export default function ChatScreen() {
                                 </button>
                                 {messageMenu === msg.id && (
                                   <div style={{
-                                    position: 'absolute', top: '34px', right: '0',
+                                    position: 'absolute', top: '34px', left: '0',
                                     background: '#fff', border: '1.5px solid #E2E0FF',
                                     borderRadius: '14px', boxShadow: '0 12px 28px rgba(108,71,255,0.15)',
                                     zIndex: 10, minWidth: '140px', overflow: 'hidden'

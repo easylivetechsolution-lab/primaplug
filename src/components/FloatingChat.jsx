@@ -301,15 +301,23 @@ export default function FloatingChat({ onOpenFullChat }) {
       : convo.unread_count_2 || 0
   }
 
+  const parseTimestamp = (value) => {
+    if (!value) return new Date()
+    if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?$/.test(value)) {
+      return new Date(value + 'Z')
+    }
+    return new Date(value)
+  }
+
   const timeAgo = (date) => {
-    const s = Math.floor((new Date() - new Date(date)) / 1000)
+    const s = Math.floor((new Date() - parseTimestamp(date)) / 1000)
     if (s < 60) return 'now'
     if (s < 3600) return `${Math.floor(s / 60)}m`
     if (s < 86400) return `${Math.floor(s / 3600)}h`
-    return new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    return parseTimestamp(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
   }
 
-  const formatTime = (date) => new Date(date).toLocaleTimeString('en-US', {
+  const formatTime = (date) => parseTimestamp(date).toLocaleTimeString('en-US', {
     hour: '2-digit', minute: '2-digit'
   })
 
@@ -565,10 +573,10 @@ export default function FloatingChat({ onOpenFullChat }) {
                     const prevMsg = messages[i - 1]
                     const nextMsg = messages[i + 1]
                     const showTime = !nextMsg ||
-                      new Date(nextMsg.created_at) - new Date(msg.created_at) > 300000
+                      parseTimestamp(nextMsg.created_at) - parseTimestamp(msg.created_at) > 300000
                     const isGrouped = prevMsg &&
                       prevMsg.sender_id === msg.sender_id &&
-                      new Date(msg.created_at) - new Date(prevMsg.created_at) < 60000
+                      parseTimestamp(msg.created_at) - parseTimestamp(prevMsg.created_at) < 60000
 
                     return (
                       <div key={msg.id} style={{
