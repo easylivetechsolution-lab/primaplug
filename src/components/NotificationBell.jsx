@@ -3,6 +3,7 @@ import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 import PublicProfile from './PublicProfile'
 import BrandIcon from './BrandIcon'
+import { ensureGigConversation } from '../utils/gigApplications'
 import {
   playNotification,
   playAccepted,
@@ -300,7 +301,7 @@ export default function NotificationBell({ onNavigate }) {
                         .eq('gig_id', notif.gig_id)
                         .order('created_at', { ascending: false })
 
-                      setNotifDetail({ type: 'application', gig, applications: apps || [] })
+                      setNotifDetail({ type: 'application', notif, gig_id: notif.gig_id, gig, applications: apps || [] })
                     } else if (notif.type === 'accepted' || notif.type === 'rejected') {
                       const { data: gig } = await supabase
                         .from('gigs')
@@ -605,43 +606,98 @@ export default function NotificationBell({ onNavigate }) {
                           <div style={{ display: 'flex', gap: '8px' }}>
                             <button
                               onClick={async () => {
-                                await supabase
-                                  .from('applications')
-                                  .update({ status: 'accepted' })
-                                  .eq('id', app.id)
-
-                                const { data: accepted } = await supabase
-                                  .from('applications')
-                                  .select('id')
-                                  .eq('gig_id', notifDetail.gig.id)
-                                  .eq('status', 'accepted')
-
-                                const filled = (accepted?.length || 0) + 1
-
-                                if (filled >= notifDetail.gig.slots) {
-                                  await supabase
-                                    .from('gigs')
-                                    .update({ status: 'in_progress', slots_filled: filled })
-                                    .eq('id', notifDetail.gig.id)
-                                } else {
-                                  await supabase
-                                    .from('gigs')
-                                    .update({ slots_filled: filled })
-                                    .eq('id', notifDetail.gig.id)
+                                const detail = notifDetail
+                                let gig = detail?.gig
+                                const gigId = gig?.id || detail?.gig_id || detail?.notif?.gig_id || app.gig_id
+                                if (!gigId) {
+                                  alert('Could not find this gig. Please reopen the notification and try again.')
+                                  return
                                 }
 
-                                await supabase.from('notifications').insert({
+                                if (!gig?.slots || !gig?.poster_id || !gig?.title) {
+                                  const { data: latestGig } = await supabase
+                                    .from('gigs')
+                                    .select('id, title, slots, poster_id')
+                                    .eq('id', gigId)
+                                    .single()
+
+                                  gig = latestGig || gig
+                                }
+
+                                const gigTitle = gig?.title || detail?.notif?.message?.match(/"([^"]+)"/)?.[1] || 'this gig'
+                                const posterId = gig?.poster_id || user?.id
+
+                                const acceptedAt = new Date().toISOString()
+
+                                const { error: acceptError } = await supabase
+                                  .from('applications')
+                                  .update({
+                                    status: 'accepted',
+                                    accepted_at: acceptedAt
+                                  })
+                                  .eq('id', app.id)
+                                if (acceptError) {
+                                  alert('Error accepting: ' + acceptError.message)
+                                  return
+                                }
+
+                                const { data: acceptedApps } = await supabase
+                                  .from('applications')
+                                  .select('id')
+                                  .eq('gig_id', gigId)
+                                  .eq('status', 'accepted')
+
+                                const filled = acceptedApps?.length || 1
+                                const slots = Number(gig?.slots || 0)
+                                const slotsFull = slots > 0 && filled >= slots
+
+                                const { error: gigError } = await supabase
+                                  .from('gigs')
+                                  .update({
+                                    status: slotsFull ? 'in_progress' : 'open',
+                                    worker_id: app.worker_id,
+                                    worker_name: app.users?.full_name,
+                                    accepted_at: acceptedAt,
+                                    slots_filled: filled
+                                  })
+                                  .eq('id', gigId)
+                                if (gigError) {
+                                  alert('Error updating gig: ' + gigError.message)
+                                  return
+                                }
+
+                                if (slotsFull) {
+                                  await supabase
+                                    .from('applications')
+                                    .update({ status: 'declined' })
+                                    .eq('gig_id', gigId)
+                                    .neq('id', app.id)
+                                    .eq('status', 'pending')
+                                }
+
+                                if (posterId) {
+                                  await ensureGigConversation({
+                                    gigId,
+                                    posterId,
+                                    workerId: app.worker_id
+                                  })
+                                }
+
+                                const { error: notifError } = await supabase.from('notifications').insert({
                                   user_id: app.worker_id,
-                                  title: 'Application Accepted! 🎉',
-                                  message: `Your application for "${notifDetail.gig.title}" was accepted`,
+                                  title: 'You Got The Job!',
+                                  message: `Your application for "${gigTitle}" was accepted! Contact the poster and get started.`,
                                   type: 'accepted',
-                                  gig_id: notifDetail.gig.id
+                                  gig_id: gigId
                                 })
+                                if (notifError) {
+                                  alert('Accepted, but notification failed: ' + notifError.message)
+                                }
 
                                 const { data: apps } = await supabase
                                   .from('applications')
                                   .select('*, users(id, full_name, avatar_url, trust_score, rating, gigs_completed, bio, skills, location, phone)')
-                                  .eq('gig_id', notifDetail.gig.id)
+                                  .eq('gig_id', gigId)
                                   .order('created_at', { ascending: false })
 
                                 setNotifDetail(prev => ({ ...prev, applications: apps || [] }))
@@ -656,23 +712,32 @@ export default function NotificationBell({ onNavigate }) {
                               }}>✓ Accept</button>
                             <button
                               onClick={async () => {
+                                const detail = notifDetail
+                                const gig = detail?.gig
+                                const gigId = gig?.id || detail?.gig_id || detail?.notif?.gig_id || app.gig_id
+                                const gigTitle = gig?.title || detail?.notif?.message?.match(/"([^"]+)"/)?.[1] || 'this gig'
+                                if (!gigId) {
+                                  alert('Could not find this gig. Please reopen the notification and try again.')
+                                  return
+                                }
+
                                 await supabase
                                   .from('applications')
-                                  .update({ status: 'rejected' })
+                                  .update({ status: 'declined', declined_at: new Date().toISOString() })
                                   .eq('id', app.id)
 
                                 await supabase.from('notifications').insert({
                                   user_id: app.worker_id,
                                   title: 'Application Update',
-                                  message: `Your application for "${notifDetail.gig.title}" was not selected`,
+                                  message: `Your application for "${gigTitle}" was not selected`,
                                   type: 'rejected',
-                                  gig_id: notifDetail.gig.id
+                                  gig_id: gigId
                                 })
 
                                 const { data: apps } = await supabase
                                   .from('applications')
                                   .select('*, users(id, full_name, avatar_url, trust_score, rating, gigs_completed, bio, skills, location, phone)')
-                                  .eq('gig_id', notifDetail.gig.id)
+                                  .eq('gig_id', gigId)
                                   .order('created_at', { ascending: false })
 
                                 setNotifDetail(prev => ({ ...prev, applications: apps || [] }))

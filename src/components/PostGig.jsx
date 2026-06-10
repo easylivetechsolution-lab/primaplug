@@ -24,6 +24,7 @@ export default function PostGig({ onClose }) {
   const [done, setDone] = useState(false)
   const [error, setError] = useState('')
   const [showPrompt, setShowPrompt] = useState(false)
+  const submittingRef = useRef(false)
 
   useEffect(() => {
     window.history.pushState({ modal: 'open' }, '', '')
@@ -88,6 +89,11 @@ export default function PostGig({ onClose }) {
 }
 
   const handleSubmit = async () => {
+    if (loading || submittingRef.current) return
+    submittingRef.current = true
+    setLoading(true)
+    setError('')
+
     const { data: userProfile } = await supabase
       .from('users')
       .select('selfie_verified')
@@ -95,6 +101,8 @@ export default function PostGig({ onClose }) {
       .single()
     if (!userProfile?.selfie_verified) {
       alert('Please complete selfie verification in your profile before posting gigs.')
+      submittingRef.current = false
+      setLoading(false)
       onClose()
       window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'profile' }))
       return
@@ -102,15 +110,17 @@ export default function PostGig({ onClose }) {
 
     const { complete } = getProfileCompletion(profile)
     if (!complete) {
+      submittingRef.current = false
+      setLoading(false)
       setShowPrompt(true)
       return
     }
     if (!form.title || !form.pay_min || !form.pay_max) {
       setError('Please fill in title and pay range')
+      submittingRef.current = false
+      setLoading(false)
       return
     }
-    setLoading(true)
-    setError('')
 
     let lat = form.latitude
     let lng = form.longitude
@@ -150,6 +160,7 @@ export default function PostGig({ onClose }) {
 
     if (err) {
       setError(err.message)
+      submittingRef.current = false
       setLoading(false)
       return
     }
