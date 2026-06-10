@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import PublicProfile from './PublicProfile'
 import BrandIcon from './BrandIcon'
 import { ensureGigConversation } from '../utils/gigApplications'
+import { sendPushToUser } from '../utils/pushNotifications'
 import {
   playNotification,
   playAccepted,
@@ -607,17 +608,42 @@ export default function NotificationBell({ onNavigate }) {
                             <button
                               onClick={async () => {
                                 const acceptedAt = new Date().toISOString()
+                                const gig = notifDetail.gig
+                                const acceptedApp = app
 
-                                await supabase
+                                setNotifDetail(prev => ({
+                                  ...prev,
+                                  gig: {
+                                    ...prev.gig,
+                                    status: 'in_progress',
+                                    worker_id: acceptedApp.worker_id,
+                                    worker_name: acceptedApp.users?.full_name,
+                                    accepted_at: acceptedAt,
+                                    slots_filled: 1
+                                  },
+                                  applications: prev.applications.map(a => {
+                                    if (a.id === acceptedApp.id) {
+                                      return { ...a, status: 'accepted', accepted_at: acceptedAt }
+                                    }
+                                    if (a.status === 'pending') {
+                                      return { ...a, status: 'declined' }
+                                    }
+                                    return a
+                                  })
+                                }))
+                                setActionDone('accepted')
+
+                                try {
+                                const { error: acceptError } = await supabase
                                   .from('applications')
                                   .update({
                                     status: 'accepted',
                                     accepted_at: acceptedAt
                                   })
                                   .eq('id', app.id)
-                                  .eq('status', 'pending')
+                                if (acceptError) throw acceptError
 
-                                await supabase
+                                const { error: gigError } = await supabase
                                   .from('gigs')
                                   .update({
                                     status: 'in_progress',
@@ -626,37 +652,79 @@ export default function NotificationBell({ onNavigate }) {
                                     accepted_at: acceptedAt,
                                     slots_filled: 1
                                   })
-                                  .eq('id', notifDetail.gig.id)
+                                  .eq('id', gig.id)
+                                if (gigError) throw gigError
 
-                                await supabase
+                                const otherPendingApps = notifDetail.applications.filter(
+                                  a => a.id !== app.id && a.status === 'pending'
+                                )
+
+                                const { error: declineError } = await supabase
                                   .from('applications')
                                   .update({ status: 'declined' })
-                                  .eq('gig_id', notifDetail.gig.id)
+                                  .eq('gig_id', gig.id)
                                   .neq('id', app.id)
                                   .eq('status', 'pending')
+                                if (declineError) throw declineError
 
                                 await ensureGigConversation({
-                                  gigId: notifDetail.gig.id,
-                                  posterId: notifDetail.gig.poster_id,
+                                  gigId: gig.id,
+                                  posterId: gig.poster_id,
                                   workerId: app.worker_id
                                 })
 
-                                await supabase.from('notifications').insert({
+                                const { error: notifError } = await supabase.from('notifications').insert({
                                   user_id: app.worker_id,
                                   title: 'You Got The Job!',
-                                  message: `Your application for "${notifDetail.gig.title}" was accepted! Contact the poster and get started.`,
+                                  message: `Your application for "${gig.title}" was accepted! Contact the poster and get started.`,
                                   type: 'accepted',
-                                  gig_id: notifDetail.gig.id
+                                  gig_id: gig.id
                                 })
+                                if (notifError) console.error('Notification error:', notifError)
+
+                                try {
+                                  await sendPushToUser(
+                                    app.worker_id,
+                                    'You Got The Job!',
+                                    `Your application for "${gig.title}" was accepted!`,
+                                    { type: 'accepted', gigId: gig.id }
+                                  )
+                                } catch (e) {
+                                  console.log('Push error:', e)
+                                }
+
+                                if (otherPendingApps.length > 0) {
+                                  await supabase.from('notifications').insert(
+                                    otherPendingApps.map(a => ({
+                                      user_id: a.worker_id,
+                                      title: 'Application Update',
+                                      message: `Your application for "${gig.title}" was not selected this time.`,
+                                      type: 'rejected',
+                                      gig_id: gig.id
+                                    }))
+                                  )
+                                }
 
                                 const { data: apps } = await supabase
                                   .from('applications')
                                   .select('*, users(id, full_name, avatar_url, trust_score, rating, gigs_completed, bio, skills, location, phone)')
-                                  .eq('gig_id', notifDetail.gig.id)
+                                  .eq('gig_id', gig.id)
                                   .order('created_at', { ascending: false })
 
-                                setNotifDetail(prev => ({ ...prev, applications: apps || [] }))
-                                setActionDone('accepted')
+                                  if (apps) setNotifDetail(prev => ({ ...prev, applications: apps }))
+                                } catch (e) {
+                                  console.error('Accept error:', e)
+                                  setActionDone(null)
+
+                                  const { data: apps } = await supabase
+                                    .from('applications')
+                                    .select('*, users(id, full_name, avatar_url, trust_score, rating, gigs_completed, bio, skills, location, phone)')
+                                    .eq('gig_id', gig.id)
+                                    .order('created_at', { ascending: false })
+
+                                  if (apps) setNotifDetail(prev => ({ ...prev, applications: apps }))
+                                  alert('Error accepting: ' + e.message)
+                                }
                               }}
                               style={{
                                 flex: 1, background: '#DFFDF4',

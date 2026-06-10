@@ -904,9 +904,11 @@ export default function Layout() {
       `}</style>
 
       {/* Floating Chat — visible on all screens */}
-      <div className="floating-chat-shell">
-        <FloatingChat onOpenFullChat={() => navigateTo('chat')} />
-      </div>
+      {screen !== 'chat' && (
+  <div className="floating-chat-shell">
+    <FloatingChat onOpenFullChat={() => navigateTo('chat')} />
+  </div>
+)}
 
       {/* Push Notification Prompt */}
       {showPushPrompt && (
