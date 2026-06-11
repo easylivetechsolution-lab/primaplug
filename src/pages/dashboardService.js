@@ -21,7 +21,6 @@ export const updateDashboardAfterPayment = async (workerId, gigId, amountPaid) =
   // Ensure amountPaid is treated as a number to avoid potential data type issues
   const numericAmount = Number(amountPaid) || 0;
   updates[`users/${workerId}/stats/gigsCompleted`] = increment(1);
-  updates[`users/${workerId}/stats/totalEarned`] = increment(amountPaid);
   updates[`users/${workerId}/stats/totalEarned`] = increment(numericAmount);
 
   // 3. Update the global path for dashboard listeners
