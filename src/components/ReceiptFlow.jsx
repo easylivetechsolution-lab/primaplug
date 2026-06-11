@@ -1,11 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 import { CURRENCIES, getCurrency } from '../data/currencies'
 import { rewardGigReferral } from '../utils/referral'
-
-const MINIMUM_COMMISSION_USD = 2 // $2 minimum for all currencies
-const MINIMUM_COMMISSION_NGN = 500 // ₦500 for NGN gigs
 
 const getMinimumCommission = (currency) => {
   switch (currency) {
@@ -30,7 +27,6 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
   const [amount, setAmount] = useState('')
   const [selectedCurrency, setSelectedCurrency] = useState(gig?.currency || 'USD')
   const [showCurrencyPicker, setShowCurrencyPicker] = useState(false)
-  const [workerAmount, setWorkerAmount] = useState('')
   const [receiptFile, setReceiptFile] = useState(null)
   const [uploading, setUploading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -40,11 +36,7 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
   const isWorker = gig?.worker_id === user?.id
   const currency = getCurrency(gig?.currency || 'NGN')
 
-  useEffect(() => {
-    fetchReceipt()
-  }, [gig])
-
-  const fetchReceipt = async () => {
+  const fetchReceipt = useCallback(async () => {
     if (!gig) return
     const { data } = await supabase
       .from('receipts')
@@ -70,7 +62,12 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
     } else {
       setStep(isPoster ? 'poster_amount' : 'waiting_poster')
     }
-  }
+  }, [gig, isPoster, isWorker])
+
+  useEffect(() => {
+    const timer = setTimeout(fetchReceipt, 0)
+    return () => clearTimeout(timer)
+  }, [fetchReceipt])
 
   const calculateCommission = (gigAmount, currencyCode) => {
     const commission = gigAmount * 0.10
@@ -88,7 +85,8 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
 
     try {
       const gigAmount = parseFloat(amount)
-      const commissionAmount = calculateCommission(gigAmount, selectedCurrency)
+      const receiptCurrency = gig?.currency || selectedCurrency
+      const commissionAmount = calculateCommission(gigAmount, receiptCurrency)
 
       // Check if receipt exists
       const { data: existing } = await supabase
@@ -102,7 +100,7 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
           .from('receipts')
           .update({
             amount: gigAmount,
-            currency: selectedCurrency,
+            currency: receiptCurrency,
             commission_amount: commissionAmount,
             poster_confirmed: true,
             poster_confirmed_at: new Date().toISOString(),
@@ -114,7 +112,7 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
           poster_id: gig.poster_id,
           worker_id: gig.worker_id,
           amount: gigAmount,
-          currency: selectedCurrency,
+          currency: receiptCurrency,
           commission_amount: commissionAmount,
           poster_confirmed: true,
           poster_confirmed_at: new Date().toISOString(),
@@ -124,11 +122,11 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
       }
 
       // Notify worker with currency info
-      const currSymbol = CURRENCIES.find(c => c.code === selectedCurrency)?.symbol
+      const currSymbol = CURRENCIES.find(c => c.code === receiptCurrency)?.symbol
       await supabase.from('notifications').insert({
         user_id: gig.worker_id,
         title: '📎 Receipt Submitted',
-        message: `Poster confirmed payment of ${currSymbol}${gigAmount.toLocaleString()} ${selectedCurrency} for "${gig.title}". Please confirm you received this amount.`,
+        message: `Poster confirmed payment of ${currSymbol}${gigAmount.toLocaleString()} ${receiptCurrency} for "${gig.title}". Please confirm you received this amount.`,
         type: 'receipt',
         gig_id: gig.id
       })
@@ -196,7 +194,8 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
 
       // Worker agrees — complete the receipt
       const gigAmount = currentReceipt.amount
-      const commissionAmount = calculateCommission(gigAmount, gig?.currency)
+      const receiptCurrency = currentReceipt.currency || gig?.currency || 'NGN'
+      const commissionAmount = calculateCommission(gigAmount, receiptCurrency)
 
       await supabase
         .from('receipts')
@@ -210,31 +209,34 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
         })
         .eq('id', currentReceipt.id)
 
-      // Mark gig complete
-      await supabase
-        .from('gigs')
-        .update({ status: 'completed' })
-        .eq('id', gig.id)
-
-      // Create commission record
-      await supabase.from('commissions').insert({
+      // Create or refresh one commission record for this gig/worker.
+      const commissionPayload = {
         gig_id: gig.id,
         worker_id: gig.worker_id,
         gig_amount: gigAmount,
         commission_amount: commissionAmount,
-        currency: gig?.currency || 'NGN',
+        currency: receiptCurrency,
         status: 'pending',
-        due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-      })
+        due_date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
+      }
 
-      // Give worker completion bonus credits
-      await supabase.rpc('add_credits', {
-        p_user_id: gig.worker_id,
-        p_amount: 5,
-        p_type: 'completion_bonus',
-        p_description: `Completion bonus for "${gig.title}"`,
-        p_gig_id: gig.id
-      })
+      const { data: existingCommission } = await supabase
+        .from('commissions')
+        .select('id, status')
+        .eq('gig_id', gig.id)
+        .eq('worker_id', gig.worker_id)
+        .maybeSingle()
+
+      if (existingCommission) {
+        if (existingCommission.status !== 'paid') {
+          await supabase
+            .from('commissions')
+            .update(commissionPayload)
+            .eq('id', existingCommission.id)
+        }
+      } else {
+        await supabase.from('commissions').insert(commissionPayload)
+      }
 
       // Reward gig referral if applicable
       if (gigAmount > 0) {
@@ -258,7 +260,7 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
         {
           user_id: gig.worker_id,
           title: '✅ Gig Completed!',
-          message: `"${gig.title}" complete! You owe ${currency.symbol}${commissionAmount.toLocaleString()} platform commission. Pay within 7 days to maintain your account standing.`,
+          message: `"${gig.title}" complete! You owe ${getCurrency(receiptCurrency).symbol}${commissionAmount.toLocaleString()} platform commission. Pay within 3 days to keep applying for gigs.`,
           type: 'commission',
           gig_id: gig.id
         }
@@ -368,13 +370,13 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
 
                 <div style={{ position: 'relative' }}>
                   <button
-                    onClick={() => setShowCurrencyPicker(s => !s)}
+                    onClick={() => setShowCurrencyPicker(false)}
                     style={{
                       width: '100%', background: '#F5F4FF',
                       border: '1.5px solid #E2E0FF',
                       borderRadius: '12px', padding: '12px 16px',
                       fontSize: '14px', fontWeight: '700',
-                      color: '#14123A', cursor: 'pointer',
+                      color: '#14123A', cursor: 'default',
                       fontFamily: 'inherit',
                       display: 'flex', alignItems: 'center',
                       justifyContent: 'space-between', gap: '10px'
@@ -815,9 +817,9 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
                     fontSize: '11px', color: '#FF6B2B',
                     opacity: 0.8, lineHeight: '1.5'
                   }}>
-                    10% platform fee due within 7 days.
-                    Pay via Flutterwave or Prima Credits to maintain
-                    your account standing.
+                    10% platform fee due within 3 days.
+                    Pay via Flutterwave or Prima Credits to keep applying
+                    for gigs.
                   </div>
                   <button
                     onClick={() => {

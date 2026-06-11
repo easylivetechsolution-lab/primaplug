@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 import CategoryPicker from './CategoryPicker'
@@ -8,6 +8,7 @@ import { getProfileCompletion } from '../utils/profileComplete'
 import ProfilePrompt from './ProfilePrompt'
 import { CURRENCIES } from '../data/currencies'
 import { useLanguage } from '../context/LanguageContext'
+import { currencyForLocation, currencyOptionsForLocation } from '../utils/locationCurrency'
 
 const URGENCY = [
   { key: 'now', label: 'NOW', color: '#FF3366', bg: '#FFE8EE' },
@@ -19,6 +20,10 @@ const URGENCY = [
 export default function PostGig({ onClose }) {
   const { user, profile } = useAuth()
   const { currency: defaultCurrency } = useLanguage()
+  const locationCurrency = currencyForLocation(profile?.location, defaultCurrency || 'USD')
+  const currencyOptions = CURRENCIES.filter(c =>
+    currencyOptionsForLocation(profile?.location, locationCurrency).includes(c.code)
+  )
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
@@ -47,8 +52,9 @@ export default function PostGig({ onClose }) {
     urgency: 'now',
     pay_min: '',
     pay_max: '',
-    currency: defaultCurrency || 'USD',
+    currency: locationCurrency,
     duration_days: 1,
+    expires_on: '',
     location: '',
     latitude: null,
     longitude: null,
@@ -131,8 +137,8 @@ export default function PostGig({ onClose }) {
       if (coords) { lat = coords.lat; lng = coords.lng }
     }
 
-    const expiresAt = new Date()
-    expiresAt.setDate(expiresAt.getDate() + form.duration_days)
+    const expiresAt = form.expires_on ? new Date(`${form.expires_on}T23:59:59`) : new Date()
+    if (!form.expires_on) expiresAt.setDate(expiresAt.getDate() + form.duration_days)
 
     const { error: err } = await supabase.from('gigs').insert({
   poster_id: user.id,
@@ -345,7 +351,7 @@ export default function PostGig({ onClose }) {
                       value={form.currency}
                       onChange={e => update('currency', e.target.value)}
                       style={{ ...inputStyle, appearance: 'none', cursor: 'pointer' }}>
-                      {CURRENCIES.map(c => (
+                      {currencyOptions.map(c => (
                         <option key={c.code} value={c.code}>
                           {c.flag} {c.code} ({c.symbol})
                         </option>
@@ -365,6 +371,17 @@ export default function PostGig({ onClose }) {
                       ))}
                     </select>
                   </div>
+                </div>
+
+                <div>
+                  <label style={labelStyle}>Specific Expiry Date</label>
+                  <input
+                    type="date"
+                    value={form.expires_on}
+                    min={new Date().toISOString().slice(0, 10)}
+                    onChange={e => update('expires_on', e.target.value)}
+                    style={inputStyle}
+                  />
                 </div>
 
                 {/* Pay Range */}
@@ -657,7 +674,8 @@ export default function PostGig({ onClose }) {
                     ['Type', form.type],
                     ['Field', form.field],
                     ['Urgency', form.urgency.toUpperCase()],
-                    ['Pay Range', `$${form.pay_min || '?'} – $${form.pay_max || '?'}`],
+                    ['Pay Range', `${CURRENCIES.find(c => c.code === form.currency)?.symbol || '$'}${form.pay_min || '?'} - ${CURRENCIES.find(c => c.code === form.currency)?.symbol || '$'}${form.pay_max || '?'}`],
+                    ['Expires', form.expires_on || `${form.duration_days} day${form.duration_days !== 1 ? 's' : ''}`],
                     ['Location', form.type === 'digital' ? 'Remote' : (form.location || '—')],
                     ['Slots', form.slots],
                   ].map(([k, v]) => (

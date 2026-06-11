@@ -53,7 +53,9 @@ serve(async (req) => {
     const transaction = data.data
     const parts = tx_ref.split('-')
     const paymentType = parts[1] // COMM or WITH
-    const paymentId = parts[2]
+    const paymentId = paymentType === 'COMM'
+      ? tx_ref.replace(/^PRIMA-COMM-/, '').replace(/-T-\d+$/, '')
+      : parts.slice(2).join('-')
     const expectedAmount = Number(expected_amount)
     const expectedCurrency = String(expected_currency || '').toUpperCase()
 

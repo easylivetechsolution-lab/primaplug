@@ -14,6 +14,37 @@ export const findExistingApplication = async (gigId, workerId) => {
   return data?.[0] || null
 }
 
+export const findApplicationBlocker = async (workerId) => {
+  const { data: userStatus, error: statusError } = await supabase
+    .from('users')
+    .select('account_status')
+    .eq('id', workerId)
+    .maybeSingle()
+
+  if (statusError) throw statusError
+
+  if (userStatus?.account_status === 'restricted') {
+    return 'Your account is restricted because of unpaid platform commission. Please pay your owed commission to apply for gigs again.'
+  }
+
+  const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
+  const { data: overdueCommissions, error: commissionsError } = await supabase
+    .from('commissions')
+    .select('id')
+    .eq('worker_id', workerId)
+    .eq('status', 'pending')
+    .or(`due_date.lte.${new Date().toISOString()},and(due_date.is.null,created_at.lte.${threeDaysAgo})`)
+    .limit(1)
+
+  if (commissionsError) throw commissionsError
+
+  if (overdueCommissions?.length > 0) {
+    return 'You have unpaid platform commission older than 3 days. Please pay it on the Commission page before applying for another gig.'
+  }
+
+  return null
+}
+
 export const ensureGigConversation = async ({ gigId, posterId, workerId }) => {
   const { data: existingConvos, error: lookupError } = await supabase
     .from('conversations')
@@ -47,6 +78,9 @@ export const ensureGigConversation = async ({ gigId, posterId, workerId }) => {
 export const applyToGig = async ({ gig, workerId, notifyPush = true }) => {
   const existing = await findExistingApplication(gig.id, workerId)
   if (existing) return { alreadyApplied: true, application: existing }
+
+  const blocker = await findApplicationBlocker(workerId)
+  if (blocker) return { blocked: true, message: blocker }
 
   const { data: application, error } = await supabase
     .from('applications')
@@ -91,4 +125,3 @@ export const applyToGig = async ({ gig, workerId, notifyPush = true }) => {
   await trackGigReferral(gig.id, workerId)
   return { alreadyApplied: false, application }
 }
-

@@ -4,6 +4,7 @@ import { useAuth } from './AuthContext'
 import { t as translate } from '../data/translations'
 import { getCurrency } from '../data/currencies'
 import { normalizeLanguage } from '../data/languages'
+import { currencyForLocation } from '../utils/locationCurrency'
 
 const LanguageContext = createContext({})
 
@@ -23,6 +24,12 @@ export const LanguageProvider = ({ children }) => {
       const normalizedLanguage = normalizeLanguage(profile.language)
       setLanguageState(normalizedLanguage)
       localStorage.setItem('prima_language', normalizedLanguage)
+    }
+    if (profile?.preferred_currency) {
+      setCurrencyState(profile.preferred_currency)
+      localStorage.setItem('prima_currency', profile.preferred_currency)
+    } else if (!localStorage.getItem('prima_currency') && profile?.location) {
+      setCurrencyState(currencyForLocation(profile.location, 'USD'))
     }
   }, [profile])
 

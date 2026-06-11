@@ -95,14 +95,18 @@ export const CreditsProvider = ({ children }) => {
     }
   }
 
-  const pendingCommissions = commissions.filter(c => c.status === 'pending')
+  const uniqueCommissions = commissions.filter((commission, index, all) => {
+    const key = commission.gig_id || commission.id
+    return all.findIndex(item => (item.gig_id || item.id) === key) === index
+  })
+  const pendingCommissions = uniqueCommissions.filter(c => c.status === 'pending')
   const totalOwed = pendingCommissions.reduce((sum, c) => sum + (c.commission_amount || 0), 0)
   const hasUnpaidCommissions = pendingCommissions.length > 0
 
   return (
     <CreditsContext.Provider value={{
       credits,
-      commissions,
+      commissions: uniqueCommissions,
       pendingCommissions,
       totalOwed,
       hasUnpaidCommissions,

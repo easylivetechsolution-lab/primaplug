@@ -15,7 +15,7 @@ export default function CommissionScreen() {
   } = useCredits()
   const [paying, setPaying] = useState(null)
   const [showPayment, setShowPayment] = useState(false)
-  const [selectedCommission, setSelectedCommission] = useState(null)
+  const [selectedCommission] = useState(null)
 
   const handlePayWithCredits = async (commission) => {
     const creditsNeeded = commission.commission_amount * 50
@@ -166,8 +166,7 @@ export default function CommissionScreen() {
               fontSize: '12px', color: '#FF6B2B',
               opacity: 0.8, lineHeight: '1.5'
             }}>
-              Pay within the due date to maintain your trust score and full account access.
-              After 60 days your account will be restricted.
+              Pay within 3 days to keep applying for gigs. Overdue commission restricts new applications until paid.
             </div>
           </div>
         </div>
@@ -189,7 +188,6 @@ export default function CommissionScreen() {
           {pendingCommissions.map((commission, i) => {
             const colors = getStatusColor(commission)
             const days = daysUntilDue(commission.due_date)
-            const curr = getCurrency(commission.currency || 'NGN')
             const creditsNeeded = commission.commission_amount * 50
             const canPayWithCredits = (credits?.balance || 0) >= creditsNeeded
 
@@ -240,7 +238,7 @@ export default function CommissionScreen() {
                   <button
                     onClick={async () => {
                       setPaying(commission.id)
-                      const txRef = `PRIMA-COMM-${commission.id}-${Date.now()}`
+                      const txRef = `PRIMA-COMM-${commission.id}-T-${Date.now()}`
 
                       payWithFlutterwave({
                         publicKey: import.meta.env.VITE_FLUTTERWAVE_PUBLIC_KEY,

@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { supabase } from '../../supabase'
 import { useCredits } from '../../context/CreditsContext'
 import { useAuth } from '../../context/AuthContext'
-import { payWithFlutterwave } from '../../utils/flutterwave'
 
 const PAYMENT_METHODS = [
   {

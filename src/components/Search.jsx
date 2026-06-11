@@ -65,7 +65,7 @@ export default function Search({ onClose }) {
       let gigsQuery = supabase
         .from('gigs')
         .select('*, users(full_name, avatar_url, trust_score, rating)')
-        .eq('status', 'open')
+        .in('status', ['open', 'completed'])
         .textSearch('search_vector', q.trim().split(' ').join(' & '), {
           type: 'websearch'
         })
@@ -87,7 +87,9 @@ export default function Search({ onClose }) {
       const [gigsResult, usersResult] = await Promise.all([gigsQuery, usersQuery])
 
       setResults({
-        gigs: gigsResult.data || [],
+        gigs: (gigsResult.data || []).filter(gig =>
+          !gig.expires_at || new Date(gig.expires_at) >= new Date()
+        ),
         users: usersResult.data || [],
       })
     } catch (e) {

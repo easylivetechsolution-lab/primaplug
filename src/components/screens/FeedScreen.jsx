@@ -12,6 +12,7 @@ import { sendPushToUser } from '../../utils/pushNotifications'
 import { trackGigReferral } from '../../utils/referral'
 import ShareGig from '../ShareGig'
 import ReportModal from '../ReportModal'
+import { findApplicationBlocker } from '../../utils/gigApplications'
 
 const URGENCY = {
   now: { label: 'NOW', color: '#FF3366', bg: '#FFE8EE', border: '#FF99B3' },
@@ -79,13 +80,15 @@ export default function FeedScreen() {
           phone
         )
       `)
-      .eq('status', 'open')
+      .in('status', ['open', 'completed'])
       .order('created_at', { ascending: false })
 
     if (error) {
       console.log('Feed error:', error.message)
     } else {
-      setGigs(data || [])
+      setGigs((data || []).filter(gig =>
+        !gig.expires_at || new Date(gig.expires_at) >= new Date()
+      ))
     }
     setLoading(false)
   }
@@ -865,6 +868,13 @@ export default function FeedScreen() {
     const userId = session?.user?.id
     if (!userId) {
       alert('Please log in to apply')
+      setApplying(false)
+      return
+    }
+    const blocker = await findApplicationBlocker(userId)
+    if (blocker) {
+      alert(blocker)
+      window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'commission' }))
       setApplying(false)
       return
     }

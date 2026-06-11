@@ -10,11 +10,11 @@ import { playMapPing } from '../../utils/sounds'
 import { useAuth } from '../../context/AuthContext'
 import { getCurrency } from '../../data/currencies'
 import { CATEGORIES } from '../../data/categories'
-import { trackGigReferral } from '../../utils/referral'
 import ShareGig from '../ShareGig'
 import { getProfileCompletion } from '../../utils/profileComplete'
 import ProfilePrompt from '../ProfilePrompt'
 import BrandIcon from '../BrandIcon'
+import { applyToGig } from '../../utils/gigApplications'
 
 const getCurrencySymbol = (code) => getCurrency(code || 'USD').symbol
 
@@ -238,7 +238,7 @@ export default function MapScreen() {
       .from('gigs')
       .delete()
       .lt('expires_at', new Date().toISOString())
-      .eq('status', 'open')
+      .in('status', ['open', 'completed'])
   }
 
   useEffect(() => {
@@ -267,12 +267,16 @@ export default function MapScreen() {
     const { data, error } = await supabase
       .from('gigs')
       .select('*, poster:users!gigs_poster_id_fkey(full_name, avatar_url, trust_score, rating, gigs_completed, phone)')
-      .eq('status', 'open')
+      .in('status', ['open', 'completed'])
       .eq('type', 'physical')
       .not('latitude', 'is', null)
       .not('longitude', 'is', null)
     if (error) console.log('Map fetch error:', error.message)
-    if (data) setGigs(data)
+    if (data) {
+      setGigs(data.filter(gig =>
+        !gig.expires_at || new Date(gig.expires_at) >= new Date()
+      ))
+    }
   }
 
   useEffect(() => {
@@ -998,43 +1002,29 @@ export default function MapScreen() {
                           setApplying(false)
                           return
                         }
-                        // Check if already applied
-                        const { data: existingApps } = await supabase
-                          .from('applications')
-                          .select('id')
-                          .eq('gig_id', selectedGig.id)
-                          .eq('worker_id', userId)
-                          .limit(1)
-                        if (existingApps?.length > 0) {
+                        const result = await applyToGig({
+                          gig: selectedGig,
+                          workerId: userId,
+                          notifyPush: false
+                        })
+
+                        if (result.blocked) {
+                          alert(result.message)
+                          window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'commission' }))
+                          setApplying(false)
+                          return
+                        }
+
+                        if (result.alreadyApplied) {
                           alert('You already applied for this gig!')
                           setApplying(false)
                           return
                         }
-                        // Save application
-                        const { error } = await supabase
-                          .from('applications')
-                          .insert({
-                            gig_id: selectedGig.id,
-                            worker_id: userId,
-                            status: 'pending'
-                          })
-                        if (error) {
-                          alert('Error applying: ' + error.message)
-                          setApplying(false)
-                          return
-                        }
-                        // Notify the gig poster
-                        await supabase.from('notifications').insert({
-                          user_id: selectedGig.poster_id,
-                          title: 'New Application!',
-                          message: `Someone applied for your gig "${selectedGig.title}"`,
-                          type: 'application',
-                          gig_id: selectedGig.id
-                        })
+
                         setApplied(true)
-                        await trackGigReferral(selectedGig.id, userId)
                       } catch (e) {
                         console.log('Apply error:', e)
+                        alert('Error applying: ' + e.message)
                       }
                       setApplying(false)
                     }}

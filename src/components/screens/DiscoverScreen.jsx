@@ -52,9 +52,13 @@ export default function DiscoverScreen() {
     const { data } = await supabase
       .from('gigs')
       .select('*, users(full_name, trust_score, rating, avatar_url)')
-      .eq('status', 'open')
+      .in('status', ['open', 'completed'])
       .order('created_at', { ascending: false })
-    if (data) setAllGigs(data)
+    if (data) {
+      setAllGigs(data.filter(gig =>
+        !gig.expires_at || new Date(gig.expires_at) >= new Date()
+      ))
+    }
   }
 
   const fetchGigsByField = async (field) => {
@@ -62,10 +66,14 @@ export default function DiscoverScreen() {
     const { data } = await supabase
       .from('gigs')
       .select('*, users(full_name, trust_score, rating, avatar_url)')
-      .eq('status', 'open')
+      .in('status', ['open', 'completed'])
       .eq('field', field)
       .order('created_at', { ascending: false })
-    if (data) setGigs(data)
+    if (data) {
+      setGigs(data.filter(gig =>
+        !gig.expires_at || new Date(gig.expires_at) >= new Date()
+      ))
+    }
     setLoading(false)
   }
 

@@ -5,10 +5,10 @@ import PublicProfile from '../PublicProfile'
 import BrandIcon from '../BrandIcon'
 import EmptyState from '../EmptyState'
 import { getCurrency } from '../../data/currencies'
-import { trackGigReferral } from '../../utils/referral'
 import ShareGig from '../ShareGig'
 import { getProfileCompletion } from '../../utils/profileComplete'
 import ProfilePrompt from '../ProfilePrompt'
+import { applyToGig } from '../../utils/gigApplications'
 
 const getCurrencySymbol = (code) => getCurrency(code || 'USD').symbol
 
@@ -84,55 +84,28 @@ export default function SavedScreen() {
       return
     }
     try {
-      const { data: existingApps } = await supabase
-        .from('applications')
-        .select('id')
-        .eq('gig_id', gig.id)
-        .eq('worker_id', user.id)
-        .limit(1)
+      const result = await applyToGig({
+        gig,
+        workerId: user.id
+      })
 
-      if (existingApps?.length > 0) {
+      if (result.blocked) {
+        alert(result.message)
+        window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'commission' }))
+        setApplying(false)
+        return
+      }
+
+      if (result.alreadyApplied) {
         alert('You already applied for this gig!')
         setApplying(false)
         return
       }
 
-      await supabase.from('applications').insert({
-        gig_id: gig.id,
-        worker_id: user.id,
-        status: 'pending'
-      })
-
-      await supabase.from('notifications').insert({
-        user_id: gig.poster_id,
-        title: 'New Application!',
-        message: `Someone applied for your gig "${gig.title}"`,
-        type: 'application',
-        gig_id: gig.id
-      })
-
-      const { data: existingConvo } = await supabase
-        .from('conversations')
-        .select('id')
-        .eq('gig_id', gig.id)
-        .eq('participant_1', gig.poster_id)
-        .eq('participant_2', user.id)
-        .maybeSingle()
-
-      if (!existingConvo) {
-        await supabase.from('conversations').insert({
-          gig_id: gig.id,
-          participant_1: gig.poster_id,
-          participant_2: user.id,
-          last_message: 'Application sent',
-          last_message_at: new Date().toISOString()
-        })
-      }
-
       setApplied(gig.id)
-      await trackGigReferral(gig.id, user.id)
     } catch (e) {
       console.log('Apply error:', e)
+      alert('Error applying: ' + e.message)
     }
     setApplying(false)
   }
