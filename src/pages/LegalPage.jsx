@@ -92,7 +92,7 @@ const termsSections = [
   },
   {
     title: '8. Reviews, Trust Scores, and Credits',
-    body: 'Prima may calculate trust scores, levels, reviews, referrals, credits, penalties, and account standing using user activity. These systems are operational tools and may be adjusted to correct errors, prevent abuse, or protect marketplace quality.'
+    body: 'Prima may calculate trust scores, levels, reviews, referrals, credits, penalties, and account standing using user activity. New accounts start with a trust score and rating of 0, which progress as the user completes work and receives feedback. These systems are operational tools and may be adjusted to correct errors, prevent abuse, or protect marketplace quality.'
   },
   {
     title: '9. Prohibited Conduct',
