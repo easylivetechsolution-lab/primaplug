@@ -12,7 +12,7 @@ const SUPPORTED_CURRENCIES = [
 ]
 
 export default function FundWallet({ onClose }) {
-  const { user, profile } = useAuth()
+  const { user, profile, refreshProfile } = useAuth()
   const [amount, setAmount] = useState('')
   const [currency, setCurrency] = useState(profile?.wallet_currency || 'NGN')
   const [loading, setLoading] = useState(false)

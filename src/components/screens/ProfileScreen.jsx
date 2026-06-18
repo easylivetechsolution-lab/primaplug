@@ -1204,6 +1204,12 @@ export default function ProfileScreen({ onLogout }) {
           onSkip={() => setShowSelfie(false)}
         />
       )}
+
+      {showFundWallet && (
+  <FundWallet
+    onClose={() => setShowFundWallet(false)}
+  />
+)}
     </div>
   )
 }
