@@ -147,20 +147,23 @@ export default function MyGigsScreen() {
   // ─── ACTIONS ───────────────────────────────────────
 
   const acceptApplication = async (gig, application) => {
-  try {
-    // If wallet gig, lock escrow first before accepting
-    if (gig.payment_method === 'wallet') {
-      const escrowAmount = Number(gig.pay_min)
+    try {
+      const isWalletGig = gig.payment_method === PAYMENT_METHODS.WALLET
 
-      const { data: lockResult, error: lockError } = await supabase
-        .rpc('lock_gig_escrow', {
-          p_user_id: gig.poster_id,
-          p_gig_id: gig.id,
-          p_amount: escrowAmount
-        })
+      // If wallet gig, lock escrow first before accepting
+      if (isWalletGig) {
+        const escrowAmount = Number(gig.pay_min)
+
+        const { data: lockResult, error: lockError } = await supabase
+          .rpc('lock_gig_escrow', {
+            p_user_id: gig.poster_id,
+            p_gig_id: gig.id,
+            p_amount: escrowAmount
+          })
 
         if (lockError) throw lockError
-        if (!locked) {
+
+        if (!lockResult) {
           alert('Your wallet balance is not enough to accept this worker. Please fund your wallet or use a manual-payment gig.')
           window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'wallet' }))
           return
@@ -177,52 +180,6 @@ export default function MyGigsScreen() {
         .eq('id', application.id)
 
       if (acceptError) throw acceptError
-
-      // releaseEscrow Function
-      const releaseEscrow = async (gig) => {
-  try {
-    const { error } = await supabase.rpc('release_gig_escrow', {
-      p_gig_id: gig.id,
-      p_poster_id: gig.poster_id,
-      p_worker_id: gig.worker_id,
-      p_amount: Number(gig.escrow_amount || gig.pay_min)
-    })
-
-    if (error) throw error
-
-    // Mark gig completed
-    await supabase
-      .from('gigs')
-      .update({ status: 'completed' })
-      .eq('id', gig.id)
-
-    // Notify worker funds released
-    await supabase.from('notifications').insert({
-      user_id: gig.worker_id,
-      title: '💸 Payment Released!',
-      message: `Your payment for "${gig.title}" has been released to your Prima wallet. Withdraw anytime.`,
-      type: 'wallet',
-      gig_id: gig.id
-    })
-
-    try {
-      await sendPushToUser(
-        gig.worker_id,
-        '💸 Payment Released!',
-        `Your payment for "${gig.title}" has been released to your wallet.`,
-        { type: 'wallet', gigId: gig.id }
-      )
-    } catch (e) {
-      console.log('Push error:', e)
-    }
-
-    await fetchAll()
-
-  } catch (e) {
-    console.error('Release escrow error:', e)
-    alert('Error releasing payment: ' + e.message)
-  }
-}
 
       // Update gig with worker_id
       const { error: gigError } = await supabase
@@ -242,8 +199,14 @@ export default function MyGigsScreen() {
         .from('notifications')
         .insert({
           user_id: application.worker_id,
-          title: '🎉 You Got The Job!',
-          message: `Your application for "${gig.title}" was accepted! Contact the poster and get started.`,
+          title: isWalletGig
+            ? '🎉 You Got The Job! Payment secured in escrow.'
+            : '🎉 You Got The Job!',
+          message: `Your application for "${gig.title}" was accepted! ${
+            isWalletGig
+              ? 'Funds are locked in escrow and will be released when you complete the work.'
+              : 'Get in touch with the poster and get started.'
+          }`,
           type: 'accepted',
           gig_id: gig.id
         })
@@ -297,6 +260,50 @@ export default function MyGigsScreen() {
     }
   }
 
+  const releaseEscrow = async (gig) => {
+    try {
+      const { error } = await supabase.rpc('release_gig_escrow', {
+        p_gig_id: gig.id,
+        p_poster_id: gig.poster_id,
+        p_worker_id: gig.worker_id,
+        p_amount: Number(gig.escrow_amount || gig.pay_min)
+      })
+
+      if (error) throw error
+
+      // Mark gig completed
+      await supabase
+        .from('gigs')
+        .update({ status: 'completed' })
+        .eq('id', gig.id)
+
+      // Notify worker funds released
+      await supabase.from('notifications').insert({
+        user_id: gig.worker_id,
+        title: '💸 Payment Released!',
+        message: `Your payment for "${gig.title}" has been released to your Prima wallet. Withdraw anytime.`,
+        type: 'wallet',
+        gig_id: gig.id
+      })
+
+      try {
+        await sendPushToUser(
+          gig.worker_id,
+          '💸 Payment Released!',
+          `Your payment for "${gig.title}" has been released to your wallet.`,
+          { type: 'wallet', gigId: gig.id }
+        )
+      } catch (e) {
+        console.log('Push error:', e)
+      }
+
+      await fetchAll()
+
+    } catch (e) {
+      console.error('Release escrow error:', e)
+      alert('Error releasing payment: ' + e.message)
+    }
+  }
   const declineApplication = async (application, gigTitle) => {
     await supabase
       .from('applications')
