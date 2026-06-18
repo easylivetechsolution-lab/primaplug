@@ -23,6 +23,7 @@ import ServicesScreen from "./screens/ServicesScreen";
 import ReferralScreen from './screens/ReferralScreen'
 import CommissionScreen from './screens/CommissionScreen'
 import WithdrawalScreen from './screens/WithdrawalScreen'
+import WalletScreen from './screens/WalletScreen'
 import { initPushNotifications } from '../utils/pushNotifications'
 import { useCredits } from '../context/CreditsContext'
 import { useLanguage } from '../context/LanguageContext'
@@ -153,6 +154,7 @@ export default function Layout() {
   const mobileMoreItems = [
     { key: 'discover', icon: 'discover', label: 'Discover', action: () => navigateTo('discover') },
     { key: 'referral', emoji: '🎁', label: 'Refer & Earn', action: () => navigateTo('referral') },
+    { key: 'wallet', emoji: '💳', label: 'Wallet', action: () => navigateTo('wallet') },
     { key: 'commission', emoji: '💰', label: 'Commission', action: () => navigateTo('commission') },
     { key: 'withdrawal', emoji: '💸', label: 'Withdraw Credits', action: () => navigateTo('withdrawal') },
     { key: 'saved', icon: 'saved', label: 'Saved Gigs', action: () => navigateTo('saved') },
@@ -172,6 +174,7 @@ export default function Layout() {
     chat: <ChatScreen />,
     services: <ServicesScreen />,
     referral: <ReferralScreen />,
+    wallet: <WalletScreen />,
     commission: <CommissionScreen />,
     withdrawal: <WithdrawalScreen />,
   }

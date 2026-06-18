@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { supabase } from '../../supabase'
 import { useCredits } from '../../context/CreditsContext'
 import { useAuth } from '../../context/AuthContext'
+import { CREDITS_PER_DOLLAR, MIN_WITHDRAWAL_CREDITS } from '../../utils/payments'
 
 const PAYMENT_METHODS = [
   {
@@ -30,8 +31,7 @@ const PAYMENT_METHODS = [
   },
 ]
 
-const CREDITS_PER_DOLLAR = 50
-const MIN_CREDITS = 500
+const MIN_CREDITS = MIN_WITHDRAWAL_CREDITS
 
 export default function WithdrawalScreen() {
   const { credits, fetchCredits } = useCredits()
@@ -187,7 +187,7 @@ export default function WithdrawalScreen() {
       }}>
         <span style={{ fontSize: '20px', flexShrink: 0 }}>ℹ️</span>
         <div style={{ fontSize: '12px', color: '#6C47FF', lineHeight: '1.6' }}>
-          <strong>50 Credits = $1 USD.</strong> Minimum withdrawal is {MIN_CREDITS} credits (${(MIN_CREDITS / CREDITS_PER_DOLLAR).toFixed(2)}). Processing takes 1–3 business days.
+          <strong>{CREDITS_PER_DOLLAR} Credits = $1 USD.</strong> Minimum withdrawal is {MIN_CREDITS} credits (${(MIN_CREDITS / CREDITS_PER_DOLLAR).toFixed(2)}). Processing takes 1–3 business days.
         </div>
       </div>
 
@@ -465,7 +465,7 @@ export default function WithdrawalScreen() {
         borderRadius: '10px', padding: '10px 14px'
       }}>
         💸 Credits deducted immediately on request.<br/>
-        💳 Payment sent via Flutterwave within 48 hours.<br/>
+        💳 Payment sent via Fincra after review.<br/>
         📧 You'll get a notification when payment is sent.
       </div>
     </div>

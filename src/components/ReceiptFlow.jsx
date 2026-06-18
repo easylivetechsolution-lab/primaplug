@@ -3,22 +3,7 @@ import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 import { CURRENCIES, getCurrency } from '../data/currencies'
 import { rewardGigReferral } from '../utils/referral'
-
-const getMinimumCommission = (currency) => {
-  switch (currency) {
-    case 'NGN': return 500
-    case 'GHS': return 25
-    case 'KES': return 250
-    case 'ZAR': return 35
-    case 'TZS': return 5000
-    case 'EGP': return 60
-    case 'XOF': case 'XAF': return 1200
-    case 'INR': return 165
-    case 'BRL': case 'MXN': return 10
-    case 'JPY': case 'CNY': return 280
-    default: return 2
-  }
-}
+import { calculateCommission, calculateWorkerEscrowShare, PAYMENT_METHODS } from '../utils/payments'
 
 export default function ReceiptFlow({ gig, onClose, onComplete }) {
   const { user } = useAuth()
@@ -35,6 +20,7 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
   const isPoster = gig?.poster_id === user?.id
   const isWorker = gig?.worker_id === user?.id
   const currency = getCurrency(gig?.currency || 'NGN')
+  const isWalletGig = gig?.payment_method === PAYMENT_METHODS.WALLET
 
   const fetchReceipt = useCallback(async () => {
     if (!gig) return
@@ -69,14 +55,9 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
     return () => clearTimeout(timer)
   }, [fetchReceipt])
 
-  const calculateCommission = (gigAmount, currencyCode) => {
-    const commission = gigAmount * 0.10
-    const minimum = getMinimumCommission(currencyCode || 'USD')
-    return Math.max(commission, minimum)
-  }
-
   const handlePosterSubmit = async () => {
-    if (!amount || parseFloat(amount) <= 0) {
+    const walletAmount = Number(gig?.escrow_amount || gig?.pay_min || 0)
+    if (!isWalletGig && (!amount || parseFloat(amount) <= 0)) {
       setError('Please enter the amount you paid')
       return
     }
@@ -84,9 +65,9 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
     setError(null)
 
     try {
-      const gigAmount = parseFloat(amount)
+      const gigAmount = isWalletGig ? walletAmount : parseFloat(amount)
       const receiptCurrency = gig?.currency || selectedCurrency
-      const commissionAmount = calculateCommission(gigAmount, receiptCurrency)
+      const commissionAmount = calculateCommission(gigAmount)
 
       // Check if receipt exists
       const { data: existing } = await supabase
@@ -126,7 +107,9 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
       await supabase.from('notifications').insert({
         user_id: gig.worker_id,
         title: '📎 Receipt Submitted',
-        message: `Poster confirmed payment of ${currSymbol}${gigAmount.toLocaleString()} ${receiptCurrency} for "${gig.title}". Please confirm you received this amount.`,
+        message: isWalletGig
+          ? `Poster marked "${gig.title}" complete. Please confirm so escrow can release.`
+          : `Poster confirmed payment of ${currSymbol}${gigAmount.toLocaleString()} ${receiptCurrency} for "${gig.title}". Please confirm you received this amount.`,
         type: 'receipt',
         gig_id: gig.id
       })
@@ -195,7 +178,7 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
       // Worker agrees — complete the receipt
       const gigAmount = currentReceipt.amount
       const receiptCurrency = currentReceipt.currency || gig?.currency || 'NGN'
-      const commissionAmount = calculateCommission(gigAmount, receiptCurrency)
+      const commissionAmount = calculateCommission(gigAmount)
 
       await supabase
         .from('receipts')
@@ -208,6 +191,50 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
           commission_amount: commissionAmount
         })
         .eq('id', currentReceipt.id)
+
+      if (isWalletGig) {
+        const escrowAmount = Number(gig.escrow_amount || gigAmount)
+        const { error: releaseError } = await supabase.rpc('release_gig_escrow', {
+          p_gig_id: gig.id,
+          p_poster_id: gig.poster_id,
+          p_worker_id: gig.worker_id,
+          p_amount: escrowAmount
+        })
+
+        if (releaseError) throw releaseError
+
+        const workerShare = calculateWorkerEscrowShare(escrowAmount)
+
+        if (gigAmount > 0) {
+          await rewardGigReferral(gig.id, gigAmount, gig.currency || 'NGN')
+        }
+
+        await supabase.rpc('increment_gigs_completed', {
+          worker_id: gig.worker_id
+        }).catch(() => null)
+
+        await supabase.from('notifications').insert([
+          {
+            user_id: gig.poster_id,
+            title: '✅ Gig Completed!',
+            message: `"${gig.title}" is complete. Escrow has been released.`,
+            type: 'review',
+            gig_id: gig.id
+          },
+          {
+            user_id: gig.worker_id,
+            title: '✅ Escrow Released!',
+            message: `${getCurrency(receiptCurrency).symbol}${workerShare.toLocaleString()} has been added to your wallet. Prima's 10% commission was already deducted.`,
+            type: 'general',
+            gig_id: gig.id
+          }
+        ])
+
+        setStep('done')
+        onComplete && onComplete()
+        setSubmitting(false)
+        return
+      }
 
       // Create or refresh one commission record for this gig/worker.
       const commissionPayload = {
@@ -494,13 +521,11 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
                       borderTop: '1px solid #F5F4FF'
                     }}>
                       <span style={{ color: '#FF6B2B' }}>
-                        Worker commission (10%, min {CURRENCIES.find(c => c.code === selectedCurrency)?.symbol}{getMinimumCommission(selectedCurrency)})
+                        Platform commission debt (10%)
                       </span>
                       <span style={{ fontWeight: '800', color: '#FF6B2B' }}>
                         {CURRENCIES.find(c => c.code === selectedCurrency)?.symbol}
-                        {calculateCommission(
-                          parseFloat(amount), selectedCurrency
-                        ).toLocaleString()} {selectedCurrency}
+                        {calculateCommission(parseFloat(amount)).toLocaleString()} {selectedCurrency}
                       </span>
                     </div>
                   </div>
@@ -563,20 +588,20 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
 
               <button
                 onClick={handlePosterSubmit}
-                disabled={!amount || parseFloat(amount) <= 0 || submitting}
+                disabled={(!isWalletGig && (!amount || parseFloat(amount) <= 0)) || submitting}
                 style={{
                   width: '100%',
-                  background: !amount || parseFloat(amount) <= 0 || submitting
+                  background: (!isWalletGig && (!amount || parseFloat(amount) <= 0)) || submitting
                     ? '#E2E0FF'
                     : 'linear-gradient(135deg, #6C47FF, #9B59FF)',
                   border: 'none', borderRadius: '14px', padding: '16px',
                   fontSize: '15px', fontWeight: '700',
-                  color: !amount || parseFloat(amount) <= 0 || submitting
+                  color: (!isWalletGig && (!amount || parseFloat(amount) <= 0)) || submitting
                     ? '#A09DC8' : '#fff',
-                  cursor: !amount || parseFloat(amount) <= 0 || submitting
+                  cursor: (!isWalletGig && (!amount || parseFloat(amount) <= 0)) || submitting
                     ? 'not-allowed' : 'pointer',
                   fontFamily: 'inherit',
-                  boxShadow: amount && parseFloat(amount) > 0 && !submitting
+                  boxShadow: (isWalletGig || (amount && parseFloat(amount) > 0)) && !submitting
                     ? '0 4px 20px rgba(108,71,255,0.35)' : 'none'
                 }}>
                 {submitting ? '⏳ Submitting...' : '✓ Confirm Payment'}
@@ -818,7 +843,7 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
                     opacity: 0.8, lineHeight: '1.5'
                   }}>
                     10% platform fee due within 3 days.
-                    Pay via Flutterwave or Prima Credits to keep applying
+                    Pay via Fincra or Prima Credits to keep applying
                     for gigs.
                   </div>
                   <button

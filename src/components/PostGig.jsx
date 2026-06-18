@@ -9,6 +9,7 @@ import ProfilePrompt from './ProfilePrompt'
 import { CURRENCIES } from '../data/currencies'
 import { useLanguage } from '../context/LanguageContext'
 import { currencyForLocation, currencyOptionsForLocation } from '../utils/locationCurrency'
+import { PAYMENT_METHODS } from '../utils/payments'
 
 const URGENCY = [
   { key: 'now', label: 'NOW', color: '#FF3366', bg: '#FFE8EE' },
@@ -64,6 +65,7 @@ export default function PostGig({ onClose }) {
     street: '',
     landmark: '',
     directions: '',
+    payment_method: PAYMENT_METHODS.MANUAL,
   })
 
   const update = (key, val) => setForm(f => ({ ...f, [key]: val }))
@@ -128,6 +130,17 @@ export default function PostGig({ onClose }) {
       return
     }
 
+    const minPay = parseFloat(form.pay_min)
+    if (form.payment_method === PAYMENT_METHODS.WALLET) {
+      const walletBalance = Number(profile?.wallet_balance || 0)
+      if (walletBalance < minPay) {
+        setError('Fund your wallet to use Pay from Wallet, or switch this gig to manual payment.')
+        submittingRef.current = false
+        setLoading(false)
+        return
+      }
+    }
+
     let lat = form.latitude
     let lng = form.longitude
 
@@ -162,6 +175,7 @@ export default function PostGig({ onClose }) {
   street: form.street,
   landmark: form.landmark,
   directions: form.directions,
+  payment_method: form.payment_method,
 })
 
     if (err) {
@@ -675,6 +689,7 @@ export default function PostGig({ onClose }) {
                     ['Field', form.field],
                     ['Urgency', form.urgency.toUpperCase()],
                     ['Pay Range', `${CURRENCIES.find(c => c.code === form.currency)?.symbol || '$'}${form.pay_min || '?'} - ${CURRENCIES.find(c => c.code === form.currency)?.symbol || '$'}${form.pay_max || '?'}`],
+                    ['Payment', form.payment_method === PAYMENT_METHODS.WALLET ? 'Pay from Wallet' : 'Pay Manually'],
                     ['Expires', form.expires_on || `${form.duration_days} day${form.duration_days !== 1 ? 's' : ''}`],
                     ['Location', form.type === 'digital' ? 'Remote' : (form.location || '—')],
                     ['Slots', form.slots],
@@ -689,6 +704,108 @@ export default function PostGig({ onClose }) {
                       <span style={{ fontWeight: '700', color: '#14123A', textTransform: 'capitalize' }}>{v}</span>
                     </div>
                   ))}
+                </div>
+
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={labelStyle}>How will you pay the worker?</label>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    {[
+                      {
+                        key: PAYMENT_METHODS.WALLET,
+                        title: 'Pay from Wallet',
+                        desc: 'Escrow locks funds. Worker gets 90%, Prima keeps 10%.',
+                        tag: 'Recommended'
+                      },
+                      {
+                        key: PAYMENT_METHODS.MANUAL,
+                        title: 'Pay Manually',
+                        desc: 'Cash or transfer. 10% commission is owed after receipt.',
+                        tag: 'Flexible'
+                      },
+                    ].map(option => {
+                      const active = form.payment_method === option.key
+                      return (
+                        <button
+                          key={option.key}
+                          type="button"
+                          onClick={() => {
+                            update('payment_method', option.key)
+                            setError('')
+                          }}
+                          style={{
+                            textAlign: 'left',
+                            background: active ? '#EEE9FF' : '#fff',
+                            border: `1.5px solid ${active ? '#6C47FF' : '#E2E0FF'}`,
+                            borderRadius: '14px',
+                            padding: '14px',
+                            cursor: 'pointer',
+                            fontFamily: 'inherit'
+                          }}
+                        >
+                          <div style={{
+                            fontSize: '10px', fontWeight: '800',
+                            color: active ? '#6C47FF' : '#A09DC8',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.8px',
+                            marginBottom: '6px'
+                          }}>{option.tag}</div>
+                          <div style={{
+                            fontSize: '13px',
+                            fontWeight: '800',
+                            color: '#14123A',
+                            marginBottom: '4px'
+                          }}>{option.title}</div>
+                          <div style={{
+                            fontSize: '11px',
+                            lineHeight: '1.5',
+                            color: active ? '#6C47FF' : '#8B8FAF'
+                          }}>{option.desc}</div>
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  {form.payment_method === PAYMENT_METHODS.WALLET && (
+                    <div style={{
+                      marginTop: '10px',
+                      background: Number(profile?.wallet_balance || 0) >= Number(form.pay_min || 0)
+                        ? '#DFFDF4' : '#FFF0E8',
+                      border: `1.5px solid ${Number(profile?.wallet_balance || 0) >= Number(form.pay_min || 0)
+                        ? '#7EECD2' : '#FFBC99'}`,
+                      borderRadius: '12px',
+                      padding: '12px',
+                      fontSize: '12px',
+                      color: Number(profile?.wallet_balance || 0) >= Number(form.pay_min || 0)
+                        ? '#00A878' : '#FF6B2B',
+                      lineHeight: '1.6'
+                    }}>
+                      Wallet balance: {CURRENCIES.find(c => c.code === form.currency)?.symbol || '$'}
+                      {Number(profile?.wallet_balance || 0).toLocaleString()}.
+                      {' '}Minimum escrow needed: {CURRENCIES.find(c => c.code === form.currency)?.symbol || '$'}
+                      {Number(form.pay_min || 0).toLocaleString()}.
+                      {Number(profile?.wallet_balance || 0) < Number(form.pay_min || 0) && (
+                        <button
+                          type="button"
+                          onClick={() => window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'wallet' }))}
+                          style={{
+                            width: '100%',
+                            marginTop: '10px',
+                            background: '#FF6B2B',
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: '10px',
+                            padding: '10px',
+                            fontSize: '12px',
+                            fontWeight: '800',
+                            cursor: 'pointer',
+                            fontFamily: 'inherit'
+                          }}
+                        >
+                          Fund Wallet
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div style={{

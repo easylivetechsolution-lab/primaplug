@@ -7,6 +7,7 @@ import { useLanguage } from '../../context/LanguageContext'
 import { SUPPORTED_LANGUAGES } from '../../data/languages'
 import { CURRENCIES } from '../../data/currencies'
 import { useCredits } from '../../context/CreditsContext'
+import { CREDITS_PER_DOLLAR } from '../../utils/payments'
 import EmergencyReport from '../EmergencyReport'
 
 export default function SettingsScreen({ onLogout }) {
@@ -112,7 +113,7 @@ export default function SettingsScreen({ onLogout }) {
               {credits?.balance?.toFixed(0) || 0}
             </div>
             <div style={{ fontSize: '11px', opacity: 0.7 }}>
-              ≈ ${((credits?.balance || 0) / 50).toFixed(2)} value · 50 credits = $1
+              ≈ ${((credits?.balance || 0) / CREDITS_PER_DOLLAR).toFixed(2)} value · {CREDITS_PER_DOLLAR} credits = $1
             </div>
           </div>
           <div style={{ textAlign: 'right' }}>

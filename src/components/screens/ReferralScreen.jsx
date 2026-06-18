@@ -3,6 +3,7 @@ import { supabase } from '../../supabase'
 import { useAuth } from '../../context/AuthContext'
 import { useCredits } from '../../context/CreditsContext'
 import { generateReferralCode, REFERRAL_REWARDS } from '../../utils/referral'
+import { CREDITS_PER_DOLLAR } from '../../utils/payments'
 
 export default function ReferralScreen() {
   const { user, profile, refreshProfile } = useAuth()
@@ -441,7 +442,7 @@ export default function ReferralScreen() {
               marginBottom: '2px'
             }}>💸 Withdraw Your Credits</div>
             <div style={{ fontSize: '12px', color: '#8B8FAF' }}>
-              Convert credits to cash · 50 credits = $1
+              Convert credits to cash · {CREDITS_PER_DOLLAR} credits = $1
             </div>
           </div>
           <div style={{

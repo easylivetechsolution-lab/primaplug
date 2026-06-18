@@ -6,7 +6,9 @@ import BrandIcon from '../BrandIcon'
 import { completeReferral } from '../../utils/referral'
 import { getProfileCompletion } from '../../utils/profileComplete'
 import { useCredits } from '../../context/CreditsContext'
+import { CREDITS_PER_DOLLAR } from '../../utils/payments'
 import SelfieVerification from '../SelfieVerification'
+import FundWallet from '../FundWallet'
 import VerificationBadge from '../VerificationBadge'
 
 const LocationSearch = ({ value, onSelect, inputStyle }) => {
@@ -119,6 +121,7 @@ export default function ProfileScreen({ onLogout }) {
   const [activeTab, setActiveTab] = useState('about')
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [showSelfie, setShowSelfie] = useState(false)
+  const [showFundWallet, setShowFundWallet] = useState(false)
   const fileRef = useRef()
 
   useEffect(() => { fetchProfile() }, [user])
@@ -689,11 +692,47 @@ export default function ProfileScreen({ onLogout }) {
       </div>
 
       {/* Financial Row */}
-      {!isOwnProfile ? null : (
-        <div style={{
-          display: 'grid', gridTemplateColumns: '1fr 1fr',
-          gap: '10px', marginBottom: '16px'
-        }}>
+{!isOwnProfile ? null : (
+  <div style={{
+    display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
+    gap: '10px', marginBottom: '16px'
+  }}>
+    {/* Wallet Card */}
+    <div style={{
+      background: 'linear-gradient(135deg, #00C48C, #00A878)',
+      borderRadius: '16px', padding: '14px',
+      color: '#fff', position: 'relative', overflow: 'hidden'
+    }}>
+      <div style={{
+        fontSize: '9px', opacity: 0.8,
+        textTransform: 'uppercase', letterSpacing: '1px',
+        marginBottom: '4px'
+      }}>Wallet</div>
+      <div style={{
+        fontSize: '24px', fontWeight: '800',
+        letterSpacing: '-1px', marginBottom: '2px'
+      }}>
+        {profile?.wallet_currency || 'NGN'} {(profile?.wallet_balance || 0).toLocaleString()}
+      </div>
+      <div style={{
+        fontSize: '10px', opacity: 0.7, marginBottom: '10px'
+      }}>
+        {profile?.held_balance > 0
+          ? `${profile.wallet_currency} ${profile.held_balance.toLocaleString()} in escrow`
+          : 'For instant gig payments'}
+      </div>
+      <button
+        onClick={() => setShowFundWallet(true)}
+        style={{
+          background: 'rgba(255,255,255,0.25)',
+          border: '1px solid rgba(255,255,255,0.4)',
+          borderRadius: '8px', padding: '6px 12px',
+          fontSize: '11px', fontWeight: '700',
+          color: '#fff', cursor: 'pointer',
+          fontFamily: 'inherit', width: '100%'
+        }}>💰 Fund Wallet</button>
+    </div>
+
           {/* Credits Card */}
           <div style={{
             background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
@@ -711,7 +750,7 @@ export default function ProfileScreen({ onLogout }) {
             }}>{credits?.balance?.toFixed(0) || 0}</div>
             <div style={{
               fontSize: '10px', opacity: 0.7, marginBottom: '10px'
-            }}>≈ ${((credits?.balance || 0) / 50).toFixed(2)}</div>
+            }}>≈ ${((credits?.balance || 0) / CREDITS_PER_DOLLAR).toFixed(2)}</div>
             <button
               onClick={() => window.dispatchEvent(
                 new CustomEvent('navigateTo', { detail: 'withdrawal' })

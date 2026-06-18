@@ -9,6 +9,7 @@ import LiveTracking from '../LiveTracking'
 import EditGig from '../EditGig'
 import BrandIcon from '../BrandIcon'
 import { sendPushToUser } from '../../utils/pushNotifications'
+import { PAYMENT_METHODS } from '../../utils/payments'
 
 // ─── CONSTANTS ───────────────────────────────────────
 const TABS = [
@@ -147,6 +148,24 @@ export default function MyGigsScreen() {
 
   const acceptApplication = async (gig, application) => {
     try {
+      const isWalletGig = gig.payment_method === PAYMENT_METHODS.WALLET
+      const escrowAmount = Number(gig.pay_min || gig.escrow_amount || 0)
+
+      if (isWalletGig) {
+        const { data: locked, error: lockError } = await supabase.rpc('lock_gig_escrow', {
+          p_user_id: gig.poster_id,
+          p_gig_id: gig.id,
+          p_amount: escrowAmount
+        })
+
+        if (lockError) throw lockError
+        if (!locked) {
+          alert('Your wallet balance is not enough to accept this worker. Please fund your wallet or use a manual-payment gig.')
+          window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'wallet' }))
+          return
+        }
+      }
+
       // Accept this application
       const { error: acceptError } = await supabase
         .from('applications')
@@ -221,7 +240,9 @@ export default function MyGigsScreen() {
       }
 
       await fetchAll()
-      alert('Application accepted! Worker has been notified.')
+      alert(isWalletGig
+        ? 'Application accepted! Funds are now locked in escrow.'
+        : 'Application accepted! Worker has been notified.')
 
     } catch (e) {
       console.error('Accept error:', e)
@@ -679,6 +700,7 @@ function PostedGigCard({
   const acceptedAt = gig.accepted_at || acceptedApp?.accepted_at
   const currency = getCurrency(gig.currency || 'USD')
   const daysSinceAccepted = daysSince(acceptedAt)
+  const isWalletGig = gig.payment_method === PAYMENT_METHODS.WALLET
 
   const statusConfig = {
     open: { color: '#00C48C', bg: '#DFFDF4', border: '#7EECD2', label: 'Open' },
@@ -864,8 +886,9 @@ function PostedGigCard({
                 fontSize: '11px', color: '#6C47FF',
                 opacity: 0.8, marginBottom: '8px'
               }}>
-                When you've paid {acceptedWorker?.full_name?.split(' ')[0]},
-                confirm the payment here.
+                {isWalletGig
+                  ? `When the work is done, confirm completion to release escrow to ${acceptedWorker?.full_name?.split(' ')[0]}.`
+                  : `When you've paid ${acceptedWorker?.full_name?.split(' ')[0]}, confirm the payment here.`}
               </div>
               <button
                 onClick={() => onReceipt(gig)}
@@ -877,7 +900,7 @@ function PostedGigCard({
                   cursor: 'pointer', fontFamily: 'inherit',
                   boxShadow: '0 3px 12px rgba(108,71,255,0.35)'
                 }}>
-                Upload Receipt →
+                {isWalletGig ? 'Mark Complete →' : 'Upload Receipt →'}
               </button>
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
@@ -1128,6 +1151,7 @@ function WorkingGigCard({
   const receipt = gig?.receipts?.[0]
   const currency = getCurrency(receipt?.currency || gig?.currency || 'USD')
   const poster = gig?.poster
+  const isWalletGig = gig?.payment_method === PAYMENT_METHODS.WALLET
 
   const statusConfig = {
     pending: { color: '#6C47FF', bg: '#EEE9FF', border: '#B8A5FF', label: 'Applied' },
@@ -1248,7 +1272,7 @@ function WorkingGigCard({
               color: '#00C48C', fontWeight: '600'
             }}>
               You've been accepted! Do the work and wait for{' '}
-              {poster?.full_name?.split(' ')[0] || 'the poster'} to confirm payment.
+              {poster?.full_name?.split(' ')[0] || 'the poster'} to confirm {isWalletGig ? 'completion' : 'payment'}.
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button

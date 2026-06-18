@@ -5,6 +5,8 @@ import { payWithFlutterwave, verifyFlutterwavePayment } from '../../utils/flutte
 import { useCredits } from '../../context/CreditsContext'
 import { getCurrency } from '../../data/currencies'
 import EmptyState from '../EmptyState'
+import { CREDITS_PER_DOLLAR } from '../../utils/payments'
+import { startFincraWalletFunding } from '../../utils/fincra'
 
 export default function CommissionScreen() {
   const { user, profile } = useAuth()
@@ -18,7 +20,7 @@ export default function CommissionScreen() {
   const [selectedCommission] = useState(null)
 
   const handlePayWithCredits = async (commission) => {
-    const creditsNeeded = commission.commission_amount * 50
+    const creditsNeeded = commission.commission_amount * CREDITS_PER_DOLLAR
     const currentBalance = credits?.balance || 0
 
     if (currentBalance < creditsNeeded) {
@@ -143,7 +145,7 @@ export default function CommissionScreen() {
           <div style={{
             fontSize: '11px', color: '#A09DC8', marginTop: '3px'
           }}>
-            ≈ ${((credits?.balance || 0) / 50).toFixed(2)} value
+            ≈ ${((credits?.balance || 0) / CREDITS_PER_DOLLAR).toFixed(2)} value
           </div>
         </div>
       </div>
@@ -188,7 +190,7 @@ export default function CommissionScreen() {
           {pendingCommissions.map((commission, i) => {
             const colors = getStatusColor(commission)
             const days = daysUntilDue(commission.due_date)
-            const creditsNeeded = commission.commission_amount * 50
+            const creditsNeeded = commission.commission_amount * CREDITS_PER_DOLLAR
             const canPayWithCredits = (credits?.balance || 0) >= creditsNeeded
 
             return (
@@ -234,6 +236,50 @@ export default function CommissionScreen() {
 
                 {/* Payment buttons */}
                 <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                  <button
+                    onClick={async () => {
+                      setPaying(commission.id)
+                      try {
+                        const response = await startFincraWalletFunding(supabase, {
+                          type: 'commission',
+                          commission_id: commission.id,
+                          amount: commission.commission_amount,
+                          currency: commission.currency || 'NGN',
+                          user_id: user.id,
+                          email: user?.email || '',
+                          name: profile?.full_name || 'Prima User',
+                        })
+                        const checkoutUrl = response?.checkout_url || response?.payment_link || response?.url
+                        if (!checkoutUrl) throw new Error('Fincra did not return a checkout URL.')
+                        window.location.href = checkoutUrl
+                      } catch (e) {
+                        alert(e.message || 'Could not start Fincra payment.')
+                        setPaying(null)
+                      }
+                    }}
+                    disabled={paying === commission.id}
+                    style={{
+                      flex: 2,
+                      background: paying === commission.id
+                        ? '#E2E0FF'
+                        : 'linear-gradient(135deg, #00A878, #00C48C)',
+                      border: 'none',
+                      borderRadius: '10px',
+                      padding: '12px',
+                      fontSize: '13px',
+                      fontWeight: '700',
+                      color: paying === commission.id ? '#A09DC8' : '#fff',
+                      cursor: paying === commission.id ? 'not-allowed' : 'pointer',
+                      fontFamily: 'inherit',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    {paying === commission.id ? 'Processing...' : 'Pay with Fincra'}
+                  </button>
+
                   {/* Pay with Flutterwave */}
                   <button
                     onClick={async () => {
