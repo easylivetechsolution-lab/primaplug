@@ -147,12 +147,13 @@ export default function MyGigsScreen() {
   // ─── ACTIONS ───────────────────────────────────────
 
   const acceptApplication = async (gig, application) => {
-    try {
-      const isWalletGig = gig.payment_method === PAYMENT_METHODS.WALLET
-      const escrowAmount = Number(gig.pay_min || gig.escrow_amount || 0)
+  try {
+    // If wallet gig, lock escrow first before accepting
+    if (gig.payment_method === 'wallet') {
+      const escrowAmount = Number(gig.pay_min)
 
-      if (isWalletGig) {
-        const { data: locked, error: lockError } = await supabase.rpc('lock_gig_escrow', {
+      const { data: lockResult, error: lockError } = await supabase
+        .rpc('lock_gig_escrow', {
           p_user_id: gig.poster_id,
           p_gig_id: gig.id,
           p_amount: escrowAmount
@@ -176,6 +177,52 @@ export default function MyGigsScreen() {
         .eq('id', application.id)
 
       if (acceptError) throw acceptError
+
+      // releaseEscrow Function
+      const releaseEscrow = async (gig) => {
+  try {
+    const { error } = await supabase.rpc('release_gig_escrow', {
+      p_gig_id: gig.id,
+      p_poster_id: gig.poster_id,
+      p_worker_id: gig.worker_id,
+      p_amount: Number(gig.escrow_amount || gig.pay_min)
+    })
+
+    if (error) throw error
+
+    // Mark gig completed
+    await supabase
+      .from('gigs')
+      .update({ status: 'completed' })
+      .eq('id', gig.id)
+
+    // Notify worker funds released
+    await supabase.from('notifications').insert({
+      user_id: gig.worker_id,
+      title: '💸 Payment Released!',
+      message: `Your payment for "${gig.title}" has been released to your Prima wallet. Withdraw anytime.`,
+      type: 'wallet',
+      gig_id: gig.id
+    })
+
+    try {
+      await sendPushToUser(
+        gig.worker_id,
+        '💸 Payment Released!',
+        `Your payment for "${gig.title}" has been released to your wallet.`,
+        { type: 'wallet', gigId: gig.id }
+      )
+    } catch (e) {
+      console.log('Push error:', e)
+    }
+
+    await fetchAll()
+
+  } catch (e) {
+    console.error('Release escrow error:', e)
+    alert('Error releasing payment: ' + e.message)
+  }
+}
 
       // Update gig with worker_id
       const { error: gigError } = await supabase
@@ -515,22 +562,23 @@ export default function MyGigsScreen() {
             {/* ── MY POSTS TAB ── */}
             {tab === 'myposts' && (
               <PostedTab
-                gigs={postedGigs}
-                getStatus={getPostedGigStatus}
-                onAccept={acceptApplication}
-                onDecline={declineApplication}
-                onDelete={deleteGig}
-                onReceipt={setReceiptGig}
-                onEdit={setEditingGig}
-                onViewProfile={setViewingProfile}
-                onViewApplicants={setApplicantsGig}
-                onTrack={(gig) => setTrackingGig({
-                  gig, role: 'poster', workerInfo: gig.worker
-                })}
-                onRefresh={fetchAll}
-                sectionHeader={sectionHeader}
-                userId={user?.id}
-              />
+  gigs={postedGigs}
+  getStatus={getPostedGigStatus}
+  onAccept={acceptApplication}
+  onDecline={declineApplication}
+  onDelete={deleteGig}
+  onReceipt={setReceiptGig}
+  onEdit={setEditingGig}
+  onViewProfile={setViewingProfile}
+  onViewApplicants={setApplicantsGig}
+  onTrack={(gig) => setTrackingGig({
+    gig, role: 'poster', workerInfo: gig.worker
+  })}
+  onRelease={releaseEscrow}
+  onRefresh={fetchAll}
+  sectionHeader={sectionHeader}
+  userId={user?.id}
+/>
             )}
 
             {/* ── MY JOBS TAB ── */}
@@ -619,7 +667,7 @@ export default function MyGigsScreen() {
 function PostedTab({
   gigs, getStatus, onAccept, onDecline, onDelete,
   onReceipt, onEdit, onViewProfile, onViewApplicants,
-  onTrack, onRefresh, sectionHeader, userId
+  onTrack, onRelease, onRefresh, sectionHeader, userId
 }) {
   const actionGigs = gigs.filter(g =>
     ['hasapplicants', 'waiting'].includes(getStatus(g))
@@ -641,16 +689,17 @@ function PostedTab({
   }
 
   const renderGig = (gig) => (
-    <PostedGigCard
-      key={gig.id} gig={gig}
-      status={getStatus(gig)}
-      onAccept={onAccept} onDecline={onDecline}
-      onDelete={onDelete} onReceipt={onReceipt}
-      onEdit={onEdit} onViewProfile={onViewProfile}
-      onViewApplicants={onViewApplicants}
-      onTrack={onTrack}
-    />
-  )
+  <PostedGigCard
+    key={gig.id} gig={gig}
+    status={getStatus(gig)}
+    onAccept={onAccept} onDecline={onDecline}
+    onDelete={onDelete} onReceipt={onReceipt}
+    onEdit={onEdit} onViewProfile={onViewProfile}
+    onViewApplicants={onViewApplicants}
+    onTrack={onTrack}
+    onRelease={onRelease}
+  />
+)
 
   return (
     <div>
@@ -687,7 +736,7 @@ function PostedTab({
 // ══════════════════════════════════════════
 function PostedGigCard({
   gig, status, onAccept, onDecline, onDelete,
-  onReceipt, onEdit, onViewProfile, onViewApplicants, onTrack
+  onReceipt, onEdit, onViewProfile, onViewApplicants, onTrack, onRelease
 }) {
   const [expanded, setExpanded] = useState(false)
   const receipt = gig.receipts?.[0]
@@ -857,88 +906,121 @@ function PostedGigCard({
 
         {/* IN PROGRESS — Receipt Upload */}
         {status === 'inprogress' && (
-          <div>
-            {daysSinceAccepted >= 3 && (
-              <div style={{
-                background: '#FFF0E8', border: '1px solid #FFBC99',
-                borderRadius: '8px', padding: '8px 12px',
-                fontSize: '11px', color: '#FF6B2B',
-                fontWeight: '600', marginBottom: '10px',
-                display: 'flex', gap: '6px', alignItems: 'center'
-              }}>
-                <span>⚠️</span>
-                <span>
-                  {acceptedWorker?.full_name?.split(' ')[0]} has been working
-                  {daysSinceAccepted} days. Have you paid them?
-                </span>
-              </div>
-            )}
-            <div style={{
-              background: '#EEE9FF', border: '1.5px solid #B8A5FF',
-              borderRadius: '12px', padding: '12px',
-              marginBottom: '10px'
-            }}>
-              <div style={{
-                fontSize: '12px', fontWeight: '700',
-                color: '#6C47FF', marginBottom: '3px'
-              }}>📎 Ready to upload receipt?</div>
-              <div style={{
-                fontSize: '11px', color: '#6C47FF',
-                opacity: 0.8, marginBottom: '8px'
-              }}>
-                {isWalletGig
-                  ? `When the work is done, confirm completion to release escrow to ${acceptedWorker?.full_name?.split(' ')[0]}.`
-                  : `When you've paid ${acceptedWorker?.full_name?.split(' ')[0]}, confirm the payment here.`}
-              </div>
-              <button
-                onClick={() => onReceipt(gig)}
-                style={{
-                  width: '100%',
-                  background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
-                  border: 'none', borderRadius: '10px', padding: '11px',
-                  fontSize: '13px', fontWeight: '700', color: '#fff',
-                  cursor: 'pointer', fontFamily: 'inherit',
-                  boxShadow: '0 3px 12px rgba(108,71,255,0.35)'
-                }}>
-                {isWalletGig ? 'Mark Complete →' : 'Upload Receipt →'}
-              </button>
-            </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button
-                onClick={() => window.dispatchEvent(new CustomEvent(
-                  'openChatWithUser',
-                  { detail: { userId: acceptedWorkerId, gigId: gig.id } }
-                ))}
-                style={{
-                  flex: 1, background: '#F5F4FF',
-                  border: '1.5px solid #E2E0FF',
-                  borderRadius: '10px', padding: '10px',
-                  fontSize: '12px', fontWeight: '700',
-                  color: '#6C47FF', cursor: 'pointer', fontFamily: 'inherit',
-                  display: 'flex', alignItems: 'center',
-                  justifyContent: 'center', gap: '5px'
-                }}>
-                <BrandIcon name="chat" size={18} active /> Message
-              </button>
-              {gig.type === 'physical' && (
-                <button
-                  onClick={() => onTrack(gig)}
-                  style={{
-                    flex: 1, background: '#FFF0E8',
-                    border: '1.5px solid #FFBC99',
-                    borderRadius: '10px', padding: '10px',
-                    fontSize: '12px', fontWeight: '700',
-                    color: '#FF6B2B', cursor: 'pointer', fontFamily: 'inherit',
-                    display: 'flex', alignItems: 'center',
-                    justifyContent: 'center', gap: '5px'
-                  }}>
-                  <BrandIcon name="location" size={18} active /> Track
-                </button>
-              )}
-            </div>
-          </div>
-        )}
+  <div>
+    {daysSinceAccepted >= 3 && gig.payment_method !== 'wallet' && (
+      <div style={{
+        background: '#FFF0E8', border: '1px solid #FFBC99',
+        borderRadius: '8px', padding: '8px 12px',
+        fontSize: '11px', color: '#FF6B2B',
+        fontWeight: '600', marginBottom: '10px',
+        display: 'flex', gap: '6px', alignItems: 'center'
+      }}>
+        <span>⚠️</span>
+        <span>
+          {gig.worker?.full_name?.split(' ')[0]} has been working{' '}
+          {daysSinceAccepted} days. Have you paid them?
+        </span>
+      </div>
+    )}
 
+    {gig.payment_method === 'wallet' ? (
+      // WALLET GIG — Mark Complete to release escrow
+      <div style={{
+        background: '#EEE9FF', border: '1.5px solid #B8A5FF',
+        borderRadius: '12px', padding: '12px', marginBottom: '10px'
+      }}>
+        <div style={{
+          fontSize: '12px', fontWeight: '700',
+          color: '#6C47FF', marginBottom: '3px'
+        }}>💰 Funds in Escrow</div>
+        <div style={{
+          fontSize: '11px', color: '#6C47FF',
+          opacity: 0.8, marginBottom: '8px'
+        }}>
+          {getCurrency(gig.currency || 'USD').symbol}
+          {Number(gig.escrow_amount || gig.pay_min).toLocaleString()} locked.
+          Tap Done when {gig.worker?.full_name?.split(' ')[0]} finishes.
+        </div>
+        <button
+          onClick={() => onRelease(gig)}
+          style={{
+            width: '100%',
+            background: 'linear-gradient(135deg, #00C48C, #00A878)',
+            border: 'none', borderRadius: '10px', padding: '11px',
+            fontSize: '13px', fontWeight: '700', color: '#fff',
+            cursor: 'pointer', fontFamily: 'inherit',
+            boxShadow: '0 3px 12px rgba(0,196,140,0.35)'
+          }}>
+          ✓ Mark Done & Release Payment →
+        </button>
+      </div>
+    ) : (
+      // MANUAL GIG — existing receipt upload flow
+      <div style={{
+        background: '#EEE9FF', border: '1.5px solid #B8A5FF',
+        borderRadius: '12px', padding: '12px', marginBottom: '10px'
+      }}>
+        <div style={{
+          fontSize: '12px', fontWeight: '700',
+          color: '#6C47FF', marginBottom: '3px'
+        }}>📎 Ready to upload receipt?</div>
+        <div style={{
+          fontSize: '11px', color: '#6C47FF',
+          opacity: 0.8, marginBottom: '8px'
+        }}>
+          When you've paid {gig.worker?.full_name?.split(' ')[0]},
+          confirm the payment here.
+        </div>
+        <button
+          onClick={() => onReceipt(gig)}
+          style={{
+            width: '100%',
+            background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+            border: 'none', borderRadius: '10px', padding: '11px',
+            fontSize: '13px', fontWeight: '700', color: '#fff',
+            cursor: 'pointer', fontFamily: 'inherit',
+            boxShadow: '0 3px 12px rgba(108,71,255,0.35)'
+          }}>
+          Upload Receipt →
+        </button>
+      </div>
+    )}
+
+    <div style={{ display: 'flex', gap: '8px' }}>
+      <button
+        onClick={() => window.dispatchEvent(new CustomEvent(
+          'openChatWithUser',
+          { detail: { userId: gig.worker_id, gigId: gig.id } }
+        ))}
+        style={{
+          flex: 1, background: '#F5F4FF',
+          border: '1.5px solid #E2E0FF',
+          borderRadius: '10px', padding: '10px',
+          fontSize: '12px', fontWeight: '700',
+          color: '#6C47FF', cursor: 'pointer', fontFamily: 'inherit',
+          display: 'flex', alignItems: 'center',
+          justifyContent: 'center', gap: '5px'
+        }}>
+        <BrandIcon name="chat" size={18} active /> Message
+      </button>
+      {gig.type === 'physical' && (
+        <button
+          onClick={() => onTrack(gig)}
+          style={{
+            flex: 1, background: '#FFF0E8',
+            border: '1.5px solid #FFBC99',
+            borderRadius: '10px', padding: '10px',
+            fontSize: '12px', fontWeight: '700',
+            color: '#FF6B2B', cursor: 'pointer', fontFamily: 'inherit',
+            display: 'flex', alignItems: 'center',
+            justifyContent: 'center', gap: '5px'
+          }}>
+          <BrandIcon name="location" size={18} active /> Track
+        </button>
+      )}
+    </div>
+  </div>
+)}
         {/* WAITING FOR WORKER CONFIRMATION */}
         {status === 'waiting' && (
           <div>
