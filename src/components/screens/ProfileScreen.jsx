@@ -9,6 +9,7 @@ import { useCredits } from '../../context/CreditsContext'
 import { CREDITS_PER_DOLLAR } from '../../utils/payments'
 import SelfieVerification from '../SelfieVerification'
 import FundWallet from '../FundWallet'
+import Withdrawal from '../Withdrawal'
 import VerificationBadge from '../VerificationBadge'
 
 const LocationSearch = ({ value, onSelect, inputStyle }) => {
@@ -122,6 +123,7 @@ export default function ProfileScreen({ onLogout }) {
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [showSelfie, setShowSelfie] = useState(false)
   const [showFundWallet, setShowFundWallet] = useState(false)
+  const [showWithdrawal, setShowWithdrawal] = useState(false)
   const fileRef = useRef()
 
   useEffect(() => { fetchProfile() }, [user])
@@ -752,9 +754,7 @@ export default function ProfileScreen({ onLogout }) {
               fontSize: '10px', opacity: 0.7, marginBottom: '10px'
             }}>≈ ${((credits?.balance || 0) / CREDITS_PER_DOLLAR).toFixed(2)}</div>
             <button
-              onClick={() => window.dispatchEvent(
-                new CustomEvent('navigateTo', { detail: 'withdrawal' })
-              )}
+                onClick={() => setShowWithdrawal(true)}
               style={{
                 background: 'rgba(255,255,255,0.25)',
                 border: '1px solid rgba(255,255,255,0.4)',
@@ -1209,6 +1209,10 @@ export default function ProfileScreen({ onLogout }) {
   <FundWallet
     onClose={() => setShowFundWallet(false)}
   />
+)}
+
+      {showWithdrawal && (
+  <Withdrawal onClose={() => setShowWithdrawal(false)} />
 )}
     </div>
   )
