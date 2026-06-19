@@ -125,6 +125,15 @@ export default function Layout() {
     )
   }, [])
 
+  useEffect(() => {
+  const params = new URLSearchParams(window.location.search)
+  if (params.get('walletStatus') === 'callback') {
+    navigateTo('wallet')
+    window.history.replaceState({}, '', window.location.pathname)
+    window.dispatchEvent(new CustomEvent('walletPaymentReturn'))
+  }
+}, [navigateTo])
+
   // Restore dashboard screens from the browser's own history state.
   useEffect(() => {
     const handlePopState = (event) => {

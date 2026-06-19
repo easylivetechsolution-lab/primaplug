@@ -2,8 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../supabase'
 import { useAuth } from '../../context/AuthContext'
 import { getCurrency } from '../../data/currencies'
-import { startFincraWalletFunding, requestFincraPayout, listFincraBanks, verifyFincraAccount } from '../../utils/fincra'
-import { verifyFincraPayment } from '../../utils/fincra'
+import { startFincraWalletFunding, requestFincraPayout, listFincraBanks, verifyFincraAccount, verifyFincraPayment } from '../../utils/fincra'
 
 const SUPPORTED_WALLET_CURRENCIES = ['NGN', 'GHS', 'KES', 'UGX', 'ZAR', 'USD']
 
@@ -88,11 +87,7 @@ export default function WalletScreen() {
   }, [fetchTransactions, refreshProfile, user])
 
   useEffect(() => {
-  const params = new URLSearchParams(window.location.search)
-  const status = params.get('status')
-  if (status === 'callback' && user) {
-    // Find the most recent pending fund_in transaction for this user
-    const checkPending = async () => {
+    const handleReturn = async () => {
       const { data: pending } = await supabase
         .from('wallet_transactions')
         .select('*')
@@ -112,12 +107,11 @@ export default function WalletScreen() {
           console.error('Verify on return error:', e)
         }
       }
-      // Clean the URL so refresh doesn't re-trigger
-      window.history.replaceState({}, '', window.location.pathname)
     }
-    checkPending()
-  }
-}, [user])
+
+    window.addEventListener('walletPaymentReturn', handleReturn)
+    return () => window.removeEventListener('walletPaymentReturn', handleReturn)
+  }, [user])
 
   const fundHistory = transactions.filter(tx => FUND_TYPES.includes(tx.type))
   const withdrawHistory = transactions.filter(tx => WITHDRAW_TYPES.includes(tx.type))
