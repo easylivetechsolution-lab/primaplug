@@ -25,7 +25,7 @@ const privacySections = [
   },
   {
     title: '6. Payments',
-    body: 'Prima may use Flutterwave and other payment, banking, or payout providers to process or verify payments. We do not store full card numbers. Payment providers may process payment data under their own privacy notices. Prima may store transaction references, payment status, commission records, payout records, and receipts.'
+    body: 'Prima may use Fincra and other payment, banking, or payout providers to process or verify payments. We do not store full card numbers. Payment providers may process payment data under their own privacy notices. Prima may store transaction references, payment status, commission records, payout records, and receipts.'
   },
   {
     title: '7. Service Providers',
@@ -84,7 +84,7 @@ const termsSections = [
   },
   {
     title: '6. Payments, Receipts, and Commission',
-    body: 'Prima may support direct payment coordination, receipt confirmation, Prima Credits, Flutterwave payments, bank transfer instructions, withdrawals, and platform commission tracking. Users must not submit false payment confirmations or manipulated receipts. Platform commissions, fees, due dates, and penalties shown in the app apply unless Prima corrects an error.'
+    body: 'Prima may support direct payment coordination, receipt confirmation, Prima Credits, Fincra payments, bank transfer instructions, withdrawals, and platform commission tracking. Users must not submit false payment confirmations or manipulated receipts. Platform commissions, fees, due dates, and penalties shown in the app apply unless Prima corrects an error.'
   },
   {
     title: '7. No Circumvention',

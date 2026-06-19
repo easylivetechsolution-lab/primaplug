@@ -331,8 +331,9 @@ const ICON_PATHS = {
 
 const TILE_GRADIENT = 'linear-gradient(135deg, #6C47FF 0%, #9B59FF 52%, #FF4DCF 100%)'
 
-export default function BrandIcon({ name, size = 30, active = true, title }) {
+export default function BrandIcon({ name, size = 30, active = true, title, tone }) {
   const icon = ICON_PATHS[name] || ICON_PATHS.discover
+  const activeBackground = tone || TILE_GRADIENT
 
   return (
     <span
@@ -342,7 +343,7 @@ export default function BrandIcon({ name, size = 30, active = true, title }) {
         width: size,
         height: size,
         borderRadius: Math.max(8, Math.round(size * 0.22)),
-        background: active ? TILE_GRADIENT : '#EEF0F8',
+        background: active ? activeBackground : '#EEF0F8',
         boxShadow: active
           ? 'inset 0 1px 0 rgba(255,255,255,0.42), 0 5px 14px rgba(108,71,255,0.28)'
           : 'inset 0 1px 0 rgba(255,255,255,0.75)',

@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../../supabase'
 import { useAuth } from '../../context/AuthContext'
-import { payWithFlutterwave, verifyFlutterwavePayment } from '../../utils/flutterwave'
 import { useCredits } from '../../context/CreditsContext'
 import { getCurrency } from '../../data/currencies'
 import EmptyState from '../EmptyState'
@@ -278,56 +277,6 @@ export default function CommissionScreen() {
                     }}
                   >
                     {paying === commission.id ? 'Processing...' : 'Pay with Fincra'}
-                  </button>
-
-                  {/* Pay with Flutterwave */}
-                  <button
-                    onClick={async () => {
-                      setPaying(commission.id)
-                      const txRef = `PRIMA-COMM-${commission.id}-T-${Date.now()}`
-
-                      payWithFlutterwave({
-                        publicKey: import.meta.env.VITE_FLUTTERWAVE_PUBLIC_KEY,
-                        amount: commission.commission_amount,
-                        currency: commission.currency || 'NGN',
-                        email: user?.email || '',
-                        name: profile?.full_name || 'Prima User',
-                        txRef,
-                        title: 'PrimaPlug Commission',
-                        description: `10% platform fee — ${commission.gigs?.title || 'Gig'}`,
-                        onSuccess: async (response) => {
-                          const verified = await verifyFlutterwavePayment(txRef, supabase, {
-                            expected_amount: commission.commission_amount,
-                            expected_currency: commission.currency || 'NGN'
-                          })
-                          if (verified?.verified) {
-                            await fetchCommissions()
-                          } else {
-                            alert('Payment received by Flutterwave, but Prima could not verify the final details yet. Please contact payments@primaplug.com with reference ' + (response.tx_ref || txRef) + '.')
-                          }
-                          setPaying(null)
-                        },
-                        onClose: () => setPaying(null),
-                      })
-                    }}
-                    disabled={paying === commission.id}
-                    style={{
-                      flex: 2,
-                      background: paying === commission.id
-                        ? '#E2E0FF'
-                        : 'linear-gradient(135deg, #F5A623, #F97316)',
-                      border: 'none', borderRadius: '10px',
-                      padding: '12px', fontSize: '13px',
-                      fontWeight: '700',
-                      color: paying === commission.id ? '#A09DC8' : '#fff',
-                      cursor: paying === commission.id ? 'not-allowed' : 'pointer',
-                      fontFamily: 'inherit',
-                      display: 'flex', alignItems: 'center',
-                      justifyContent: 'center', gap: '6px'
-                    }}>
-                    {paying === commission.id
-                      ? '⏳ Processing...'
-                      : '⚡ Pay Now'}
                   </button>
 
                   {/* Pay with Credits */}

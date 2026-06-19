@@ -199,6 +199,10 @@ const StatCard = ({ icon, label, value, sub, color = '#6C47FF', bg = '#EEE9FF' }
 // ─────────────────────────────────────────────
 // COMING SOON CARD — finished-looking placeholder for upcoming features
 // ─────────────────────────────────────────────
+const ProfileToneIcon = ({ name, tone, size = 34 }) => (
+  <BrandIcon name={name} size={size} active={true} tone={tone} />
+)
+
 const ComingSoonCard = ({ icon, title, desc, gradient }) => (
   <div style={{
     background: '#fff', border: '1.5px solid #E2E0FF',
@@ -210,7 +214,7 @@ const ComingSoonCard = ({ icon, title, desc, gradient }) => (
       width: '42px', height: '42px', borderRadius: '12px',
       background: gradient, display: 'flex', alignItems: 'center',
       justifyContent: 'center', fontSize: '20px', flexShrink: 0
-    }}>{icon}</div>
+    }}>{typeof icon === 'string' ? <ProfileToneIcon name={icon} tone={gradient} size={34} /> : icon}</div>
     <div style={{ flex: 1, minWidth: 0 }}>
       <div style={{ fontSize: '13px', fontWeight: '700', color: '#14123A', marginBottom: '2px' }}>{title}</div>
       <div style={{ fontSize: '11px', color: '#A09DC8', lineHeight: '1.4' }}>{desc}</div>
@@ -232,6 +236,10 @@ export default function ProfileScreen({ onLogout }) {
   const { credits, hasUnpaidCommissions, totalOwed, pendingCommissions } = useCredits()
   const isOwnProfile = true
   const [profile, setProfile] = useState(null)
+  const [profileStats, setProfileStats] = useState({
+    totalEarned: 0,
+    totalReviews: 0,
+  })
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -260,6 +268,26 @@ export default function ProfileScreen({ onLogout }) {
       .select('*')
       .eq('id', user.id)
       .maybeSingle()
+
+    const [{ data: reviews }, { data: receipts }] = await Promise.all([
+      supabase
+        .from('reviews')
+        .select('rating')
+        .eq('reviewee_id', user.id),
+      supabase
+        .from('receipts')
+        .select('amount')
+        .eq('worker_id', user.id)
+        .eq('completed', true),
+    ])
+
+    const totalEarned = receipts?.reduce((sum, r) => sum + (r.amount || 0), 0) || 0
+
+    setProfileStats({
+      totalEarned,
+      totalReviews: reviews?.length || 0,
+    })
+
     if (data) {
       setProfile(data)
       setEditForm(data)
@@ -360,6 +388,44 @@ export default function ProfileScreen({ onLogout }) {
   const trustScore = profile?.trust_score || 100
   const gigsCompleted = profile?.gigs_completed || 0
   const nextLevelTarget = Math.max(10, Math.ceil((gigsCompleted + 1) / 10) * 10)
+  const totalEarned = Number(profileStats.totalEarned || 0)
+  const reviewsCount = Number(profileStats.totalReviews || 0)
+  const nextEarnedTarget = Math.max(100, Math.ceil((totalEarned + 1) / 100) * 100)
+  const nextReviewTarget = Math.max(10, Math.ceil((reviewsCount + 1) / 10) * 10)
+  const progressMetrics = [
+    {
+      label: 'Total Earned',
+      value: `$${totalEarned.toLocaleString()}`,
+      current: totalEarned,
+      max: nextEarnedTarget,
+      color: 'linear-gradient(90deg, #00C48C, #06D6D6)'
+    },
+    {
+      label: 'Gigs Completed',
+      value: gigsCompleted,
+      current: gigsCompleted,
+      max: nextLevelTarget,
+      color: 'linear-gradient(90deg, #6C47FF, #0EA5E9)'
+    },
+    {
+      label: 'Trust Score',
+      value: `${trustScore}%`,
+      current: trustScore,
+      max: 100,
+      color: trustScore >= 80
+        ? 'linear-gradient(90deg, #00C48C, #00A878)'
+        : 'linear-gradient(90deg, #FF6B2B, #FF4DCF)'
+    },
+    {
+      label: 'Reviews',
+      value: reviewsCount,
+      target: nextReviewTarget,
+      showSlash: true,
+      current: reviewsCount,
+      max: nextReviewTarget,
+      color: 'linear-gradient(90deg, #FF4DCF, #9B59FF)'
+    },
+  ]
 
   return (
     <div style={{
@@ -671,7 +737,9 @@ export default function ProfileScreen({ onLogout }) {
               width: '40px', height: '40px', borderRadius: '12px', background: 'rgba(255,255,255,0.2)',
               border: '1px solid rgba(255,255,255,0.3)', display: 'flex', alignItems: 'center',
               justifyContent: 'center', fontSize: '20px', flexShrink: 0
-            }}>🎁</div>
+            }}>
+              <ProfileToneIcon name="commission" tone="rgba(255,255,255,0.24)" size={32} />
+            </div>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: '12px', fontWeight: '800', color: '#fff', marginBottom: '2px' }}>Refer & Earn</div>
               <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.75)' }}>5% of friends' first gig earnings</div>
@@ -688,7 +756,9 @@ export default function ProfileScreen({ onLogout }) {
               <div style={{
                 width: '40px', height: '40px', borderRadius: '12px', background: 'rgba(255,255,255,0.2)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', flexShrink: 0
-              }}>🤳</div>
+              }}>
+                <ProfileToneIcon name="camera" tone="rgba(255,255,255,0.24)" size={32} />
+              </div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: '12px', fontWeight: '800', color: '#fff' }}>Verify Yourself</div>
                 <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.8)' }}>Required to post & apply</div>
@@ -705,7 +775,9 @@ export default function ProfileScreen({ onLogout }) {
                 width: '40px', height: '40px', borderRadius: '12px', background: '#FFE8EE',
                 border: '1.5px solid #FF99B3', display: 'flex', alignItems: 'center',
                 justifyContent: 'center', fontSize: '20px', flexShrink: 0
-              }}>⚠️</div>
+              }}>
+                <ProfileToneIcon name="level" tone="linear-gradient(135deg, #FF3366, #FF6B2B)" size={32} />
+              </div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: '12px', fontWeight: '800', color: '#FF3366' }}>Re-verification Needed</div>
                 <div style={{ fontSize: '10px', color: '#FF3366', opacity: 0.8 }}>Take a new selfie</div>
@@ -726,22 +798,43 @@ export default function ProfileScreen({ onLogout }) {
           <div style={{
             display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px'
           }}>
-            <StatCard icon="⭐" label="Rating" value={`${profile?.rating || '5.0'}`} color="#FFB800" bg="#FFF8E0" />
-            <StatCard icon="✅" label="Gigs Done" value={gigsCompleted} sub={`${nextLevelTarget - gigsCompleted} to next level`} color="#00C48C" bg="#DFFDF4" />
-            <StatCard icon="💬" label="Reviews" value={profile?.reviews_count || 0} color="#6C47FF" bg="#EEE9FF" />
-            <StatCard icon="⚡" label="Response" value={profile?.response_time || '< 1h'} color="#FF6B2B" bg="#FFF0E8" />
+            <StatCard icon={<ProfileToneIcon name="rating" tone="linear-gradient(135deg, #FFB800, #FF6B2B)" size={30} />} label="Rating" value={`${profile?.rating || '5.0'}`} color="#FFB800" bg="#FFF8E0" />
+            <StatCard icon={<ProfileToneIcon name="completed" tone="linear-gradient(135deg, #00C48C, #00A878)" size={30} />} label="Gigs Done" value={gigsCompleted} sub={`${nextLevelTarget - gigsCompleted} to next level`} color="#00C48C" bg="#DFFDF4" />
+            <StatCard icon={<ProfileToneIcon name="reviews" tone="linear-gradient(135deg, #6C47FF, #9B59FF)" size={30} />} label="Reviews" value={reviewsCount} color="#6C47FF" bg="#EEE9FF" />
+            <StatCard icon={<ProfileToneIcon name="open" tone="linear-gradient(135deg, #FF6B2B, #FF4DCF)" size={30} />} label="Response" value={profile?.response_time || '< 1h'} color="#FF6B2B" bg="#FFF0E8" />
           </div>
 
-          {/* TRUST PROGRESS DETAIL */}
-          <div style={{ background: '#fff', border: '1.5px solid #E2E0FF', borderRadius: '16px', padding: '18px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-              <span style={{ fontSize: '12px', fontWeight: '700', color: '#14123A' }}>Trust Score</span>
-              <span style={{ fontSize: '12px', fontWeight: '800', color: trustScore >= 80 ? '#00C48C' : '#FF6B2B' }}>{trustScore}/100</span>
-            </div>
-            <ProgressBar value={trustScore} color={trustScore >= 80 ? 'linear-gradient(90deg, #00C48C, #00A878)' : 'linear-gradient(90deg, #FF6B2B, #FF4DCF)'} height={8} />
-            <div style={{ fontSize: '11px', color: '#A09DC8', marginTop: '8px', lineHeight: '1.5' }}>
-              Built from completed gigs, on-time payments, and verified identity. Higher trust means more visibility to posters.
-            </div>
+          {/* PROGRESS OVERVIEW */}
+          <div style={{
+            background: '#fff', border: '1.5px solid #E2E0FF',
+            borderRadius: '16px', padding: '18px',
+            display: 'flex', flexDirection: 'column', gap: '14px'
+          }}>
+            <div style={{ fontSize: '12px', fontWeight: '800', color: '#14123A' }}>Progress Overview</div>
+            {progressMetrics.map((metric, index) => (
+              <div key={metric.label}>
+                <div style={{
+                  display: 'flex', justifyContent: 'space-between',
+                  alignItems: 'center', marginBottom: '7px', gap: '12px'
+                }}>
+                  <span style={{ fontSize: '12px', fontWeight: '700', color: '#5B5887' }}>{metric.label}</span>
+                  <span style={{
+                    fontSize: '12px', fontWeight: '800',
+                    color: '#14123A', whiteSpace: 'nowrap'
+                  }}>
+                    {metric.showSlash ? `${metric.value}/${metric.target}` : metric.value}
+                  </span>
+                </div>
+                <ProgressBar
+                  value={metric.current}
+                  max={metric.max}
+                  color={metric.color}
+                  bg="#E2E0FF"
+                  height={5}
+                  animateDelay={index * 80}
+                />
+              </div>
+            ))}
           </div>
 
           {/* TABS */}
@@ -833,7 +926,7 @@ export default function ProfileScreen({ onLogout }) {
               <div>
                 <div style={{ fontSize: '11px', fontWeight: '700', color: '#A09DC8', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '14px' }}>This Month</div>
                 {[
-                  ['Total Earned', `$${profile?.total_earned || 0}`, '#00C48C'],
+                  ['Total Earned', `$${totalEarned}`, '#00C48C'],
                   ['Gigs Completed', gigsCompleted, '#14123A'],
                   ['Avg. Rating', `${profile?.rating || 5.0} ★`, '#FFB800'],
                 ].map(([label, val, color]) => (
@@ -848,12 +941,12 @@ export default function ProfileScreen({ onLogout }) {
 
                 <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   <ComingSoonCard
-                    icon="📊" title="Full Analytics Dashboard"
+                    icon="stats" title="Full Analytics Dashboard"
                     desc="Earnings trends, gig performance, and conversion rates over time."
                     gradient="linear-gradient(135deg, #6C47FF, #9B59FF)"
                   />
                   <ComingSoonCard
-                    icon="📜" title="Activity Log"
+                    icon="receipt" title="Activity Log"
                     desc="A complete timeline of every action on your account."
                     gradient="linear-gradient(135deg, #00C48C, #00A878)"
                   />
@@ -918,12 +1011,12 @@ export default function ProfileScreen({ onLogout }) {
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '10px' }}>
               <ComingSoonCard
-                icon="🛡️" title="Verified ID + Payment Badge"
+                icon="level" title="Verified ID + Payment Badge"
                 desc="A stronger trust signal showing ID and payment method are both verified."
                 gradient="linear-gradient(135deg, #6C47FF, #9B59FF)"
               />
               <ComingSoonCard
-                icon="👑" title="Prima Pro"
+                icon="accepted" title="Prima Pro"
                 desc="Priority placement, lower commission, and advanced tools for power users."
                 gradient="linear-gradient(135deg, #FFB800, #FF6B2B)"
               />

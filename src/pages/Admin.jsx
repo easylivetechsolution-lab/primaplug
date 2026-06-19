@@ -966,7 +966,7 @@ export default function Admin() {
                       <button
                         onClick={async () => {
                           const confirmed = window.confirm(
-                            `Confirm payment of $${w.dollar_amount?.toFixed(2)} to ${w.users?.full_name || 'user'}?\n\nMake sure you have already sent this payment via Flutterwave or directly before confirming.`
+                            `Confirm payment of $${w.dollar_amount?.toFixed(2)} to ${w.users?.full_name || 'user'}?\n\nMake sure you have already sent this payment via Fincra or directly before confirming.`
                           )
                           if (!confirmed) return
 

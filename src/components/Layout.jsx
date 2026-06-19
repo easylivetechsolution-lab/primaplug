@@ -499,69 +499,6 @@ export default function Layout() {
             <span style={{ fontSize: '9px', fontWeight: '600', color: screen === 'stats' ? '#6C47FF' : '#A09DC8' }}>Stats</span>
           </button>
 
-          {/* Chat */}
-          <button
-            onClick={() => navigateTo('chat')}
-            title="Messages"
-            style={{
-              width: '56px', height: '58px',
-              borderRadius: '12px',
-              background: screen === 'chat' ? '#EEE9FF' : 'transparent',
-              border: `1.5px solid ${screen === 'chat' ? '#B8A5FF' : 'transparent'}`,
-              display: 'flex', flexDirection: 'column',
-              alignItems: 'center', justifyContent: 'center',
-              gap: '3px', cursor: 'pointer',
-              transition: 'all 0.15s', fontFamily: 'inherit',
-              position: 'relative'
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.background = '#EEE9FF'
-              e.currentTarget.style.borderColor = '#B8A5FF'
-            }}
-            onMouseLeave={e => {
-              if (screen !== 'chat') {
-                e.currentTarget.style.background = 'transparent'
-                e.currentTarget.style.borderColor = 'transparent'
-              }
-            }}>
-            <BrandIcon name="chat" size={32} active={screen === 'chat'} />
-            <span style={{
-              fontSize: '9px', fontWeight: '600',
-              color: screen === 'chat' ? '#6C47FF' : '#A09DC8'
-            }}>Chat</span>
-          </button>
-
-          {/* Services */}
-          <button
-            onClick={() => navigateTo('services')}
-            title="Services"
-            style={{
-              width: '48px', height: '48px',
-              borderRadius: '12px',
-              background: screen === 'services' ? '#EEE9FF' : 'transparent',
-              border: `1.5px solid ${screen === 'services' ? '#B8A5FF' : 'transparent'}`,
-              display: 'flex', flexDirection: 'column',
-              alignItems: 'center', justifyContent: 'center',
-              gap: '3px', cursor: 'pointer',
-              transition: 'all 0.15s', fontFamily: 'inherit'
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.background = '#EEE9FF'
-              e.currentTarget.style.borderColor = '#B8A5FF'
-            }}
-            onMouseLeave={e => {
-              if (screen !== 'services') {
-                e.currentTarget.style.background = 'transparent'
-                e.currentTarget.style.borderColor = 'transparent'
-              }
-            }}>
-            <span style={{ fontSize: '22px', lineHeight: '1' }}>🛠️</span>
-            <span style={{
-              fontSize: '9px', fontWeight: '600',
-              color: screen === 'services' ? '#6C47FF' : '#A09DC8'
-            }}>Services</span>
-          </button>
-
           {/* Referral */}
           <button
             onClick={() => navigateTo('referral')}

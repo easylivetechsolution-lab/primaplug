@@ -61,7 +61,6 @@ serve(async (req) => {
           status: 'paid',
           paid_at: new Date().toISOString(),
           payment_method: 'fincra',
-          flw_ref: reference,
         }).eq('id', commission.id)
 
         await supabase.rpc('check_commission_status', {
