@@ -593,6 +593,108 @@ export default function Layout() {
             }}>Refer</span>
           </button>
 
+          {/* Wallet */}
+<button
+  onClick={() => navigateTo('wallet')}
+  title="Wallet"
+  style={{
+    width: '48px', height: '48px',
+    borderRadius: '12px',
+    background: screen === 'wallet' ? '#EEE9FF' : 'transparent',
+    border: `1.5px solid ${screen === 'wallet' ? '#B8A5FF' : 'transparent'}`,
+    display: 'flex', flexDirection: 'column',
+    alignItems: 'center', justifyContent: 'center',
+    gap: '3px', cursor: 'pointer',
+    transition: 'all 0.15s', fontFamily: 'inherit'
+  }}
+  onMouseEnter={e => {
+    e.currentTarget.style.background = '#EEE9FF'
+    e.currentTarget.style.borderColor = '#B8A5FF'
+  }}
+  onMouseLeave={e => {
+    if (screen !== 'wallet') {
+      e.currentTarget.style.background = 'transparent'
+      e.currentTarget.style.borderColor = 'transparent'
+    }
+  }}>
+  <span style={{ fontSize: '20px' }}>💳</span>
+  <span style={{
+    fontSize: '9px', fontWeight: '600',
+    color: screen === 'wallet' ? '#6C47FF' : '#A09DC8'
+  }}>Wallet</span>
+</button>
+
+{/* Withdraw Credits */}
+<button
+  onClick={() => navigateTo('withdrawal')}
+  title="Withdraw Credits"
+  style={{
+    width: '48px', height: '48px',
+    borderRadius: '12px',
+    background: screen === 'withdrawal' ? '#EEE9FF' : 'transparent',
+    border: `1.5px solid ${screen === 'withdrawal' ? '#B8A5FF' : 'transparent'}`,
+    display: 'flex', flexDirection: 'column',
+    alignItems: 'center', justifyContent: 'center',
+    gap: '3px', cursor: 'pointer',
+    transition: 'all 0.15s', fontFamily: 'inherit'
+  }}
+  onMouseEnter={e => {
+    e.currentTarget.style.background = '#EEE9FF'
+    e.currentTarget.style.borderColor = '#B8A5FF'
+  }}
+  onMouseLeave={e => {
+    if (screen !== 'withdrawal') {
+      e.currentTarget.style.background = 'transparent'
+      e.currentTarget.style.borderColor = 'transparent'
+    }
+  }}>
+  <span style={{ fontSize: '20px' }}>💸</span>
+  <span style={{
+    fontSize: '9px', fontWeight: '600',
+    color: screen === 'withdrawal' ? '#6C47FF' : '#A09DC8'
+  }}>Withdraw</span>
+</button>
+
+
+{/* Commission */}
+<button
+  onClick={() => navigateTo('commission')}
+  title="Commission"
+  style={{
+    width: '48px', height: '48px',
+    borderRadius: '12px',
+    background: screen === 'commission' ? '#EEE9FF' : 'transparent',
+    border: `1.5px solid ${screen === 'commission' ? '#B8A5FF' : 'transparent'}`,
+    display: 'flex', flexDirection: 'column',
+    alignItems: 'center', justifyContent: 'center',
+    gap: '3px', cursor: 'pointer',
+    transition: 'all 0.15s', fontFamily: 'inherit',
+    position: 'relative'
+  }}
+  onMouseEnter={e => {
+    e.currentTarget.style.background = '#EEE9FF'
+    e.currentTarget.style.borderColor = '#B8A5FF'
+  }}
+  onMouseLeave={e => {
+    if (screen !== 'commission') {
+      e.currentTarget.style.background = 'transparent'
+      e.currentTarget.style.borderColor = 'transparent'
+    }
+  }}>
+  <span style={{ fontSize: '20px' }}>💰</span>
+  <span style={{
+    fontSize: '9px', fontWeight: '600',
+    color: screen === 'commission' ? '#6C47FF' : '#A09DC8'
+  }}>Owed</span>
+  {hasUnpaidCommissions && (
+    <span style={{
+      position: 'absolute', top: '4px', right: '6px',
+      width: '7px', height: '7px', borderRadius: '50%',
+      background: '#FF3366', border: '1.5px solid #fff'
+    }} />
+  )}
+</button>
+
           {/* Divider */}
           <div style={{
             width: '32px', height: '1px',
