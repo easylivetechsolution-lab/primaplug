@@ -93,3 +93,14 @@ entrypoint = "./functions/fincra-payout-webhook/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/fincra-payout-webhook/*.html" ]
+
+[functions.fincra-verify-payment]
+enabled = true
+verify_jwt = false
+import_map = "./functions/fincra-verify-payment/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/fincra-verify-payment/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/fincra-verify-payment/*.html" ]

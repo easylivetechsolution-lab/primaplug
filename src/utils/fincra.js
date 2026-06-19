@@ -1,4 +1,4 @@
-export const startFincraWalletFunding = async (supabase, payload) => {
+﻿export const startFincraWalletFunding = async (supabase, payload) => {
   const { data, error } = await supabase.functions.invoke('fincra-fund-wallet', {
     body: {
       userId: payload.user_id,
@@ -44,6 +44,16 @@ export const listFincraBanks = async (supabase, country = 'NG') => {
 export const verifyFincraAccount = async (supabase, accountNumber, bankCode) => {
   const { data, error } = await supabase.functions.invoke('fincra-verify-account', {
     body: { accountNumber, bankCode },
+  })
+
+  if (error) throw error
+  if (data?.error) throw new Error(data.error)
+  return data
+}
+
+export const verifyFincraPayment = async (supabase, reference) => {
+  const { data, error } = await supabase.functions.invoke('fincra-verify-payment', {
+    body: { reference },
   })
 
   if (error) throw error
