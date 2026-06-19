@@ -440,14 +440,24 @@ export default function ProfileScreen({ onLogout }) {
         <div style={{
           position: 'fixed', inset: 0, background: 'rgba(20,18,58,0.75)',
           backdropFilter: 'blur(4px)', zIndex: 400,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: '12px'
         }}>
           <div style={{
-            background: '#fff', borderRadius: '24px', padding: '28px',
-            width: '100%', maxWidth: '520px', maxHeight: '90vh', overflowY: 'auto',
-            border: '1.5px solid #E2E0FF', boxShadow: '0 20px 60px rgba(108,71,255,0.25)'
+            background: '#fff', borderRadius: '24px',
+            width: '100%', maxWidth: '520px',
+            height: 'min(860px, calc(100dvh - 24px))',
+            maxHeight: 'calc(100dvh - 24px)',
+            overflow: 'hidden',
+            border: '1.5px solid #E2E0FF',
+            boxShadow: '0 20px 60px rgba(108,71,255,0.25)',
+            display: 'flex', flexDirection: 'column'
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+            <div style={{
+              display: 'flex', justifyContent: 'space-between',
+              alignItems: 'center', padding: '22px 22px 16px',
+              borderBottom: '1px solid #F5F4FF', flexShrink: 0
+            }}>
               <div style={{ fontSize: '18px', fontWeight: '800', color: '#14123A' }}>Edit Profile</div>
               <button onClick={() => setEditing(false)} style={{
                 background: '#F5F4FF', border: '1.5px solid #E2E0FF', borderRadius: '8px',
@@ -456,7 +466,12 @@ export default function ProfileScreen({ onLogout }) {
               }}>×</button>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div style={{
+              display: 'flex', flexDirection: 'column', gap: '14px',
+              flex: 1, minHeight: 0, overflowY: 'auto',
+              WebkitOverflowScrolling: 'touch',
+              padding: '18px 22px 22px'
+            }}>
               <div>
                 <label style={labelStyle}>Full Name</label>
                 <input style={inputStyle} value={editForm.full_name || ''}
@@ -565,7 +580,14 @@ export default function ProfileScreen({ onLogout }) {
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '10px', marginTop: '24px' }}>
+            <div style={{
+              display: 'flex', gap: '10px',
+              padding: '14px 22px calc(14px + env(safe-area-inset-bottom))',
+              borderTop: '1px solid #F5F4FF',
+              background: '#fff',
+              boxShadow: '0 -10px 24px rgba(20,18,58,0.06)',
+              flexShrink: 0
+            }}>
               <button onClick={() => setEditing(false)} style={{
                 flex: 1, background: '#F5F4FF', border: '1.5px solid #E2E0FF', borderRadius: '12px',
                 padding: '13px', fontSize: '13px', fontWeight: '600', color: '#8B8FAF', cursor: 'pointer', fontFamily: 'inherit'
