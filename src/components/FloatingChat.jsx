@@ -5,6 +5,17 @@ import { playMessage } from '../utils/sounds'
 import { sendPushToUser } from '../utils/pushNotifications'
 import PublicProfile from './PublicProfile'
 import BrandIcon from './BrandIcon'
+import {
+  fetchConversationById,
+  fetchConversations as fetchChatConversations,
+  fetchMessages as fetchChatMessages,
+  getOrCreateConversation,
+  getOtherUser as getChatOtherUser,
+  getUnreadCount,
+  markConversationRead,
+  parseTimestamp,
+  sendMessage as sendChatMessage
+} from '../utils/chat'
 
 export default function FloatingChat({ onOpenFullChat }) {
   const { user } = useAuth()
@@ -34,16 +45,7 @@ export default function FloatingChat({ onOpenFullChat }) {
       if (!convoId) return
       setOpen(true)
 
-      const { data } = await supabase
-        .from('conversations')
-        .select(`
-          *,
-          gigs(id, title, pay_min, pay_max, status),
-          p1:users!conversations_participant_1_fkey(id, full_name, avatar_url, trust_score),
-          p2:users!conversations_participant_2_fkey(id, full_name, avatar_url, trust_score)
-        `)
-        .eq('id', convoId)
-        .single()
+      const data = await fetchConversationById(convoId, user.id)
 
       if (data) {
         setActiveConvo(data)
@@ -55,13 +57,7 @@ export default function FloatingChat({ onOpenFullChat }) {
 
     const handleOpenChatWithUser = async (e) => {
       const { userId: targetUserId, gigId } = e.detail
-      console.log('openChatWithUser received', targetUserId, gigId)
       if (!targetUserId) return
-
-      // Get fresh user from supabase session
-      const { data: { session } } = await supabase.auth.getSession()
-      const currentUserId = session?.user?.id
-      if (!currentUserId) return
 
       // On mobile the floating panel is hidden — hand off to ChatScreen instead
       if (window.innerWidth <= 768) {
@@ -73,47 +69,19 @@ export default function FloatingChat({ onOpenFullChat }) {
 
       setOpen(true)
 
-      const { data: existing } = await supabase
-        .from('conversations')
-        .select(`
-          *,
-          gigs(id, title, pay_min, pay_max, status),
-          p1:users!conversations_participant_1_fkey(id, full_name, avatar_url, trust_score),
-          p2:users!conversations_participant_2_fkey(id, full_name, avatar_url, trust_score)
-        `)
-        .or(
-          `and(participant_1.eq.${currentUserId},participant_2.eq.${targetUserId}),` +
-          `and(participant_1.eq.${targetUserId},participant_2.eq.${currentUserId})`
-        )
-        .maybeSingle()
+      const convo = await getOrCreateConversation({
+        currentUser: user,
+        targetUserId,
+        gigId: gigId || null
+      })
 
-      if (existing) {
-        setActiveConvo(existing)
-        await fetchMessages(existing.id)
-        await markAsRead(existing)
+      if (convo?.id) {
+        setActiveConvo(convo)
+        await fetchMessages(convo)
+        await markAsRead(convo)
       } else {
-        const { data: newConvo } = await supabase
-          .from('conversations')
-          .insert({
-            gig_id: gigId || null,
-            participant_1: currentUserId,
-            participant_2: targetUserId,
-            last_message: '',
-            last_message_at: new Date().toISOString()
-          })
-          .select(`
-            *,
-            gigs(id, title, pay_min, pay_max, status),
-            p1:users!conversations_participant_1_fkey(id, full_name, avatar_url, trust_score),
-            p2:users!conversations_participant_2_fkey(id, full_name, avatar_url, trust_score)
-          `)
-          .single()
-
-        if (newConvo) {
-          setActiveConvo(newConvo)
-          setMessages([])
-          setConversations(prev => [newConvo, ...prev])
-        }
+        setActiveConvo(convo)
+        setMessages([])
       }
 
       await fetchConversations()
@@ -131,8 +99,8 @@ export default function FloatingChat({ onOpenFullChat }) {
   }, [user])
 
   useEffect(() => {
-    if (activeConvo) {
-      fetchMessages(activeConvo.id)
+    if (activeConvo?.id) {
+      fetchMessages(activeConvo)
       subscribeToConvoMessages(activeConvo.id)
     }
     return () => {
@@ -154,31 +122,14 @@ export default function FloatingChat({ onOpenFullChat }) {
     }
   }, [open, activeConvo])
 
-  const fetchConversations = async () => {
+  async function fetchConversations() {
     if (!user) return
-    const { data } = await supabase
-      .from('conversations')
-      .select(`
-        *,
-        gigs(id, title, pay_min, pay_max, status),
-        p1:users!conversations_participant_1_fkey(id, full_name, avatar_url, trust_score),
-        p2:users!conversations_participant_2_fkey(id, full_name, avatar_url, trust_score)
-      `)
-      .or(`participant_1.eq.${user.id},participant_2.eq.${user.id}`)
-      .order('last_message_at', { ascending: false })
-    if (data) {
-      setConversations(data)
-      const unread = data.reduce((sum, c) => {
-        const count = c.participant_1 === user.id
-          ? c.unread_count_1 || 0
-          : c.unread_count_2 || 0
-        return sum + count
-      }, 0)
-      setTotalUnread(unread)
-    }
+    const data = await fetchChatConversations(user.id, { includeEmpty: true })
+    setConversations(data)
+    setTotalUnread(data.reduce((sum, c) => sum + getUnread(c), 0))
   }
 
-  const subscribeToNewMessages = () => {
+  function subscribeToNewMessages() {
     if (!user) return
     channelRef.current = supabase
       .channel('floating-chat-' + user.id)
@@ -204,7 +155,7 @@ export default function FloatingChat({ onOpenFullChat }) {
       .subscribe()
   }
 
-  const subscribeToConvoMessages = (convoId) => {
+  function subscribeToConvoMessages(convoId) {
     if (convoChannelRef.current) supabase.removeChannel(convoChannelRef.current)
     convoChannelRef.current = supabase
       .channel('float-convo-' + convoId)
@@ -222,24 +173,19 @@ export default function FloatingChat({ onOpenFullChat }) {
       .subscribe()
   }
 
-  const fetchMessages = async (convoId) => {
+  async function fetchMessages(convo) {
     setLoadingMsgs(true)
-    const { data } = await supabase
-      .from('messages')
-      .select('*')
-      .eq('conversation_id', convoId)
-      .order('created_at', { ascending: true })
-    if (data) setMessages(data)
-    setLoadingMsgs(false)
+    try {
+      const data = await fetchChatMessages(convo, user.id)
+      setMessages(data)
+    } finally {
+      setLoadingMsgs(false)
+    }
   }
 
-  const markAsRead = async (convo) => {
+  async function markAsRead(convo) {
     if (!convo || !user) return
-    const isP1 = convo.participant_1 === user.id
-    await supabase
-      .from('conversations')
-      .update(isP1 ? { unread_count_1: 0 } : { unread_count_2: 0 })
-      .eq('id', convo.id)
+    await markConversationRead(convo, user.id)
     fetchConversations()
   }
 
@@ -249,64 +195,36 @@ export default function FloatingChat({ onOpenFullChat }) {
     const text = newMessage.trim()
     setNewMessage('')
 
-    await supabase.from('messages').insert({
-      conversation_id: activeConvo.id,
-      sender_id: user.id,
-      content: text,
-      type: 'text'
-    })
-
-    const otherUserId = activeConvo.participant_1 === user.id
-      ? activeConvo.participant_2
-      : activeConvo.participant_1
-    const isOtherP1 = activeConvo.participant_1 !== user.id
-    const sender = activeConvo.participant_1 === user.id ? activeConvo.p1 : activeConvo.p2
-    const senderName = sender?.full_name || user.email?.split('@')[0] || 'Someone'
-
-    await supabase.from('conversations').update({
-      last_message: text,
-      last_message_at: new Date().toISOString(),
-      ...(isOtherP1
-        ? { unread_count_1: (activeConvo.unread_count_1 || 0) + 1 }
-        : { unread_count_2: (activeConvo.unread_count_2 || 0) + 1 })
-    }).eq('id', activeConvo.id)
-
-    await supabase.from('notifications').insert({
-      user_id: otherUserId,
-      title: `${senderName} sent you a message`,
-      message: text.length > 40 ? text.substring(0, 40) + '...' : text,
-      type: 'message',
-      gig_id: activeConvo.gig_id
-    })
-    await sendPushToUser(
-      otherUserId,
-      '💬 New Message',
-      text.length > 40 ? text.substring(0, 40) + '...' : text,
-      { type: 'message' }
-    )
-
-    setSending(false)
-    fetchConversations()
+    try {
+      const result = await sendChatMessage({
+        user,
+        conversation: activeConvo,
+        content: text,
+        notifyPush: true,
+        sendPushToUser
+      })
+      if (result?.conversation?.id && !activeConvo.id) setActiveConvo(result.conversation)
+      if (result?.message) {
+        setMessages(prev =>
+          prev.find(m => m.id === result.message.id) ? prev : [...prev, result.message]
+        )
+      }
+      await fetchConversations()
+    } catch (e) {
+      alert('Could not send message: ' + e.message)
+    } finally {
+      setSending(false)
+    }
   }
 
   const getOtherUser = (convo) => {
     if (!convo || !user) return null
-    return convo.participant_1 === user.id ? convo.p2 : convo.p1
+    return getChatOtherUser(convo, user.id)
   }
 
   const getUnread = (convo) => {
     if (!convo || !user) return 0
-    return convo.participant_1 === user.id
-      ? convo.unread_count_1 || 0
-      : convo.unread_count_2 || 0
-  }
-
-  const parseTimestamp = (value) => {
-    if (!value) return new Date()
-    if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?$/.test(value)) {
-      return new Date(value + 'Z')
-    }
-    return new Date(value)
+    return getUnreadCount(convo, user.id)
   }
 
   const timeAgo = (date) => {

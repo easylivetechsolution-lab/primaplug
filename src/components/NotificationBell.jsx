@@ -24,9 +24,22 @@ export default function NotificationBell({ onNavigate }) {
   const [actionDone, setActionDone] = useState(null)
   const ref = useRef()
 
+  async function fetchNotifications() {
+    const { data } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(20)
+    if (data) {
+      setNotifications(data)
+      setUnread(data.filter(n => !n.read).length)
+    }
+  }
+
   useEffect(() => {
     if (!user) return
-    fetchNotifications()
+    Promise.resolve().then(fetchNotifications)
 
     const channel = supabase
       .channel('notifications-' + user.id)
@@ -72,19 +85,6 @@ export default function NotificationBell({ onNavigate }) {
     return () => window.removeEventListener('popstate', handleBack)
   }, [!!notifDetail])
 
-  const fetchNotifications = async () => {
-    const { data } = await supabase
-      .from('notifications')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(20)
-    if (data) {
-      setNotifications(data)
-      setUnread(data.filter(n => !n.read).length)
-    }
-  }
-
   const markAllRead = async () => {
     await supabase
       .from('notifications')
@@ -128,6 +128,18 @@ export default function NotificationBell({ onNavigate }) {
 
   const openMessageNotification = async (notif) => {
     if (!user) return
+
+    if (notif.conversation_id) {
+      onNavigate && onNavigate('chat')
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          window.dispatchEvent(new CustomEvent('openChat', {
+            detail: { convoId: notif.conversation_id }
+          }))
+        })
+      })
+      return
+    }
 
     let query = supabase
       .from('conversations')

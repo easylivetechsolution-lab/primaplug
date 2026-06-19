@@ -376,18 +376,16 @@ export default function MyGigsScreen() {
 
   const totalActionCount = postedActionCount + workingActionCount
 
+  const postedInProgressCount = postedGigs.filter(g =>
+    getPostedGigStatus(g) === 'inprogress'
+  ).length
+  const workingInProgressCount = workingGigs.filter(a =>
+    getWorkingGigStatus(a) === 'inprogress'
+  ).length
+
   // ─── STYLES ────────────────────────────────────────
 
-  const sectionHeader = (label, color = '#A09DC8') => (
-    <div style={{
-      fontSize: '10px', fontWeight: '800',
-      color, textTransform: 'uppercase',
-      letterSpacing: '1.2px', padding: '16px 0 8px',
-      display: 'flex', alignItems: 'center', gap: '6px'
-    }}>
-      {label}
-    </div>
-  )
+  const sectionHeader = () => null
 
   // ─── RENDER ────────────────────────────────────────
 
@@ -400,16 +398,58 @@ export default function MyGigsScreen() {
     }}>
       {/* Header */}
       <div style={{
-        background: '#fff', padding: '16px 20px 0',
-        borderBottom: '1.5px solid #E2E0FF', flexShrink: 0
+        background: 'linear-gradient(180deg, #FFFFFF 0%, #F8F7FF 100%)',
+        padding: '18px 20px 0',
+        borderBottom: '1.5px solid #E2E0FF', flexShrink: 0,
+        boxShadow: '0 10px 30px rgba(20,18,58,0.06)'
       }}>
-        <div style={{ marginBottom: '14px' }}>
-          <div style={{
-            fontSize: '20px', fontWeight: '800', color: '#14123A'
-          }}>My Gigs</div>
-          <div style={{ fontSize: '12px', color: '#8B8FAF' }}>
-            Manage your work
+        <div style={{
+          display: 'flex', justifyContent: 'space-between',
+          alignItems: 'flex-start', gap: '14px', marginBottom: '14px'
+        }}>
+          <div>
+            <div style={{
+              fontSize: '24px', fontWeight: '900', color: '#14123A',
+              lineHeight: 1.05
+            }}>My Gigs</div>
+            <div style={{
+              fontSize: '13px', color: '#6F7394',
+              fontWeight: '650', marginTop: '5px'
+            }}>
+              Manage your posted work and active jobs
+            </div>
           </div>
+          <div style={{
+            background: '#14123A', color: '#fff',
+            borderRadius: '14px', padding: '10px 12px',
+            minWidth: '74px', textAlign: 'center',
+            boxShadow: '0 10px 22px rgba(20,18,58,0.16)'
+          }}>
+            <div style={{ fontSize: '22px', fontWeight: '900', lineHeight: 1 }}>
+              {postedGigs.length + workingGigs.length}
+            </div>
+            <div style={{
+              fontSize: '10px', fontWeight: '800',
+              color: '#C9C6FF', textTransform: 'uppercase',
+              letterSpacing: '0.6px', marginTop: '4px'
+            }}>
+              Total
+            </div>
+          </div>
+        </div>
+
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+          gap: '8px', marginBottom: '12px'
+        }}>
+          <HeaderStat label="Posted" value={postedGigs.length} color="#6C47FF" />
+          <HeaderStat label="Working" value={workingGigs.length} color="#00A878" />
+          <HeaderStat
+            label="Active"
+            value={postedInProgressCount + workingInProgressCount}
+            color="#FF6B2B"
+          />
         </div>
 
         {/* Smart Action Banner */}
@@ -711,28 +751,40 @@ function PostedTab({
   return (
     <div>
       {actionGigs.length > 0 && (
-        <>
+        <GigCarousel
+          title="Needs Action"
+          count={actionGigs.length}
+          color="#FF3366"
+        >
           {sectionHeader('🔴 Needs Action', '#FF3366')}
           {actionGigs.map(renderGig)}
-        </>
+        </GigCarousel>
       )}
       {inProgressGigs.length > 0 && (
-        <>
+        <GigCarousel
+          title="In Progress"
+          count={inProgressGigs.length}
+          color="#FF6B2B"
+        >
           {sectionHeader('🟡 In Progress', '#FF6B2B')}
           {inProgressGigs.map(renderGig)}
-        </>
+        </GigCarousel>
       )}
       {openGigs.length > 0 && (
-        <>
+        <GigCarousel title="Open" count={openGigs.length} color="#00C48C">
           {sectionHeader('🟢 Open', '#00C48C')}
           {openGigs.map(renderGig)}
-        </>
+        </GigCarousel>
       )}
       {completedGigs.length > 0 && (
-        <>
+        <GigCarousel
+          title="Completed"
+          count={completedGigs.length}
+          color="#8B8FAF"
+        >
           {sectionHeader('✅ Completed', '#8B8FAF')}
           {completedGigs.map(renderGig)}
-        </>
+        </GigCarousel>
       )}
     </div>
   )
@@ -772,7 +824,10 @@ function PostedGigCard({
     <div style={{
       background: '#fff', border: `1.5px solid ${sc.border}`,
       borderRadius: '16px', marginBottom: '12px',
-      overflow: 'hidden', transition: 'all 0.2s'
+      overflow: 'hidden', transition: 'all 0.2s',
+      minWidth: 'min(86vw, 360px)', maxWidth: '360px',
+      boxShadow: '0 12px 28px rgba(20,18,58,0.08)',
+      scrollSnapAlign: 'start'
     }}>
       {/* Card Header */}
       <div
@@ -803,10 +858,12 @@ function PostedGigCard({
               {sc.label.toUpperCase()}
             </div>
             <div style={{
-              fontSize: '15px', fontWeight: '700', color: '#14123A'
+              fontSize: '17px', fontWeight: '900', color: '#14123A',
+              lineHeight: 1.25
             }}>{gig.title}</div>
             <div style={{
-              fontSize: '11px', color: '#8B8FAF', marginTop: '3px'
+              fontSize: '12px', color: '#6F7394', marginTop: '6px',
+              fontWeight: '700', lineHeight: 1.35
             }}>
               {currency.symbol}{gig.pay_min}–{currency.symbol}{gig.pay_max} ·{' '}
               {gig.location || 'Remote'} · {timeAgo(gig.created_at)}
@@ -1202,28 +1259,40 @@ function WorkingTab({
       )}
 
       {actionApps.length > 0 && (
-        <>
+        <GigCarousel
+          title="Action Required"
+          count={actionApps.length}
+          color="#FF3366"
+        >
           {sectionHeader('🔴 Action Required', '#FF3366')}
           {actionApps.map(renderApp)}
-        </>
+        </GigCarousel>
       )}
       {inProgressApps.length > 0 && (
-        <>
+        <GigCarousel
+          title="In Progress"
+          count={inProgressApps.length}
+          color="#FF6B2B"
+        >
           {sectionHeader('🟡 In Progress', '#FF6B2B')}
           {inProgressApps.map(renderApp)}
-        </>
+        </GigCarousel>
       )}
       {pendingApps.length > 0 && (
-        <>
+        <GigCarousel title="Pending" count={pendingApps.length} color="#6C47FF">
           {sectionHeader('🔵 Pending', '#6C47FF')}
           {pendingApps.map(renderApp)}
-        </>
+        </GigCarousel>
       )}
       {completedApps.length > 0 && (
-        <>
+        <GigCarousel
+          title="Completed"
+          count={completedApps.length}
+          color="#8B8FAF"
+        >
           {sectionHeader('✅ Completed', '#8B8FAF')}
           {completedApps.map(renderApp)}
-        </>
+        </GigCarousel>
       )}
     </div>
   )
@@ -1256,7 +1325,10 @@ function WorkingGigCard({
     <div style={{
       background: '#fff', border: `1.5px solid ${sc.border}`,
       borderRadius: '16px', marginBottom: '12px',
-      overflow: 'hidden'
+      overflow: 'hidden',
+      minWidth: 'min(86vw, 360px)', maxWidth: '360px',
+      boxShadow: '0 12px 28px rgba(20,18,58,0.08)',
+      scrollSnapAlign: 'start'
     }}>
       {/* Card Header */}
       <div style={{ padding: '14px 16px' }}>
@@ -1281,8 +1353,9 @@ function WorkingGigCard({
         </div>
 
         <div style={{
-          fontSize: '15px', fontWeight: '700',
-          color: '#14123A', marginBottom: '4px'
+          fontSize: '17px', fontWeight: '900',
+          color: '#14123A', marginBottom: '8px',
+          lineHeight: 1.25
         }}>{gig?.title}</div>
 
         {/* Poster info */}
@@ -1315,7 +1388,10 @@ function WorkingGigCard({
           </span>
         </div>
 
-        <div style={{ fontSize: '12px', color: '#00C48C', fontWeight: '700' }}>
+        <div style={{
+          fontSize: '15px', color: '#008E66',
+          fontWeight: '900', marginTop: '8px'
+        }}>
           {getCurrency(gig?.currency || 'USD').symbol}
           {gig?.pay_min}–{getCurrency(gig?.currency || 'USD').symbol}
           {gig?.pay_max}
@@ -1667,6 +1743,72 @@ function ApplicantsSheet({
 // ══════════════════════════════════════════
 // SHARED COMPONENTS
 // ══════════════════════════════════════════
+function HeaderStat({ label, value, color }) {
+  return (
+    <div style={{
+      background: '#fff', border: '1.5px solid #E2E0FF',
+      borderRadius: '14px', padding: '10px 8px',
+      boxShadow: '0 8px 18px rgba(20,18,58,0.05)'
+    }}>
+      <div style={{
+        fontSize: '20px', fontWeight: '900',
+        color, lineHeight: 1, marginBottom: '4px'
+      }}>{value}</div>
+      <div style={{
+        fontSize: '10px', color: '#6F7394',
+        fontWeight: '850', textTransform: 'uppercase',
+        letterSpacing: '0.7px'
+      }}>{label}</div>
+    </div>
+  )
+}
+
+function GigCarousel({ title, count, color, children }) {
+  return (
+    <section style={{ marginTop: '16px' }}>
+      <div style={{
+        display: 'flex', alignItems: 'center',
+        justifyContent: 'space-between', gap: '12px',
+        marginBottom: '10px'
+      }}>
+        <div style={{
+          display: 'flex', alignItems: 'center',
+          gap: '8px', minWidth: 0
+        }}>
+          <span style={{
+            width: '10px', height: '10px',
+            borderRadius: '50%', background: color,
+            boxShadow: `0 0 0 4px ${color}22`,
+            flexShrink: 0
+          }} />
+          <h2 style={{
+            margin: 0, fontSize: '15px',
+            fontWeight: '900', color: '#14123A',
+            lineHeight: 1.15
+          }}>{title}</h2>
+        </div>
+        <span style={{
+          background: '#fff', border: `1.5px solid ${color}44`,
+          color, borderRadius: '999px', padding: '5px 9px',
+          fontSize: '11px', fontWeight: '900',
+          flexShrink: 0
+        }}>
+          {count}
+        </span>
+      </div>
+      <div style={{
+        display: 'flex', gap: '12px',
+        overflowX: 'auto', overflowY: 'hidden',
+        scrollSnapType: 'x proximity',
+        WebkitOverflowScrolling: 'touch',
+        padding: '2px 4px 8px 0'
+      }}>
+        {children}
+      </div>
+    </section>
+  )
+}
+
 function EmptyState({ icon, title, subtitle, action, onAction }) {
   return (
     <div style={{

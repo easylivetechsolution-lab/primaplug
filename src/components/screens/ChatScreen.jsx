@@ -5,6 +5,21 @@ import PublicProfile from '../PublicProfile'
 import BrandIcon from '../BrandIcon'
 import EmptyState from '../EmptyState'
 import { playMessage } from '../../utils/sounds'
+import {
+  clearConversationForUser,
+  fetchConversationById,
+  fetchConversations as fetchChatConversations,
+  fetchMessages as fetchChatMessages,
+  getOrCreateConversation,
+  getOtherUser as getChatOtherUser,
+  getUnreadCount as getChatUnreadCount,
+  hideConversationForUser,
+  markConversationRead,
+  markMessageRead,
+  parseTimestamp,
+  sendMessage as sendChatMessage,
+  updateConversationPreview as updateChatConversationPreview
+} from '../../utils/chat'
 
 const QUICK_REPLIES = [
   'On my way! 🚀',
@@ -24,8 +39,8 @@ export default function ChatScreen() {
   const [sending, setSending] = useState(false)
   const [loading, setLoading] = useState(true)
   const [loadingMessages, setLoadingMessages] = useState(false)
-  const [typing, setTyping] = useState(false)
-  const [otherTyping, setOtherTyping] = useState(false)
+  const [, setTyping] = useState(false)
+  const [otherTyping] = useState(false)
   const [viewingProfile, setViewingProfile] = useState(null)
   const [showQuickReplies, setShowQuickReplies] = useState(false)
   const [conversationMenu, setConversationMenu] = useState(null)
@@ -45,16 +60,7 @@ export default function ChatScreen() {
       const { convoId } = e.detail
       if (!convoId || !user) return
 
-      const { data } = await supabase
-        .from('conversations')
-        .select(`
-          *,
-          gigs(id, title, pay_min, pay_max, status),
-          p1:users!conversations_participant_1_fkey(id, full_name, avatar_url, trust_score),
-          p2:users!conversations_participant_2_fkey(id, full_name, avatar_url, trust_score)
-        `)
-        .eq('id', convoId)
-        .single()
+      const data = await fetchConversationById(convoId, user.id)
 
       if (data) {
         setActiveConvo(data)
@@ -68,63 +74,21 @@ export default function ChatScreen() {
       const { userId: targetUserId, gigId } = e.detail
       if (!targetUserId || !user) return
 
-      const { data: existing } = await supabase
-        .from('conversations')
-        .select(`
-          *,
-          gigs(id, title, pay_min, pay_max, status),
-          p1:users!conversations_participant_1_fkey(id, full_name, avatar_url, trust_score),
-          p2:users!conversations_participant_2_fkey(id, full_name, avatar_url, trust_score)
-        `)
-        .or(
-          `and(participant_1.eq.${user.id},participant_2.eq.${targetUserId}),` +
-          `and(participant_1.eq.${targetUserId},participant_2.eq.${user.id})`
-        )
-        .order('last_message_at', { ascending: false })
-        .limit(10)
+      const convo = await getOrCreateConversation({
+        currentUser: user,
+        targetUserId,
+        gigId: gigId || null
+      })
 
-      const matchedExisting = existing?.find(convo =>
-        gigId ? convo.gig_id === gigId : true
-      ) || existing?.[0]
-
-      if (matchedExisting) {
-        setActiveConvo(matchedExisting)
-        if (matchedExisting.last_message) {
+      if (convo) {
+        setActiveConvo(convo)
+        if (convo.id && convo.last_message) {
           setConversations(prev =>
-            prev.find(c => c.id === matchedExisting.id) ? prev : [matchedExisting, ...prev]
+            prev.find(c => c.id === convo.id) ? prev : [convo, ...prev]
           )
         }
-        return
+        if (!convo.id) setMessages([])
       }
-
-      const { data: targetUser } = await supabase
-        .from('users')
-        .select('id, full_name, avatar_url, trust_score')
-        .eq('id', targetUserId)
-        .single()
-
-      const { data: gig } = gigId
-        ? await supabase
-          .from('gigs')
-          .select('id, title, pay_min, pay_max, status')
-          .eq('id', gigId)
-          .single()
-        : { data: null }
-
-      setActiveConvo({
-        id: null,
-        gig_id: gigId || null,
-        participant_1: user.id,
-        participant_2: targetUserId,
-        p1: { id: user.id, full_name: user.email?.split('@')[0] || 'You' },
-        p2: targetUser || { id: targetUserId, full_name: 'User' },
-        gigs: gig,
-        last_message: '',
-        last_message_at: new Date().toISOString(),
-        unread_count_1: 0,
-        unread_count_2: 0
-      })
-      setMessages([])
     }
 
     window.addEventListener('openChat', handleOpenChat)
@@ -149,11 +113,9 @@ export default function ChatScreen() {
 
   useEffect(() => {
     if (activeConvo?.id) {
-      fetchMessages(activeConvo.id)
+      fetchMessages(activeConvo)
       markAsRead(activeConvo)
       subscribeToMessages(activeConvo.id)
-    } else if (activeConvo && !activeConvo.id) {
-      setMessages([])
     }
     return () => {
       if (channelRef.current) {
@@ -178,40 +140,31 @@ export default function ChatScreen() {
     scrollToBottom()
   }, [messages])
 
-  const scrollToBottom = () => {
+  function scrollToBottom() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
-  const fetchConversations = async () => {
+  async function fetchConversations() {
     if (!user) return
-    const { data } = await supabase
-      .from('conversations')
-      .select(`
-        *,
-        gigs(id, title, status, pay_min, pay_max),
-        p1:users!conversations_participant_1_fkey(id, full_name, avatar_url, trust_score),
-        p2:users!conversations_participant_2_fkey(id, full_name, avatar_url, trust_score)
-      `)
-      .or(`participant_1.eq.${user.id},participant_2.eq.${user.id}`)
-      .neq('last_message', '')
-      .order('last_message_at', { ascending: false })
-
-    if (data) setConversations(data)
-    setLoading(false)
+    try {
+      const data = await fetchChatConversations(user.id)
+      setConversations(data)
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const fetchMessages = async (convoId) => {
+  async function fetchMessages(convo) {
     setLoadingMessages(true)
-    const { data } = await supabase
-      .from('messages')
-      .select('*')
-      .eq('conversation_id', convoId)
-      .order('created_at', { ascending: true })
-    if (data) setMessages(data)
-    setLoadingMessages(false)
+    try {
+      const data = await fetchChatMessages(convo, user.id)
+      setMessages(data)
+    } finally {
+      setLoadingMessages(false)
+    }
   }
 
-  const subscribeToMessages = (convoId) => {
+  function subscribeToMessages(convoId) {
     if (channelRef.current) supabase.removeChannel(channelRef.current)
     channelRef.current = supabase
       .channel('messages-' + convoId)
@@ -233,21 +186,10 @@ export default function ChatScreen() {
       .subscribe()
   }
 
-  const markAsRead = async (convo) => {
+  async function markAsRead(convo) {
     if (!convo) return
-    const isP1 = convo.participant_1 === user.id
-    await supabase
-      .from('conversations')
-      .update(isP1 ? { unread_count_1: 0 } : { unread_count_2: 0 })
-      .eq('id', convo.id)
+    await markConversationRead(convo, user.id)
     fetchConversations()
-  }
-
-  const markMessageRead = async (messageId) => {
-    await supabase
-      .from('messages')
-      .update({ read: true, read_at: new Date().toISOString() })
-      .eq('id', messageId)
   }
 
   const sendMessage = async (content = newMessage) => {
@@ -256,91 +198,24 @@ export default function ChatScreen() {
     const text = content.trim()
     setNewMessage('')
     setShowQuickReplies(false)
-    let convo = activeConvo
-
-    if (!convo.id) {
-      const { data: created, error: createError } = await supabase
-        .from('conversations')
-        .insert({
-          gig_id: convo.gig_id || null,
-          participant_1: user.id,
-          participant_2: convo.participant_2,
-          last_message: text,
-          last_message_at: new Date().toISOString()
-        })
-        .select(`
-          *,
-          gigs(id, title, pay_min, pay_max, status),
-          p1:users!conversations_participant_1_fkey(id, full_name, avatar_url, trust_score),
-          p2:users!conversations_participant_2_fkey(id, full_name, avatar_url, trust_score)
-        `)
-        .single()
-
-      if (createError || !created) {
-        alert('Could not start chat: ' + (createError?.message || 'Please try again.'))
-        setSending(false)
-        return
+    try {
+      const result = await sendChatMessage({ user, conversation: activeConvo, content: text })
+      if (result?.conversation?.id && !activeConvo.id) setActiveConvo(result.conversation)
+      if (result?.message) {
+        setMessages(prev =>
+          prev.find(m => m.id === result.message.id) ? prev : [...prev, result.message]
+        )
       }
-
-      convo = created
-      setActiveConvo(created)
+      await fetchConversations()
+    } catch (e) {
+      alert('Could not send message: ' + e.message)
+    } finally {
+      setSending(false)
     }
-
-    const { data: msg } = await supabase
-      .from('messages')
-      .insert({
-        conversation_id: convo.id,
-        sender_id: user.id,
-        content: text,
-        type: 'text'
-      })
-      .select()
-      .single()
-
-    // Update conversation last message
-    const otherUserId = convo.participant_1 === user.id
-      ? convo.participant_2
-      : convo.participant_1
-    const isOtherP1 = convo.participant_1 !== user.id
-    const sender = convo.participant_1 === user.id ? convo.p1 : convo.p2
-    const senderName = sender?.full_name || user.email?.split('@')[0] || 'Someone'
-
-    await supabase
-      .from('conversations')
-      .update({
-        last_message: text,
-        last_message_at: new Date().toISOString(),
-        ...(isOtherP1
-          ? { unread_count_1: (convo.unread_count_1 || 0) + 1 }
-          : { unread_count_2: (convo.unread_count_2 || 0) + 1 })
-      })
-      .eq('id', convo.id)
-
-    // Send notification
-    await supabase.from('notifications').insert({
-      user_id: otherUserId,
-      title: `${senderName} sent you a message`,
-      message: `${text.length > 40 ? text.substring(0, 40) + '...' : text}`,
-      type: 'message',
-      gig_id: convo.gig_id
-    })
-
-    setSending(false)
-    fetchConversations()
   }
 
   const updateConversationPreview = async (convoId, fallbackMessages = messages) => {
-    const latest = [...fallbackMessages].sort(
-      (a, b) => parseTimestamp(b.created_at) - parseTimestamp(a.created_at)
-    )[0]
-
-    await supabase
-      .from('conversations')
-      .update({
-        last_message: latest?.content || '',
-        last_message_at: latest?.created_at || new Date().toISOString()
-      })
-      .eq('id', convoId)
+    await updateChatConversationPreview(convoId, fallbackMessages)
 
     fetchConversations()
   }
@@ -397,15 +272,11 @@ export default function ChatScreen() {
       setMessages([])
       return
     }
-    if (!window.confirm('Delete this conversation? This removes the whole chat thread.')) return
+    if (!window.confirm('Delete this conversation from your inbox? The other person will keep their copy.')) return
 
-    await supabase.from('messages').delete().eq('conversation_id', convo.id)
-    const { error } = await supabase
-      .from('conversations')
-      .delete()
-      .eq('id', convo.id)
-
-    if (error) {
+    try {
+      await hideConversationForUser(convo, user.id)
+    } catch (error) {
       alert('Could not delete conversation: ' + error.message)
       return
     }
@@ -424,30 +295,35 @@ export default function ChatScreen() {
       setMessages([])
       return
     }
-    if (!window.confirm('Clear this chat?')) return
+    if (!window.confirm('Clear this chat for you?')) return
 
-    await supabase.from('messages').delete().eq('conversation_id', convo.id)
-    const now = new Date().toISOString()
-    const { error } = await supabase
-      .from('conversations')
-      .update({
-        last_message: 'Chat cleared',
-        last_message_at: now,
-        unread_count_1: 0,
-        unread_count_2: 0
-      })
-      .eq('id', convo.id)
-
-    if (error) {
+    let now
+    try {
+      now = await clearConversationForUser(convo, user.id)
+    } catch (error) {
       alert('Could not clear chat: ' + error.message)
       return
     }
 
     setConversations(prev => prev.map(c =>
-      c.id === convo.id ? { ...c, last_message: 'Chat cleared', last_message_at: now, unread_count_1: 0, unread_count_2: 0 } : c
+      c.id === convo.id
+        ? {
+          ...c,
+          ...(c.participant_1 === user.id
+            ? { cleared_at_1: now, unread_count_1: 0 }
+            : { cleared_at_2: now, unread_count_2: 0 })
+        }
+        : c
     ))
     if (activeConvo?.id === convo.id) {
-      setActiveConvo(prev => prev ? { ...prev, last_message: 'Chat cleared', last_message_at: now, unread_count_1: 0, unread_count_2: 0 } : prev)
+      setActiveConvo(prev => prev
+        ? {
+          ...prev,
+          ...(prev.participant_1 === user.id
+            ? { cleared_at_1: now, unread_count_1: 0 }
+            : { cleared_at_2: now, unread_count_2: 0 })
+        }
+        : prev)
       setMessages([])
     }
   }
@@ -462,23 +338,15 @@ export default function ChatScreen() {
 
   const getOtherUser = (convo) => {
     if (!convo || !user) return null
-    return convo.participant_1 === user.id ? convo.p2 : convo.p1
+    return getChatOtherUser(convo, user.id)
   }
 
   const getUnreadCount = (convo) => {
     if (!convo || !user) return 0
-    return convo.participant_1 === user.id
-      ? convo.unread_count_1 || 0
-      : convo.unread_count_2 || 0
+    return getChatUnreadCount(convo, user.id)
   }
 
-  const parseTimestamp = (value) => {
-    if (!value) return new Date()
-    if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?$/.test(value)) {
-      return new Date(value + 'Z')
-    }
-    return new Date(value)
-  }
+  void editMessage
 
   const timeAgo = (date) => {
     const seconds = Math.floor((new Date() - parseTimestamp(date)) / 1000)
@@ -717,7 +585,7 @@ export default function ChatScreen() {
 
       {/* ── CHAT WINDOW ── */}
       <div style={{
-        flex: 1, display: 'flex', flexDirection: 'column',
+        flex: 1, flexDirection: 'column',
         background: '#F8F7FF', overflow: 'hidden',
         display: isMobile && !activeConvo ? 'none' : 'flex'
       }}>
