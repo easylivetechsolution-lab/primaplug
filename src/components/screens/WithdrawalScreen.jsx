@@ -1,44 +1,23 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../../supabase'
 import { useCredits } from '../../context/CreditsContext'
 import { useAuth } from '../../context/AuthContext'
 import { CREDITS_PER_DOLLAR, MIN_WITHDRAWAL_CREDITS } from '../../utils/payments'
-
-const PAYMENT_METHODS = [
-  {
-    key: 'international',
-    label: 'International',
-    icon: '🌍',
-    desc: 'USD, GBP, EUR bank',
-    fields: ['bank_name', 'account_number', 'account_name', 'swift_code'],
-    currency: 'USD'
-  },
-  {
-    key: 'nigerian_bank',
-    label: 'Bank Details',
-    icon: '🏦',
-    desc: 'All Nigerian banks',
-    fields: ['bank_name', 'account_number', 'account_name'],
-    currency: 'NGN'
-  },
-  {
-    key: 'mobile_money',
-    label: 'Mobile Money',
-    icon: '📱',
-    desc: 'OPay, PalmPay, Kuda',
-    fields: ['mobile_number', 'account_name'],
-    currency: 'NGN'
-  },
-]
+import { requestFincraPayout, listFincraBanks, verifyFincraAccount } from '../../utils/fincra'
 
 const MIN_CREDITS = MIN_WITHDRAWAL_CREDITS
 
 export default function WithdrawalScreen() {
   const { credits, fetchCredits } = useCredits()
-  const { user } = useAuth()
-  const [method, setMethod] = useState(null)
+  const { user, profile } = useAuth()
+
+  const [banks, setBanks] = useState([])
+  const [bankCode, setBankCode] = useState('')
+  const [accountNumber, setAccountNumber] = useState('')
+  const [verifiedName, setVerifiedName] = useState('')
+  const [verifying, setVerifying] = useState(false)
+
   const [amount, setAmount] = useState('')
-  const [form, setForm] = useState({})
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState(false)
   const [error, setError] = useState('')
@@ -47,9 +26,42 @@ export default function WithdrawalScreen() {
   const dollarValue = balance / CREDITS_PER_DOLLAR
   const creditsToWithdraw = parseInt(amount) || 0
   const dollarPayout = creditsToWithdraw / CREDITS_PER_DOLLAR
-  const selectedMethod = PAYMENT_METHODS.find(m => m.key === method)
 
-  const updateForm = (key, val) => setForm(f => ({ ...f, [key]: val }))
+  useEffect(() => {
+    loadBanks()
+  }, [])
+
+  const loadBanks = async () => {
+    try {
+      const data = await listFincraBanks(supabase, 'NG')
+      const list = data?.data?.banks || data?.banks || (Array.isArray(data) ? data : [])
+      setBanks(list)
+    } catch (e) {
+      console.error('Load banks error:', e)
+    }
+  }
+
+  const verifyAccount = async () => {
+    setError('')
+    setVerifiedName('')
+    if (!accountNumber || accountNumber.length < 10 || !bankCode) {
+      setError('Enter a valid account number and select a bank')
+      return
+    }
+    setVerifying(true)
+    try {
+      const data = await verifyFincraAccount(supabase, accountNumber, bankCode)
+      const accountData = data?.data
+      if (!accountData) {
+        setError('Could not find this account. Check the details and try again.')
+      } else {
+        setVerifiedName(accountData.accountName || accountData.account_name || 'Verified')
+      }
+    } catch (e) {
+      setError(e.message || 'Could not verify account')
+    }
+    setVerifying(false)
+  }
 
   const labelStyle = {
     fontSize: '11px', fontWeight: '700',
@@ -67,39 +79,50 @@ export default function WithdrawalScreen() {
 
   const handleSubmit = async () => {
     setError('')
-    if (!method) return setError('Please select a withdrawal method.')
-    if (creditsToWithdraw < MIN_CREDITS) return setError(`Minimum withdrawal is ${MIN_CREDITS} credits ($${(MIN_CREDITS / CREDITS_PER_DOLLAR).toFixed(2)}).`)
+    if (creditsToWithdraw < MIN_CREDITS) {
+      return setError(`Minimum withdrawal is ${MIN_CREDITS} credits ($${(MIN_CREDITS / CREDITS_PER_DOLLAR).toFixed(2)}).`)
+    }
     if (creditsToWithdraw > balance) return setError('Insufficient credits balance.')
-    if (!form.account_name?.trim()) return setError('Please enter your account details.')
-
-    const accountDetails = Object.entries(form)
-      .filter(([, v]) => v)
-      .map(([k, v]) => `${k}: ${v}`)
-      .join(', ')
+    if (!bankCode || !accountNumber) return setError('Select your bank and enter your account number.')
+    if (!verifiedName) return setError('Please verify your account before withdrawing.')
 
     setSubmitting(true)
     try {
+      // Deduct credits first (pessimistic pattern - matches wallet payout function)
       const { error: spendErr } = await supabase.rpc('spend_credits', {
         p_user_id: user.id,
         p_amount: creditsToWithdraw,
         p_type: 'withdrawal',
-        p_description: `Withdrawal via ${selectedMethod?.label} — $${dollarPayout.toFixed(2)}`
+        p_description: `Withdrawal to ${verifiedName} — $${dollarPayout.toFixed(2)}`
       })
       if (spendErr) throw spendErr
 
-      await supabase.from('withdrawals').insert({
-        user_id: user.id,
-        credits_amount: creditsToWithdraw,
-        dollar_amount: dollarPayout,
-        method,
-        account_details: accountDetails,
-        status: 'pending'
-      })
+      try {
+        await requestFincraPayout(supabase, {
+          userId: user.id,
+          source: 'credits',
+          amount: dollarPayout,
+          currency: 'NGN',
+          accountNumber,
+          bankCode,
+          accountName: verifiedName,
+          email: user.email,
+        })
+      } catch (payoutErr) {
+        // Refund credits since the payout call itself failed to initiate
+        await supabase.rpc('add_credits', {
+          p_user_id: user.id,
+          p_amount: creditsToWithdraw,
+          p_type: 'withdrawal_refund',
+          p_description: 'Refund - withdrawal failed to initiate'
+        })
+        throw payoutErr
+      }
 
       await supabase.from('notifications').insert({
         user_id: user.id,
-        title: '💸 Withdrawal Requested',
-        message: `Your withdrawal of ${creditsToWithdraw} credits ($${dollarPayout.toFixed(2)}) via ${selectedMethod?.label} is being processed.`,
+        title: '💸 Withdrawal Processing',
+        message: `Your withdrawal of ${creditsToWithdraw} credits ($${dollarPayout.toFixed(2)}) is being sent to your bank account.`,
         type: 'general'
       })
 
@@ -122,16 +145,19 @@ export default function WithdrawalScreen() {
         <div style={{
           fontSize: '22px', fontWeight: '800',
           color: '#14123A', marginBottom: '8px'
-        }}>Withdrawal Requested!</div>
+        }}>Withdrawal Sent!</div>
         <div style={{
           fontSize: '14px', color: '#8B8FAF',
           lineHeight: '1.6', marginBottom: '24px',
           maxWidth: '280px', margin: '0 auto 24px'
         }}>
-          Your {creditsToWithdraw} credits (${dollarPayout.toFixed(2)}) payout via {selectedMethod?.label} is being processed. Allow 1–3 business days.
+          Your {creditsToWithdraw} credits (${dollarPayout.toFixed(2)}) is on its way to {verifiedName}. You'll get a notification once it lands.
         </div>
         <button
-          onClick={() => { setDone(false); setAmount(''); setForm({}); setMethod(null) }}
+          onClick={() => {
+            setDone(false); setAmount(''); setBankCode('')
+            setAccountNumber(''); setVerifiedName('')
+          }}
           style={{
             background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
             border: 'none', borderRadius: '14px',
@@ -187,68 +213,57 @@ export default function WithdrawalScreen() {
       }}>
         <span style={{ fontSize: '20px', flexShrink: 0 }}>ℹ️</span>
         <div style={{ fontSize: '12px', color: '#6C47FF', lineHeight: '1.6' }}>
-          <strong>{CREDITS_PER_DOLLAR} Credits = $1 USD.</strong> Minimum withdrawal is {MIN_CREDITS} credits (${(MIN_CREDITS / CREDITS_PER_DOLLAR).toFixed(2)}). Processing takes 1–3 business days.
+          <strong>{CREDITS_PER_DOLLAR} Credits = $1 USD.</strong> Minimum withdrawal is {MIN_CREDITS} credits (${(MIN_CREDITS / CREDITS_PER_DOLLAR).toFixed(2)}). Sent automatically via Fincra.
         </div>
       </div>
 
-      {/* Payment Method */}
-      <div style={{ marginBottom: '16px' }}>
-        <label style={labelStyle}>Where should we send it?</label>
-        <div style={{
-          display: 'flex', flexDirection: 'column', gap: '8px'
-        }}>
-          {PAYMENT_METHODS.map(m => (
-            <div
-              key={m.key}
-              onClick={() => { setMethod(m.key); setForm({}) }}
-              style={{
-                background: method === m.key ? '#EEE9FF' : '#fff',
-                border: `1.5px solid ${method === m.key ? '#6C47FF' : '#E2E0FF'}`,
-                borderRadius: '14px', padding: '14px 16px',
-                cursor: 'pointer', transition: 'all 0.15s',
-                display: 'flex', alignItems: 'center', gap: '12px'
-              }}>
-              <div style={{
-                width: '42px', height: '42px', borderRadius: '12px',
-                background: method === m.key ? '#6C47FF' : '#F5F4FF',
-                display: 'flex', alignItems: 'center',
-                justifyContent: 'center', fontSize: '20px',
-                flexShrink: 0, transition: 'all 0.15s'
-              }}>{m.icon}</div>
-              <div style={{ flex: 1 }}>
-                <div style={{
-                  fontSize: '14px', fontWeight: '700',
-                  color: method === m.key ? '#6C47FF' : '#14123A',
-                  marginBottom: '2px'
-                }}>{m.label}</div>
-                <div style={{
-                  fontSize: '11px',
-                  color: method === m.key ? '#6C47FF' : '#A09DC8',
-                  opacity: 0.8
-                }}>{m.desc}</div>
-              </div>
-              <div style={{
-                width: '20px', height: '20px', borderRadius: '50%',
-                border: `2px solid ${method === m.key ? '#6C47FF' : '#E2E0FF'}`,
-                background: method === m.key ? '#6C47FF' : '#fff',
-                display: 'flex', alignItems: 'center',
-                justifyContent: 'center', flexShrink: 0,
-                transition: 'all 0.15s'
-              }}>
-                {method === m.key && (
-                  <div style={{
-                    width: '8px', height: '8px',
-                    borderRadius: '50%', background: '#fff'
-                  }} />
-                )}
-              </div>
-            </div>
-          ))}
+      {/* Bank selection */}
+      <div style={{ marginBottom: '14px' }}>
+        <label style={labelStyle}>Bank</label>
+        <select
+          value={bankCode}
+          onChange={e => { setBankCode(e.target.value); setVerifiedName('') }}
+          style={{ ...inputStyle, appearance: 'none' }}>
+          <option value="">Select your bank</option>
+          {banks.map((b, i) => <option key={i} value={b.code}>{b.name}</option>)}
+        </select>
+      </div>
+
+      <div style={{ marginBottom: '10px' }}>
+        <label style={labelStyle}>Account Number</label>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <input
+            style={inputStyle}
+            placeholder="10-digit account number"
+            maxLength={10}
+            value={accountNumber}
+            onChange={e => { setAccountNumber(e.target.value); setVerifiedName('') }}
+          />
+          <button
+            onClick={verifyAccount}
+            disabled={verifying}
+            style={{
+              padding: '0 16px', background: '#6C47FF', color: '#fff',
+              border: 'none', borderRadius: '10px', fontSize: '12px',
+              fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit',
+              whiteSpace: 'nowrap'
+            }}>
+            {verifying ? '...' : 'Verify'}
+          </button>
         </div>
       </div>
+
+      {verifiedName && (
+        <div style={{
+          background: '#DFFDF4', border: '1.5px solid #7EECD2',
+          borderRadius: '10px', padding: '10px 12px',
+          fontSize: '13px', color: '#00A878', fontWeight: '700',
+          marginBottom: '20px'
+        }}>✓ {verifiedName}</div>
+      )}
 
       {/* Amount Input */}
-      <div style={{ marginBottom: '16px' }}>
+      <div style={{ marginBottom: '20px' }}>
         <div style={{
           fontSize: '12px', fontWeight: '700',
           color: '#14123A', marginBottom: '8px'
@@ -279,157 +294,6 @@ export default function WithdrawalScreen() {
         )}
       </div>
 
-      {/* Payment Details */}
-      {method && (
-        <div style={{
-          background: '#F5F4FF', borderRadius: '14px',
-          padding: '16px', marginBottom: '20px',
-          display: 'flex', flexDirection: 'column', gap: '12px'
-        }}>
-          <div style={{
-            fontSize: '12px', fontWeight: '700',
-            color: '#14123A',
-            display: 'flex', alignItems: 'center', gap: '6px'
-          }}>
-            <span>{selectedMethod?.icon}</span>
-            {selectedMethod?.label} Details
-          </div>
-
-          {/* Nigerian Bank */}
-          {method === 'nigerian_bank' && (
-            <>
-              <div>
-                <label style={labelStyle}>Bank Name</label>
-                <input
-                  style={{ ...inputStyle, background: '#fff' }}
-                  placeholder="e.g. GTBank, First Bank, Access, Zenith..."
-                  value={form.bank_name || ''}
-                  onChange={e => updateForm('bank_name', e.target.value)}
-                  onFocus={e => e.target.style.borderColor = '#B8A5FF'}
-                  onBlur={e => e.target.style.borderColor = '#E2E0FF'}
-                />
-              </div>
-              <div>
-                <label style={labelStyle}>Account Number</label>
-                <input
-                  style={{ ...inputStyle, background: '#fff' }}
-                  placeholder="10-digit NUBAN account number"
-                  maxLength={10}
-                  value={form.account_number || ''}
-                  onChange={e => updateForm('account_number', e.target.value)}
-                  onFocus={e => e.target.style.borderColor = '#B8A5FF'}
-                  onBlur={e => e.target.style.borderColor = '#E2E0FF'}
-                />
-              </div>
-              <div>
-                <label style={labelStyle}>Account Name</label>
-                <input
-                  style={{ ...inputStyle, background: '#fff' }}
-                  placeholder="Full name as it appears on account"
-                  value={form.account_name || ''}
-                  onChange={e => updateForm('account_name', e.target.value)}
-                  onFocus={e => e.target.style.borderColor = '#B8A5FF'}
-                  onBlur={e => e.target.style.borderColor = '#E2E0FF'}
-                />
-              </div>
-            </>
-          )}
-
-          {/* Mobile Money */}
-          {method === 'mobile_money' && (
-            <>
-              <div>
-                <label style={labelStyle}>Mobile Number</label>
-                <input
-                  style={{ ...inputStyle, background: '#fff' }}
-                  placeholder="e.g. 08012345678"
-                  value={form.mobile_number || ''}
-                  onChange={e => updateForm('mobile_number', e.target.value)}
-                  onFocus={e => e.target.style.borderColor = '#B8A5FF'}
-                  onBlur={e => e.target.style.borderColor = '#E2E0FF'}
-                />
-              </div>
-              <div>
-                <label style={labelStyle}>Wallet Provider</label>
-                <select
-                  value={form.bank_name || ''}
-                  onChange={e => updateForm('bank_name', e.target.value)}
-                  style={{ ...inputStyle, background: '#fff', appearance: 'none' }}>
-                  <option value="">Select provider</option>
-                  <option value="OPay">OPay</option>
-                  <option value="PalmPay">PalmPay</option>
-                  <option value="Kuda">Kuda</option>
-                  <option value="Carbon">Carbon</option>
-                  <option value="Moniepoint">Moniepoint</option>
-                </select>
-              </div>
-              <div>
-                <label style={labelStyle}>Account Name</label>
-                <input
-                  style={{ ...inputStyle, background: '#fff' }}
-                  placeholder="Full name on wallet"
-                  value={form.account_name || ''}
-                  onChange={e => updateForm('account_name', e.target.value)}
-                  onFocus={e => e.target.style.borderColor = '#B8A5FF'}
-                  onBlur={e => e.target.style.borderColor = '#E2E0FF'}
-                />
-              </div>
-            </>
-          )}
-
-          {/* International */}
-          {method === 'international' && (
-            <>
-              <div>
-                <label style={labelStyle}>Bank Name</label>
-                <input
-                  style={{ ...inputStyle, background: '#fff' }}
-                  placeholder="Your bank name"
-                  value={form.bank_name || ''}
-                  onChange={e => updateForm('bank_name', e.target.value)}
-                  onFocus={e => e.target.style.borderColor = '#B8A5FF'}
-                  onBlur={e => e.target.style.borderColor = '#E2E0FF'}
-                />
-              </div>
-              <div>
-                <label style={labelStyle}>Account / IBAN Number</label>
-                <input
-                  style={{ ...inputStyle, background: '#fff' }}
-                  placeholder="Account or IBAN number"
-                  value={form.account_number || ''}
-                  onChange={e => updateForm('account_number', e.target.value)}
-                  onFocus={e => e.target.style.borderColor = '#B8A5FF'}
-                  onBlur={e => e.target.style.borderColor = '#E2E0FF'}
-                />
-              </div>
-              <div>
-                <label style={labelStyle}>SWIFT / BIC Code</label>
-                <input
-                  style={{ ...inputStyle, background: '#fff' }}
-                  placeholder="e.g. AAAABBCC123"
-                  value={form.swift_code || ''}
-                  onChange={e => updateForm('swift_code', e.target.value)}
-                  onFocus={e => e.target.style.borderColor = '#B8A5FF'}
-                  onBlur={e => e.target.style.borderColor = '#E2E0FF'}
-                />
-              </div>
-              <div>
-                <label style={labelStyle}>Account Name</label>
-                <input
-                  style={{ ...inputStyle, background: '#fff' }}
-                  placeholder="Full name on account"
-                  value={form.account_name || ''}
-                  onChange={e => updateForm('account_name', e.target.value)}
-                  onFocus={e => e.target.style.borderColor = '#B8A5FF'}
-                  onBlur={e => e.target.style.borderColor = '#E2E0FF'}
-                />
-              </div>
-            </>
-          )}
-
-        </div>
-      )}
-
       {error && (
         <div style={{
           background: '#FFE8EE', border: '1.5px solid #FF99B3',
@@ -441,21 +305,21 @@ export default function WithdrawalScreen() {
 
       <button
         onClick={handleSubmit}
-        disabled={submitting}
+        disabled={submitting || !verifiedName}
         style={{
           width: '100%',
-          background: submitting
+          background: (submitting || !verifiedName)
             ? '#B8A5FF'
             : 'linear-gradient(135deg, #6C47FF, #9B59FF)',
           border: 'none', borderRadius: '14px',
           padding: '16px', fontSize: '15px',
           fontWeight: '700', color: '#fff',
-          cursor: submitting ? 'not-allowed' : 'pointer',
+          cursor: (submitting || !verifiedName) ? 'not-allowed' : 'pointer',
           fontFamily: 'inherit',
-          boxShadow: submitting ? 'none' : '0 4px 20px rgba(108,71,255,0.35)',
+          boxShadow: (submitting || !verifiedName) ? 'none' : '0 4px 20px rgba(108,71,255,0.35)',
           transition: 'all 0.2s'
         }}>
-        {submitting ? '⏳ Processing...' : '💸 Request Withdrawal'}
+        {submitting ? '⏳ Processing...' : '💸 Withdraw Now'}
       </button>
 
       <div style={{
@@ -465,8 +329,8 @@ export default function WithdrawalScreen() {
         borderRadius: '10px', padding: '10px 14px'
       }}>
         💸 Credits deducted immediately on request.<br/>
-        💳 Payment sent via Fincra after review.<br/>
-        📧 You'll get a notification when payment is sent.
+        💳 Sent automatically via Fincra — no manual review.<br/>
+        📧 You'll get a notification when payment lands.
       </div>
     </div>
   )
