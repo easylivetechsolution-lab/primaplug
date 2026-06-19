@@ -437,22 +437,24 @@ export default function ProfileScreen({ onLogout }) {
 
       {/* EDIT MODAL */}
       {editing && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(20,18,58,0.75)',
-          backdropFilter: 'blur(4px)', zIndex: 400,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          padding: '12px'
-        }}>
+  <div style={{
+    position: 'fixed', inset: 0,
+    background: 'rgba(20,18,58,0.75)',
+    backdropFilter: 'blur(4px)',
+    zIndex: 400,
+    display: 'flex', alignItems: 'flex-start',
+    justifyContent: 'center', padding: '20px',
+    overflowY: 'auto',
+    WebkitOverflowScrolling: 'touch'
+  }}>
           <div style={{
-            background: '#fff', borderRadius: '24px',
-            width: '100%', maxWidth: '520px',
-            height: 'min(860px, calc(100dvh - 24px))',
-            maxHeight: 'calc(100dvh - 24px)',
-            overflow: 'hidden',
-            border: '1.5px solid #E2E0FF',
-            boxShadow: '0 20px 60px rgba(108,71,255,0.25)',
-            display: 'flex', flexDirection: 'column'
-          }}>
+  background: '#fff',
+  borderRadius: '24px', padding: '28px',
+  width: '100%', maxWidth: '520px',
+  margin: '20px 0',
+  border: '1.5px solid #E2E0FF',
+  boxShadow: '0 20px 60px rgba(108,71,255,0.25)'
+}}>
             <div style={{
               display: 'flex', justifyContent: 'space-between',
               alignItems: 'center', padding: '22px 22px 16px',
@@ -588,7 +590,7 @@ export default function ProfileScreen({ onLogout }) {
               boxShadow: '0 -10px 24px rgba(20,18,58,0.06)',
               flexShrink: 0
             }}>
-              <button onClick={() => setEditing(false)} style={{
+              <button onClick={() => { document.activeElement?.blur(); handleSave() }} disabled={saving} style={{
                 flex: 1, background: '#F5F4FF', border: '1.5px solid #E2E0FF', borderRadius: '12px',
                 padding: '13px', fontSize: '13px', fontWeight: '600', color: '#8B8FAF', cursor: 'pointer', fontFamily: 'inherit'
               }}>Cancel</button>
