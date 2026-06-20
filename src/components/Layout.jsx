@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useAdmin } from '../hooks/useAdmin'
@@ -125,11 +125,16 @@ export default function Layout() {
     )
   }, [])
 
-  useEffect(() => {
+  const walletReturnHandled = useRef(false)
+
+useEffect(() => {
+  if (walletReturnHandled.current) return
+
   const params = new URLSearchParams(window.location.search)
   const reference = params.get('reference')
-  console.log('LAYOUT CHECK — full URL:', window.location.href, '— parsed reference:', reference)
+
   if (reference && reference.startsWith('wallet_')) {
+    walletReturnHandled.current = true
     navigateTo('wallet')
     window.history.replaceState({}, '', window.location.pathname)
     window.dispatchEvent(new CustomEvent('walletPaymentReturn', { detail: { reference } }))
