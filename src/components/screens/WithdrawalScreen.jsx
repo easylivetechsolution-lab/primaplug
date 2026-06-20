@@ -34,8 +34,8 @@ export default function WithdrawalScreen() {
   const loadBanks = async () => {
     try {
       const data = await listFincraBanks(supabase, 'NG')
-      const list = data?.data?.banks || data?.banks || (Array.isArray(data) ? data : [])
-      setBanks(list)
+const list = Array.isArray(data?.data) ? data.data : (data?.data?.banks || data?.banks || [])
+setBanks(list)
     } catch (e) {
       console.error('Load banks error:', e)
     }

@@ -89,24 +89,55 @@ serve(async (req) => {
       .eq('id', txRow.user_id)
       .single()
 
-    const newBalance = Number(userRow?.wallet_balance || 0) + Number(txRow.amount)
+const isCommissionPayment = txRow.description?.includes('Commission payment')
 
-    await supabase
-      .from('users')
-      .update({ wallet_balance: newBalance })
-      .eq('id', txRow.user_id)
+    if (isCommissionPayment) {
+      // Find the matching pending commission and mark it paid directly,
+      // do NOT add this amount to wallet_balance
+      await supabase
+        .from('commissions')
+        .update({
+          status: 'paid',
+          paid_at: new Date().toISOString(),
+          payment_method: 'fincra'
+        })
+        .eq('worker_id', txRow.user_id)
+        .eq('status', 'pending')
+        .eq('commission_amount', Number(txRow.amount))
 
-    await supabase
-      .from('wallet_transactions')
-      .update({ status: 'completed', balance_after: newBalance })
-      .eq('id', txRow.id)
+      await supabase
+        .from('wallet_transactions')
+        .update({ status: 'completed' })
+        .eq('id', txRow.id)
 
-    await supabase.from('notifications').insert({
-      user_id: txRow.user_id,
-      title: '💰 Wallet Funded',
-      message: `Your wallet has been credited with ${txRow.currency} ${Number(txRow.amount).toLocaleString()}`,
-      type: 'wallet',
-    })
+      await supabase.rpc('check_commission_status', { p_worker_id: txRow.user_id })
+
+      await supabase.from('notifications').insert({
+        user_id: txRow.user_id,
+        title: '✅ Commission Paid!',
+        message: `Your platform commission of ${txRow.currency} ${Number(txRow.amount).toLocaleString()} has been paid.`,
+        type: 'general',
+      })
+    } else {
+      const newBalance = Number(userRow?.wallet_balance || 0) + Number(txRow.amount)
+
+      await supabase
+        .from('users')
+        .update({ wallet_balance: newBalance })
+        .eq('id', txRow.user_id)
+
+      await supabase
+        .from('wallet_transactions')
+        .update({ status: 'completed', balance_after: newBalance })
+        .eq('id', txRow.id)
+
+      await supabase.from('notifications').insert({
+        user_id: txRow.user_id,
+        title: '💰 Wallet Funded',
+        message: `Your wallet has been credited with ${txRow.currency} ${Number(txRow.amount).toLocaleString()}`,
+        type: 'wallet',
+      })
+    }
 
     return new Response(
       JSON.stringify({ status: 'completed', newBalance }),

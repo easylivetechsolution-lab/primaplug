@@ -236,26 +236,40 @@ export default function CommissionScreen() {
                 {/* Payment buttons */}
                 <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
                   <button
-                    onClick={async () => {
-                      setPaying(commission.id)
-                      try {
-                        const response = await startFincraWalletFunding(supabase, {
-                          type: 'commission',
-                          commission_id: commission.id,
-                          amount: commission.commission_amount,
-                          currency: commission.currency || 'NGN',
-                          user_id: user.id,
-                          email: user?.email || '',
-                          name: profile?.full_name || 'Prima User',
-                        })
-                        const checkoutUrl = response?.checkout_url || response?.payment_link || response?.url
-                        if (!checkoutUrl) throw new Error('Fincra did not return a checkout URL.')
-                        window.location.href = checkoutUrl
-                      } catch (e) {
-                        alert(e.message || 'Could not start Fincra payment.')
-                        setPaying(null)
-                      }
-                    }}
+  onClick={async () => {
+    setPaying(commission.id)
+    try {
+      const response = await startFincraWalletFunding(supabase, {
+        amount: commission.commission_amount,
+        currency: commission.currency || 'NGN',
+        user_id: user.id,
+        email: user?.email || '',
+        name: profile?.full_name || 'Prima User',
+      })
+      if (!response?.checkoutUrl) throw new Error('Fincra did not return a checkout URL.')
+
+      // Tag this transaction as a commission payment so we know to
+      // mark the commission (not just the wallet) as paid once verified
+      await supabase
+        .from('wallet_transactions')
+        .update({
+          description: `Commission payment for gig`,
+        })
+        .eq('fincra_reference', response.reference)
+
+      // Remember which commission this reference belongs to, so the
+      // wallet auto-verify flow can mark it paid once Fincra confirms
+      localStorage.setItem(
+        `commission_ref_${response.reference}`,
+        commission.id
+      )
+
+      window.location.href = response.checkoutUrl
+    } catch (e) {
+      alert(e.message || 'Could not start Fincra payment.')
+      setPaying(null)
+    }
+  }}
                     disabled={paying === commission.id}
                     style={{
                       flex: 2,
