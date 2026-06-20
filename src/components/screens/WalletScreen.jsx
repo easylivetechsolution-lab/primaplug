@@ -63,28 +63,54 @@ export default function WalletScreen() {
     setTransactions(data || [])
   }, [user])
 
-  useEffect(() => {
-    if (!user) return
-    const timer = setTimeout(fetchTransactions, 0)
+  const autoVerifyPending = useCallback(async () => {
+  if (!user) return
+  const { data: pendingTxns } = await supabase
+    .from('wallet_transactions')
+    .select('fincra_reference')
+    .eq('user_id', user.id)
+    .eq('type', 'fund_in')
+    .eq('status', 'pending')
+    .not('fincra_reference', 'is', null)
 
-    const channel = supabase
-      .channel('wallet-' + user.id)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'wallet_transactions',
-        filter: `user_id=eq.${user.id}`
-      }, () => {
-        fetchTransactions()
-        refreshProfile()
-      })
-      .subscribe()
+  if (!pendingTxns || pendingTxns.length === 0) return
 
-    return () => {
-      clearTimeout(timer)
-      supabase.removeChannel(channel)
+  for (const txn of pendingTxns) {
+    try {
+      await verifyFincraPayment(supabase, txn.fincra_reference)
+    } catch (e) {
+      // Silently skip - this one may genuinely still be pending on Fincra's side
     }
-  }, [fetchTransactions, refreshProfile, user])
+  }
+  fetchTransactions()
+  refreshProfile()
+}, [user, fetchTransactions, refreshProfile])
+
+  useEffect(() => {
+  if (!user) return
+  const timer = setTimeout(() => {
+    fetchTransactions()
+    autoVerifyPending()
+  }, 0)
+
+  const channel = supabase
+    .channel('wallet-' + user.id)
+    .on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'wallet_transactions',
+      filter: `user_id=eq.${user.id}`
+    }, () => {
+      fetchTransactions()
+      refreshProfile()
+    })
+    .subscribe()
+
+  return () => {
+    clearTimeout(timer)
+    supabase.removeChannel(channel)
+  }
+}, [fetchTransactions, autoVerifyPending, refreshProfile, user])
 
   useEffect(() => {
   const handleReturn = async (e) => {
