@@ -126,8 +126,12 @@ export default function Layout() {
   }, [])
 
   useEffect(() => {
-  const params = new URLSearchParams(window.location.search)
-  if (params.get('walletStatus') === 'callback') {
+  // Fincra sometimes appends its own params with a second "?" instead
+  // of "&", producing something like "?status=callback?reference=xxx".
+  // Normalize any extra "?" into "&" before parsing.
+  const rawQuery = window.location.search.replace(/\?/g, '&').replace(/^&/, '?')
+  const params = new URLSearchParams(rawQuery)
+  if (params.get('walletStatus') === 'callback' || params.get('status') === 'callback') {
     navigateTo('wallet')
     window.history.replaceState({}, '', window.location.pathname)
     window.dispatchEvent(new CustomEvent('walletPaymentReturn'))
