@@ -126,10 +126,6 @@ export default function Layout() {
   }, [])
 
   useEffect(() => {
-  // Fincra sometimes appends its own params with a second "?" instead
-  // of "&", producing something like "?status=callback?reference=xxx".
-  // Normalize any extra "?" into "&" before parsing.
-  useEffect(() => {
   const params = new URLSearchParams(window.location.search)
   const reference = params.get('reference')
   console.log('LAYOUT CHECK — full URL:', window.location.href, '— parsed reference:', reference)
