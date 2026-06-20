@@ -87,31 +87,21 @@ export default function WalletScreen() {
   }, [fetchTransactions, refreshProfile, user])
 
   useEffect(() => {
-    const handleReturn = async () => {
-      const { data: pending } = await supabase
-        .from('wallet_transactions')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('type', 'fund_in')
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-
-      if (pending?.fincra_reference) {
-        try {
-          await verifyFincraPayment(supabase, pending.fincra_reference)
-          refreshProfile()
-          fetchTransactions()
-        } catch (e) {
-          console.error('Verify on return error:', e)
-        }
-      }
+  const handleReturn = async (e) => {
+    const reference = e.detail?.reference
+    if (!reference) return
+    try {
+      await verifyFincraPayment(supabase, reference)
+      refreshProfile()
+      fetchTransactions()
+    } catch (err) {
+      console.error('Verify on return error:', err)
     }
+  }
 
-    window.addEventListener('walletPaymentReturn', handleReturn)
-    return () => window.removeEventListener('walletPaymentReturn', handleReturn)
-  }, [user])
+  window.addEventListener('walletPaymentReturn', handleReturn)
+  return () => window.removeEventListener('walletPaymentReturn', handleReturn)
+}, [user])
 
   const fundHistory = transactions.filter(tx => FUND_TYPES.includes(tx.type))
   const withdrawHistory = transactions.filter(tx => WITHDRAW_TYPES.includes(tx.type))

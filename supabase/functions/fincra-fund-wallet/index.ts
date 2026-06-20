@@ -52,7 +52,7 @@ const fincraPayload = {
   paymentMethods: allowedMethods,
   feeBearer: 'customer',
   reference: reference,
-  redirectUrl: 'https://primaplug.com/dashboard?walletStatus=callback',
+  redirectUrl: 'https://primaplug.com/dashboard',
   metadata: { userId, purpose: 'wallet_funding' },
 }
     console.log('Sending to Fincra:', JSON.stringify(fincraPayload))
