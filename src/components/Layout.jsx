@@ -132,16 +132,11 @@ export default function Layout() {
   useEffect(() => {
   const params = new URLSearchParams(window.location.search)
   const reference = params.get('reference')
+  console.log('LAYOUT CHECK — full URL:', window.location.href, '— parsed reference:', reference)
   if (reference && reference.startsWith('wallet_')) {
     navigateTo('wallet')
     window.history.replaceState({}, '', window.location.pathname)
     window.dispatchEvent(new CustomEvent('walletPaymentReturn', { detail: { reference } }))
-  }
-}, [navigateTo])
-    console.log('Wallet return detected, raw query was:', window.location.search, 'normalized:', rawQuery)
-    navigateTo('wallet')
-    window.history.replaceState({}, '', window.location.pathname)
-    window.dispatchEvent(new CustomEvent('walletPaymentReturn'))
   }
 }, [navigateTo])
 
