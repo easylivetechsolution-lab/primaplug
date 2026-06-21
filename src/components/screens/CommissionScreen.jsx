@@ -1,11 +1,12 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../../supabase'
 import { useAuth } from '../../context/AuthContext'
 import { useCredits } from '../../context/CreditsContext'
 import { getCurrency } from '../../data/currencies'
 import EmptyState from '../EmptyState'
 import { CREDITS_PER_DOLLAR } from '../../utils/payments'
-import { startFincraWalletFunding } from '../../utils/fincra'
+import { startFincraWalletFunding, verifyFincraPayment } from '../../utils/fincra'
+
 
 export default function CommissionScreen() {
   const { user, profile } = useAuth()
@@ -17,6 +18,21 @@ export default function CommissionScreen() {
   const [paying, setPaying] = useState(null)
   const [showPayment, setShowPayment] = useState(false)
   const [selectedCommission] = useState(null)
+
+  useEffect(() => {
+  const handleReturn = async (e) => {
+    const reference = e.detail?.reference
+    if (!reference) return
+    try {
+      await verifyFincraPayment(supabase, reference)
+      await fetchCommissions()
+    } catch (err) {
+      console.error('Verify commission payment error:', err)
+    }
+  }
+  window.addEventListener('walletPaymentReturn', handleReturn)
+  return () => window.removeEventListener('walletPaymentReturn', handleReturn)
+}, [fetchCommissions])
 
   const handlePayWithCredits = async (commission) => {
     const creditsNeeded = commission.commission_amount * CREDITS_PER_DOLLAR

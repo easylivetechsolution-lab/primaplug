@@ -382,7 +382,7 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
           )}
 
           {/* POSTER AMOUNT STEP */}
-          {step === 'poster_amount' && (
+          {step === 'poster_amount' && !isWalletGig && (
             <div>
               <div style={{
                 fontSize: '10px', color: '#6C47FF',
@@ -641,6 +641,70 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
                   marginTop: '8px'
                 }}>Please upload payment proof before confirming</div>
               )}
+            </div>
+          )}
+
+          {step === 'poster_amount' && isWalletGig && (
+            <div>
+              <div style={{
+                fontSize: '10px', color: '#00A878',
+                fontWeight: '700', textTransform: 'uppercase',
+                letterSpacing: '1.5px', marginBottom: '6px'
+              }}>Escrow Release</div>
+              <div style={{
+                fontSize: '22px', fontWeight: '800',
+                color: '#14123A', marginBottom: '6px'
+              }}>Mark this gig as done?</div>
+              <div style={{
+                fontSize: '13px', color: '#8B8FAF',
+                marginBottom: '24px', lineHeight: '1.6'
+              }}>
+                Funds are already secured in escrow for "{gig?.title}". Confirming will notify the worker to release payment.
+              </div>
+
+              <div style={{
+                background: 'linear-gradient(135deg, #00C48C, #00A878)',
+                borderRadius: '16px', padding: '24px',
+                textAlign: 'center', color: '#fff',
+                marginBottom: '20px'
+              }}>
+                <div style={{
+                  fontSize: '11px', opacity: 0.85,
+                  textTransform: 'uppercase', letterSpacing: '1px',
+                  marginBottom: '8px'
+                }}>Amount in Escrow</div>
+                <div style={{
+                  fontSize: '40px', fontWeight: '800',
+                  letterSpacing: '-2px', marginBottom: '4px'
+                }}>
+                  {getCurrency(gig?.currency || 'USD').symbol}{Number(gig?.escrow_amount || gig?.pay_min || 0).toLocaleString()}
+                </div>
+                <div style={{ fontSize: '12px', opacity: 0.8 }}>{gig?.currency || 'USD'}</div>
+              </div>
+
+              {error && (
+                <div style={{
+                  background: '#FFE8EE', border: '1.5px solid #FF99B3',
+                  borderRadius: '10px', padding: '10px 14px',
+                  fontSize: '12px', color: '#FF3366',
+                  marginBottom: '14px'
+                }}>{error}</div>
+              )}
+
+              <button
+                onClick={handlePosterSubmit}
+                disabled={submitting}
+                style={{
+                  width: '100%',
+                  background: submitting ? '#B8A5FF' : 'linear-gradient(135deg, #00C48C, #00A878)',
+                  border: 'none', borderRadius: '14px', padding: '16px',
+                  fontSize: '15px', fontWeight: '700', color: '#fff',
+                  cursor: submitting ? 'not-allowed' : 'pointer',
+                  fontFamily: 'inherit',
+                  boxShadow: submitting ? 'none' : '0 4px 20px rgba(0,196,140,0.35)'
+                }}>
+                {submitting ? '⏳ Submitting...' : '✓ Mark Done →'}
+              </button>
             </div>
           )}
 

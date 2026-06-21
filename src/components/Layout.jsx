@@ -126,7 +126,7 @@ export default function Layout() {
     )
   }, [])
 
-  const walletReturnHandled = useRef(false)
+const walletReturnHandled = useRef(false)
 
 useEffect(() => {
   if (walletReturnHandled.current) return
@@ -136,9 +136,23 @@ useEffect(() => {
 
   if (reference && reference.startsWith('wallet_')) {
     walletReturnHandled.current = true
-    navigateTo('wallet')
     window.history.replaceState({}, '', window.location.pathname)
-    window.dispatchEvent(new CustomEvent('walletPaymentReturn', { detail: { reference } }))
+
+    const checkPurposeAndNavigate = async () => {
+      const { data: txRow } = await supabase
+        .from('wallet_transactions')
+        .select('description')
+        .eq('fincra_reference', reference)
+        .maybeSingle()
+
+      const isCommission = txRow?.description?.includes('Commission payment')
+      const targetScreen = isCommission ? 'commission' : 'wallet'
+
+      navigateTo(targetScreen)
+      window.dispatchEvent(new CustomEvent('walletPaymentReturn', { detail: { reference, isCommission } }))
+    }
+
+    checkPurposeAndNavigate()
   }
 }, [navigateTo])
 
