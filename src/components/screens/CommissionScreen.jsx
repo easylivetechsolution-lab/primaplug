@@ -237,39 +237,37 @@ export default function CommissionScreen() {
                 <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
                   <button
   onClick={async () => {
-    setPaying(commission.id)
-    try {
-      const response = await startFincraWalletFunding(supabase, {
-        amount: commission.commission_amount,
-        currency: commission.currency || 'NGN',
-        user_id: user.id,
-        email: user?.email || '',
-        name: profile?.full_name || 'Prima User',
+  setPaying(commission.id)
+  try {
+    const response = await startFincraWalletFunding(supabase, {
+      amount: commission.commission_amount,
+      currency: commission.currency || 'NGN',
+      user_id: user.id,
+      email: user?.email || '',
+      name: profile?.full_name || 'Prima User',
+    })
+    if (!response?.checkoutUrl) throw new Error('Fincra did not return a checkout URL.')
+
+    // Link this exact transaction to this exact commission row —
+    // no ambiguity even if amounts happen to match across commissions
+    const { error: tagError } = await supabase
+      .from('wallet_transactions')
+      .update({
+        description: `Commission payment for gig`,
+        related_commission_id: commission.id,
       })
-      if (!response?.checkoutUrl) throw new Error('Fincra did not return a checkout URL.')
+      .eq('fincra_reference', response.reference)
 
-      // Tag this transaction as a commission payment so we know to
-      // mark the commission (not just the wallet) as paid once verified
-      await supabase
-        .from('wallet_transactions')
-        .update({
-          description: `Commission payment for gig`,
-        })
-        .eq('fincra_reference', response.reference)
-
-      // Remember which commission this reference belongs to, so the
-      // wallet auto-verify flow can mark it paid once Fincra confirms
-      localStorage.setItem(
-        `commission_ref_${response.reference}`,
-        commission.id
-      )
-
-      window.location.href = response.checkoutUrl
-    } catch (e) {
-      alert(e.message || 'Could not start Fincra payment.')
-      setPaying(null)
+    if (tagError) {
+      console.error('Failed to tag commission transaction:', tagError)
     }
-  }}
+
+    window.location.href = response.checkoutUrl
+  } catch (e) {
+    alert(e.message || 'Could not start Fincra payment.')
+    setPaying(null)
+  }
+}}
                     disabled={paying === commission.id}
                     style={{
                       flex: 2,

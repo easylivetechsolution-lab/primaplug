@@ -9,6 +9,7 @@ import MapScreen from './screens/MapScreen'
 import FeedScreen from './screens/FeedScreen'
 import DiscoverScreen from './screens/DiscoverScreen'
 import MyGigsScreen from './screens/MyGigsScreen'
+import { getCapturedGigReferral, clearGigReferral } from '../utils/referral'
 import ProfileScreen from './screens/ProfileScreen'
 import SavedScreen from './screens/SavedScreen'
 import StatsScreen from './screens/StatsScreen'
@@ -140,6 +141,16 @@ useEffect(() => {
     window.dispatchEvent(new CustomEvent('walletPaymentReturn', { detail: { reference } }))
   }
 }, [navigateTo])
+
+const [pendingGigReferral, setPendingGigReferral] = useState(null)
+
+useEffect(() => {
+  if (!user) return
+  const captured = getCapturedGigReferral()
+  if (captured?.gigId) {
+    setPendingGigReferral(captured)
+  }
+}, [user])
 
   // Restore dashboard screens from the browser's own history state.
   useEffect(() => {
@@ -791,6 +802,34 @@ useEffect(() => {
               </div>
             )
           })()}
+
+          {pendingGigReferral && (
+  <div style={{
+    background: 'linear-gradient(135deg, #6C47FF, #FF4DCF)',
+    borderRadius: '14px', padding: '14px 16px',
+    margin: '12px 16px 0', display: 'flex',
+    justifyContent: 'space-between', alignItems: 'center',
+    gap: '12px', cursor: 'pointer', color: '#fff'
+  }} onClick={() => {
+    window.dispatchEvent(new CustomEvent('openGigDetail', { detail: pendingGigReferral.gigId }))
+    clearGigReferral()
+    setPendingGigReferral(null)
+  }}>
+    <div>
+      <div style={{ fontSize: '13px', fontWeight: '700', marginBottom: '2px' }}>
+        🎁 You were invited to a gig!
+      </div>
+      <div style={{ fontSize: '11px', opacity: 0.85 }}>
+        Tap to view it and apply
+      </div>
+    </div>
+    <div style={{
+      background: 'rgba(255,255,255,0.25)', borderRadius: '8px',
+      padding: '6px 12px', fontSize: '11px', fontWeight: '700',
+      whiteSpace: 'nowrap'
+    }}>View →</div>
+  </div>
+)}
 
           <div style={{
             flex: 1,

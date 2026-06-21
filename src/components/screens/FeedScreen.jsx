@@ -64,6 +64,24 @@ export default function FeedScreen() {
     return () => supabase.removeChannel(channel)
   }, [])
 
+  useEffect(() => {
+  const handleOpenGigDetail = async (e) => {
+    const gigId = e.detail
+    if (!gigId) return
+    const { data } = await supabase
+      .from('gigs')
+      .select(`*, poster:users!gigs_poster_id_fkey (full_name, username, avatar_url, trust_score, rating, gigs_completed, location, phone)`)
+      .eq('id', gigId)
+      .maybeSingle()
+    if (data) {
+      window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'feed' }))
+      setSelectedGig(data)
+    }
+  }
+  window.addEventListener('openGigDetail', handleOpenGigDetail)
+  return () => window.removeEventListener('openGigDetail', handleOpenGigDetail)
+}, [])
+
   const fetchGigs = async () => {
     const { data, error } = await supabase
       .from('gigs')

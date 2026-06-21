@@ -89,21 +89,23 @@ serve(async (req) => {
       .eq('id', txRow.user_id)
       .single()
 
-const isCommissionPayment = txRow.description?.includes('Commission payment')
+const isCommissionPayment = !!txRow.related_commission_id
 
-    if (isCommissionPayment) {
-      // Find the matching pending commission and mark it paid directly,
-      // do NOT add this amount to wallet_balance
-      await supabase
-        .from('commissions')
-        .update({
-          status: 'paid',
-          paid_at: new Date().toISOString(),
-          payment_method: 'fincra'
-        })
-        .eq('worker_id', txRow.user_id)
-        .eq('status', 'pending')
-        .eq('commission_amount', Number(txRow.amount))
+if (isCommissionPayment) {
+  // Mark the EXACT commission row paid — no ambiguity from
+  // amount-matching, uses the direct foreign key link instead
+  const { error: commissionUpdateError, data: updatedCommission } = await supabase
+    .from('commissions')
+    .update({
+      status: 'paid',
+      paid_at: new Date().toISOString(),
+      payment_method: 'fincra'
+    })
+    .eq('id', txRow.related_commission_id)
+    .eq('status', 'pending')
+    .select()
+
+  console.log('Commission update result:', JSON.stringify(updatedCommission), 'error:', JSON.stringify(commissionUpdateError))
 
       await supabase
         .from('wallet_transactions')
