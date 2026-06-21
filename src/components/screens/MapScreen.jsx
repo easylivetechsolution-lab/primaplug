@@ -11,6 +11,7 @@ import { useAuth } from '../../context/AuthContext'
 import { getCurrency } from '../../data/currencies'
 import { CATEGORIES } from '../../data/categories'
 import ShareGig from '../ShareGig'
+import ReportModal from '../ReportModal'
 import { getProfileCompletion } from '../../utils/profileComplete'
 import ProfilePrompt from '../ProfilePrompt'
 import BrandIcon from '../BrandIcon'
@@ -146,6 +147,7 @@ export default function MapScreen() {
   const [liveCount, setLiveCount] = useState(312)
   const [nowCount, setNowCount] = useState(17)
   const [selectedGig, setSelectedGig] = useState(null)
+  const [reportingGig, setReportingGig] = useState(null)
   const [viewingProfile, setViewingProfile] = useState(null)
   const [applying, setApplying] = useState(false)
   const [applied, setApplied] = useState(false)
@@ -792,23 +794,32 @@ export default function MapScreen() {
                       Trust {selectedGig.poster?.trust_score || 100}%
                     </div>
                   </div>
-                  <div style={{
-                    display: 'inline-flex', alignItems: 'center', gap: '4px',
-                    background: URGENCY_COLORS[selectedGig.urgency] + '18',
-                    border: `1px solid ${URGENCY_COLORS[selectedGig.urgency]}44`,
-                    borderRadius: '6px', padding: '4px 10px',
-                    fontSize: '10px', fontWeight: '800',
-                    color: URGENCY_COLORS[selectedGig.urgency], letterSpacing: '0.8px'
-                  }}>
-                    {selectedGig.urgency === 'now' && (
-                      <span style={{
-                        width: '5px', height: '5px', borderRadius: '50%',
-                        background: URGENCY_COLORS[selectedGig.urgency],
-                        display: 'inline-block', animation: 'blink 0.9s infinite'
-                      }} />
-                    )}
-                    {selectedGig.urgency?.toUpperCase()}
-                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
+  <div style={{
+    display: 'inline-flex', alignItems: 'center', gap: '4px',
+    background: URGENCY_COLORS[selectedGig.urgency] + '18',
+    border: `1px solid ${URGENCY_COLORS[selectedGig.urgency]}44`,
+    borderRadius: '6px', padding: '4px 10px',
+    fontSize: '10px', fontWeight: '800',
+    color: URGENCY_COLORS[selectedGig.urgency], letterSpacing: '0.8px'
+  }}>
+    {selectedGig.urgency === 'now' && (
+      <span style={{
+        width: '5px', height: '5px', borderRadius: '50%',
+        background: URGENCY_COLORS[selectedGig.urgency],
+        display: 'inline-block', animation: 'blink 0.9s infinite'
+      }} />
+    )}
+    {selectedGig.urgency?.toUpperCase()}
+  </div>
+  {selectedGig.slots > 1 && (
+    <span style={{
+      background: '#DFFDF4', border: '1px solid #7EECD2',
+      borderRadius: '6px', padding: '3px 9px',
+      fontSize: '9px', fontWeight: '700', color: '#00C48C', whiteSpace: 'nowrap'
+    }}>{selectedGig.slots} OPEN SLOTS</span>
+  )}
+</div>
                 </div>
 
                 {/* Title */}
@@ -898,16 +909,33 @@ export default function MapScreen() {
                 )}
 
                 {/* Receipt protection notice */}
-                <div style={{
-                  background: '#EEE9FF', border: '1.5px solid #B8A5FF',
-                  borderRadius: '12px', padding: '14px',
-                  display: 'flex', gap: '10px', marginBottom: '20px'
-                }}>
-                  <span style={{ fontSize: '16px', flexShrink: 0 }}>🔒</span>
-                  <div style={{ fontSize: '12px', color: '#6C47FF', lineHeight: '1.6' }}>
-                    Both parties confirm completion by uploading receipts with their names. Direct and protected.
-                  </div>
-                </div>
+                {selectedGig.payment_method === 'wallet' ? (
+  <div style={{
+    background: '#DFFDF4', border: '1.5px solid #7EECD2',
+    borderRadius: '12px', padding: '14px',
+    display: 'flex', gap: '10px', marginBottom: '20px'
+  }}>
+    <span style={{ fontSize: '16px', flexShrink: 0 }}>💰</span>
+    <div style={{
+      fontSize: '12px', color: '#00A878', lineHeight: '1.6'
+    }}>
+      Payment is already secured in escrow. You'll receive it automatically once the work is confirmed complete — no chasing payment needed.
+    </div>
+  </div>
+) : (
+  <div style={{
+    background: '#EEE9FF', border: '1.5px solid #B8A5FF',
+    borderRadius: '12px', padding: '14px',
+    display: 'flex', gap: '10px', marginBottom: '20px'
+  }}>
+    <span style={{ fontSize: '16px', flexShrink: 0 }}>🔒</span>
+    <div style={{
+      fontSize: '12px', color: '#6C47FF', lineHeight: '1.6'
+    }}>
+      Both parties confirm completion by uploading receipts with their names. No payment platform needed — direct and protected.
+    </div>
+  </div>
+)}
 
                 {/* Save + Share row */}
                 <div style={{
@@ -942,6 +970,22 @@ export default function MapScreen() {
                     🔗 Share
                   </button>
                 </div>
+
+                <button
+  onClick={() => setReportingGig(selectedGig)}
+  style={{
+    width: '100%',
+    background: '#FFE8EE', border: '1.5px solid #FF99B3',
+    borderRadius: '12px', padding: '10px',
+    fontSize: '12px', fontWeight: '700',
+    color: '#FF3366', cursor: 'pointer',
+    fontFamily: 'inherit',
+    display: 'flex', alignItems: 'center',
+    justifyContent: 'center', gap: '6px',
+    marginBottom: '8px'
+  }}>
+  🚨 Report This Gig
+</button>
 
                 {/* Action buttons */}
                 <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
@@ -1051,27 +1095,37 @@ export default function MapScreen() {
         </div>
       )}
 
-      {viewingProfile && (
-        <PublicProfile
-          userId={viewingProfile}
-          onClose={() => setViewingProfile(null)}
-        />
-      )}
+{viewingProfile && (
+  <PublicProfile
+    userId={viewingProfile}
+    onClose={() => setViewingProfile(null)}
+  />
+)}
 
-      {sharingGig && (
-        <ShareGig gig={sharingGig} onClose={() => setSharingGig(null)} />
-      )}
+{sharingGig && (
+  <ShareGig gig={sharingGig} onClose={() => setSharingGig(null)} />
+)}
 
-      {showProfilePrompt && (
-        <ProfilePrompt
-          profile={profile}
-          onClose={() => setShowProfilePrompt(false)}
-          onGoToProfile={() => {
-            setShowProfilePrompt(false)
-            window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'profile' }))
-          }}
-        />
-      )}
+{reportingGig && (
+  <ReportModal
+    reportedUserId={reportingGig.poster_id}
+    reportedGigId={reportingGig.id}
+    type="gig"
+    name={`"${reportingGig.title}"`}
+    onClose={() => setReportingGig(null)}
+  />
+)}
+
+{showProfilePrompt && (
+  <ProfilePrompt
+    profile={profile}
+    onClose={() => setShowProfilePrompt(false)}
+    onGoToProfile={() => {
+      setShowProfilePrompt(false)
+      window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'profile' }))
+    }}
+  />
+)}
 
       {saveNotice && (
         <div style={{

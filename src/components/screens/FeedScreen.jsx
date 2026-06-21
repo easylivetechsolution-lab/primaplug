@@ -752,18 +752,33 @@ export default function FeedScreen() {
                 )}
 
                 {/* Protection */}
-                <div style={{
-                  background: '#EEE9FF', border: '1.5px solid #B8A5FF',
-                  borderRadius: '12px', padding: '14px',
-                  display: 'flex', gap: '10px', marginBottom: '20px'
-                }}>
-                  <span style={{ fontSize: '16px', flexShrink: 0 }}>🔒</span>
-                  <div style={{
-                    fontSize: '12px', color: '#6C47FF', lineHeight: '1.6'
-                  }}>
-                    Both parties confirm completion by uploading receipts with their names. No payment platform needed — direct and protected.
-                  </div>
-                </div>
+                {selectedGig.payment_method === 'wallet' ? (
+  <div style={{
+    background: '#DFFDF4', border: '1.5px solid #7EECD2',
+    borderRadius: '12px', padding: '14px',
+    display: 'flex', gap: '10px', marginBottom: '20px'
+  }}>
+    <span style={{ fontSize: '16px', flexShrink: 0 }}>💰</span>
+    <div style={{
+      fontSize: '12px', color: '#00A878', lineHeight: '1.6'
+    }}>
+      Payment is already secured in escrow. You'll receive it automatically once the work is confirmed complete — no chasing payment needed.
+    </div>
+  </div>
+) : (
+  <div style={{
+    background: '#EEE9FF', border: '1.5px solid #B8A5FF',
+    borderRadius: '12px', padding: '14px',
+    display: 'flex', gap: '10px', marginBottom: '20px'
+  }}>
+    <span style={{ fontSize: '16px', flexShrink: 0 }}>🔒</span>
+    <div style={{
+      fontSize: '12px', color: '#6C47FF', lineHeight: '1.6'
+    }}>
+      Both parties confirm completion by uploading receipts with their names. No payment platform needed — direct and protected.
+    </div>
+  </div>
+)}
 
                 {/* Actions */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
