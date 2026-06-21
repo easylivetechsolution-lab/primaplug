@@ -10,6 +10,7 @@ import { CURRENCIES } from '../data/currencies'
 import { useLanguage } from '../context/LanguageContext'
 import { currencyForLocation, currencyOptionsForLocation } from '../utils/locationCurrency'
 import { PAYMENT_METHODS } from '../utils/payments'
+import { startFincraWalletFunding } from '../utils/fincra'
 
 const URGENCY = [
   { key: 'now', label: 'NOW', color: '#FF3366', bg: '#FFE8EE' },
@@ -31,6 +32,10 @@ export default function PostGig({ onClose }) {
   const [error, setError] = useState('')
   const [showPrompt, setShowPrompt] = useState(false)
   const submittingRef = useRef(false)
+  const [showQuickFund, setShowQuickFund] = useState(false)
+  const [quickFundAmount, setQuickFundAmount] = useState('')
+  const [quickFunding, setQuickFunding] = useState(false)
+  const [quickFundError, setQuickFundError] = useState('')
 
   useEffect(() => {
     window.history.pushState({ modal: 'open' }, '', '')
@@ -38,6 +43,7 @@ export default function PostGig({ onClose }) {
     window.addEventListener('popstate', handleBack)
     return () => window.removeEventListener('popstate', handleBack)
   }, [])
+
   const [locationSearch, setLocationSearch] = useState('')
   const [locationResults, setLocationResults] = useState([])
   const [locationLoading, setLocationLoading] = useState(false)
@@ -69,6 +75,18 @@ export default function PostGig({ onClose }) {
   })
 
   const update = (key, val) => setForm(f => ({ ...f, [key]: val }))
+
+    useEffect(() => {
+  const saved = sessionStorage.getItem('prima_postgig_resume')
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved)
+      setForm(f => ({ ...f, ...parsed }))
+      setStep(3)
+    } catch {}
+    sessionStorage.removeItem('prima_postgig_resume')
+  }
+}, [])
 
   // Get coordinates from location name
   const geocodeLocation = async (locationName) => {
@@ -784,26 +802,31 @@ export default function PostGig({ onClose }) {
                       {' '}Minimum escrow needed: {CURRENCIES.find(c => c.code === form.currency)?.symbol || '$'}
                       {Number(form.pay_min || 0).toLocaleString()}.
                       {Number(profile?.wallet_balance || 0) < Number(form.pay_min || 0) && (
-                        <button
-                          type="button"
-                          onClick={() => window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'wallet' }))}
-                          style={{
-                            width: '100%',
-                            marginTop: '10px',
-                            background: '#FF6B2B',
-                            color: '#fff',
-                            border: 'none',
-                            borderRadius: '10px',
-                            padding: '10px',
-                            fontSize: '12px',
-                            fontWeight: '800',
-                            cursor: 'pointer',
-                            fontFamily: 'inherit'
-                          }}
-                        >
-                          Fund Wallet
-                        </button>
-                      )}
+  <button
+    type="button"
+    onClick={() => {
+      const needed = Number(form.pay_min || 0) - Number(profile?.wallet_balance || 0)
+      setQuickFundAmount(String(Math.ceil(needed)))
+      setQuickFundError('')
+      setShowQuickFund(true)
+    }}
+    style={{
+      width: '100%',
+      marginTop: '10px',
+      background: '#FF6B2B',
+      color: '#fff',
+      border: 'none',
+      borderRadius: '10px',
+      padding: '10px',
+      fontSize: '12px',
+      fontWeight: '800',
+      cursor: 'pointer',
+      fontFamily: 'inherit'
+    }}
+  >
+    Fund Wallet
+  </button>
+)}
                     </div>
                   )}
                 </div>
@@ -889,6 +912,81 @@ export default function PostGig({ onClose }) {
         }}
       />
     )}
+
+    {showQuickFund && (
+  <div style={{
+    position: 'fixed', inset: 0, background: 'rgba(20,18,58,0.85)',
+    backdropFilter: 'blur(4px)', zIndex: 10000,
+    display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
+  }} onClick={() => !quickFunding && setShowQuickFund(false)}>
+    <div onClick={e => e.stopPropagation()} style={{
+      background: '#fff', borderRadius: '22px', padding: '24px',
+      width: '100%', maxWidth: '420px'
+    }}>
+      <div style={{ fontSize: '17px', fontWeight: '800', color: '#14123A', marginBottom: '4px' }}>
+        Quick Top-Up
+      </div>
+      <div style={{ fontSize: '12px', color: '#8B8FAF', marginBottom: '16px' }}>
+        Fund your wallet to continue posting this gig. You'll come right back here.
+      </div>
+      <input
+        type="number"
+        value={quickFundAmount}
+        onChange={e => setQuickFundAmount(e.target.value)}
+        placeholder="Amount"
+        style={{
+          width: '100%', padding: '13px', borderRadius: '12px',
+          border: '1.5px solid #E2E0FF', fontSize: '18px', fontWeight: '700',
+          marginBottom: '12px', boxSizing: 'border-box', fontFamily: 'inherit'
+        }}
+      />
+      {quickFundError && (
+        <div style={{
+          background: '#FFE8EE', borderRadius: '10px', padding: '10px',
+          marginBottom: '12px', color: '#FF3366', fontSize: '12px', fontWeight: '600'
+        }}>{quickFundError}</div>
+      )}
+      <button
+        onClick={async () => {
+          const value = Number(quickFundAmount)
+          if (!value || value <= 0) {
+            setQuickFundError('Enter a valid amount')
+            return
+          }
+          setQuickFunding(true)
+          setQuickFundError('')
+          try {
+            const response = await startFincraWalletFunding(supabase, {
+              amount: value,
+              currency: form.currency,
+              email: user.email,
+              name: profile?.full_name || user.email,
+              user_id: user.id,
+            })
+            if (!response?.checkoutUrl) throw new Error('Could not start funding.')
+
+            // Save the in-progress gig so PostGig can resume on this
+            // exact step after the user returns from Fincra checkout
+            sessionStorage.setItem('prima_postgig_resume', JSON.stringify(form))
+            window.location.href = response.checkoutUrl
+          } catch (e) {
+            setQuickFundError(e.message || 'Funding failed.')
+            setQuickFunding(false)
+          }
+        }}
+        disabled={quickFunding}
+        style={{
+          width: '100%', padding: '14px',
+          background: quickFunding ? '#B8A5FF' : 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+          border: 'none', borderRadius: '12px', color: '#fff',
+          fontSize: '14px', fontWeight: '700', cursor: quickFunding ? 'not-allowed' : 'pointer',
+          fontFamily: 'inherit'
+        }}>
+        {quickFunding ? 'Redirecting...' : 'Continue to Payment →'}
+      </button>
+    </div>
+  </div>
+)}
     </>
   )
 }
