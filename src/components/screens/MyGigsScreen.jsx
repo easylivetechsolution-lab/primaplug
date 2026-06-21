@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useCredits } from '../../context/CreditsContext'
 import { getCurrency } from '../../data/currencies'
 import PublicProfile from '../PublicProfile'
+import { getPendingGigReferralForPayout } from '../../utils/referral'
 import ReceiptFlow from '../ReceiptFlow'
 import LiveTracking from '../LiveTracking'
 import EditGig from '../EditGig'
@@ -195,21 +196,28 @@ export default function MyGigsScreen() {
       if (gigError) throw gigError
 
       // Notify accepted worker
-      const { error: notifError } = await supabase
-        .from('notifications')
-        .insert({
-          user_id: application.worker_id,
-          title: isWalletGig
-            ? '🎉 You Got The Job! Payment secured in escrow.'
-            : '🎉 You Got The Job!',
-          message: `Your application for "${gig.title}" was accepted! ${
-            isWalletGig
-              ? 'Funds are locked in escrow and will be released when you complete the work.'
-              : 'Get in touch with the poster and get started.'
-          }`,
-          type: 'accepted',
-          gig_id: gig.id
-        })
+      // Check if this gig has a pending referral, to inform the worker
+const gigReferral = await getPendingGigReferralForPayout(gig.id)
+const referralNote = gigReferral
+  ? ' Note: 5% of this gig\'s payment goes to the person who referred you to it.'
+  : ''
+
+// Notify accepted worker
+const { error: notifError } = await supabase
+  .from('notifications')
+  .insert({
+    user_id: application.worker_id,
+    title: isWalletGig
+      ? '🎉 You Got The Job! Payment secured in escrow.'
+      : '🎉 You Got The Job!',
+    message: `Your application for "${gig.title}" was accepted! ${
+      isWalletGig
+        ? 'Funds are locked in escrow and will be released when you complete the work.'
+        : 'Get in touch with the poster and get started.'
+    }${referralNote}`,
+    type: 'accepted',
+    gig_id: gig.id
+  })
 
       if (notifError) console.error('Notification error:', notifError)
 
@@ -261,16 +269,42 @@ export default function MyGigsScreen() {
   }
 
   const releaseEscrow = async (gig) => {
-    try {
-      const { error } = await supabase.rpc('release_gig_escrow', {
+  try {
+    const amount = Number(gig.escrow_amount || gig.pay_min)
+    const referral = await getPendingGigReferralForPayout(gig.id)
+
+    if (referral) {
+      const referrerShare = amount * 0.05
+      const { error } = await supabase.rpc('release_gig_escrow_with_referral', {
         p_gig_id: gig.id,
         p_poster_id: gig.poster_id,
         p_worker_id: gig.worker_id,
-        p_amount: Number(gig.escrow_amount || gig.pay_min)
+        p_amount: amount,
+        p_referrer_id: referral.referrer_id,
+        p_referrer_share: referrerShare
       })
 
       if (error) throw error
 
+      await markGigReferralPaid(referral.id, amount, gig.currency, referrerShare)
+
+      await supabase.from('notifications').insert({
+        user_id: referral.referrer_id,
+        title: '🎉 Gig Referral Reward!',
+        message: `You earned ${gig.currency || 'NGN'} ${referrerShare.toLocaleString()} (5% of the gig payment) for referring this gig!`,
+        type: 'wallet',
+        gig_id: gig.id
+      })
+    } else {
+      const { error } = await supabase.rpc('release_gig_escrow', {
+        p_gig_id: gig.id,
+        p_poster_id: gig.poster_id,
+        p_worker_id: gig.worker_id,
+        p_amount: amount
+      })
+
+      if (error) throw error
+    }
       // Mark gig completed
       await supabase
         .from('gigs')
@@ -1006,17 +1040,17 @@ function PostedGigCard({
           Tap Done when {gig.worker?.full_name?.split(' ')[0]} finishes.
         </div>
         <button
-          onClick={() => onRelease(gig)}
-          style={{
-            width: '100%',
-            background: 'linear-gradient(135deg, #00C48C, #00A878)',
-            border: 'none', borderRadius: '10px', padding: '11px',
-            fontSize: '13px', fontWeight: '700', color: '#fff',
-            cursor: 'pointer', fontFamily: 'inherit',
-            boxShadow: '0 3px 12px rgba(0,196,140,0.35)'
-          }}>
-          ✓ Mark Done & Release Payment →
-        </button>
+  onClick={() => onReceipt(gig)}
+  style={{
+    width: '100%',
+    background: 'linear-gradient(135deg, #00C48C, #00A878)',
+    border: 'none', borderRadius: '10px', padding: '11px',
+    fontSize: '13px', fontWeight: '700', color: '#fff',
+    cursor: 'pointer', fontFamily: 'inherit',
+    boxShadow: '0 3px 12px rgba(0,196,140,0.35)'
+  }}>
+  ✓ Mark Done →
+</button>
       </div>
     ) : (
       // MANUAL GIG — existing receipt upload flow

@@ -251,7 +251,29 @@ export const trackGigReferral = async (gigId, referredUserId) => {
   }
 }
 
-export const rewardGigReferral = async (gigId, gigAmount) => {
+// Check if a gig has an active, unpaid referral attached to it —
+// used to notify the worker at acceptance time
+export const getPendingGigReferralForPayout = async (gigId) => {
+  try {
+    const { data: referral } = await supabase
+      .from('gig_referrals')
+      .select('*')
+      .eq('gig_id', gigId)
+      .eq('status', 'pending')
+      .eq('reward_given', false)
+      .maybeSingle()
+
+    return referral || null
+  } catch (e) {
+    console.error('getPendingGigReferralForPayout error:', e)
+    return null
+  }
+}
+
+// Pays the referrer 5% of the gig's REAL payment amount as actual
+// currency into their wallet_balance — NOT Prima Credits. Called
+// from ReceiptFlow.jsx for both wallet and manual gig completions.
+export const rewardGigReferral = async (gigId, gigAmount, currency) => {
   try {
     const { data: referral } = await supabase
       .from('gig_referrals')
@@ -263,16 +285,31 @@ export const rewardGigReferral = async (gigId, gigAmount) => {
 
     if (!referral) return
 
-    const rewardDollars = gigAmount * 0.05
-    const rewardCredits = Math.round(rewardDollars * 50)
-    if (rewardCredits < 1) return
+    const referrerShare = gigAmount * 0.05
+    if (referrerShare <= 0) return
 
-    await supabase.rpc('add_credits', {
-      p_user_id: referral.referrer_id,
-      p_amount: rewardCredits,
-      p_type: 'gig_referral',
-      p_description: `5% gig referral reward`,
-      p_gig_id: gigId
+    const { data: referrerRow } = await supabase
+      .from('users')
+      .select('wallet_balance')
+      .eq('id', referral.referrer_id)
+      .single()
+
+    const newBalance = Number(referrerRow?.wallet_balance || 0) + referrerShare
+
+    await supabase
+      .from('users')
+      .update({ wallet_balance: newBalance })
+      .eq('id', referral.referrer_id)
+
+    await supabase.from('wallet_transactions').insert({
+      user_id: referral.referrer_id,
+      gig_id: gigId,
+      type: 'gig_referral_payout',
+      amount: referrerShare,
+      currency: currency || 'NGN',
+      balance_after: newBalance,
+      status: 'completed',
+      description: 'Gig referral reward — 5% of gig payment',
     })
 
     await supabase
@@ -281,7 +318,8 @@ export const rewardGigReferral = async (gigId, gigAmount) => {
         status: 'completed',
         reward_given: true,
         gig_amount: gigAmount,
-        reward_credits: rewardCredits,
+        reward_amount: referrerShare,
+        reward_currency: currency,
         completed_at: new Date().toISOString()
       })
       .eq('id', referral.id)
@@ -289,12 +327,12 @@ export const rewardGigReferral = async (gigId, gigAmount) => {
     await supabase.from('notifications').insert({
       user_id: referral.referrer_id,
       title: '🎉 Gig Referral Reward!',
-      message: `You earned ${rewardCredits} Prima Credits (5% of $${gigAmount}) for referring a gig!`,
-      type: 'general',
+      message: `You earned ${currency || 'NGN'} ${referrerShare.toLocaleString()} (5% of the gig payment) for referring this gig!`,
+      type: 'wallet',
       gig_id: gigId
     })
 
-    console.log('Gig referral rewarded:', rewardCredits, 'credits')
+    console.log('Gig referral rewarded (real money):', referrerShare, currency)
   } catch (e) {
     console.error('Reward gig referral error:', e)
   }
