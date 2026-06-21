@@ -76,7 +76,7 @@ export default function PostGig({ onClose }) {
 
   const update = (key, val) => setForm(f => ({ ...f, [key]: val }))
 
-    useEffect(() => {
+  useEffect(() => {
   const saved = sessionStorage.getItem('prima_postgig_resume')
   if (saved) {
     try {

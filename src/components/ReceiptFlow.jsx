@@ -61,6 +61,19 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
       setError('Please enter the amount you paid')
       return
     }
+
+    if (!isWalletGig && gig?.pay_min && parseFloat(amount) < Number(gig.pay_min)) {
+      setError(
+        `Amount cannot be less than the minimum pay (${CURRENCIES.find(c => c.code === selectedCurrency)?.symbol || ''
+        }${gig.pay_min})`
+      )
+      return
+    }
+
+    if (!isWalletGig && !receiptFile) {
+      setError('Please upload payment proof before confirming')
+      return
+    }
     setSubmitting(true)
     setError(null)
 
@@ -446,7 +459,7 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
                             e.currentTarget.style.background = '#F5F4FF'}
                           onMouseLeave={e =>
                             e.currentTarget.style.background =
-                              selectedCurrency === curr.code ? '#EEE9FF' : 'transparent'}
+                            selectedCurrency === curr.code ? '#EEE9FF' : 'transparent'}
                         >
                           <span style={{ fontSize: '20px' }}>{curr.flag}</span>
                           <div style={{ flex: 1 }}>
@@ -487,6 +500,7 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
                   <input
                     type="number"
                     value={amount}
+                    min={gig?.pay_min || 0}
                     onChange={e => {
                       setAmount(e.target.value)
                       setError(null)
@@ -497,6 +511,20 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
                     onBlur={e => e.target.style.borderColor = '#E2E0FF'}
                   />
                 </div>
+
+                {gig?.pay_min && (
+                  <div
+                    style={{
+                      fontSize: '11px',
+                      color: '#A09DC8',
+                      marginTop: '8px',
+                      textAlign: 'center'
+                    }}
+                  >
+                    Minimum: {CURRENCIES.find(c => c.code === selectedCurrency)?.symbol}
+                    {gig.pay_min} · You can enter more if you paid extra
+                  </div>
+                )}
 
                 {/* Commission preview */}
                 {amount && parseFloat(amount) > 0 && (
@@ -538,7 +566,7 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
                   fontSize: '11px', fontWeight: '700',
                   color: '#A09DC8', textTransform: 'uppercase',
                   letterSpacing: '0.8px', marginBottom: '8px'
-                }}>Payment Proof (Optional)</div>
+                }}>Payment Proof {!isWalletGig && <span style={{ color: '#FF3366' }}>*Required</span>}</div>
                 <div
                   onClick={() => document.getElementById('receipt-upload').click()}
                   style={{
@@ -586,26 +614,33 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
                 }}>{error}</div>
               )}
 
-              <button
-                onClick={handlePosterSubmit}
-                disabled={(!isWalletGig && (!amount || parseFloat(amount) <= 0)) || submitting}
-                style={{
-                  width: '100%',
-                  background: (!isWalletGig && (!amount || parseFloat(amount) <= 0)) || submitting
-                    ? '#E2E0FF'
-                    : 'linear-gradient(135deg, #6C47FF, #9B59FF)',
-                  border: 'none', borderRadius: '14px', padding: '16px',
-                  fontSize: '15px', fontWeight: '700',
-                  color: (!isWalletGig && (!amount || parseFloat(amount) <= 0)) || submitting
-                    ? '#A09DC8' : '#fff',
-                  cursor: (!isWalletGig && (!amount || parseFloat(amount) <= 0)) || submitting
-                    ? 'not-allowed' : 'pointer',
-                  fontFamily: 'inherit',
-                  boxShadow: (isWalletGig || (amount && parseFloat(amount) > 0)) && !submitting
-                    ? '0 4px 20px rgba(108,71,255,0.35)' : 'none'
-                }}>
-                {submitting ? '⏳ Submitting...' : '✓ Confirm Payment'}
-              </button>
+              {(() => {
+                const isBlocked = (!isWalletGig && (!amount || parseFloat(amount) <= 0)) ||
+                  (!isWalletGig && !receiptFile) || submitting
+                return (
+                  <button
+                    onClick={handlePosterSubmit}
+                    disabled={isBlocked}
+                    style={{
+                      width: '100%',
+                      background: isBlocked ? '#E2E0FF' : 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+                      border: 'none', borderRadius: '14px', padding: '16px',
+                      fontSize: '15px', fontWeight: '700',
+                      color: isBlocked ? '#A09DC8' : '#fff',
+                      cursor: isBlocked ? 'not-allowed' : 'pointer',
+                      fontFamily: 'inherit',
+                      boxShadow: !isBlocked ? '0 4px 20px rgba(108,71,255,0.35)' : 'none'
+                    }}>
+                    {submitting ? '⏳ Submitting...' : '✓ Confirm Payment'}
+                  </button>
+                )
+              })()}
+              {!isWalletGig && !receiptFile && (
+                <div style={{
+                  fontSize: '11px', color: '#FF6B2B', textAlign: 'center',
+                  marginTop: '8px'
+                }}>Please upload payment proof before confirming</div>
+              )}
             </div>
           )}
 
