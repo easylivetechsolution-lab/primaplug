@@ -437,15 +437,6 @@ export default function ProfileScreen({ onLogout }) {
       maxWidth: '1180px',
       margin: '0 auto'
     }}>
-      <style>{`
-        @media (max-width: 767px) {
-          .profile-stats-strip { display: none !important; }
-          .profile-logout-sidebar { display: none !important; }
-          .profile-dashboard-grid { grid-template-columns: 1fr !important; }
-          .profile-sidebar { position: static !important; }
-        }
-      `}</style>
-
       {/* EDIT MODAL */}
       {editing && (
   <div style={{
@@ -819,75 +810,77 @@ export default function ProfileScreen({ onLogout }) {
             </div>
           )}
 
-          <button className="profile-logout-sidebar" onClick={onLogout} style={{
-            width: '100%', background: '#FFE8EE', border: '1.5px solid #FF99B3', borderRadius: '12px',
-            padding: '13px', fontSize: '13px', fontWeight: '700', color: '#FF3366', cursor: 'pointer', fontFamily: 'inherit'
-          }}>Log Out of Prima</button>
+          {!isMobile && (
+            <button onClick={onLogout} style={{
+              width: '100%', background: '#FFE8EE', border: '1.5px solid #FF99B3', borderRadius: '12px',
+              padding: '13px', fontSize: '13px', fontWeight: '700', color: '#FF3366', cursor: 'pointer', fontFamily: 'inherit'
+            }}>Log Out of Prima</button>
+          )}
         </div>
 
         {/* ═══════════ MAIN CONTENT ═══════════ */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', minWidth: 0 }}>
 
           {/* METRICS STRIP — hidden on mobile */}
-          <div className="profile-stats-strip" style={{
+          {!isMobile && <div style={{
             display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px'
           }}>
             <StatCard icon={<ProfileToneIcon name="rating" tone="linear-gradient(135deg, #FFB800, #FF6B2B)" size={30} />} label="Rating" value={reviewsCount > 0 ? `${Number(profile?.rating || 0).toFixed(1)}★` : '0.0★'} color="#FFB800" bg="#FFF8E0" />
             <StatCard icon={<ProfileToneIcon name="completed" tone="linear-gradient(135deg, #00C48C, #00A878)" size={30} />} label="Gigs Done" value={gigsCompleted} sub={`${nextLevelTarget - gigsCompleted} to next level`} color="#00C48C" bg="#DFFDF4" />
             <StatCard icon={<ProfileToneIcon name="reviews" tone="linear-gradient(135deg, #6C47FF, #9B59FF)" size={30} />} label="Reviews" value={reviewsCount} color="#6C47FF" bg="#EEE9FF" />
             <StatCard icon={<ProfileToneIcon name="open" tone="linear-gradient(135deg, #FF6B2B, #FF4DCF)" size={30} />} label="Response" value={profile?.response_time || '< 1h'} color="#FF6B2B" bg="#FFF0E8" />
-          </div>
+          </div>}
 
           {/* LEVEL PROGRESS CARD */}
           <div style={{
             background: currentLevel.bg, border: `1.5px solid ${currentLevel.border}`,
-            borderRadius: '16px', padding: '16px',
-            display: 'flex', gap: '16px', alignItems: 'stretch'
+            borderRadius: '20px', padding: '22px 20px',
+            display: 'flex', gap: '20px', alignItems: 'stretch'
           }}>
             {/* Left half — current level badge */}
             <div style={{
               flex: 1, display: 'flex', flexDirection: 'column',
               alignItems: 'center', justifyContent: 'center',
               borderRight: `1.5px solid ${currentLevel.border}`,
-              paddingRight: '16px', gap: '8px'
+              paddingRight: '20px', gap: '10px'
             }}>
-              <ProfileToneIcon name={currentLevel.icon} tone={currentLevel.tone} size={44} />
+              <ProfileToneIcon name={currentLevel.icon} tone={currentLevel.tone} size={60} />
               <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '9px', color: currentLevel.color, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '2px' }}>Current Level</div>
-                <div style={{ fontSize: '15px', fontWeight: '800', color: '#14123A' }}>{currentLevel.label}</div>
+                <div style={{ fontSize: '11px', color: currentLevel.color, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Current Level</div>
+                <div style={{ fontSize: '20px', fontWeight: '800', color: '#14123A' }}>{currentLevel.label}</div>
               </div>
               <button
                 onClick={() => window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'stats' }))}
                 style={{
-                  background: currentLevel.tone, border: 'none', borderRadius: '8px',
-                  padding: '5px 12px', fontSize: '10px', fontWeight: '700',
+                  background: currentLevel.tone, border: 'none', borderRadius: '10px',
+                  padding: '8px 16px', fontSize: '12px', fontWeight: '700',
                   color: '#fff', cursor: 'pointer', fontFamily: 'inherit'
                 }}>Stats →</button>
             </div>
 
             {/* Right half — progress to next level */}
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '8px' }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '12px' }}>
               {nextLevelItem ? (
                 <>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
-                    <span style={{ fontSize: '11px', color: '#8B8FAF', fontWeight: '600' }}>Next:</span>
-                    <ProfileToneIcon name={nextLevelItem.icon} tone={nextLevelItem.tone} size={20} />
-                    <span style={{ fontSize: '11px', fontWeight: '700', color: '#14123A' }}>{nextLevelItem.label}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
+                    <span style={{ fontSize: '13px', color: '#8B8FAF', fontWeight: '600' }}>Next:</span>
+                    <ProfileToneIcon name={nextLevelItem.icon} tone={nextLevelItem.tone} size={32} />
+                    <span style={{ fontSize: '15px', fontWeight: '800', color: '#14123A' }}>{nextLevelItem.label}</span>
                   </div>
-                  <ProgressBar value={levelProgress} max={100} color={currentLevel.color} bg="rgba(255,255,255,0.6)" height={7} />
+                  <ProgressBar value={levelProgress} max={100} color={currentLevel.color} bg="rgba(255,255,255,0.6)" height={10} />
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ fontSize: '10px', color: '#8B8FAF' }}>
+                    <div style={{ fontSize: '13px', fontWeight: '600', color: '#8B8FAF' }}>
                       {nextLevelItem.min - gigsCompleted > 0
                         ? `${nextLevelItem.min - gigsCompleted} gigs to go`
                         : 'Ready to level up!'}
                     </div>
-                    <div style={{ fontSize: '13px', fontWeight: '800', color: currentLevel.color }}>{levelProgress}%</div>
+                    <div style={{ fontSize: '17px', fontWeight: '800', color: currentLevel.color }}>{levelProgress}%</div>
                   </div>
                 </>
               ) : (
                 <div style={{ textAlign: 'center', padding: '8px' }}>
-                  <ProfileToneIcon name="rating" tone="linear-gradient(135deg,#FFB800,#FF6B2B)" size={32} />
-                  <div style={{ fontSize: '11px', color: currentLevel.color, fontWeight: '700', marginTop: '6px' }}>
+                  <ProfileToneIcon name="rating" tone="linear-gradient(135deg,#FFB800,#FF6B2B)" size={52} />
+                  <div style={{ fontSize: '14px', color: currentLevel.color, fontWeight: '700', marginTop: '8px' }}>
                     Max level reached!
                   </div>
                 </div>
@@ -1111,19 +1104,18 @@ export default function ProfileScreen({ onLogout }) {
             position: static !important;
           }
         }
-        @media (min-width: 768px) {
-          .profile-logout-mobile { display: none !important; }
-        }
       `}</style>
 
-      {/* Mobile logout — fixed at bottom, hidden on desktop */}
-      <div className="profile-logout-mobile" style={{ marginTop: '24px' }}>
-        <button onClick={onLogout} style={{
-          width: '100%', background: '#FFE8EE', border: '1.5px solid #FF99B3',
-          borderRadius: '14px', padding: '15px', fontSize: '14px', fontWeight: '700',
-          color: '#FF3366', cursor: 'pointer', fontFamily: 'inherit'
-        }}>Log Out of Prima</button>
-      </div>
+      {/* Mobile logout — shown only on mobile via JS, not CSS */}
+      {isMobile && (
+        <div style={{ marginTop: '24px', paddingBottom: '8px' }}>
+          <button onClick={onLogout} style={{
+            width: '100%', background: '#FFE8EE', border: '1.5px solid #FF99B3',
+            borderRadius: '14px', padding: '15px', fontSize: '14px', fontWeight: '700',
+            color: '#FF3366', cursor: 'pointer', fontFamily: 'inherit'
+          }}>Log Out of Prima</button>
+        </div>
+      )}
 
       {showSelfie && (
         <SelfieVerification
