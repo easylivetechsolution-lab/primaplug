@@ -139,6 +139,14 @@ const SetView = ({ coords }) => {
   return null
 }
 
+const FlyToGig = ({ coords }) => {
+  const map = useMap()
+  useEffect(() => {
+    if (coords) map.flyTo(coords, 17, { animate: true, duration: 1 })
+  }, [coords])
+  return null
+}
+
 export default function MapScreen() {
   const { user, profile } = useAuth()
   const [showProfilePrompt, setShowProfilePrompt] = useState(false)
@@ -155,6 +163,7 @@ export default function MapScreen() {
   const [saveNotice, setSaveNotice] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('All')
   const [sharingGig, setSharingGig] = useState(null)
+  const [flyToCoords, setFlyToCoords] = useState(null)
   const mapRef = useRef(null)
 
   useEffect(() => {
@@ -288,6 +297,18 @@ export default function MapScreen() {
     return () => clearInterval(t)
   }, [])
 
+  useEffect(() => {
+    const handleOpenGigOnMap = (e) => {
+      const gig = e.detail
+      if (!gig?.latitude || !gig?.longitude) return
+      setSelectedGig(gig)
+      setApplied(false)
+      setFlyToCoords([gig.latitude, gig.longitude])
+    }
+    window.addEventListener('openGigOnMap', handleOpenGigOnMap)
+    return () => window.removeEventListener('openGigOnMap', handleOpenGigOnMap)
+  }, [])
+
   const filteredGigs = gigs.filter(g => {
     if (categoryFilter === 'All') return true
     const cat = CATEGORIES.find(c => c.group === categoryFilter)
@@ -319,6 +340,7 @@ export default function MapScreen() {
             maxZoom={19}
           />
           <SetView coords={userPos} />
+          {flyToCoords && <FlyToGig coords={flyToCoords} />}
 
           {/* User location marker */}
           <Marker position={userPos} icon={createUserPin()} />

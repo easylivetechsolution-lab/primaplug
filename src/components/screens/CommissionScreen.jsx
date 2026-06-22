@@ -10,7 +10,7 @@ import { startFincraWalletFunding, verifyFincraPayment } from '../../utils/fincr
 
 
 export default function CommissionScreen() {
-  const { user, profile } = useAuth()
+  const { user, profile, refreshProfile } = useAuth()
   const {
     credits, commissions, pendingCommissions,
     totalOwed, hasUnpaidCommissions,
@@ -52,14 +52,16 @@ export default function CommissionScreen() {
 
     setPaying(commission.id)
     try {
+      const newBalance = walletBalance - commission.commission_amount
+
       const { error: deductError } = await supabase
         .from('users')
-        .update({ wallet_balance: walletBalance - commission.commission_amount })
+        .update({ wallet_balance: newBalance })
         .eq('id', user.id)
 
       if (deductError) throw deductError
 
-      await supabase
+      const { error: commissionError } = await supabase
         .from('commissions')
         .update({
           status: 'paid',
@@ -67,6 +69,18 @@ export default function CommissionScreen() {
           payment_method: 'wallet'
         })
         .eq('id', commission.id)
+
+      if (commissionError) throw commissionError
+
+      await supabase.from('wallet_transactions').insert({
+        user_id: user.id,
+        type: 'commission_payment',
+        amount: commission.commission_amount,
+        currency: commissionCurrency,
+        status: 'completed',
+        balance_after: newBalance,
+        description: `Commission paid for: ${commission.gigs?.title || 'Gig'}`,
+      })
 
       await supabase.rpc('check_commission_status', { p_worker_id: user.id })
 
@@ -77,6 +91,7 @@ export default function CommissionScreen() {
         type: 'general'
       })
 
+      refreshProfile()
       await fetchCommissions()
     } catch (e) {
       alert('Payment error: ' + e.message)

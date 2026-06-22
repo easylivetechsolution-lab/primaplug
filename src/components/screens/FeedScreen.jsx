@@ -41,6 +41,17 @@ export default function FeedScreen() {
   const [sharingGig, setSharingGig] = useState(null)
   const [reportingGig, setReportingGig] = useState(null)
 
+  const handleGigClick = (gig) => {
+    if (gig.latitude && gig.longitude) {
+      window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'map' }))
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('openGigOnMap', { detail: gig }))
+      }, 120)
+    } else {
+      setSelectedGig(gig)
+    }
+  }
+
   useEffect(() => {
     fetchGigs()
     fetchSavedIds()
@@ -216,7 +227,7 @@ export default function FeedScreen() {
             scrollbarWidth: 'none'
           }}>
             {gigs.slice(0, 3).map(gig => (
-              <div key={gig.id} onClick={() => setSelectedGig(gig)}
+              <div key={gig.id} onClick={() => handleGigClick(gig)}
                 style={{
                   background: '#fff', borderRadius: '12px',
                   padding: '12px 14px', minWidth: '180px',
@@ -433,7 +444,7 @@ export default function FeedScreen() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {filtered.map(gig => (
-            <div key={gig.id} onClick={() => setSelectedGig(gig)}
+            <div key={gig.id} onClick={() => handleGigClick(gig)}
               style={{
                 background: '#fff', border: '1.5px solid #E2E0FF',
                 borderRadius: '16px', padding: '18px',

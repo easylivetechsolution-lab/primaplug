@@ -46,6 +46,9 @@ export default function Layout() {
     if (!newScreen || newScreen === screen) return
     setScreen(newScreen)
     window.history.pushState({ screen: newScreen }, '', '')
+    requestAnimationFrame(() => {
+      document.querySelector('.screen-scroll')?.scrollTo({ top: 0, behavior: 'instant' })
+    })
   }, [screen])
 
   useEffect(() => {
