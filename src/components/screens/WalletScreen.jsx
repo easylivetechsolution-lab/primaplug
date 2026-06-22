@@ -6,8 +6,8 @@ import { startFincraWalletFunding, requestFincraPayout, listFincraBanks, verifyF
 
 const SUPPORTED_WALLET_CURRENCIES = ['NGN', 'GHS', 'KES', 'UGX', 'ZAR', 'USD']
 
-const FUND_TYPES = ['fund_in']
-const WITHDRAW_TYPES = ['withdrawal']
+const FUND_TYPES = ['fund_in', 'escrow_release_worker', 'gig_referral_payout', 'withdrawal_refund']
+const WITHDRAW_TYPES = ['withdrawal', 'escrow_lock']
 
 const timeAgo = (date) => {
   if (!date) return ''
@@ -30,6 +30,7 @@ export default function WalletScreen() {
   const [amount, setAmount] = useState('')
   const [transactions, setTransactions] = useState([])
   const [loading, setLoading] = useState(false)
+  const [expandedTx, setExpandedTx] = useState(null)
   const [error, setError] = useState('')
   const [historyTab, setHistoryTab] = useState('fund')
 
@@ -64,70 +65,70 @@ export default function WalletScreen() {
   }, [user])
 
   const autoVerifyPending = useCallback(async () => {
-  if (!user) return
-  const { data: pendingTxns } = await supabase
-    .from('wallet_transactions')
-    .select('fincra_reference')
-    .eq('user_id', user.id)
-    .eq('type', 'fund_in')
-    .eq('status', 'pending')
-    .not('fincra_reference', 'is', null)
+    if (!user) return
+    const { data: pendingTxns } = await supabase
+      .from('wallet_transactions')
+      .select('fincra_reference')
+      .eq('user_id', user.id)
+      .eq('type', 'fund_in')
+      .eq('status', 'pending')
+      .not('fincra_reference', 'is', null)
 
-  if (!pendingTxns || pendingTxns.length === 0) return
+    if (!pendingTxns || pendingTxns.length === 0) return
 
-  for (const txn of pendingTxns) {
-    try {
-      await verifyFincraPayment(supabase, txn.fincra_reference)
-    } catch (e) {
-      // Silently skip - this one may genuinely still be pending on Fincra's side
+    for (const txn of pendingTxns) {
+      try {
+        await verifyFincraPayment(supabase, txn.fincra_reference)
+      } catch (e) {
+        // Silently skip - this one may genuinely still be pending on Fincra's side
+      }
     }
-  }
-  fetchTransactions()
-  refreshProfile()
-}, [user, fetchTransactions, refreshProfile])
-
-  useEffect(() => {
-  if (!user) return
-  const timer = setTimeout(() => {
     fetchTransactions()
-    autoVerifyPending()
-  }, 0)
-
-  const channel = supabase
-    .channel('wallet-' + user.id)
-    .on('postgres_changes', {
-      event: '*',
-      schema: 'public',
-      table: 'wallet_transactions',
-      filter: `user_id=eq.${user.id}`
-    }, () => {
-      fetchTransactions()
-      refreshProfile()
-    })
-    .subscribe()
-
-  return () => {
-    clearTimeout(timer)
-    supabase.removeChannel(channel)
-  }
-}, [fetchTransactions, autoVerifyPending, refreshProfile, user])
+    refreshProfile()
+  }, [user, fetchTransactions, refreshProfile])
 
   useEffect(() => {
-  const handleReturn = async (e) => {
-    const reference = e.detail?.reference
-    if (!reference) return
-    try {
-      await verifyFincraPayment(supabase, reference)
-      refreshProfile()
+    if (!user) return
+    const timer = setTimeout(() => {
       fetchTransactions()
-    } catch (err) {
-      console.error('Verify on return error:', err)
-    }
-  }
+      autoVerifyPending()
+    }, 0)
 
-  window.addEventListener('walletPaymentReturn', handleReturn)
-  return () => window.removeEventListener('walletPaymentReturn', handleReturn)
-}, [user])
+    const channel = supabase
+      .channel('wallet-' + user.id)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'wallet_transactions',
+        filter: `user_id=eq.${user.id}`
+      }, () => {
+        fetchTransactions()
+        refreshProfile()
+      })
+      .subscribe()
+
+    return () => {
+      clearTimeout(timer)
+      supabase.removeChannel(channel)
+    }
+  }, [fetchTransactions, autoVerifyPending, refreshProfile, user])
+
+  useEffect(() => {
+    const handleReturn = async (e) => {
+      const reference = e.detail?.reference
+      if (!reference) return
+      try {
+        await verifyFincraPayment(supabase, reference)
+        refreshProfile()
+        fetchTransactions()
+      } catch (err) {
+        console.error('Verify on return error:', err)
+      }
+    }
+
+    window.addEventListener('walletPaymentReturn', handleReturn)
+    return () => window.removeEventListener('walletPaymentReturn', handleReturn)
+  }, [user])
 
   const fundHistory = transactions.filter(tx => FUND_TYPES.includes(tx.type))
   const withdrawHistory = transactions.filter(tx => WITHDRAW_TYPES.includes(tx.type))
@@ -169,8 +170,8 @@ export default function WalletScreen() {
     if (banks.length === 0) {
       try {
         const data = await listFincraBanks(supabase, 'NG')
-const list = Array.isArray(data?.data) ? data.data : (data?.data?.banks || data?.banks || [])
-setBanks(list)
+        const list = Array.isArray(data?.data) ? data.data : (data?.data?.banks || data?.banks || [])
+        setBanks(list)
       } catch (e) {
         console.error('Load banks error:', e)
       }
@@ -409,46 +410,85 @@ setBanks(list)
         </div>
       ) : activeHistory.map(tx => {
         const st = STATUS_STYLE[tx.status] || STATUS_STYLE.pending
-        const isOutflow = historyTab === 'withdraw'
+        const isOutflow = WITHDRAW_TYPES.includes(tx.type)
+        const isExpanded = expandedTx === tx.id
         return (
-          <div key={tx.id} style={{
-            background: '#fff', border: '1.5px solid #E2E0FF',
-            borderRadius: '16px', padding: '14px 16px',
-            marginBottom: '10px', display: 'flex',
-            justifyContent: 'space-between', alignItems: 'center', gap: '12px'
-          }}>
-            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', minWidth: 0 }}>
-              <div style={{
-                width: '38px', height: '38px', borderRadius: '11px',
-                background: isOutflow ? '#FFF0E8' : '#DFFDF4',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '16px', flexShrink: 0
-              }}>{isOutflow ? '↑' : '↓'}</div>
-              <div style={{ minWidth: 0 }}>
+          <div
+            key={tx.id}
+            onClick={() => setExpandedTx(isExpanded ? null : tx.id)}
+            style={{
+              background: '#fff', border: `1.5px solid ${isExpanded ? '#B8A5FF' : '#E2E0FF'}`,
+              borderRadius: '16px', padding: '14px 16px',
+              marginBottom: '10px', cursor: 'pointer',
+              transition: 'all 0.15s'
+            }}>
+            <div style={{
+              display: 'flex', justifyContent: 'space-between',
+              alignItems: 'center', gap: '12px'
+            }}>
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'center', minWidth: 0 }}>
                 <div style={{
-                  fontSize: '13px', fontWeight: '700', color: '#14123A',
-                  marginBottom: '3px', overflow: 'hidden',
-                  textOverflow: 'ellipsis', whiteSpace: 'nowrap'
-                }}>
-                  {tx.description || tx.type.replace(/_/g, ' ')}
-                </div>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  <span style={{ fontSize: '11px', color: '#A09DC8' }}>{timeAgo(tx.created_at)}</span>
-                  <span style={{
-                    fontSize: '9px', fontWeight: '800',
-                    color: st.color, background: st.bg,
-                    borderRadius: '6px', padding: '2px 7px',
-                    textTransform: 'uppercase', letterSpacing: '0.4px'
-                  }}>{st.label}</span>
+                  width: '38px', height: '38px', borderRadius: '11px',
+                  background: isOutflow ? '#FFF0E8' : '#DFFDF4',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '16px', flexShrink: 0
+                }}>{isOutflow ? '↑' : '↓'}</div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{
+                    fontSize: '13px', fontWeight: '700', color: '#14123A',
+                    marginBottom: '3px', overflow: 'hidden',
+                    textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+                  }}>
+                    {tx.description || tx.type.replace(/_/g, ' ')}
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <span style={{ fontSize: '11px', color: '#A09DC8' }}>{timeAgo(tx.created_at)}</span>
+                    <span style={{
+                      fontSize: '9px', fontWeight: '800',
+                      color: st.color, background: st.bg,
+                      borderRadius: '6px', padding: '2px 7px',
+                      textTransform: 'uppercase', letterSpacing: '0.4px'
+                    }}>{st.label}</span>
+                  </div>
                 </div>
               </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                <div style={{
+                  fontSize: '14px', fontWeight: '800', flexShrink: 0,
+                  color: isOutflow ? '#FF6B2B' : '#00A878'
+                }}>
+                  {isOutflow ? '-' : '+'}{getCurrency(tx.currency || currencyCode).symbol}{Number(tx.amount || 0).toLocaleString()}
+                </div>
+                <span style={{ fontSize: '11px', color: '#A09DC8' }}>{isExpanded ? '▲' : '▼'}</span>
+              </div>
             </div>
-            <div style={{
-              fontSize: '14px', fontWeight: '800', flexShrink: 0,
-              color: isOutflow ? '#FF6B2B' : '#00A878'
-            }}>
-              {isOutflow ? '-' : '+'}{getCurrency(tx.currency || currencyCode).symbol}{Number(tx.amount || 0).toLocaleString()}
-            </div>
+
+            {isExpanded && (
+              <div style={{
+                marginTop: '12px', paddingTop: '12px',
+                borderTop: '1px solid #E2E0FF',
+                display: 'flex', flexDirection: 'column', gap: '8px'
+              }}>
+                {[
+                  ['Type', tx.type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())],
+                  ['Amount', `${getCurrency(tx.currency || currencyCode).symbol}${Number(tx.amount || 0).toLocaleString()} ${tx.currency || currencyCode}`],
+                  ['Status', tx.status],
+                  tx.balance_after != null && ['Balance After', `${getCurrency(tx.currency || currencyCode).symbol}${Number(tx.balance_after).toLocaleString()}`],
+                  tx.fincra_reference && ['Reference', tx.fincra_reference],
+                  ['Date', new Date(tx.created_at).toLocaleString()],
+                ].filter(Boolean).map(([label, value]) => (
+                  <div key={label} style={{
+                    display: 'flex', justifyContent: 'space-between', gap: '12px'
+                  }}>
+                    <span style={{ fontSize: '11px', color: '#A09DC8', fontWeight: '600', flexShrink: 0 }}>{label}</span>
+                    <span style={{
+                      fontSize: '11px', color: '#14123A', fontWeight: '600',
+                      textAlign: 'right', wordBreak: 'break-all'
+                    }}>{value}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )
       })}

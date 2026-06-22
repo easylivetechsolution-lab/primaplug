@@ -224,7 +224,7 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
 
         await supabase.rpc('increment_gigs_completed', {
           worker_id: gig.worker_id
-        }).catch(() => null)
+        })
 
         await supabase.from('notifications').insert([
           {
@@ -286,7 +286,7 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
       // Update worker gigs completed
       await supabase.rpc('increment_gigs_completed', {
         worker_id: gig.worker_id
-      }).catch(() => null)
+      })
 
       // Notify both parties
       await supabase.from('notifications').insert([
