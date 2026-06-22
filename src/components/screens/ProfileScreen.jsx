@@ -245,7 +245,7 @@ const ComingSoonCard = ({ icon, title, desc, gradient }) => (
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════
 export default function ProfileScreen({ onLogout }) {
-  const { user } = useAuth()
+  const { user, refreshProfile } = useAuth()
   const { credits, hasUnpaidCommissions, totalOwed, pendingCommissions } = useCredits()
   const isOwnProfile = true
   const [profile, setProfile] = useState(null)
@@ -376,6 +376,7 @@ export default function ProfileScreen({ onLogout }) {
     }
 
     await fetchProfile()
+    refreshProfile()
     setEditing(false)
     setSaving(false)
   }

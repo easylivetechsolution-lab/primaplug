@@ -778,7 +778,7 @@ useEffect(() => {
           {/* Profile Completion Banner */}
           {!loading && user && (() => {
             const { score, complete } = getProfileCompletion(profile)
-            if (complete) return null
+            if (!profile || complete) return null
             return (
               <div style={{
                 background: 'linear-gradient(135deg, #EEE9FF, #F8F5FF)',

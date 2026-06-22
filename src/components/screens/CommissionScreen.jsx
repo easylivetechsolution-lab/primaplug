@@ -35,6 +35,55 @@ export default function CommissionScreen() {
     return () => window.removeEventListener('walletPaymentReturn', handleReturn)
   }, [fetchCommissions])
 
+  const handlePayWithWallet = async (commission) => {
+    const walletBalance = profile?.wallet_balance || 0
+    const walletCurrency = profile?.wallet_currency || 'NGN'
+    const commissionCurrency = commission.currency || 'NGN'
+
+    if (walletCurrency !== commissionCurrency) {
+      alert(`Your wallet is in ${walletCurrency} but this commission is in ${commissionCurrency}. Please pay via Fincra or Prima Credits.`)
+      return
+    }
+
+    if (walletBalance < commission.commission_amount) {
+      alert(`Insufficient wallet balance. You need ${getCurrency(commissionCurrency).symbol}${commission.commission_amount.toLocaleString()} but have ${getCurrency(walletCurrency).symbol}${walletBalance.toLocaleString()}.`)
+      return
+    }
+
+    setPaying(commission.id)
+    try {
+      const { error: deductError } = await supabase
+        .from('users')
+        .update({ wallet_balance: walletBalance - commission.commission_amount })
+        .eq('id', user.id)
+
+      if (deductError) throw deductError
+
+      await supabase
+        .from('commissions')
+        .update({
+          status: 'paid',
+          paid_at: new Date().toISOString(),
+          payment_method: 'wallet'
+        })
+        .eq('id', commission.id)
+
+      await supabase.rpc('check_commission_status', { p_worker_id: user.id })
+
+      supabase.from('notifications').insert({
+        user_id: user.id,
+        title: '✅ Commission Paid!',
+        message: `Platform commission paid from your wallet. Your account is in good standing.`,
+        type: 'general'
+      })
+
+      await fetchCommissions()
+    } catch (e) {
+      alert('Payment error: ' + e.message)
+    }
+    setPaying(null)
+  }
+
   const handlePayWithCredits = async (commission) => {
     const usdValue = convertToUSD(commission.commission_amount, commission.currency || 'NGN')
     const creditsNeeded = dollarsToCredits(usdValue)
@@ -366,19 +415,36 @@ export default function CommissionScreen() {
                   </div>
                 )}
 
-                <button
-                  onClick={() => { setSelectedCommission(commission); setShowPayment(true) }}
-                  style={{
-                    width: '100%', marginTop: '6px',
-                    background: 'transparent',
-                    border: '1.5px solid #E2E0FF',
-                    borderRadius: '10px', padding: '10px',
-                    fontSize: '12px', fontWeight: '600',
-                    color: '#8B8FAF', cursor: 'pointer',
-                    fontFamily: 'inherit'
-                  }}>
-                  🏦 Pay via Bank Transfer
-                </button>
+                {(() => {
+                  const walletCurrency = profile?.wallet_currency || 'NGN'
+                  const commissionCurrency = commission.currency || 'NGN'
+                  const walletBalance = profile?.wallet_balance || 0
+                  const sameCurrency = walletCurrency === commissionCurrency
+                  const canPayWithWallet = sameCurrency && walletBalance >= commission.commission_amount
+                  return (
+                    <button
+                      onClick={() => handlePayWithWallet(commission)}
+                      disabled={paying === commission.id || !canPayWithWallet}
+                      style={{
+                        width: '100%', marginTop: '6px',
+                        background: !canPayWithWallet ? 'transparent' : 'linear-gradient(135deg, #14123A, #2A2860)',
+                        border: !canPayWithWallet ? '1.5px solid #E2E0FF' : 'none',
+                        borderRadius: '10px', padding: '10px',
+                        fontSize: '12px', fontWeight: '600',
+                        color: !canPayWithWallet ? '#A09DC8' : '#fff',
+                        cursor: !canPayWithWallet ? 'not-allowed' : 'pointer',
+                        fontFamily: 'inherit'
+                      }}>
+                      {paying === commission.id
+                        ? 'Processing...'
+                        : !sameCurrency
+                          ? `💳 Pay via Wallet (wallet is ${walletCurrency})`
+                          : !canPayWithWallet
+                            ? `💳 Pay via Wallet (need ${getCurrency(commissionCurrency).symbol}${commission.commission_amount.toLocaleString()})`
+                            : `💳 Pay via Wallet (${getCurrency(walletCurrency).symbol}${walletBalance.toLocaleString()} available)`}
+                    </button>
+                  )
+                })()}
               </div>
             )
           })}
