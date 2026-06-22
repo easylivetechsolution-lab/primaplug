@@ -186,7 +186,7 @@ export const markMessageRead = async (messageId) => {
   if (error) throw error
 }
 
-export const sendMessage = async ({ user, conversation, content, notifyPush = false, sendPushToUser = null }) => {
+export const sendMessage = async ({ user, conversation, content, replyTo = null, notifyPush = false, sendPushToUser = null }) => {
   const text = content.trim()
   if (!text || !conversation || !user?.id) return null
 
@@ -207,6 +207,20 @@ export const sendMessage = async ({ user, conversation, content, notifyPush = fa
   })
 
   if (rpcError) throw rpcError
+
+  // Attach reply metadata if replying to a message
+  if (replyTo && msg?.id) {
+    await supabase.from('messages').update({
+      reply_to_id: replyTo.id,
+      reply_to_content: replyTo.content,
+      reply_to_sender_name: replyTo.senderName,
+    }).eq('id', msg.id)
+    if (msg) {
+      msg.reply_to_id = replyTo.id
+      msg.reply_to_content = replyTo.content
+      msg.reply_to_sender_name = replyTo.senderName
+    }
+  }
 
   const otherUserId = convo.participant_1 === user.id
     ? convo.participant_2
@@ -260,6 +274,59 @@ export const clearConversationForUser = async (convo, userId) => {
 
   if (error) throw error
   return now
+}
+
+// ── Conversation helpers ──────────────────────────────────────────
+
+export const isPinnedByUser = (convo, userId) => {
+  if (!convo || !userId) return false
+  return !!(convo.participant_1 === userId ? convo.pinned_1 : convo.pinned_2)
+}
+
+export const isMutedByUser = (convo, userId) => {
+  if (!convo || !userId) return false
+  return !!(convo.participant_1 === userId ? convo.muted_1 : convo.muted_2)
+}
+
+export const togglePinConversation = async (convo, userId) => {
+  if (!convo?.id || !userId) return
+  const field = convo.participant_1 === userId ? 'pinned_1' : 'pinned_2'
+  const current = isPinnedByUser(convo, userId)
+  const { error } = await supabase.from('conversations').update({ [field]: !current }).eq('id', convo.id)
+  if (error) throw error
+  return !current
+}
+
+export const toggleMuteConversation = async (convo, userId) => {
+  if (!convo?.id || !userId) return
+  const field = convo.participant_1 === userId ? 'muted_1' : 'muted_2'
+  const current = isMutedByUser(convo, userId)
+  const { error } = await supabase.from('conversations').update({ [field]: !current }).eq('id', convo.id)
+  if (error) throw error
+  return !current
+}
+
+export const markConversationUnread = async (convo, userId) => {
+  if (!convo?.id || !userId) return
+  const field = convo.participant_1 === userId ? 'unread_count_1' : 'unread_count_2'
+  const { error } = await supabase.from('conversations').update({ [field]: 1 }).eq('id', convo.id)
+  if (error) throw error
+}
+
+// ── Message helpers ───────────────────────────────────────────────
+
+export const toggleMessageReaction = async (msg, emoji, userId) => {
+  const reactions = { ...(msg.reactions || {}) }
+  const users = reactions[emoji] || []
+  if (users.includes(userId)) {
+    reactions[emoji] = users.filter(id => id !== userId)
+    if (reactions[emoji].length === 0) delete reactions[emoji]
+  } else {
+    reactions[emoji] = [...users, userId]
+  }
+  const { error } = await supabase.from('messages').update({ reactions }).eq('id', msg.id)
+  if (error) throw error
+  return reactions
 }
 
 export const updateConversationPreview = async (convoId, fallbackMessages = []) => {

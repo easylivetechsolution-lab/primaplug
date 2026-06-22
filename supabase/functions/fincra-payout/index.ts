@@ -7,6 +7,8 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
+const FINCRA_CURRENCIES = ['NGN', 'GHS', 'KES', 'ZAR', 'USD', 'EUR', 'GBP']
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -15,7 +17,7 @@ serve(async (req) => {
   try {
     const {
       userId, source, // source: 'wallet' or 'credits'
-      amount, currency, accountNumber, bankCode,
+      amount, accountNumber, bankCode,
       accountName, firstName, lastName, email
     } = await req.json()
 
@@ -31,43 +33,51 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
 
-    // Check balance and deduct BEFORE calling Fincra, to prevent double-withdrawal
-    const { data: userRow, error: userFetchError } = await supabase
-      .from('users')
-      .select('wallet_balance, credits_balance')
-      .eq('id', userId)
-      .single()
+    // currency and newBalance are resolved below based on source
+    let currency = 'USD'
+    let newBalance: number | undefined
 
-    if (userFetchError) throw userFetchError
+    if (source === 'wallet') {
+      // Always read wallet_currency from DB — never trust client-supplied value
+      const { data: userRow, error: userFetchError } = await supabase
+        .from('users')
+        .select('wallet_balance, wallet_currency')
+        .eq('id', userId)
+        .single()
 
-    const currentBalance = source === 'wallet'
-      ? Number(userRow.wallet_balance || 0)
-      : Number(userRow.credits_balance || 0)
+      if (userFetchError) throw userFetchError
 
-    if (currentBalance < amount) {
-      return new Response(
-        JSON.stringify({ error: 'Insufficient balance' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      currency = userRow.wallet_currency || 'USD'
+
+      if (!FINCRA_CURRENCIES.includes(currency)) {
+        return new Response(
+          JSON.stringify({ error: `Wallet currency ${currency} is not supported for payouts` }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      const currentBalance = Number(userRow.wallet_balance || 0)
+      if (currentBalance < amount) {
+        return new Response(
+          JSON.stringify({ error: 'Insufficient balance' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      newBalance = currentBalance - amount
+      await supabase
+        .from('users')
+        .update({ wallet_balance: newBalance })
+        .eq('id', userId)
     }
-
-    // Deduct immediately (pessimistic lock pattern - refund if payout fails)
-    const newBalance = currentBalance - amount
-    const balanceField = source === 'wallet' ? 'wallet_balance' : 'credits_balance'
-
-    await supabase
-      .from('users')
-      .update({ [balanceField]: newBalance })
-      .eq('id', userId)
 
     const reference = `payout_${source}_${userId}_${Date.now()}`
 
-    // Log pending transaction
     await supabase.from('wallet_transactions').insert({
       user_id: userId,
       type: 'withdrawal',
       amount: amount,
-      currency: currency || 'NGN',
+      currency: currency,
       fincra_reference: reference,
       status: 'pending',
       balance_after: newBalance,
@@ -80,8 +90,8 @@ serve(async (req) => {
 
     const payoutPayload = {
       business: Deno.env.get('FINCRA_BUSINESS_ID'),
-      sourceCurrency: currency || 'NGN',
-      destinationCurrency: currency || 'NGN',
+      sourceCurrency: currency,
+      destinationCurrency: currency,
       amount: String(amount),
       description: 'Prima withdrawal',
       customerReference: reference,
@@ -118,11 +128,13 @@ serve(async (req) => {
     console.log('Fincra payout response:', JSON.stringify(fincraData))
 
     if (!fincraRes.ok || fincraData.success === false) {
-      // REFUND - payout failed to even initiate
-      await supabase
-        .from('users')
-        .update({ [balanceField]: currentBalance })
-        .eq('id', userId)
+      // Refund wallet if payout failed to initiate
+      if (source === 'wallet' && newBalance !== undefined) {
+        await supabase
+          .from('users')
+          .update({ wallet_balance: newBalance + Number(amount) })
+          .eq('id', userId)
+      }
 
       await supabase
         .from('wallet_transactions')
@@ -135,7 +147,6 @@ serve(async (req) => {
       )
     }
 
-    // Payout initiated successfully - webhook will confirm final status
     return new Response(
       JSON.stringify({
         status: 'initiated',

@@ -94,11 +94,10 @@ export default function FeedScreen() {
           trust_score,
           rating,
           gigs_completed,
-          location,
-          phone
+          location
         )
       `)
-      .in('status', ['open', 'completed'])
+      .eq('status', 'open')
       .order('created_at', { ascending: false })
 
     if (error) {
@@ -874,6 +873,16 @@ export default function FeedScreen() {
                     fontSize: '13px', fontWeight: '600',
                     color: '#8B8FAF', cursor: 'pointer', fontFamily: 'inherit'
                   }}>Skip</button>
+                  {selectedGig.poster_id === user?.id ? (
+                    <div style={{
+                      flex: 2, background: '#F5F4FF',
+                      border: '1.5px solid #E2E0FF',
+                      borderRadius: '12px', padding: '14px',
+                      fontSize: '13px', fontWeight: '600',
+                      color: '#A09DC8', textAlign: 'center',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}>Your gig</div>
+                  ) : (
                   <button
                     onClick={async () => {
   if (applying) return
@@ -1001,6 +1010,7 @@ export default function FeedScreen() {
                     }}>
                     {applying ? '⏳ Applying...' : '⚡ Apply for This Gig'}
                   </button>
+                  )}
                   </div>
                 </div>
               </>

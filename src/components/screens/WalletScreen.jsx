@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../supabase'
 import { useAuth } from '../../context/AuthContext'
-import { getCurrency } from '../../data/currencies'
+import { getCurrency, FINCRA_CURRENCIES } from '../../data/currencies'
 import { startFincraWalletFunding, requestFincraPayout, listFincraBanks, verifyFincraAccount, verifyFincraPayment } from '../../utils/fincra'
 
-const SUPPORTED_WALLET_CURRENCIES = ['NGN', 'GHS', 'KES', 'UGX', 'ZAR', 'USD']
+const SUPPORTED_WALLET_CURRENCIES = FINCRA_CURRENCIES
 
 const FUND_TYPES = ['fund_in', 'escrow_release_worker', 'gig_referral_payout', 'withdrawal_refund']
 const WITHDRAW_TYPES = ['withdrawal', 'escrow_lock']
@@ -34,9 +34,9 @@ export default function WalletScreen() {
   const [error, setError] = useState('')
   const [historyTab, setHistoryTab] = useState('fund')
 
-  const [selectedCurrency, setSelectedCurrency] = useState(profile?.wallet_currency || 'NGN')
+  const [selectedCurrency, setSelectedCurrency] = useState(profile?.wallet_currency || 'USD')
   const currencyLocked = Number(profile?.wallet_balance || 0) > 0
-  const currencyCode = currencyLocked ? (profile?.wallet_currency || 'NGN') : selectedCurrency
+  const currencyCode = currencyLocked ? (profile?.wallet_currency || 'USD') : selectedCurrency
   const currency = getCurrency(currencyCode)
   const walletBalance = Number(profile?.wallet_balance || 0)
   const heldBalance = Number(profile?.held_balance || 0)

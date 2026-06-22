@@ -54,11 +54,12 @@ function AuthCallback() {
                   .toLowerCase()
                   .replace(/[^a-z0-9]/g, '') +
                   Math.floor(Math.random() * 999),
-                trust_score: 100,
+                trust_score: 0,
                 gigs_completed: 0,
-                rating: 5.0,
+                rating: 0,
                 reviews_count: 0,
-                level: 'new'
+                level: 'new',
+                wallet_currency: 'USD'
               })
               setMessage('Profile created! Taking you to setup...')
               setTimeout(() => navigate('/onboarding'), 1000)

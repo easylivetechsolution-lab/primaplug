@@ -10,6 +10,19 @@ import { CREDITS_PER_DOLLAR } from '../../utils/payments'
 import SelfieVerification from '../SelfieVerification'
 import VerificationBadge from '../VerificationBadge'
 
+const LEVELS = [
+  { key: 'new', label: 'New Member', icon: 'profile', tone: 'linear-gradient(135deg,#8B8FAF,#A09DC8)', color: '#8B8FAF', bg: '#F5F4FF', border: '#E2E0FF', min: 0 },
+  { key: 'rising', label: 'Rising', icon: 'stats', tone: 'linear-gradient(135deg,#FF6B2B,#FF4DCF)', color: '#FF6B2B', bg: '#FFF0E8', border: '#FFBC99', min: 3 },
+  { key: 'pro', label: 'Pro', icon: 'level', tone: 'linear-gradient(135deg,#6C47FF,#9B59FF)', color: '#6C47FF', bg: '#EEE9FF', border: '#B8A5FF', min: 10 },
+  { key: 'elite', label: 'Elite', icon: 'rating', tone: 'linear-gradient(135deg,#FFB800,#FF6B2B)', color: '#FFB800', bg: '#FFF8E0', border: '#FFD966', min: 25 },
+]
+
+const WX_STATUS = {
+  completed: { color: '#00A878', bg: '#DFFDF4', label: 'Completed' },
+  pending: { color: '#FF6B2B', bg: '#FFF0E8', label: 'Pending' },
+  failed: { color: '#FF3366', bg: '#FFE8EE', label: 'Failed' },
+}
+
 // ─────────────────────────────────────────────
 // LOCATION SEARCH (unchanged behavior, kept as-is)
 // ─────────────────────────────────────────────
@@ -248,6 +261,7 @@ export default function ProfileScreen({ onLogout }) {
   const [activeTab, setActiveTab] = useState('about')
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [showSelfie, setShowSelfie] = useState(false)
+  const [withdrawalHistory, setWithdrawalHistory] = useState([])
   const fileRef = useRef()
 
   useEffect(() => { fetchProfile() }, [user])
@@ -269,7 +283,7 @@ export default function ProfileScreen({ onLogout }) {
       .eq('id', user.id)
       .maybeSingle()
 
-    const [{ data: reviews }, { data: receipts }] = await Promise.all([
+    const [{ data: reviews }, { data: receipts }, { data: withdrawals }] = await Promise.all([
       supabase
         .from('reviews')
         .select('rating')
@@ -279,6 +293,13 @@ export default function ProfileScreen({ onLogout }) {
         .select('amount')
         .eq('worker_id', user.id)
         .eq('completed', true),
+      supabase
+        .from('wallet_transactions')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('type', 'withdrawal')
+        .order('created_at', { ascending: false })
+        .limit(30),
     ])
 
     const totalEarned = receipts?.reduce((sum, r) => sum + (r.amount || 0), 0) || 0
@@ -287,6 +308,7 @@ export default function ProfileScreen({ onLogout }) {
       totalEarned,
       totalReviews: reviews?.length || 0,
     })
+    setWithdrawalHistory(withdrawals || [])
 
     if (data) {
       setProfile(data)
@@ -385,46 +407,25 @@ export default function ProfileScreen({ onLogout }) {
   )
 
   const { score: completionScore } = getProfileCompletion(profile || {})
-  const trustScore = profile?.trust_score || 100
+  const trustScore = profile?.trust_score ?? 0
   const gigsCompleted = profile?.gigs_completed || 0
   const nextLevelTarget = Math.max(10, Math.ceil((gigsCompleted + 1) / 10) * 10)
+
+  // Level from gigs completed
+  const currentLevel = LEVELS.reduce((acc, lvl) => gigsCompleted >= lvl.min ? lvl : acc, LEVELS[0])
+  const nextLevelItem = LEVELS[LEVELS.indexOf(currentLevel) + 1] || null
+  const levelProgress = nextLevelItem
+    ? Math.min(100, Math.round(((gigsCompleted - currentLevel.min) / (nextLevelItem.min - currentLevel.min)) * 100))
+    : 100
   const totalEarned = Number(profileStats.totalEarned || 0)
   const reviewsCount = Number(profileStats.totalReviews || 0)
   const nextEarnedTarget = Math.max(100, Math.ceil((totalEarned + 1) / 100) * 100)
   const nextReviewTarget = Math.max(10, Math.ceil((reviewsCount + 1) / 10) * 10)
   const progressMetrics = [
-    {
-      label: 'Total Earned',
-      value: `$${totalEarned.toLocaleString()}`,
-      current: totalEarned,
-      max: nextEarnedTarget,
-      color: 'linear-gradient(90deg, #00C48C, #06D6D6)'
-    },
-    {
-      label: 'Gigs Completed',
-      value: gigsCompleted,
-      current: gigsCompleted,
-      max: nextLevelTarget,
-      color: 'linear-gradient(90deg, #6C47FF, #0EA5E9)'
-    },
-    {
-      label: 'Trust Score',
-      value: `${trustScore}%`,
-      current: trustScore,
-      max: 100,
-      color: trustScore >= 80
-        ? 'linear-gradient(90deg, #00C48C, #00A878)'
-        : 'linear-gradient(90deg, #FF6B2B, #FF4DCF)'
-    },
-    {
-      label: 'Reviews',
-      value: reviewsCount,
-      target: nextReviewTarget,
-      showSlash: true,
-      current: reviewsCount,
-      max: nextReviewTarget,
-      color: 'linear-gradient(90deg, #FF4DCF, #9B59FF)'
-    },
+    { label: 'Total Earned', value: `$${totalEarned.toLocaleString()}`, current: totalEarned, max: nextEarnedTarget, color: 'linear-gradient(90deg,#00C48C,#06D6D6)' },
+    { label: 'Gigs Completed', value: gigsCompleted, current: gigsCompleted, max: nextLevelTarget, color: 'linear-gradient(90deg,#6C47FF,#0EA5E9)' },
+    { label: 'Trust Score', value: `${trustScore}%`, current: trustScore, max: 100, color: trustScore >= 80 ? 'linear-gradient(90deg,#00C48C,#00A878)' : 'linear-gradient(90deg,#FF6B2B,#FF4DCF)' },
+    { label: 'Reviews', value: `${reviewsCount}/${nextReviewTarget}`, current: reviewsCount, max: nextReviewTarget, color: 'linear-gradient(90deg,#FF4DCF,#9B59FF)' },
   ]
 
   return (
@@ -590,7 +591,7 @@ export default function ProfileScreen({ onLogout }) {
               boxShadow: '0 -10px 24px rgba(20,18,58,0.06)',
               flexShrink: 0
             }}>
-              <button onClick={() => { document.activeElement?.blur(); handleSave() }} disabled={saving} style={{
+              <button onClick={() => { document.activeElement?.blur(); setEditForm(profile); setEditing(false) }} disabled={saving} style={{
                 flex: 1, background: '#F5F4FF', border: '1.5px solid #E2E0FF', borderRadius: '12px',
                 padding: '13px', fontSize: '13px', fontWeight: '600', color: '#8B8FAF', cursor: 'pointer', fontFamily: 'inherit'
               }}>Cancel</button>
@@ -658,6 +659,10 @@ export default function ProfileScreen({ onLogout }) {
                   background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.3)',
                   borderRadius: '8px', padding: '3px 9px', fontSize: '10px', fontWeight: '800'
                 }}>{trustScore}% Trust</span>
+                <span style={{
+                  background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.3)',
+                  borderRadius: '8px', padding: '3px 9px', fontSize: '10px', fontWeight: '800'
+                }}>{currentLevel.icon} {currentLevel.label}</span>
               </div>
             </div>
 
@@ -723,12 +728,7 @@ export default function ProfileScreen({ onLogout }) {
               }}>
                 <div style={{ fontSize: '9px', opacity: 0.8, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Prima Credits</div>
                 <div style={{ fontSize: '20px', fontWeight: '800', marginBottom: '2px' }}>{credits?.balance?.toFixed(0) || 0}</div>
-                <div style={{ fontSize: '10px', opacity: 0.7, marginBottom: '8px' }}>≈ ${((credits?.balance || 0) / CREDITS_PER_DOLLAR).toFixed(2)}</div>
-                <button onClick={() => window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'withdrawal' }))} style={{
-                  background: 'rgba(255,255,255,0.25)', border: '1px solid rgba(255,255,255,0.4)',
-                  borderRadius: '8px', padding: '6px 12px', fontSize: '11px', fontWeight: '700',
-                  color: '#fff', cursor: 'pointer', fontFamily: 'inherit', width: '100%'
-                }}>Withdraw</button>
+                <div style={{ fontSize: '10px', opacity: 0.7 }}>≈ ${((credits?.balance || 0) / CREDITS_PER_DOLLAR).toFixed(2)}</div>
               </div>
 
               <div onClick={() => window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'commission' }))} style={{
@@ -822,43 +822,86 @@ export default function ProfileScreen({ onLogout }) {
           <div style={{
             display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px'
           }}>
-            <StatCard icon={<ProfileToneIcon name="rating" tone="linear-gradient(135deg, #FFB800, #FF6B2B)" size={30} />} label="Rating" value={`${profile?.rating || '5.0'}`} color="#FFB800" bg="#FFF8E0" />
+            <StatCard icon={<ProfileToneIcon name="rating" tone="linear-gradient(135deg, #FFB800, #FF6B2B)" size={30} />} label="Rating" value={reviewsCount > 0 ? `${Number(profile?.rating || 0).toFixed(1)}★` : '0.0★'} color="#FFB800" bg="#FFF8E0" />
             <StatCard icon={<ProfileToneIcon name="completed" tone="linear-gradient(135deg, #00C48C, #00A878)" size={30} />} label="Gigs Done" value={gigsCompleted} sub={`${nextLevelTarget - gigsCompleted} to next level`} color="#00C48C" bg="#DFFDF4" />
             <StatCard icon={<ProfileToneIcon name="reviews" tone="linear-gradient(135deg, #6C47FF, #9B59FF)" size={30} />} label="Reviews" value={reviewsCount} color="#6C47FF" bg="#EEE9FF" />
             <StatCard icon={<ProfileToneIcon name="open" tone="linear-gradient(135deg, #FF6B2B, #FF4DCF)" size={30} />} label="Response" value={profile?.response_time || '< 1h'} color="#FF6B2B" bg="#FFF0E8" />
           </div>
 
-          {/* PROGRESS OVERVIEW */}
+          {/* LEVEL PROGRESS CARD */}
+          <div style={{
+            background: currentLevel.bg, border: `1.5px solid ${currentLevel.border}`,
+            borderRadius: '16px', padding: '16px',
+            display: 'flex', gap: '16px', alignItems: 'stretch'
+          }}>
+            {/* Left half — current level badge */}
+            <div style={{
+              flex: 1, display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center',
+              borderRight: `1.5px solid ${currentLevel.border}`,
+              paddingRight: '16px', gap: '8px'
+            }}>
+              <ProfileToneIcon name={currentLevel.icon} tone={currentLevel.tone} size={44} />
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '9px', color: currentLevel.color, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '2px' }}>Current Level</div>
+                <div style={{ fontSize: '15px', fontWeight: '800', color: '#14123A' }}>{currentLevel.label}</div>
+              </div>
+              <button
+                onClick={() => window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'stats' }))}
+                style={{
+                  background: currentLevel.tone, border: 'none', borderRadius: '8px',
+                  padding: '5px 12px', fontSize: '10px', fontWeight: '700',
+                  color: '#fff', cursor: 'pointer', fontFamily: 'inherit'
+                }}>Stats →</button>
+            </div>
+
+            {/* Right half — progress to next level */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '8px' }}>
+              {nextLevelItem ? (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
+                    <span style={{ fontSize: '11px', color: '#8B8FAF', fontWeight: '600' }}>Next:</span>
+                    <ProfileToneIcon name={nextLevelItem.icon} tone={nextLevelItem.tone} size={20} />
+                    <span style={{ fontSize: '11px', fontWeight: '700', color: '#14123A' }}>{nextLevelItem.label}</span>
+                  </div>
+                  <ProgressBar value={levelProgress} max={100} color={currentLevel.color} bg="rgba(255,255,255,0.6)" height={7} />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ fontSize: '10px', color: '#8B8FAF' }}>
+                      {nextLevelItem.min - gigsCompleted > 0
+                        ? `${nextLevelItem.min - gigsCompleted} gigs to go`
+                        : 'Ready to level up!'}
+                    </div>
+                    <div style={{ fontSize: '13px', fontWeight: '800', color: currentLevel.color }}>{levelProgress}%</div>
+                  </div>
+                </>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '8px' }}>
+                  <ProfileToneIcon name="rating" tone="linear-gradient(135deg,#FFB800,#FF6B2B)" size={32} />
+                  <div style={{ fontSize: '11px', color: currentLevel.color, fontWeight: '700', marginTop: '6px' }}>
+                    Max level reached!
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* PROGRESS OVERVIEW — compact 2-col */}
           <div style={{
             background: '#fff', border: '1.5px solid #E2E0FF',
-            borderRadius: '16px', padding: '18px',
-            display: 'flex', flexDirection: 'column', gap: '14px'
+            borderRadius: '16px', padding: '14px 16px'
           }}>
-            <div style={{ fontSize: '12px', fontWeight: '800', color: '#14123A' }}>Progress Overview</div>
-            {progressMetrics.map((metric, index) => (
-              <div key={metric.label}>
-                <div style={{
-                  display: 'flex', justifyContent: 'space-between',
-                  alignItems: 'center', marginBottom: '7px', gap: '12px'
-                }}>
-                  <span style={{ fontSize: '12px', fontWeight: '700', color: '#5B5887' }}>{metric.label}</span>
-                  <span style={{
-                    fontSize: '12px', fontWeight: '800',
-                    color: '#14123A', whiteSpace: 'nowrap'
-                  }}>
-                    {metric.showSlash ? `${metric.value}/${metric.target}` : metric.value}
-                  </span>
+            <div style={{ fontSize: '11px', fontWeight: '800', color: '#14123A', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.6px' }}>Progress</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {progressMetrics.map((metric, index) => (
+                <div key={metric.label}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
+                    <span style={{ fontSize: '11px', fontWeight: '700', color: '#8B8FAF' }}>{metric.label}</span>
+                    <span style={{ fontSize: '12px', fontWeight: '800', color: '#14123A' }}>{metric.value}</span>
+                  </div>
+                  <ProgressBar value={metric.current} max={metric.max} color={metric.color} bg="#E2E0FF" height={5} animateDelay={index * 60} />
                 </div>
-                <ProgressBar
-                  value={metric.current}
-                  max={metric.max}
-                  color={metric.color}
-                  bg="#E2E0FF"
-                  height={5}
-                  animateDelay={index * 80}
-                />
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
 
           {/* TABS */}
@@ -868,7 +911,7 @@ export default function ProfileScreen({ onLogout }) {
           }}>
             {['about', 'skills', 'experience', 'activity', 'links'].map(tab => (
               <button key={tab} onClick={() => setActiveTab(tab)} style={{
-                flex: 1, minWidth: '90px', background: activeTab === tab ? '#6C47FF' : 'transparent',
+                flex: 1, minWidth: '80px', background: activeTab === tab ? '#6C47FF' : 'transparent',
                 border: 'none', borderRadius: '10px', padding: '9px 4px', fontSize: '11px',
                 fontWeight: activeTab === tab ? '700' : '500', color: activeTab === tab ? '#fff' : '#8B8FAF',
                 cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s', textTransform: 'capitalize'
@@ -952,7 +995,7 @@ export default function ProfileScreen({ onLogout }) {
                 {[
                   ['Total Earned', `$${totalEarned}`, '#00C48C'],
                   ['Gigs Completed', gigsCompleted, '#14123A'],
-                  ['Avg. Rating', `${profile?.rating || 5.0} ★`, '#FFB800'],
+                  ['Avg. Rating', reviewsCount > 0 ? `${Number(profile?.rating || 0).toFixed(1)} ★` : '0.0 ★', '#FFB800'],
                 ].map(([label, val, color]) => (
                   <div key={label} style={{
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',

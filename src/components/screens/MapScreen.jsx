@@ -270,7 +270,6 @@ export default function MapScreen() {
       .from('gigs')
       .select('*, poster:users!gigs_poster_id_fkey(full_name, avatar_url, trust_score, rating, gigs_completed, phone)')
       .in('status', ['open', 'completed'])
-      .eq('type', 'physical')
       .not('latitude', 'is', null)
       .not('longitude', 'is', null)
     if (error) console.log('Map fetch error:', error.message)
@@ -326,7 +325,11 @@ export default function MapScreen() {
 
           {/* Gig pins */}
           {filteredGigs.map(gig => {
-            const pinColor = gig.urgency === 'now' ? '#FF3366' : gig.urgency === 'today' ? '#FF6B2B' : '#6C47FF'
+            const isDigital = gig.type === 'digital'
+            const pinColor = isDigital
+              ? '#0EA5E9'
+              : gig.urgency === 'now' ? '#FF3366' : gig.urgency === 'today' ? '#FF6B2B' : '#6C47FF'
+            const pinBg = isDigital ? '#E0F2FE' : '#EEE9FF'
             const gigIcon = L.divIcon({
               className: 'custom-gig-pin',
               html: `
@@ -334,17 +337,17 @@ export default function MapScreen() {
                   <div style="
                     width:44px;height:44px;border-radius:50%;
                     border:3px solid ${pinColor};
-                    overflow:hidden;background:#EEE9FF;
+                    overflow:hidden;background:${pinBg};
                     box-shadow:0 4px 12px rgba(0,0,0,0.25);
                     display:flex;align-items:center;justify-content:center;
-                    font-size:16px;font-weight:800;color:#6C47FF;
+                    font-size:16px;font-weight:800;color:${pinColor};
                   ">
                     ${gig.poster?.avatar_url
                       ? `<img src="${gig.poster.avatar_url}" style="width:100%;height:100%;object-fit:cover"/>`
                       : gig.poster?.full_name?.charAt(0) || '?'
                     }
                   </div>
-                  ${gig.urgency === 'now' ? `
+                  ${gig.urgency === 'now' && !isDigital ? `
                     <div style="
                       position:absolute;top:-3px;right:-3px;
                       width:12px;height:12px;
@@ -352,6 +355,14 @@ export default function MapScreen() {
                       border:2px solid white;
                       animation:pinpulse 1s infinite;
                     "></div>
+                  ` : ''}
+                  ${isDigital ? `
+                    <div style="
+                      position:absolute;top:-4px;right:-4px;
+                      background:#0EA5E9;border-radius:6px;
+                      padding:1px 4px;font-size:8px;font-weight:800;
+                      color:#fff;border:1.5px solid #fff;
+                    ">WEB</div>
                   ` : ''}
                   <div style="
                     background:white;border-radius:8px;
@@ -361,11 +372,13 @@ export default function MapScreen() {
                     max-width:120px;overflow:hidden;text-overflow:ellipsis;
                     font-family:'Plus Jakarta Sans',sans-serif;
                   ">
-                    ${gig.street
-                      ? `📍 ${gig.street}`
-                      : gig.location
-                        ? `📍 ${gig.location}`
-                        : gig.title?.substring(0, 20)}
+                    ${isDigital
+                      ? `Remote · ${gig.title?.substring(0, 14) || 'Digital'}`
+                      : gig.street
+                        ? gig.street
+                        : gig.location
+                          ? gig.location.split(',')[0]
+                          : gig.title?.substring(0, 20)}
                   </div>
                 </div>
               `,
@@ -392,11 +405,12 @@ export default function MapScreen() {
                       <div style={{
                         background: '#F5F4FF', borderRadius: '8px',
                         padding: '8px 10px', marginBottom: '8px',
-                        fontSize: '11px', color: '#5B5887'
+                        fontSize: '11px', color: '#5B5887',
+                        display: 'flex', flexDirection: 'column', gap: '3px'
                       }}>
-                        {gig.house_number && <div>🏠 {gig.house_number}</div>}
-                        {gig.street && <div>🛣️ {gig.street}</div>}
-                        {gig.landmark && <div>📍 Near {gig.landmark}</div>}
+                        {gig.house_number && <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}><BrandIcon name="physical" size={14} /> {gig.house_number}</div>}
+                        {gig.street && <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}><BrandIcon name="location" size={14} /> {gig.street}</div>}
+                        {gig.landmark && <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}><BrandIcon name="location" size={14} /> Near {gig.landmark}</div>}
                       </div>
                     )}
                     <div style={{ fontSize: '13px', fontWeight: '700', color: '#14123A', marginBottom: '4px' }}>
@@ -573,11 +587,16 @@ export default function MapScreen() {
                     )}
                     {gig.urgency?.toUpperCase()}
                   </span>
-                  {gig.location && (
-                    <span style={{ fontSize: '9px', color: '#FF6B2B' }}>
-                      📍
+                  {gig.type === 'digital' ? (
+                    <span style={{
+                      fontSize: '8px', fontWeight: '800',
+                      color: '#0EA5E9', letterSpacing: '0.5px'
+                    }}>REMOTE</span>
+                  ) : gig.location ? (
+                    <span style={{ display: 'flex', alignItems: 'center' }}>
+                      <BrandIcon name="location" size={16} />
                     </span>
-                  )}
+                  ) : null}
                 </div>
                 <div style={{
                   fontSize: '12px', fontWeight: '700',
@@ -639,7 +658,9 @@ export default function MapScreen() {
             {applied ? (
               <div style={{ padding: '20px 0' }}>
                 <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-                  <div style={{ fontSize: '52px', marginBottom: '12px' }}>🎯</div>
+                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
+                    <BrandIcon name="accepted" size={64} active />
+                  </div>
                   <div style={{
                     fontSize: '22px', fontWeight: '800',
                     color: '#6C47FF', marginBottom: '8px'
@@ -664,7 +685,7 @@ export default function MapScreen() {
                       display: 'flex', gap: '8px', alignItems: 'center',
                       marginBottom: '12px'
                     }}>
-                      <span style={{ fontSize: '18px' }}>📍</span>
+                      <BrandIcon name="location" size={28} active />
                       <div style={{
                         fontSize: '12px', fontWeight: '700', color: '#6C47FF',
                         textTransform: 'uppercase', letterSpacing: '0.8px'
@@ -731,7 +752,7 @@ export default function MapScreen() {
                           fontSize: '13px', fontWeight: '700',
                           color: '#6C47FF', textDecoration: 'none'
                         }}>
-                        🗺 Open in Google Maps
+                        <BrandIcon name="map" size={22} active /> Open in Google Maps
                       </a>
                     )}
                   </div>
@@ -751,7 +772,7 @@ export default function MapScreen() {
                       color: '#fff', textDecoration: 'none',
                       width: '100%', boxSizing: 'border-box'
                     }}>
-                    💬 Message on WhatsApp
+                    <BrandIcon name="chat" size={22} /> Message on WhatsApp
                   </a>
                 )}
               </div>
@@ -852,21 +873,29 @@ export default function MapScreen() {
                     </div>
                   </div>
                   <div style={{
-                    background: '#FFF0E8', border: '1.5px solid #FFBC99',
+                    background: selectedGig.type === 'digital' ? '#E0F2FE' : '#FFF0E8',
+                    border: `1.5px solid ${selectedGig.type === 'digital' ? '#7DD3FC' : '#FFBC99'}`,
                     borderRadius: '14px', padding: '14px'
                   }}>
                     <div style={{
-                      fontSize: '9px', color: '#FF6B2B', fontWeight: '700',
-                      textTransform: 'uppercase', letterSpacing: '0.8px',
-                      marginBottom: '4px'
-                    }}>Location</div>
+                      fontSize: '9px',
+                      color: selectedGig.type === 'digital' ? '#0EA5E9' : '#FF6B2B',
+                      fontWeight: '700', textTransform: 'uppercase',
+                      letterSpacing: '0.8px', marginBottom: '4px'
+                    }}>{selectedGig.type === 'digital' ? 'Remote Work' : 'Location'}</div>
                     <div style={{
                       fontSize: '13px', fontWeight: '700',
                       color: '#14123A', lineHeight: '1.3'
-                    }}>{selectedGig.location || 'Remote'}</div>
+                    }}>{selectedGig.type === 'digital' ? 'Online / Remote' : (selectedGig.location || 'See details')}</div>
                     {selectedGig.latitude && (
-                      <div style={{ fontSize: '10px', color: '#FF6B2B', marginTop: '2px' }}>
-                        📍 On map
+                      <div style={{
+                        display: 'flex', alignItems: 'center', gap: '3px',
+                        fontSize: '10px',
+                        color: selectedGig.type === 'digital' ? '#0EA5E9' : '#FF6B2B',
+                        marginTop: '4px'
+                      }}>
+                        <BrandIcon name="location" size={14} />
+                        {selectedGig.type === 'digital' ? 'Pinned on map' : 'On map'}
                       </div>
                     )}
                   </div>
@@ -879,7 +908,7 @@ export default function MapScreen() {
                     borderRadius: '14px', padding: '14px', marginBottom: '14px',
                     display: 'flex', gap: '10px', alignItems: 'flex-start'
                   }}>
-                    <span style={{ fontSize: '18px', flexShrink: 0 }}>🏠</span>
+                    <BrandIcon name="physical" size={32} active />
                     <div>
                       <div style={{
                         fontSize: '9px', fontWeight: '700', color: '#FF6B2B',
@@ -915,7 +944,7 @@ export default function MapScreen() {
     borderRadius: '12px', padding: '14px',
     display: 'flex', gap: '10px', marginBottom: '20px'
   }}>
-    <span style={{ fontSize: '16px', flexShrink: 0 }}>💰</span>
+    <BrandIcon name="pay" size={32} />
     <div style={{
       fontSize: '12px', color: '#00A878', lineHeight: '1.6'
     }}>
@@ -928,7 +957,7 @@ export default function MapScreen() {
     borderRadius: '12px', padding: '14px',
     display: 'flex', gap: '10px', marginBottom: '20px'
   }}>
-    <span style={{ fontSize: '16px', flexShrink: 0 }}>🔒</span>
+    <BrandIcon name="lock" size={32} />
     <div style={{
       fontSize: '12px', color: '#6C47FF', lineHeight: '1.6'
     }}>
@@ -954,7 +983,12 @@ export default function MapScreen() {
                         ? '#6C47FF' : '#8B8FAF',
                       cursor: 'pointer', fontFamily: 'inherit'
                     }}>
-                    {savedGigIds.has(selectedGig?.id) ? '🔖 Saved' : '🏷️ Save'}
+                    <BrandIcon
+                      name="saved"
+                      size={20}
+                      active={savedGigIds.has(selectedGig?.id)}
+                    />
+                    {savedGigIds.has(selectedGig?.id) ? ' Saved' : ' Save'}
                   </button>
 
                   <button
@@ -967,7 +1001,7 @@ export default function MapScreen() {
                       color: '#8B8FAF', cursor: 'pointer',
                       fontFamily: 'inherit'
                     }}>
-                    🔗 Share
+                    <BrandIcon name="open" size={20} /> Share
                   </button>
                 </div>
 
@@ -1010,7 +1044,7 @@ export default function MapScreen() {
                       display: 'flex', alignItems: 'center',
                       justifyContent: 'center', gap: '6px'
                     }}>
-                    💬 Message
+                    <BrandIcon name="chat" size={20} active /> Message
                   </button>
 
                   {/* Apply button */}
@@ -1085,7 +1119,9 @@ export default function MapScreen() {
                       display: 'flex', alignItems: 'center',
                       justifyContent: 'center', gap: '6px'
                     }}>
-                    {applying ? '⏳ Applying...' : '⚡ Apply Now'}
+                    {applying
+                      ? 'Applying...'
+                      : <><BrandIcon name="send" size={20} /> Apply Now</>}
                   </button>
                 </div>
               </>

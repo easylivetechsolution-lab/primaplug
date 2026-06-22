@@ -79,20 +79,16 @@ export const CreditsProvider = ({ children }) => {
 
   const spendCredits = async (amount, type, description, gigId = null) => {
     if (!user) return false
-    try {
-      const { data } = await supabase.rpc('spend_credits', {
-        p_user_id: user.id,
-        p_amount: amount,
-        p_type: type,
-        p_description: description,
-        p_gig_id: gigId
-      })
-      await fetchCredits()
-      return data
-    } catch (e) {
-      console.log('Spend credits error:', e)
-      return false
-    }
+    const { data, error } = await supabase.rpc('spend_credits', {
+      p_user_id: user.id,
+      p_amount: amount,
+      p_type: type,
+      p_description: description,
+      p_gig_id: gigId
+    })
+    if (error) throw error
+    await fetchCredits()
+    return data
   }
 
   const uniqueCommissions = commissions.filter((commission, index, all) => {

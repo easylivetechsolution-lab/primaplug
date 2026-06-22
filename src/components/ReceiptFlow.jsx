@@ -98,6 +98,7 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
             commission_amount: commissionAmount,
             poster_confirmed: true,
             poster_confirmed_at: new Date().toISOString(),
+            poster_receipt_url: isWalletGig ? null : (receiptFile || null),
           })
           .eq('id', existing.id)
       } else {
@@ -112,6 +113,7 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
           poster_confirmed_at: new Date().toISOString(),
           worker_confirmed: false,
           completed: false,
+          poster_receipt_url: isWalletGig ? null : (receiptFile || null),
         })
       }
 
@@ -225,6 +227,8 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
         await supabase.rpc('increment_gigs_completed', {
           worker_id: gig.worker_id
         })
+
+        await updateWorkerLevel(gig.worker_id)
 
         await supabase.from('notifications').insert([
           {
@@ -410,7 +414,7 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
 
                 <div style={{ position: 'relative' }}>
                   <button
-                    onClick={() => setShowCurrencyPicker(false)}
+                    onClick={() => setShowCurrencyPicker(s => !s)}
                     style={{
                       width: '100%', background: '#F5F4FF',
                       border: '1.5px solid #E2E0FF',
@@ -826,7 +830,7 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
                       }}>
                         Confirming this receipt means you agree a 10% platform
                         commission of {rc.symbol}{commissionAmt.toLocaleString()} will be owed to Prima.
-                        You have 7 days to pay.
+                        You have 3 days to pay.
                       </div>
                     </div>
                   </div>

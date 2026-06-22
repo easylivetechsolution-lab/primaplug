@@ -94,7 +94,7 @@ export default function StatsScreen() {
     const totalEarned = receipts?.reduce((sum, r) => sum + (r.amount || 0), 0) || 0
     const avgRating = reviews?.length
       ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1)
-      : '5.0'
+      : null
 
     setStats({
       profile,
@@ -167,14 +167,16 @@ export default function StatsScreen() {
           fontSize: '56px', fontWeight: '800',
           letterSpacing: '-2px', marginBottom: '4px'
         }}>
-          {stats?.profile?.trust_score || 100}%
+          {stats?.profile?.trust_score ?? 0}%
         </div>
         <div style={{ fontSize: '13px', opacity: 0.8 }}>
-          {stats?.profile?.trust_score >= 95
-            ? '🏆 Excellent — Top Tier'
-            : stats?.profile?.trust_score >= 80
-              ? '👍 Good Standing'
-              : '⚠️ Needs Improvement'}
+          {stats?.profile?.trust_score == null || stats?.profile?.trust_score === 0
+            ? '🌱 New — Complete gigs to build your score'
+            : stats?.profile?.trust_score >= 95
+              ? '🏆 Excellent — Top Tier'
+              : stats?.profile?.trust_score >= 80
+                ? '👍 Good Standing'
+                : '⚠️ Needs Improvement'}
         </div>
       </div>
 
@@ -270,12 +272,12 @@ export default function StatsScreen() {
         {[
           { label: 'Total Earned', value: `$${stats?.totalEarned?.toFixed(0) || 0}`, color: '#00C48C', icon: 'pay' },
           { label: 'Gigs Completed', value: completed, color: '#6C47FF', icon: 'completed' },
-          { label: 'Avg Rating', value: `${stats?.avgRating}★`, color: '#FFB800', icon: 'rating' },
+          { label: 'Avg Rating', value: stats?.avgRating ? `${stats.avgRating}★` : '0.0★', color: '#FFB800', icon: 'rating' },
           { label: 'Reviews', value: stats?.totalReviews || 0, color: '#FF4DCF', icon: 'reviews' },
           { label: 'Gigs Posted', value: stats?.totalPosted || 0, color: '#FF6B2B', icon: 'mygigs' },
           { label: 'Applied To', value: stats?.totalApplied || 0, color: '#0EA5E9', icon: 'applied' },
           { label: 'Accepted', value: stats?.acceptedApps || 0, color: '#00C48C', icon: 'accepted' },
-          { label: 'Trust Score', value: `${stats?.profile?.trust_score || 100}%`, color: '#6C47FF', icon: 'level' },
+          { label: 'Trust Score', value: `${stats?.profile?.trust_score ?? 0}%`, color: '#6C47FF', icon: 'level' },
           { label: 'Prima Credits', value: credits?.balance?.toFixed(0) || 0, color: '#FFB800', icon: '⭐' },
         ].map(({ label, value, color, icon }) => (
           <div key={label} style={{

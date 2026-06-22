@@ -6,9 +6,9 @@ import BrandIcon from './BrandIcon'
 import { playAccepted } from '../utils/sounds'
 import { getProfileCompletion } from '../utils/profileComplete'
 import ProfilePrompt from './ProfilePrompt'
-import { CURRENCIES } from '../data/currencies'
+import { CURRENCIES, FINCRA_CURRENCIES } from '../data/currencies'
 import { useLanguage } from '../context/LanguageContext'
-import { currencyForLocation, currencyOptionsForLocation } from '../utils/locationCurrency'
+import { currencyForLocation } from '../utils/locationCurrency'
 import { PAYMENT_METHODS } from '../utils/payments'
 import { startFincraWalletFunding } from '../utils/fincra'
 
@@ -23,9 +23,6 @@ export default function PostGig({ onClose }) {
   const { user, profile } = useAuth()
   const { currency: defaultCurrency } = useLanguage()
   const locationCurrency = currencyForLocation(profile?.location, defaultCurrency || 'USD')
-  const currencyOptions = CURRENCIES.filter(c =>
-    currencyOptionsForLocation(profile?.location, locationCurrency).includes(c.code)
-  )
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
@@ -148,6 +145,16 @@ export default function PostGig({ onClose }) {
       return
     }
 
+    // Server-side guard: if gig currency can't use Fincra wallet, force manual
+    const walletCurrency = profile?.wallet_currency || 'USD'
+    if (
+      form.payment_method === PAYMENT_METHODS.WALLET &&
+      (!FINCRA_CURRENCIES.includes(form.currency) || form.currency !== walletCurrency)
+    ) {
+      update('payment_method', PAYMENT_METHODS.MANUAL)
+      form.payment_method = PAYMENT_METHODS.MANUAL
+    }
+
     const minPay = parseFloat(form.pay_min)
     if (form.payment_method === PAYMENT_METHODS.WALLET) {
       const walletBalance = Number(profile?.wallet_balance || 0)
@@ -168,8 +175,14 @@ export default function PostGig({ onClose }) {
       if (coords) { lat = coords.lat; lng = coords.lng }
     }
 
+    // For digital gigs, pin them on the map at the poster's profile location
+    if (form.type === 'digital' && !lat && profile?.location) {
+      const coords = await geocodeLocation(profile.location)
+      if (coords) { lat = coords.lat; lng = coords.lng }
+    }
+
     const expiresAt = form.expires_on ? new Date(`${form.expires_on}T23:59:59`) : new Date()
-    if (!form.expires_on) expiresAt.setDate(expiresAt.getDate() + form.duration_days)
+    if (!form.expires_on) expiresAt.setDate(expiresAt.getDate() + 7)
 
     const { error: err } = await supabase.from('gigs').insert({
   poster_id: user.id,
@@ -375,34 +388,19 @@ export default function PostGig({ onClose }) {
                   </div>
                 </div>
 
-                {/* Currency + Duration row */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                  <div>
-                    <label style={labelStyle}>Currency</label>
-                    <select
-                      value={form.currency}
-                      onChange={e => update('currency', e.target.value)}
-                      style={{ ...inputStyle, appearance: 'none', cursor: 'pointer' }}>
-                      {currencyOptions.map(c => (
-                        <option key={c.code} value={c.code}>
-                          {c.flag} {c.code} ({c.symbol})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Duration</label>
-                    <select
-                      value={form.duration_days}
-                      onChange={e => update('duration_days', parseInt(e.target.value))}
-                      style={{ ...inputStyle, appearance: 'none', cursor: 'pointer' }}>
-                      {[1, 2, 3, 4, 5].map(d => (
-                        <option key={d} value={d}>
-                          {d} day{d !== 1 ? 's' : ''}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                {/* Currency */}
+                <div>
+                  <label style={labelStyle}>Currency</label>
+                  <select
+                    value={form.currency}
+                    onChange={e => update('currency', e.target.value)}
+                    style={{ ...inputStyle, appearance: 'none', cursor: 'pointer' }}>
+                    {CURRENCIES.map(c => (
+                      <option key={c.code} value={c.code}>
+                        {c.flag} {c.code} — {c.name} ({c.symbol})
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>
@@ -437,6 +435,27 @@ export default function PostGig({ onClose }) {
                     />
                   </div>
                 </div>
+
+                {/* Digital gig — map placement from profile location */}
+                {form.type === 'digital' && (
+                  <div style={{
+                    background: '#EEE9FF', border: '1.5px solid #B8A5FF',
+                    borderRadius: '12px', padding: '14px',
+                    display: 'flex', gap: '10px', alignItems: 'center'
+                  }}>
+                    <BrandIcon name="location" size={36} active />
+                    <div>
+                      <div style={{
+                        fontSize: '12px', fontWeight: '700', color: '#6C47FF', marginBottom: '2px'
+                      }}>Shown on map as Remote</div>
+                      <div style={{ fontSize: '11px', color: '#8B8FAF', lineHeight: '1.5' }}>
+                        {profile?.location
+                          ? `Pinned near ${profile.location} — workers worldwide can still apply.`
+                          : 'Your gig will appear on the map once you set your location in your profile.'}
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Location — only for physical gigs */}
                 {form.type === 'physical' && (
@@ -500,9 +519,10 @@ export default function PostGig({ onClose }) {
                       {locationLoading && (
                         <div style={{
                           position: 'absolute', right: '12px',
-                          top: '50%', transform: 'translateY(-50%)',
-                          fontSize: '14px'
-                        }}>⏳</div>
+                          top: '50%', transform: 'translateY(-50%)'
+                        }}>
+                          <BrandIcon name="location" size={22} />
+                        </div>
                       )}
 
                       {locationSelected && (
@@ -708,7 +728,7 @@ export default function PostGig({ onClose }) {
                     ['Urgency', form.urgency.toUpperCase()],
                     ['Pay Range', `${CURRENCIES.find(c => c.code === form.currency)?.symbol || '$'}${form.pay_min || '?'} - ${CURRENCIES.find(c => c.code === form.currency)?.symbol || '$'}${form.pay_max || '?'}`],
                     ['Payment', form.payment_method === PAYMENT_METHODS.WALLET ? 'Pay from Wallet' : 'Pay Manually'],
-                    ['Expires', form.expires_on || `${form.duration_days} day${form.duration_days !== 1 ? 's' : ''}`],
+                    ['Expires', form.expires_on || '7 days from posting'],
                     ['Location', form.type === 'digital' ? 'Remote' : (form.location || '—')],
                     ['Slots', form.slots],
                   ].map(([k, v]) => (
@@ -726,62 +746,118 @@ export default function PostGig({ onClose }) {
 
                 <div style={{ marginBottom: '16px' }}>
                   <label style={labelStyle}>How will you pay the worker?</label>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                    {[
-                      {
-                        key: PAYMENT_METHODS.WALLET,
-                        title: 'Pay from Wallet',
-                        desc: 'Escrow locks funds. Worker gets 90%, Prima keeps 10%.',
-                        tag: 'Recommended'
-                      },
-                      {
-                        key: PAYMENT_METHODS.MANUAL,
-                        title: 'Pay Manually',
-                        desc: 'Cash or transfer. 10% commission is owed after receipt.',
-                        tag: 'Flexible'
-                      },
-                    ].map(option => {
-                      const active = form.payment_method === option.key
-                      return (
-                        <button
-                          key={option.key}
-                          type="button"
-                          onClick={() => {
-                            update('payment_method', option.key)
-                            setError('')
-                          }}
-                          style={{
-                            textAlign: 'left',
-                            background: active ? '#EEE9FF' : '#fff',
-                            border: `1.5px solid ${active ? '#6C47FF' : '#E2E0FF'}`,
-                            borderRadius: '14px',
-                            padding: '14px',
-                            cursor: 'pointer',
-                            fontFamily: 'inherit'
-                          }}
-                        >
+
+                  {(() => {
+                    const gigCurrencyFincraSupported = FINCRA_CURRENCIES.includes(form.currency)
+                    const walletCurrency = profile?.wallet_currency || 'USD'
+                    const walletMatchesGig = form.currency === walletCurrency
+                    const walletEnabled = gigCurrencyFincraSupported && walletMatchesGig
+
+                    return (
+                      <>
+                        {!gigCurrencyFincraSupported && (
                           <div style={{
-                            fontSize: '10px', fontWeight: '800',
-                            color: active ? '#6C47FF' : '#A09DC8',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.8px',
-                            marginBottom: '6px'
-                          }}>{option.tag}</div>
+                            background: '#FFF8E0', border: '1.5px solid #FFD966',
+                            borderRadius: '12px', padding: '12px 14px',
+                            fontSize: '12px', color: '#B8860B',
+                            lineHeight: '1.6', marginBottom: '12px',
+                            display: 'flex', gap: '8px', alignItems: 'flex-start'
+                          }}>
+                            <BrandIcon name="lock" size={28} />
+                            <div>
+                              <strong>{form.currency}</strong> is not supported by Fincra for wallet payments.
+                              Wallet payment is only available for {FINCRA_CURRENCIES.join(', ')} gigs.
+                              This gig will use manual payment.
+                            </div>
+                          </div>
+                        )}
+
+                        {gigCurrencyFincraSupported && !walletMatchesGig && (
                           <div style={{
-                            fontSize: '13px',
-                            fontWeight: '800',
-                            color: '#14123A',
-                            marginBottom: '4px'
-                          }}>{option.title}</div>
-                          <div style={{
-                            fontSize: '11px',
-                            lineHeight: '1.5',
-                            color: active ? '#6C47FF' : '#8B8FAF'
-                          }}>{option.desc}</div>
-                        </button>
-                      )
-                    })}
-                  </div>
+                            background: '#FFF8E0', border: '1.5px solid #FFD966',
+                            borderRadius: '12px', padding: '12px 14px',
+                            fontSize: '12px', color: '#B8860B',
+                            lineHeight: '1.6', marginBottom: '12px',
+                            display: 'flex', gap: '8px', alignItems: 'flex-start'
+                          }}>
+                            <BrandIcon name="lock" size={28} />
+                            <div>
+                              Your wallet is in <strong>{walletCurrency}</strong> but this gig is in <strong>{form.currency}</strong>.
+                              Change the gig currency to <strong>{walletCurrency}</strong>, or use manual payment.
+                            </div>
+                          </div>
+                        )}
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                          {[
+                            {
+                              key: PAYMENT_METHODS.WALLET,
+                              title: 'Pay from Wallet',
+                              desc: 'Escrow locks funds. Worker gets 90%, Prima keeps 10%.',
+                              tag: 'Recommended',
+                              disabled: !walletEnabled,
+                            },
+                            {
+                              key: PAYMENT_METHODS.MANUAL,
+                              title: 'Pay Manually',
+                              desc: 'Cash or transfer. 10% commission is owed after receipt.',
+                              tag: 'Flexible',
+                              disabled: false,
+                            },
+                          ].map(option => {
+                            const active = form.payment_method === option.key
+                            return (
+                              <button
+                                key={option.key}
+                                type="button"
+                                onClick={() => {
+                                  if (option.disabled) return
+                                  update('payment_method', option.key)
+                                  setError('')
+                                }}
+                                style={{
+                                  textAlign: 'left',
+                                  background: option.disabled ? '#F9F9FB' : active ? '#EEE9FF' : '#fff',
+                                  border: `1.5px solid ${option.disabled ? '#E2E0FF' : active ? '#6C47FF' : '#E2E0FF'}`,
+                                  borderRadius: '14px',
+                                  padding: '14px',
+                                  cursor: option.disabled ? 'not-allowed' : 'pointer',
+                                  fontFamily: 'inherit',
+                                  opacity: option.disabled ? 0.55 : 1,
+                                  position: 'relative'
+                                }}
+                              >
+                                {option.disabled && option.key === PAYMENT_METHODS.WALLET && (
+                                  <div style={{
+                                    position: 'absolute', top: '8px', right: '8px',
+                                    fontSize: '8px', fontWeight: '800',
+                                    background: '#E2E0FF', color: '#8B8FAF',
+                                    borderRadius: '4px', padding: '2px 6px',
+                                    letterSpacing: '0.5px'
+                                  }}>UNAVAILABLE</div>
+                                )}
+                                <div style={{
+                                  fontSize: '10px', fontWeight: '800',
+                                  color: active && !option.disabled ? '#6C47FF' : '#A09DC8',
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '0.8px',
+                                  marginBottom: '6px'
+                                }}>{option.tag}</div>
+                                <div style={{
+                                  fontSize: '13px', fontWeight: '800',
+                                  color: '#14123A', marginBottom: '4px'
+                                }}>{option.title}</div>
+                                <div style={{
+                                  fontSize: '11px', lineHeight: '1.5',
+                                  color: active && !option.disabled ? '#6C47FF' : '#8B8FAF'
+                                }}>{option.desc}</div>
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </>
+                    )
+                  })()}
 
                   {form.payment_method === PAYMENT_METHODS.WALLET && (
                     <div style={{
@@ -881,7 +957,7 @@ export default function PostGig({ onClose }) {
                   boxShadow: '0 4px 20px rgba(108,71,255,0.35)',
                   fontFamily: 'inherit', transition: 'all 0.2s'
                 }}>
-                {loading ? '⏳ Posting...' : step < 3 ? 'Continue →' : (
+                {loading ? 'Posting...' : step < 3 ? 'Continue →' : (
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
                     <BrandIcon name="post" size={26} />
                     Go Live

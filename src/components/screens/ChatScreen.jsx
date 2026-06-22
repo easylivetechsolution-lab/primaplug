@@ -14,10 +14,16 @@ import {
   getOtherUser as getChatOtherUser,
   getUnreadCount as getChatUnreadCount,
   hideConversationForUser,
+  isPinnedByUser,
+  isMutedByUser,
   markConversationRead,
+  markConversationUnread,
   markMessageRead,
   parseTimestamp,
   sendMessage as sendChatMessage,
+  toggleMessageReaction,
+  toggleMuteConversation,
+  togglePinConversation,
   updateConversationPreview as updateChatConversationPreview
 } from '../../utils/chat'
 
@@ -29,6 +35,16 @@ const QUICK_REPLIES = [
   'Can we reschedule?',
   'Sounds good 👍',
 ]
+
+const COMMON_EMOJIS = [
+  '😊','😂','❤️','👍','🎉','🙏','😍','🔥','✅','👏',
+  '😭','🤔','💪','🚀','✨','😅','🙌','💯','🤝','😎',
+  '⭐','🎯','💡','👋','😁','🥳','💰','🎊','👀','🤣',
+  '💥','🏆','🎁','💬','☕','🎵','💎','😤','🫂','🌟',
+]
+
+const isImageUrl = (content) =>
+  /^https?:\/\/.+\.(jpg|jpeg|png|gif|webp|heic|svg)(\?.*)?$/i.test(content)
 
 export default function ChatScreen() {
   const { user } = useAuth()
@@ -43,13 +59,23 @@ export default function ChatScreen() {
   const [otherTyping] = useState(false)
   const [viewingProfile, setViewingProfile] = useState(null)
   const [showQuickReplies, setShowQuickReplies] = useState(false)
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  const [uploadingFile, setUploadingFile] = useState(false)
+  const [onlineUsers, setOnlineUsers] = useState(new Set())
   const [conversationMenu, setConversationMenu] = useState(null)
   const [chatHeaderMenuOpen, setChatHeaderMenuOpen] = useState(false)
   const [messageMenu, setMessageMenu] = useState(null)
+  const [replyingTo, setReplyingTo] = useState(null)
+  const [reactingTo, setReactingTo] = useState(null)
+  const [forwardMsg, setForwardMsg] = useState(null)
+  const [hoveredConvo, setHoveredConvo] = useState(null)
+  const [hoveredMsg, setHoveredMsg] = useState(null)
   const messagesEndRef = useRef()
   const inputRef = useRef()
+  const fileInputRef = useRef()
   const typingTimeoutRef = useRef()
   const channelRef = useRef()
+  const presenceChannelRef = useRef()
 
   useEffect(() => {
     fetchConversations()
@@ -126,10 +152,11 @@ export default function ChatScreen() {
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (!event.target.closest('.conversation-menu') && !event.target.closest('.message-menu')) {
+      if (!event.target.closest('.conversation-menu') && !event.target.closest('.message-menu') && !event.target.closest('.reaction-picker')) {
         setConversationMenu(null)
         setChatHeaderMenuOpen(false)
         setMessageMenu(null)
+        setReactingTo(null)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -140,8 +167,65 @@ export default function ChatScreen() {
     scrollToBottom()
   }, [messages])
 
+  // Supabase Realtime Presence — track who's online
+  useEffect(() => {
+    if (!user?.id) return
+
+    const extractIds = (state) => {
+      const ids = new Set()
+      Object.values(state).forEach(list => list.forEach(p => { if (p.user_id) ids.add(p.user_id) }))
+      return ids
+    }
+
+    const ch = supabase.channel('prima-presence')
+      .on('presence', { event: 'sync' }, () => setOnlineUsers(extractIds(ch.presenceState())))
+      .on('presence', { event: 'join' }, ({ newPresences }) => {
+        setOnlineUsers(prev => {
+          const next = new Set(prev)
+          newPresences.forEach(p => p.user_id && next.add(p.user_id))
+          return next
+        })
+      })
+      .on('presence', { event: 'leave' }, ({ leftPresences }) => {
+        setOnlineUsers(prev => {
+          const next = new Set(prev)
+          leftPresences.forEach(p => p.user_id && next.delete(p.user_id))
+          return next
+        })
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await ch.track({ user_id: user.id })
+        }
+      })
+
+    presenceChannelRef.current = ch
+    return () => { supabase.removeChannel(ch) }
+  }, [user?.id])
+
   function scrollToBottom() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  const handleFileAttach = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file || !activeConvo) return
+    if (file.size > 10 * 1024 * 1024) { alert('File must be under 10 MB'); return }
+    setUploadingFile(true)
+    try {
+      const ext = file.name.split('.').pop()
+      const path = `${user.id}/${Date.now()}.${ext}`
+      const { error: upErr } = await supabase.storage
+        .from('chat-attachments')
+        .upload(path, file, { upsert: false })
+      if (upErr) throw upErr
+      const { data: urlData } = supabase.storage.from('chat-attachments').getPublicUrl(path)
+      await sendMessage(urlData.publicUrl)
+    } catch (err) {
+      alert('Upload failed: ' + err.message)
+    }
+    setUploadingFile(false)
+    if (e.target) e.target.value = ''
   }
 
   async function fetchConversations() {
@@ -199,7 +283,8 @@ export default function ChatScreen() {
     setNewMessage('')
     setShowQuickReplies(false)
     try {
-      const result = await sendChatMessage({ user, conversation: activeConvo, content: text })
+      const result = await sendChatMessage({ user, conversation: activeConvo, content: text, replyTo: replyingTo })
+      setReplyingTo(null)
       if (result?.conversation?.id && !activeConvo.id) setActiveConvo(result.conversation)
       if (result?.message) {
         setMessages(prev =>
@@ -336,6 +421,69 @@ export default function ChatScreen() {
     setTyping(true)
   }
 
+  const handleReaction = async (msg, emoji) => {
+    try {
+      const newReactions = await toggleMessageReaction(msg, emoji, user.id)
+      setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, reactions: newReactions } : m))
+    } catch (err) {
+      alert('Could not react: ' + err.message)
+    }
+    setReactingTo(null)
+  }
+
+  const handleForward = async (targetConvoId) => {
+    if (!forwardMsg || !targetConvoId) { setForwardMsg(null); return }
+    const targetConvo = conversations.find(c => c.id === targetConvoId)
+    if (!targetConvo) { setForwardMsg(null); return }
+    try {
+      await sendChatMessage({ user, conversation: targetConvo, content: forwardMsg.content })
+      await fetchConversations()
+    } catch (err) {
+      alert('Could not forward: ' + err.message)
+    }
+    setForwardMsg(null)
+  }
+
+  const handlePinToggle = async (convo, e) => {
+    e?.stopPropagation()
+    try {
+      const newVal = await togglePinConversation(convo, user.id)
+      const field = convo.participant_1 === user.id ? 'pinned_1' : 'pinned_2'
+      setConversations(prev => prev.map(c => c.id === convo.id ? { ...c, [field]: newVal } : c))
+      if (activeConvo?.id === convo.id)
+        setActiveConvo(prev => prev ? { ...prev, [field]: newVal } : prev)
+    } catch (err) {
+      alert('Could not pin: ' + err.message)
+    }
+    setConversationMenu(null)
+  }
+
+  const handleMuteToggle = async (convo, e) => {
+    e?.stopPropagation()
+    try {
+      const newVal = await toggleMuteConversation(convo, user.id)
+      const field = convo.participant_1 === user.id ? 'muted_1' : 'muted_2'
+      setConversations(prev => prev.map(c => c.id === convo.id ? { ...c, [field]: newVal } : c))
+      if (activeConvo?.id === convo.id)
+        setActiveConvo(prev => prev ? { ...prev, [field]: newVal } : prev)
+    } catch (err) {
+      alert('Could not mute: ' + err.message)
+    }
+    setConversationMenu(null)
+  }
+
+  const handleMarkUnread = async (convo, e) => {
+    e?.stopPropagation()
+    try {
+      await markConversationUnread(convo, user.id)
+      const field = convo.participant_1 === user.id ? 'unread_count_1' : 'unread_count_2'
+      setConversations(prev => prev.map(c => c.id === convo.id ? { ...c, [field]: 1 } : c))
+    } catch (err) {
+      alert('Could not mark unread: ' + err.message)
+    }
+    setConversationMenu(null)
+  }
+
   const getOtherUser = (convo) => {
     if (!convo || !user) return null
     return getChatOtherUser(convo, user.id)
@@ -363,6 +511,12 @@ export default function ChatScreen() {
   }
 
   const totalUnread = conversations.reduce((sum, c) => sum + getUnreadCount(c), 0)
+
+  const sortedConversations = [...conversations].sort((a, b) => {
+    const aPinned = isPinnedByUser(a, user?.id) ? 1 : 0
+    const bPinned = isPinnedByUser(b, user?.id) ? 1 : 0
+    return bPinned - aPinned
+  })
 
   const isMobile = window.innerWidth < 768
 
@@ -433,10 +587,12 @@ export default function ChatScreen() {
               />
             </div>
           ) : (
-            conversations.map(convo => {
+            sortedConversations.map(convo => {
               const other = getOtherUser(convo)
               const unread = getUnreadCount(convo)
               const isActive = activeConvo?.id === convo.id
+              const isPinned = isPinnedByUser(convo, user?.id)
+              const isMuted = isMutedByUser(convo, user?.id)
               return (
                 <div
                   key={convo.id}
@@ -449,13 +605,16 @@ export default function ChatScreen() {
                     background: isActive ? '#F8F7FF' : '#fff',
                     borderBottom: '1px solid #F5F4FF',
                     transition: 'background 0.1s',
-                    position: 'relative'
+                    position: 'relative',
+                    borderLeft: isPinned ? '3px solid #6C47FF' : '3px solid transparent'
                   }}
                   onMouseEnter={e => {
                     if (!isActive) e.currentTarget.style.background = '#F8F7FF'
+                    setHoveredConvo(convo.id)
                   }}
                   onMouseLeave={e => {
                     if (!isActive) e.currentTarget.style.background = '#fff'
+                    setHoveredConvo(null)
                   }}>
 
                   {/* Avatar */}
@@ -476,8 +635,22 @@ export default function ChatScreen() {
                     <div style={{
                       position: 'absolute', bottom: '-1px', right: '-1px',
                       width: '12px', height: '12px', borderRadius: '50%',
-                      background: '#00C48C', border: '2px solid #fff'
+                      background: onlineUsers.has(other?.id) ? '#00C48C' : '#CBD5E1',
+                      border: '2px solid #fff',
+                      transition: 'background 0.3s'
                     }} />
+                    {/* Pin badge */}
+                    {isPinned && (
+                      <div style={{ position: 'absolute', top: '-5px', left: '-5px' }}>
+                        <BrandIcon name="saved" size={16} active tone="linear-gradient(135deg,#6C47FF,#9B59FF)" />
+                      </div>
+                    )}
+                    {/* Mute badge */}
+                    {isMuted && (
+                      <div style={{ position: 'absolute', top: '-5px', right: '-5px' }}>
+                        <BrandIcon name="notifications" size={16} active tone="linear-gradient(135deg,#FF6B2B,#FF4DCF)" />
+                      </div>
+                    )}
                   </div>
 
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -524,7 +697,7 @@ export default function ChatScreen() {
                       }}>
                         {convo.last_message || 'No messages yet'}
                       </div>
-                          {unread > 0 && (
+                      {unread > 0 && (
                         <div style={{
                           background: '#6C47FF', color: '#fff',
                           borderRadius: '50%', width: '20px', height: '20px',
@@ -549,7 +722,10 @@ export default function ChatScreen() {
                         background: '#F5F4FF', border: '1.5px solid #E2E0FF',
                         color: '#6C47FF', fontSize: '18px', cursor: 'pointer',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        padding: 0, zIndex: 10000
+                        padding: 0, zIndex: 10000,
+                        opacity: (hoveredConvo === convo.id || conversationMenu === convo.id) ? 1 : 0,
+                        pointerEvents: (hoveredConvo === convo.id || conversationMenu === convo.id) ? 'auto' : 'none',
+                        transition: 'opacity 0.15s'
                       }}>
                       ⋯
                     </button>
@@ -558,21 +734,61 @@ export default function ChatScreen() {
                         position: 'absolute', top: '48px', right: '0',
                         background: '#fff', border: '1.5px solid #E2E0FF',
                         borderRadius: '14px', boxShadow: '0 12px 28px rgba(108,71,255,0.15)',
-                        zIndex: 10001, minWidth: '160px', overflow: 'hidden'
+                        zIndex: 10001, minWidth: '175px', overflow: 'hidden'
                       }}>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            deleteConversation(convo, e)
-                            setConversationMenu(null)
-                          }}
-                          style={{
-                            width: '100%', textAlign: 'left', padding: '12px 14px',
-                            border: 'none', background: 'transparent', color: '#FF3366',
-                            fontSize: '13px', cursor: 'pointer', fontFamily: 'inherit'
-                          }}>
-                          Delete conversation
-                        </button>
+                        {[
+                          {
+                            icon: isPinned ? 'unsaved' : 'saved',
+                            tone: isPinned ? 'linear-gradient(135deg,#8B8FAF,#A09DC8)' : 'linear-gradient(135deg,#6C47FF,#9B59FF)',
+                            label: isPinned ? 'Unpin' : 'Pin',
+                            color: '#14123A',
+                            action: (e) => handlePinToggle(convo, e)
+                          },
+                          {
+                            icon: isMuted ? 'sound' : 'notifications',
+                            tone: isMuted ? 'linear-gradient(135deg,#00C48C,#0EA5E9)' : 'linear-gradient(135deg,#FF6B2B,#FF4DCF)',
+                            label: isMuted ? 'Unmute' : 'Mute',
+                            color: '#14123A',
+                            action: (e) => handleMuteToggle(convo, e)
+                          },
+                          {
+                            icon: 'chat',
+                            tone: 'linear-gradient(135deg,#0EA5E9,#6C47FF)',
+                            label: 'Mark as unread',
+                            color: '#14123A',
+                            action: (e) => handleMarkUnread(convo, e)
+                          },
+                          {
+                            icon: 'edit',
+                            tone: 'linear-gradient(135deg,#8B8FAF,#A09DC8)',
+                            label: 'Clear chat',
+                            color: '#14123A',
+                            action: (e) => { clearConversation(convo, e); setConversationMenu(null) }
+                          },
+                          {
+                            icon: 'unsaved',
+                            tone: 'linear-gradient(135deg,#FF3366,#FF6B2B)',
+                            label: 'Delete',
+                            color: '#FF3366',
+                            action: (e) => { deleteConversation(convo, e); setConversationMenu(null) }
+                          },
+                        ].map(item => (
+                          <button
+                            key={item.label}
+                            onClick={(e) => { e.stopPropagation(); item.action(e) }}
+                            style={{
+                              width: '100%', textAlign: 'left', padding: '10px 14px',
+                              border: 'none', background: 'transparent', color: item.color,
+                              fontSize: '13px', cursor: 'pointer', fontFamily: 'inherit',
+                              borderBottom: '1px solid #F5F4FF',
+                              display: 'flex', alignItems: 'center', gap: '10px'
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.background = '#F8F7FF'}
+                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                            <BrandIcon name={item.icon} size={24} active tone={item.tone} />
+                            {item.label}
+                          </button>
+                        ))}
                       </div>
                     )}
                   </div>
@@ -661,9 +877,15 @@ export default function ChatScreen() {
                       }}>
                       {other?.full_name || 'Unknown'}
                     </div>
-                    <div style={{ fontSize: '11px', color: '#00C48C', fontWeight: '600' }}>
-                      🟢 Online · Trust {other?.trust_score || 100}%
-                    </div>
+                    {(() => {
+                      const isOtherOnline = onlineUsers.has(other?.id)
+                      const trustPart = other?.trust_score != null ? ` · Trust ${other.trust_score}%` : ''
+                      return (
+                        <div style={{ fontSize: '11px', color: isOtherOnline ? '#00C48C' : '#A09DC8', fontWeight: '600' }}>
+                          {isOtherOnline ? '🟢 Online' : '⚫ Offline'}{trustPart}
+                        </div>
+                      )
+                    })()}
                   </div>
 
                   {/* Gig context */}
@@ -797,12 +1019,15 @@ export default function ChatScreen() {
                           </div>
                         )}
 
-                        <div style={{
-                          display: 'flex',
-                          justifyContent: isMe ? 'flex-end' : 'flex-start',
-                          marginBottom: isGrouped ? '2px' : '8px',
-                          alignItems: 'flex-end', gap: '8px'
-                        }}>
+                        <div
+                          onMouseEnter={() => setHoveredMsg(msg.id)}
+                          onMouseLeave={() => setHoveredMsg(null)}
+                          style={{
+                            display: 'flex',
+                            justifyContent: isMe ? 'flex-end' : 'flex-start',
+                            marginBottom: isGrouped ? '2px' : '8px',
+                            alignItems: 'flex-end', gap: '8px'
+                          }}>
                           {/* Other person avatar */}
                           {!isMe && (
                             <div style={{
@@ -834,56 +1059,198 @@ export default function ChatScreen() {
                               borderRadius: isMe
                                 ? '18px 18px 4px 18px'
                                 : '18px 18px 18px 4px',
-                              padding: '10px 14px',
                               fontSize: '14px', lineHeight: '1.5',
                               boxShadow: isMe
                                 ? '0 2px 12px rgba(108,71,255,0.3)'
                                 : '0 2px 8px rgba(0,0,0,0.06)',
                               border: isMe ? 'none' : '1px solid #E2E0FF',
-                              wordBreak: 'break-word'
+                              wordBreak: 'break-word',
+                              padding: isImageUrl(msg.content) ? '4px' : '10px 14px',
+                              overflow: 'hidden'
                             }}>
-                              {msg.content}
-                            </div>
-                            {isMe && (
-                              <div style={{ position: 'absolute', top: '10px', left: '-34px', zIndex: 10000 }} className="message-menu">
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    setMessageMenu(prev => prev === msg.id ? null : msg.id)
-                                  }}
-                                  style={{
-                                    width: '26px', height: '26px', borderRadius: '50%',
-                                    border: '1px solid #E2E0FF', background: '#fff',
-                                    color: '#6C47FF', cursor: 'pointer', fontSize: '20px',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    padding: 0, zIndex: 10000
-                                  }}>
-                                  ⋯
-                                </button>
-                                {messageMenu === msg.id && (
-                                  <div style={{
-                                    position: 'absolute', top: '34px', left: '0',
-                                    background: '#fff', border: '1.5px solid #E2E0FF',
-                                    borderRadius: '14px', boxShadow: '0 12px 28px rgba(108,71,255,0.15)',
-                                    zIndex: 10001, minWidth: '140px', overflow: 'hidden'
-                                  }}>
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation()
-                                        deleteMessage(msg)
-                                        setMessageMenu(null)
-                                      }}
-                                      style={{
-                                        width: '100%', textAlign: 'left', padding: '10px 12px',
-                                        border: 'none', background: 'transparent', color: '#14123A',
-                                        fontSize: '13px', cursor: 'pointer', fontFamily: 'inherit'
-                                      }}>
-                                      Delete message
-                                    </button>
+                              {/* Reply context block */}
+                              {msg.reply_to_id && (
+                                <div style={{
+                                  background: isMe ? 'rgba(255,255,255,0.15)' : '#F5F4FF',
+                                  borderLeft: `3px solid ${isMe ? 'rgba(255,255,255,0.6)' : '#6C47FF'}`,
+                                  borderRadius: '6px',
+                                  padding: '6px 10px',
+                                  marginBottom: '8px',
+                                  fontSize: '12px',
+                                  opacity: 0.9
+                                }}>
+                                  <div style={{ fontWeight: '700', marginBottom: '2px', fontSize: '11px' }}>
+                                    {msg.reply_to_sender_name}
                                   </div>
-                                )}
+                                  <div style={{
+                                    overflow: 'hidden', textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap', maxWidth: '200px'
+                                  }}>
+                                    {msg.reply_to_content}
+                                  </div>
+                                </div>
+                              )}
+                              {isImageUrl(msg.content) ? (
+                                <img
+                                  src={msg.content}
+                                  alt="attachment"
+                                  style={{
+                                    maxWidth: '240px', maxHeight: '240px',
+                                    borderRadius: '12px', display: 'block',
+                                    objectFit: 'cover', cursor: 'pointer'
+                                  }}
+                                  onClick={() => window.open(msg.content, '_blank')}
+                                />
+                              ) : msg.content}
+                            </div>
+
+                            {/* Reactions display */}
+                            {msg.reactions && Object.keys(msg.reactions).length > 0 && (
+                              <div style={{
+                                display: 'flex', flexWrap: 'wrap', gap: '4px',
+                                marginTop: '4px',
+                                justifyContent: isMe ? 'flex-end' : 'flex-start'
+                              }}>
+                                {Object.entries(msg.reactions).map(([emoji, users]) => (
+                                  <button
+                                    key={emoji}
+                                    onClick={() => handleReaction(msg, emoji)}
+                                    style={{
+                                      background: users.includes(user.id) ? '#EEE9FF' : '#F5F4FF',
+                                      border: `1px solid ${users.includes(user.id) ? '#B8A5FF' : '#E2E0FF'}`,
+                                      borderRadius: '12px', padding: '2px 7px',
+                                      fontSize: '12px', cursor: 'pointer',
+                                      display: 'flex', alignItems: 'center', gap: '3px',
+                                      fontFamily: 'inherit', color: '#14123A'
+                                    }}>
+                                    {emoji} <span style={{ fontSize: '11px', fontWeight: '600' }}>{users.length}</span>
+                                  </button>
+                                ))}
                               </div>
                             )}
+
+                            {/* Inline reaction picker */}
+                            {reactingTo === msg.id && (
+                              <div className="reaction-picker" style={{
+                                position: 'absolute', bottom: '110%',
+                                [isMe ? 'right' : 'left']: 0,
+                                background: '#fff', border: '1.5px solid #E2E0FF',
+                                borderRadius: '28px', padding: '6px 10px',
+                                boxShadow: '0 8px 24px rgba(108,71,255,0.18)',
+                                display: 'flex', gap: '4px', zIndex: 10002
+                              }}>
+                                {['❤️','😂','😍','👍','😢','😡'].map(emoji => (
+                                  <button
+                                    key={emoji}
+                                    onClick={() => handleReaction(msg, emoji)}
+                                    style={{
+                                      fontSize: '20px', background: 'none', border: 'none',
+                                      cursor: 'pointer', borderRadius: '8px', padding: '4px',
+                                      lineHeight: 1, transition: 'transform 0.1s'
+                                    }}
+                                    onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.3)'}
+                                    onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                                  >{emoji}</button>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Message ⋯ menu — visible on all messages */}
+                            <div
+                              style={{
+                                position: 'absolute', top: '8px',
+                                [isMe ? 'left' : 'right']: '-34px',
+                                zIndex: 10000
+                              }}
+                              className="message-menu">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setMessageMenu(prev => prev === msg.id ? null : msg.id)
+                                  setReactingTo(null)
+                                }}
+                                style={{
+                                  width: '26px', height: '26px', borderRadius: '50%',
+                                  border: '1px solid #E2E0FF', background: '#fff',
+                                  color: '#6C47FF', cursor: 'pointer', fontSize: '16px',
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                  padding: 0,
+                                  opacity: (hoveredMsg === msg.id || messageMenu === msg.id) ? 1 : 0,
+                                  pointerEvents: (hoveredMsg === msg.id || messageMenu === msg.id) ? 'auto' : 'none',
+                                  transition: 'opacity 0.15s'
+                                }}>
+                                ⋯
+                              </button>
+                              {messageMenu === msg.id && (
+                                <div style={{
+                                  position: 'absolute', top: '32px',
+                                  [isMe ? 'left' : 'right']: '0',
+                                  background: '#fff', border: '1.5px solid #E2E0FF',
+                                  borderRadius: '14px', boxShadow: '0 12px 28px rgba(108,71,255,0.15)',
+                                  zIndex: 10001, minWidth: '145px', overflow: 'hidden'
+                                }}>
+                                  {[
+                                    {
+                                      icon: 'compose',
+                                      tone: 'linear-gradient(135deg,#6C47FF,#9B59FF)',
+                                      label: 'Reply',
+                                      action: () => {
+                                        const other = getOtherUser(activeConvo)
+                                        setReplyingTo({
+                                          id: msg.id,
+                                          content: msg.content,
+                                          senderName: isMe ? 'You' : (other?.full_name || 'Them')
+                                        })
+                                        setMessageMenu(null)
+                                        inputRef.current?.focus()
+                                      }
+                                    },
+                                    {
+                                      icon: 'suggest',
+                                      tone: 'linear-gradient(135deg,#FF4DCF,#FF6B2B)',
+                                      label: 'React',
+                                      action: () => {
+                                        setReactingTo(msg.id)
+                                        setMessageMenu(null)
+                                      }
+                                    },
+                                    {
+                                      icon: 'send',
+                                      tone: 'linear-gradient(135deg,#00C48C,#0EA5E9)',
+                                      label: 'Forward',
+                                      action: () => {
+                                        setForwardMsg(msg)
+                                        setMessageMenu(null)
+                                      }
+                                    },
+                                    ...(isMe ? [{
+                                      icon: 'unsaved',
+                                      tone: 'linear-gradient(135deg,#FF3366,#FF6B2B)',
+                                      label: 'Delete',
+                                      color: '#FF3366',
+                                      action: () => { deleteMessage(msg); setMessageMenu(null) }
+                                    }] : [])
+                                  ].map(item => (
+                                    <button
+                                      key={item.label}
+                                      onClick={(e) => { e.stopPropagation(); item.action() }}
+                                      style={{
+                                        width: '100%', textAlign: 'left', padding: '10px 12px',
+                                        border: 'none', background: 'transparent',
+                                        color: item.color || '#14123A',
+                                        fontSize: '13px', cursor: 'pointer', fontFamily: 'inherit',
+                                        borderBottom: '1px solid #F5F4FF',
+                                        display: 'flex', alignItems: 'center', gap: '10px'
+                                      }}
+                                      onMouseEnter={e => e.currentTarget.style.background = '#F8F7FF'}
+                                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                                      <BrandIcon name={item.icon} size={24} active tone={item.tone} />
+                                      {item.label}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
 
                             {/* Time + read receipt */}
                             {showTime && (
@@ -984,26 +1351,121 @@ export default function ChatScreen() {
               </div>
             )}
 
+            {/* Emoji Picker */}
+            {showEmojiPicker && (
+              <div style={{
+                padding: '10px 14px',
+                background: '#fff',
+                borderTop: '1px solid #F5F4FF',
+                display: 'flex', flexWrap: 'wrap', gap: '4px'
+              }}>
+                {COMMON_EMOJIS.map(emoji => (
+                  <button
+                    key={emoji}
+                    onClick={() => {
+                      setNewMessage(m => m + emoji)
+                      inputRef.current?.focus()
+                    }}
+                    style={{
+                      fontSize: '22px', background: 'none', border: 'none',
+                      cursor: 'pointer', borderRadius: '8px', padding: '4px 6px',
+                      lineHeight: 1, transition: 'background 0.1s'
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#F5F4FF'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                  >{emoji}</button>
+                ))}
+              </div>
+            )}
+
+            {/* Reply toolbar */}
+            {replyingTo && (
+              <div style={{
+                padding: '8px 16px',
+                background: '#F5F4FF',
+                borderTop: '1px solid #E2E0FF',
+                display: 'flex', alignItems: 'center', gap: '10px'
+              }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '11px', color: '#6C47FF', fontWeight: '700', marginBottom: '2px' }}>
+                    Replying to {replyingTo.senderName}
+                  </div>
+                  <div style={{
+                    fontSize: '12px', color: '#A09DC8',
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+                  }}>
+                    {replyingTo.content}
+                  </div>
+                </div>
+                <button
+                  onClick={() => setReplyingTo(null)}
+                  style={{
+                    background: 'none', border: 'none', fontSize: '18px',
+                    cursor: 'pointer', color: '#A09DC8', padding: '4px',
+                    lineHeight: 1
+                  }}>✕</button>
+              </div>
+            )}
+
+            {/* Hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*,video/*,.pdf,.doc,.docx"
+              style={{ display: 'none' }}
+              onChange={handleFileAttach}
+            />
+
             {/* Message Input */}
             <div style={{
               padding: '12px 16px',
               background: '#fff',
               borderTop: '1.5px solid #E2E0FF',
-              display: 'flex', gap: '10px',
+              display: 'flex', gap: '8px',
               alignItems: 'flex-end', flexShrink: 0
             }}>
               {/* Quick replies toggle */}
               <button
-                onClick={() => setShowQuickReplies(q => !q)}
+                title="Quick replies"
+                onClick={() => { setShowQuickReplies(q => !q); setShowEmojiPicker(false) }}
                 style={{
-                  width: '40px', height: '40px', borderRadius: '12px',
+                  width: '38px', height: '38px', borderRadius: '11px',
                   background: showQuickReplies ? '#EEE9FF' : '#F5F4FF',
                   border: `1.5px solid ${showQuickReplies ? '#B8A5FF' : '#E2E0FF'}`,
-                  display: 'flex', alignItems: 'center',
-                  justifyContent: 'center',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
                   cursor: 'pointer', flexShrink: 0, fontFamily: 'inherit'
                 }}>
-                <BrandIcon name="suggest" size={26} active={showQuickReplies} />
+                <BrandIcon name="suggest" size={24} active={showQuickReplies} />
+              </button>
+
+              {/* Emoji button */}
+              <button
+                title="Emoji"
+                onClick={() => { setShowEmojiPicker(e => !e); setShowQuickReplies(false) }}
+                style={{
+                  width: '38px', height: '38px', borderRadius: '11px',
+                  background: showEmojiPicker ? '#EEE9FF' : '#F5F4FF',
+                  border: `1.5px solid ${showEmojiPicker ? '#B8A5FF' : '#E2E0FF'}`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer', flexShrink: 0, padding: 0
+                }}>
+                <BrandIcon name="creative" size={28} active={showEmojiPicker} tone="linear-gradient(135deg,#FF4DCF,#FF6B2B)" />
+              </button>
+
+              {/* Attachment button */}
+              <button
+                title="Attach image or file"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingFile}
+                style={{
+                  width: '38px', height: '38px', borderRadius: '11px',
+                  background: '#F5F4FF', border: '1.5px solid #E2E0FF',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: uploadingFile ? 'not-allowed' : 'pointer',
+                  flexShrink: 0, padding: 0,
+                  opacity: uploadingFile ? 0.5 : 1
+                }}>
+                <BrandIcon name="applied" size={28} active={!uploadingFile} tone="linear-gradient(135deg,#0EA5E9,#6C47FF)" />
               </button>
 
               {/* Input */}
@@ -1071,6 +1533,79 @@ export default function ChatScreen() {
           userId={viewingProfile}
           onClose={() => setViewingProfile(null)}
         />
+      )}
+
+      {/* Forward modal */}
+      {forwardMsg && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(20,18,58,0.4)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 20000
+        }} onClick={() => setForwardMsg(null)}>
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: '#fff', borderRadius: '20px',
+              boxShadow: '0 24px 60px rgba(108,71,255,0.2)',
+              width: '340px', maxWidth: '90vw', overflow: 'hidden'
+            }}>
+            <div style={{ padding: '18px 20px', borderBottom: '1.5px solid #E2E0FF' }}>
+              <div style={{ fontSize: '16px', fontWeight: '800', color: '#14123A', marginBottom: '4px' }}>
+                Forward message
+              </div>
+              <div style={{
+                fontSize: '12px', color: '#A09DC8',
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+              }}>
+                "{forwardMsg.content}"
+              </div>
+            </div>
+            <div style={{ maxHeight: '320px', overflowY: 'auto' }}>
+              {conversations.filter(c => c.id !== activeConvo?.id).map(convo => {
+                const other = getOtherUser(convo)
+                return (
+                  <div
+                    key={convo.id}
+                    onClick={() => handleForward(convo.id)}
+                    style={{
+                      padding: '12px 20px', display: 'flex', gap: '12px',
+                      alignItems: 'center', cursor: 'pointer',
+                      borderBottom: '1px solid #F5F4FF',
+                      transition: 'background 0.1s'
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#F8F7FF'}
+                    onMouseLeave={e => e.currentTarget.style.background = '#fff'}>
+                    <div style={{
+                      width: '36px', height: '36px', borderRadius: '10px',
+                      background: '#EEE9FF', display: 'flex', alignItems: 'center',
+                      justifyContent: 'center', fontSize: '14px', fontWeight: '800',
+                      color: '#6C47FF', overflow: 'hidden', flexShrink: 0
+                    }}>
+                      {other?.avatar_url
+                        ? <img src={other.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        : other?.full_name?.charAt(0) || '?'}
+                    </div>
+                    <div style={{ fontSize: '14px', fontWeight: '600', color: '#14123A' }}>
+                      {other?.full_name || 'Unknown'}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+            <div style={{ padding: '14px 20px', borderTop: '1.5px solid #E2E0FF' }}>
+              <button
+                onClick={() => setForwardMsg(null)}
+                style={{
+                  width: '100%', padding: '10px', borderRadius: '12px',
+                  border: '1.5px solid #E2E0FF', background: '#F5F4FF',
+                  color: '#A09DC8', fontFamily: 'inherit', fontSize: '13px',
+                  fontWeight: '600', cursor: 'pointer'
+                }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       <style>{`

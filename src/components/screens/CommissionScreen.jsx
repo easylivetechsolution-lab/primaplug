@@ -77,6 +77,8 @@ export default function CommissionScreen() {
         })
 
         await fetchCommissions()
+      } else {
+        alert('Payment failed. Please check your credits balance and try again.')
       }
     } catch (e) {
       alert('Payment error: ' + e.message)
@@ -133,12 +135,34 @@ export default function CommissionScreen() {
             textTransform: 'uppercase', letterSpacing: '1px',
             marginBottom: '6px'
           }}>Amount Owed</div>
-          <div style={{
-            fontSize: '26px', fontWeight: '800',
-            letterSpacing: '-1px'
-          }}>
-            {totalOwed > 0 ? `$${totalOwed.toFixed(2)}` : '$0.00'}
-          </div>
+          {(() => {
+            const byCurrency = pendingCommissions.reduce((acc, c) => {
+              const cur = c.currency || 'NGN'
+              acc[cur] = (acc[cur] || 0) + (c.commission_amount || 0)
+              return acc
+            }, {})
+            const entries = Object.entries(byCurrency)
+            if (entries.length === 0) return (
+              <div style={{ fontSize: '26px', fontWeight: '800', letterSpacing: '-1px' }}>
+                $0.00
+              </div>
+            )
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                {entries.map(([cur, amt]) => (
+                  <div key={cur} style={{
+                    fontSize: entries.length === 1 ? '26px' : '18px',
+                    fontWeight: '800', letterSpacing: '-0.5px', lineHeight: 1.2
+                  }}>
+                    {getCurrency(cur).symbol}{amt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    {entries.length > 1 && (
+                      <span style={{ fontSize: '11px', fontWeight: '600', opacity: 0.8, marginLeft: '4px' }}>{cur}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )
+          })()}
           <div style={{ fontSize: '11px', opacity: 0.8, marginTop: '3px' }}>
             {pendingCommissions.length} pending
           </div>

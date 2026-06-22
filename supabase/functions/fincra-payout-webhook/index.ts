@@ -96,20 +96,33 @@ serve(async (req) => {
 
     } else if (event === 'payout.failed') {
       // REFUND the user since the payout genuinely failed
-      const balanceField = txRow.description?.includes('via credits') ? 'credit_balance' : 'wallet_balance'
+      const isCreditsWithdrawal = txRow.description?.includes('via credits') ||
+        txRow.description?.includes('source: credits')
 
-      const { data: userRow } = await supabase
-        .from('users')
-        .select(balanceField)
-        .eq('id', txRow.user_id)
-        .single()
-
-      const refundedBalance = Number(userRow?.[balanceField] || 0) + Number(txRow.amount)
-
-      await supabase
-        .from('users')
-        .update({ [balanceField]: refundedBalance })
-        .eq('id', txRow.user_id)
+      if (isCreditsWithdrawal) {
+        // Credits live in prima_credits table — refund via RPC
+        const CREDITS_PER_DOLLAR = 50
+        const creditsToRefund = Math.round(Number(txRow.amount) * CREDITS_PER_DOLLAR)
+        await supabase.rpc('add_credits', {
+          p_user_id: txRow.user_id,
+          p_amount: creditsToRefund,
+          p_type: 'withdrawal_refund',
+          p_description: 'Withdrawal failed - credits refunded',
+          p_gig_id: null
+        })
+      } else {
+        // Wallet withdrawal — refund wallet_balance on users
+        const { data: userRow } = await supabase
+          .from('users')
+          .select('wallet_balance')
+          .eq('id', txRow.user_id)
+          .single()
+        const refundedBalance = Number(userRow?.wallet_balance || 0) + Number(txRow.amount)
+        await supabase
+          .from('users')
+          .update({ wallet_balance: refundedBalance })
+          .eq('id', txRow.user_id)
+      }
 
       await supabase
         .from('wallet_transactions')

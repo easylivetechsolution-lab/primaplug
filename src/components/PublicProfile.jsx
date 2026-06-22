@@ -237,7 +237,7 @@ export default function PublicProfile({ userId, onClose }) {
                   textAlign: 'center', flexShrink: 0
                 }}>
                   <div style={{ fontSize: '20px', fontWeight: '800' }}>
-                    {profile.trust_score || 100}%
+                    {profile.trust_score ?? 0}%
                   </div>
                   <div style={{
                     fontSize: '8px', opacity: 0.7,
@@ -318,9 +318,9 @@ export default function PublicProfile({ userId, onClose }) {
               gap: '8px', marginBottom: '16px'
             }}>
               {[
-                ['Trust', `${profile.trust_score || 100}%`, '#6C47FF'],
+                ['Trust', `${profile.trust_score ?? 0}%`, '#6C47FF'],
                 ['Done', `${profile.gigs_completed || 0}`, '#00C48C'],
-                ['Rating', `${profile.rating || 5.0}★`, '#FFB800'],
+                ['Rating', (profile.reviews_count || 0) > 0 ? `${Number(profile.rating || 0).toFixed(1)}★` : '0.0★', '#FFB800'],
                 ['Reviews', `${profile.reviews_count || 0}`, '#FF6B2B'],
               ].map(([label, val, color]) => (
                 <div key={label} style={{

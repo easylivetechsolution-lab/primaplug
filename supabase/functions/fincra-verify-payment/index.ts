@@ -85,27 +85,28 @@ serve(async (req) => {
     // Payment confirmed successful - credit the wallet now
     const { data: userRow } = await supabase
       .from('users')
-      .select('wallet_balance')
+      .select('wallet_balance, wallet_currency')
       .eq('id', txRow.user_id)
       .single()
 
-const isCommissionPayment = !!txRow.related_commission_id
+    const isCommissionPayment = !!txRow.related_commission_id
+    let newBalance: number | undefined
 
-if (isCommissionPayment) {
-  // Mark the EXACT commission row paid — no ambiguity from
-  // amount-matching, uses the direct foreign key link instead
-  const { error: commissionUpdateError, data: updatedCommission } = await supabase
-    .from('commissions')
-    .update({
-      status: 'paid',
-      paid_at: new Date().toISOString(),
-      payment_method: 'fincra'
-    })
-    .eq('id', txRow.related_commission_id)
-    .eq('status', 'pending')
-    .select()
+    if (isCommissionPayment) {
+      // Mark the EXACT commission row paid — no ambiguity from
+      // amount-matching, uses the direct foreign key link instead
+      const { error: commissionUpdateError, data: updatedCommission } = await supabase
+        .from('commissions')
+        .update({
+          status: 'paid',
+          paid_at: new Date().toISOString(),
+          payment_method: 'fincra'
+        })
+        .eq('id', txRow.related_commission_id)
+        .eq('status', 'pending')
+        .select()
 
-  console.log('Commission update result:', JSON.stringify(updatedCommission), 'error:', JSON.stringify(commissionUpdateError))
+      console.log('Commission update result:', JSON.stringify(updatedCommission), 'error:', JSON.stringify(commissionUpdateError))
 
       await supabase
         .from('wallet_transactions')
@@ -121,11 +122,17 @@ if (isCommissionPayment) {
         type: 'general',
       })
     } else {
-      const newBalance = Number(userRow?.wallet_balance || 0) + Number(txRow.amount)
+      newBalance = Number(userRow?.wallet_balance || 0) + Number(txRow.amount)
+
+      // Lock wallet_currency on first deposit if not yet set
+      const updatePayload: Record<string, unknown> = { wallet_balance: newBalance }
+      if (!userRow?.wallet_currency && txRow.currency) {
+        updatePayload.wallet_currency = txRow.currency
+      }
 
       await supabase
         .from('users')
-        .update({ wallet_balance: newBalance })
+        .update(updatePayload)
         .eq('id', txRow.user_id)
 
       await supabase
@@ -142,7 +149,7 @@ if (isCommissionPayment) {
     }
 
     return new Response(
-      JSON.stringify({ status: 'completed', newBalance }),
+      JSON.stringify({ status: 'completed', ...(newBalance !== undefined ? { newBalance } : {}) }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 
