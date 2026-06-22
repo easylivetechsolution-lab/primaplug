@@ -708,47 +708,159 @@ export default function ProfileScreen({ onLogout }) {
           {/* FINANCIAL MINI-CARDS */}
           {isOwnProfile && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <div style={{
-                background: 'linear-gradient(135deg, #00C48C, #00A878)', borderRadius: '16px',
-                padding: '14px', color: '#fff'
-              }}>
-                <div style={{ fontSize: '9px', opacity: 0.8, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Wallet</div>
-                <div style={{ fontSize: '20px', fontWeight: '800', marginBottom: '8px' }}>
-                  {profile?.wallet_currency || 'NGN'} {(profile?.wallet_balance || 0).toLocaleString()}
-                </div>
-                <button onClick={() => window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'wallet' }))} style={{
-                  background: 'rgba(255,255,255,0.25)', border: '1px solid rgba(255,255,255,0.4)',
-                  borderRadius: '8px', padding: '6px 12px', fontSize: '11px', fontWeight: '700',
-                  color: '#fff', cursor: 'pointer', fontFamily: 'inherit', width: '100%'
-                }}>Open Wallet</button>
-              </div>
+              {isMobile ? (
+                <>
+                  {/* Mobile row: Wallet + Commission side by side */}
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <div
+                      onClick={() => window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'wallet' }))}
+                      style={{
+                        flex: 1, background: 'linear-gradient(135deg, #00C48C, #00A878)',
+                        borderRadius: '14px', padding: '12px', color: '#fff', cursor: 'pointer'
+                      }}>
+                      <div style={{ fontSize: '8px', opacity: 0.8, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Wallet</div>
+                      <div style={{ fontSize: '15px', fontWeight: '800', marginBottom: '3px' }}>
+                        {profile?.wallet_currency || 'NGN'} {(profile?.wallet_balance || 0).toLocaleString()}
+                      </div>
+                      <div style={{ fontSize: '9px', opacity: 0.75 }}>Tap to fund →</div>
+                    </div>
+                    <div
+                      onClick={() => window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'commission' }))}
+                      style={{
+                        flex: 1, background: hasUnpaidCommissions ? '#FFE8EE' : '#DFFDF4',
+                        border: `1.5px solid ${hasUnpaidCommissions ? '#FF99B3' : '#7EECD2'}`,
+                        borderRadius: '14px', padding: '12px', cursor: 'pointer'
+                      }}>
+                      <div style={{ fontSize: '8px', color: hasUnpaidCommissions ? '#FF3366' : '#00C48C', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Commission</div>
+                      {hasUnpaidCommissions ? (
+                        <>
+                          <div style={{ fontSize: '15px', fontWeight: '800', color: '#FF3366' }}>${totalOwed.toFixed(2)}</div>
+                          <div style={{ fontSize: '9px', color: '#FF3366', opacity: 0.8 }}>{pendingCommissions.length} pending →</div>
+                        </>
+                      ) : (
+                        <div style={{ fontSize: '13px', fontWeight: '700', color: '#00C48C' }}>✓ Clear</div>
+                      )}
+                    </div>
+                  </div>
 
-              <div style={{
-                background: 'linear-gradient(135deg, #6C47FF, #9B59FF)', borderRadius: '16px',
-                padding: '14px', color: '#fff'
-              }}>
-                <div style={{ fontSize: '9px', opacity: 0.8, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Prima Credits</div>
-                <div style={{ fontSize: '20px', fontWeight: '800', marginBottom: '2px' }}>{credits?.balance?.toFixed(0) || 0}</div>
-                <div style={{ fontSize: '10px', opacity: 0.7 }}>≈ ${((credits?.balance || 0) / CREDITS_PER_DOLLAR).toFixed(2)}</div>
-              </div>
+                  {/* Mobile: Prima Credits — navigates to withdrawal */}
+                  <div
+                    onClick={() => window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'withdrawal' }))}
+                    style={{
+                      background: 'linear-gradient(135deg, #6C47FF, #9B59FF)', borderRadius: '14px',
+                      padding: '14px', color: '#fff', cursor: 'pointer',
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                    }}>
+                    <div>
+                      <div style={{ fontSize: '9px', opacity: 0.8, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Prima Credits</div>
+                      <div style={{ fontSize: '20px', fontWeight: '800', marginBottom: '2px' }}>{credits?.balance?.toFixed(0) || 0}</div>
+                      <div style={{ fontSize: '10px', opacity: 0.7 }}>≈ ${((credits?.balance || 0) / CREDITS_PER_DOLLAR).toFixed(2)}</div>
+                    </div>
+                    <div style={{ fontSize: '12px', fontWeight: '700', opacity: 0.85 }}>Withdraw →</div>
+                  </div>
 
-              <div onClick={() => window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'commission' }))} style={{
-                background: hasUnpaidCommissions ? '#FFE8EE' : '#DFFDF4',
-                border: `1.5px solid ${hasUnpaidCommissions ? '#FF99B3' : '#7EECD2'}`,
-                borderRadius: '16px', padding: '14px', cursor: 'pointer'
-              }}>
-                <div style={{ fontSize: '9px', color: hasUnpaidCommissions ? '#FF3366' : '#00C48C', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>
-                  Commission
-                </div>
-                {hasUnpaidCommissions ? (
-                  <>
-                    <div style={{ fontSize: '18px', fontWeight: '800', color: '#FF3366' }}>${totalOwed.toFixed(2)}</div>
-                    <div style={{ fontSize: '10px', color: '#FF3366', opacity: 0.8 }}>{pendingCommissions.length} pending — pay now →</div>
-                  </>
-                ) : (
-                  <div style={{ fontSize: '13px', fontWeight: '700', color: '#00C48C' }}>✓ All clear</div>
-                )}
-              </div>
+                  {/* Mobile: Level progress card — shown here, hidden in main content */}
+                  <div style={{
+                    background: currentLevel.bg, border: `1.5px solid ${currentLevel.border}`,
+                    borderRadius: '20px', padding: '20px 16px',
+                    display: 'flex', gap: '16px', alignItems: 'stretch'
+                  }}>
+                    <div style={{
+                      flex: 1, display: 'flex', flexDirection: 'column',
+                      alignItems: 'center', justifyContent: 'center',
+                      borderRight: `1.5px solid ${currentLevel.border}`,
+                      paddingRight: '16px', gap: '8px'
+                    }}>
+                      <ProfileToneIcon name={currentLevel.icon} tone={currentLevel.tone} size={56} />
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: '10px', color: currentLevel.color, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '3px' }}>Current Level</div>
+                        <div style={{ fontSize: '18px', fontWeight: '800', color: '#14123A' }}>{currentLevel.label}</div>
+                      </div>
+                      <button
+                        onClick={e => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'stats' })) }}
+                        style={{
+                          background: currentLevel.tone, border: 'none', borderRadius: '8px',
+                          padding: '7px 14px', fontSize: '11px', fontWeight: '700',
+                          color: '#fff', cursor: 'pointer', fontFamily: 'inherit'
+                        }}>Stats →</button>
+                    </div>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '10px' }}>
+                      {nextLevelItem ? (
+                        <>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ fontSize: '12px', color: '#8B8FAF', fontWeight: '600' }}>Next:</span>
+                            <ProfileToneIcon name={nextLevelItem.icon} tone={nextLevelItem.tone} size={28} />
+                            <span style={{ fontSize: '14px', fontWeight: '800', color: '#14123A' }}>{nextLevelItem.label}</span>
+                          </div>
+                          <ProgressBar value={levelProgress} max={100} color={currentLevel.color} bg="rgba(255,255,255,0.6)" height={9} />
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ fontSize: '12px', fontWeight: '600', color: '#8B8FAF' }}>
+                              {nextLevelItem.min - gigsCompleted > 0 ? `${nextLevelItem.min - gigsCompleted} gigs to go` : 'Ready!'}
+                            </div>
+                            <div style={{ fontSize: '15px', fontWeight: '800', color: currentLevel.color }}>{levelProgress}%</div>
+                          </div>
+                        </>
+                      ) : (
+                        <div style={{ textAlign: 'center' }}>
+                          <ProfileToneIcon name="rating" tone="linear-gradient(135deg,#FFB800,#FF6B2B)" size={44} />
+                          <div style={{ fontSize: '13px', color: currentLevel.color, fontWeight: '700', marginTop: '6px' }}>Max level!</div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Desktop: stacked full-width */}
+                  <div style={{
+                    background: 'linear-gradient(135deg, #00C48C, #00A878)', borderRadius: '16px',
+                    padding: '14px', color: '#fff'
+                  }}>
+                    <div style={{ fontSize: '9px', opacity: 0.8, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Wallet</div>
+                    <div style={{ fontSize: '20px', fontWeight: '800', marginBottom: '8px' }}>
+                      {profile?.wallet_currency || 'NGN'} {(profile?.wallet_balance || 0).toLocaleString()}
+                    </div>
+                    <button onClick={() => window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'wallet' }))} style={{
+                      background: 'rgba(255,255,255,0.25)', border: '1px solid rgba(255,255,255,0.4)',
+                      borderRadius: '8px', padding: '6px 12px', fontSize: '11px', fontWeight: '700',
+                      color: '#fff', cursor: 'pointer', fontFamily: 'inherit', width: '100%'
+                    }}>Open Wallet</button>
+                  </div>
+
+                  <div
+                    onClick={() => window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'withdrawal' }))}
+                    style={{
+                      background: 'linear-gradient(135deg, #6C47FF, #9B59FF)', borderRadius: '16px',
+                      padding: '14px', color: '#fff', cursor: 'pointer',
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                    }}>
+                    <div>
+                      <div style={{ fontSize: '9px', opacity: 0.8, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Prima Credits</div>
+                      <div style={{ fontSize: '20px', fontWeight: '800', marginBottom: '2px' }}>{credits?.balance?.toFixed(0) || 0}</div>
+                      <div style={{ fontSize: '10px', opacity: 0.7 }}>≈ ${((credits?.balance || 0) / CREDITS_PER_DOLLAR).toFixed(2)}</div>
+                    </div>
+                    <div style={{ fontSize: '12px', fontWeight: '700', opacity: 0.85 }}>Withdraw →</div>
+                  </div>
+
+                  <div onClick={() => window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'commission' }))} style={{
+                    background: hasUnpaidCommissions ? '#FFE8EE' : '#DFFDF4',
+                    border: `1.5px solid ${hasUnpaidCommissions ? '#FF99B3' : '#7EECD2'}`,
+                    borderRadius: '16px', padding: '14px', cursor: 'pointer'
+                  }}>
+                    <div style={{ fontSize: '9px', color: hasUnpaidCommissions ? '#FF3366' : '#00C48C', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>
+                      Commission
+                    </div>
+                    {hasUnpaidCommissions ? (
+                      <>
+                        <div style={{ fontSize: '18px', fontWeight: '800', color: '#FF3366' }}>${totalOwed.toFixed(2)}</div>
+                        <div style={{ fontSize: '10px', color: '#FF3366', opacity: 0.8 }}>{pendingCommissions.length} pending — pay now →</div>
+                      </>
+                    ) : (
+                      <div style={{ fontSize: '13px', fontWeight: '700', color: '#00C48C' }}>✓ All clear</div>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           )}
 
@@ -831,8 +943,8 @@ export default function ProfileScreen({ onLogout }) {
             <StatCard icon={<ProfileToneIcon name="open" tone="linear-gradient(135deg, #FF6B2B, #FF4DCF)" size={30} />} label="Response" value={profile?.response_time || '< 1h'} color="#FF6B2B" bg="#FFF0E8" />
           </div>}
 
-          {/* LEVEL PROGRESS CARD */}
-          <div style={{
+          {/* LEVEL PROGRESS CARD — desktop only; on mobile it appears in the sidebar after credits */}
+          {!isMobile && <div style={{
             background: currentLevel.bg, border: `1.5px solid ${currentLevel.border}`,
             borderRadius: '20px', padding: '22px 20px',
             display: 'flex', gap: '20px', alignItems: 'stretch'
@@ -886,12 +998,13 @@ export default function ProfileScreen({ onLogout }) {
                 </div>
               )}
             </div>
-          </div>
+          </div>}
 
           {/* PROGRESS OVERVIEW — compact 2-col */}
           <div style={{
             background: '#fff', border: '1.5px solid #E2E0FF',
-            borderRadius: '16px', padding: '14px 16px'
+            borderRadius: '16px', padding: '14px 16px',
+            maxWidth: isMobile ? '100%' : '50%'
           }}>
             <div style={{ fontSize: '11px', fontWeight: '800', color: '#14123A', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.6px' }}>Progress</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
