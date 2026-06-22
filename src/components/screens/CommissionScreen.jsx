@@ -5,6 +5,7 @@ import { useCredits } from '../../context/CreditsContext'
 import { getCurrency } from '../../data/currencies'
 import EmptyState from '../EmptyState'
 import { CREDITS_PER_DOLLAR } from '../../utils/payments'
+import { convertToUSD, dollarsToCredits } from '../../utils/payments'
 import { startFincraWalletFunding, verifyFincraPayment } from '../../utils/fincra'
 
 
@@ -20,22 +21,23 @@ export default function CommissionScreen() {
   const [selectedCommission] = useState(null)
 
   useEffect(() => {
-  const handleReturn = async (e) => {
-    const reference = e.detail?.reference
-    if (!reference) return
-    try {
-      await verifyFincraPayment(supabase, reference)
-      await fetchCommissions()
-    } catch (err) {
-      console.error('Verify commission payment error:', err)
+    const handleReturn = async (e) => {
+      const reference = e.detail?.reference
+      if (!reference) return
+      try {
+        await verifyFincraPayment(supabase, reference)
+        await fetchCommissions()
+      } catch (err) {
+        console.error('Verify commission payment error:', err)
+      }
     }
-  }
-  window.addEventListener('walletPaymentReturn', handleReturn)
-  return () => window.removeEventListener('walletPaymentReturn', handleReturn)
-}, [fetchCommissions])
+    window.addEventListener('walletPaymentReturn', handleReturn)
+    return () => window.removeEventListener('walletPaymentReturn', handleReturn)
+  }, [fetchCommissions])
 
   const handlePayWithCredits = async (commission) => {
-    const creditsNeeded = commission.commission_amount * CREDITS_PER_DOLLAR
+    const usdValue = convertToUSD(commission.commission_amount, commission.currency || 'NGN')
+    const creditsNeeded = dollarsToCredits(usdValue)
     const currentBalance = credits?.balance || 0
 
     if (currentBalance < creditsNeeded) {
@@ -205,7 +207,8 @@ export default function CommissionScreen() {
           {pendingCommissions.map((commission, i) => {
             const colors = getStatusColor(commission)
             const days = daysUntilDue(commission.due_date)
-            const creditsNeeded = commission.commission_amount * CREDITS_PER_DOLLAR
+            const usdValue = convertToUSD(commission.commission_amount, commission.currency || 'NGN')
+            const creditsNeeded = dollarsToCredits(usdValue)
             const canPayWithCredits = (credits?.balance || 0) >= creditsNeeded
 
             return (
@@ -245,45 +248,45 @@ export default function CommissionScreen() {
                     {days < 0
                       ? `${Math.abs(days)}d overdue`
                       : days === 0 ? 'Due today'
-                      : `${days}d left`}
+                        : `${days}d left`}
                   </div>
                 </div>
 
                 {/* Payment buttons */}
                 <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
                   <button
-  onClick={async () => {
-  setPaying(commission.id)
-  try {
-    const response = await startFincraWalletFunding(supabase, {
-      amount: commission.commission_amount,
-      currency: commission.currency || 'NGN',
-      user_id: user.id,
-      email: user?.email || '',
-      name: profile?.full_name || 'Prima User',
-    })
-    if (!response?.checkoutUrl) throw new Error('Fincra did not return a checkout URL.')
+                    onClick={async () => {
+                      setPaying(commission.id)
+                      try {
+                        const response = await startFincraWalletFunding(supabase, {
+                          amount: commission.commission_amount,
+                          currency: commission.currency || 'NGN',
+                          user_id: user.id,
+                          email: user?.email || '',
+                          name: profile?.full_name || 'Prima User',
+                        })
+                        if (!response?.checkoutUrl) throw new Error('Fincra did not return a checkout URL.')
 
-    // Link this exact transaction to this exact commission row —
-    // no ambiguity even if amounts happen to match across commissions
-    const { error: tagError } = await supabase
-      .from('wallet_transactions')
-      .update({
-        description: `Commission payment for gig`,
-        related_commission_id: commission.id,
-      })
-      .eq('fincra_reference', response.reference)
+                        // Link this exact transaction to this exact commission row —
+                        // no ambiguity even if amounts happen to match across commissions
+                        const { error: tagError } = await supabase
+                          .from('wallet_transactions')
+                          .update({
+                            description: `Commission payment for gig`,
+                            related_commission_id: commission.id,
+                          })
+                          .eq('fincra_reference', response.reference)
 
-    if (tagError) {
-      console.error('Failed to tag commission transaction:', tagError)
-    }
+                        if (tagError) {
+                          console.error('Failed to tag commission transaction:', tagError)
+                        }
 
-    window.location.href = response.checkoutUrl
-  } catch (e) {
-    alert(e.message || 'Could not start Fincra payment.')
-    setPaying(null)
-  }
-}}
+                        window.location.href = response.checkoutUrl
+                      } catch (e) {
+                        alert(e.message || 'Could not start Fincra payment.')
+                        setPaying(null)
+                      }
+                    }}
                     disabled={paying === commission.id}
                     style={{
                       flex: 2,
