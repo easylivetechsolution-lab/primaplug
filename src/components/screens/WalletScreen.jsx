@@ -89,10 +89,11 @@ export default function WalletScreen() {
 
   useEffect(() => {
     if (!user) return
-    const timer = setTimeout(() => {
-      fetchTransactions()
-      autoVerifyPending()
-    }, 0)
+    fetchTransactions()
+    autoVerifyPending()
+
+    // Poll every 10s — autoVerifyPending exits early when no pending txns exist
+    const pollInterval = setInterval(autoVerifyPending, 10000)
 
     const channel = supabase
       .channel('wallet-' + user.id)
@@ -108,26 +109,38 @@ export default function WalletScreen() {
       .subscribe()
 
     return () => {
-      clearTimeout(timer)
+      clearInterval(pollInterval)
       supabase.removeChannel(channel)
     }
   }, [fetchTransactions, autoVerifyPending, refreshProfile, user])
 
   useEffect(() => {
+    let cancelled = false
     const handleReturn = async (e) => {
       const reference = e.detail?.reference
       if (!reference) return
-      try {
-        await verifyFincraPayment(supabase, reference)
-        refreshProfile()
-        fetchTransactions()
-      } catch (err) {
-        console.error('Verify on return error:', err)
+      // Retry up to 6 times with 5s gaps — Fincra may lag a few seconds after redirect
+      for (let attempt = 0; attempt < 6; attempt++) {
+        if (cancelled) break
+        try {
+          const result = await verifyFincraPayment(supabase, reference)
+          if (!cancelled) { refreshProfile(); fetchTransactions() }
+          if (result?.status === 'completed') break
+        } catch (err) {
+          console.error('Verify on return attempt', attempt + 1, err)
+        }
+        if (attempt < 5 && !cancelled) {
+          await new Promise(r => setTimeout(r, 5000))
+        }
       }
+      if (!cancelled) { refreshProfile(); fetchTransactions() }
     }
 
     window.addEventListener('walletPaymentReturn', handleReturn)
-    return () => window.removeEventListener('walletPaymentReturn', handleReturn)
+    return () => {
+      cancelled = true
+      window.removeEventListener('walletPaymentReturn', handleReturn)
+    }
   }, [user])
 
   const fundHistory = transactions.filter(tx => FUND_TYPES.includes(tx.type))
@@ -164,12 +177,18 @@ export default function WalletScreen() {
     setLoading(false)
   }
 
+  const CURRENCY_TO_COUNTRY = {
+    NGN: 'NG', GHS: 'GH', KES: 'KE', ZAR: 'ZA',
+    USD: 'US', EUR: 'DE', GBP: 'GB'
+  }
+
   const openWithdraw = async () => {
     setShowWithdraw(true)
     setWithdrawError('')
     if (banks.length === 0) {
       try {
-        const data = await listFincraBanks(supabase, 'NG')
+        const country = CURRENCY_TO_COUNTRY[currencyCode] || 'NG'
+        const data = await listFincraBanks(supabase, country)
         const list = Array.isArray(data?.data) ? data.data : (data?.data?.banks || data?.banks || [])
         setBanks(list)
       } catch (e) {
@@ -181,7 +200,7 @@ export default function WalletScreen() {
   const verifyWithdrawAccount = async () => {
     setWithdrawError('')
     setVerifiedName('')
-    if (!accountNumber || accountNumber.length < 10 || !bankCode) {
+    if (!accountNumber || accountNumber.length < 4 || !bankCode) {
       setWithdrawError('Enter a valid account number and select a bank')
       return
     }
@@ -620,7 +639,7 @@ export default function WalletScreen() {
                 value={accountNumber}
                 onChange={e => { setAccountNumber(e.target.value); setVerifiedName('') }}
                 placeholder="0123456789"
-                maxLength={10}
+                maxLength={34}
                 style={{ ...inputStyle, flex: 1 }}
               />
               <button

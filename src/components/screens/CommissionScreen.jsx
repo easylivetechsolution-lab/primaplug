@@ -18,7 +18,7 @@ export default function CommissionScreen() {
   } = useCredits()
   const [paying, setPaying] = useState(null)
   const [showPayment, setShowPayment] = useState(false)
-  const [selectedCommission] = useState(null)
+  const [selectedCommission, setSelectedCommission] = useState(null)
 
   useEffect(() => {
     const handleReturn = async (e) => {
@@ -365,6 +365,20 @@ export default function CommissionScreen() {
                     Need {creditsNeeded} credits to pay with credits
                   </div>
                 )}
+
+                <button
+                  onClick={() => { setSelectedCommission(commission); setShowPayment(true) }}
+                  style={{
+                    width: '100%', marginTop: '6px',
+                    background: 'transparent',
+                    border: '1.5px solid #E2E0FF',
+                    borderRadius: '10px', padding: '10px',
+                    fontSize: '12px', fontWeight: '600',
+                    color: '#8B8FAF', cursor: 'pointer',
+                    fontFamily: 'inherit'
+                  }}>
+                  🏦 Pay via Bank Transfer
+                </button>
               </div>
             )
           })}

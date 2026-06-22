@@ -31,11 +31,17 @@ export default function WithdrawalScreen() {
     loadBanks()
   }, [])
 
+  const CURRENCY_TO_COUNTRY = {
+    NGN: 'NG', GHS: 'GH', KES: 'KE', ZAR: 'ZA',
+    USD: 'US', EUR: 'DE', GBP: 'GB'
+  }
+
   const loadBanks = async () => {
     try {
-      const data = await listFincraBanks(supabase, 'NG')
-const list = Array.isArray(data?.data) ? data.data : (data?.data?.banks || data?.banks || [])
-setBanks(list)
+      const country = CURRENCY_TO_COUNTRY[profile?.wallet_currency || 'USD'] || 'NG'
+      const data = await listFincraBanks(supabase, country)
+      const list = Array.isArray(data?.data) ? data.data : (data?.data?.banks || data?.banks || [])
+      setBanks(list)
     } catch (e) {
       console.error('Load banks error:', e)
     }
@@ -44,7 +50,7 @@ setBanks(list)
   const verifyAccount = async () => {
     setError('')
     setVerifiedName('')
-    if (!accountNumber || accountNumber.length < 10 || !bankCode) {
+    if (!accountNumber || accountNumber.length < 4 || !bankCode) {
       setError('Enter a valid account number and select a bank')
       return
     }

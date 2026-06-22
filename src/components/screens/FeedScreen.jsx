@@ -41,18 +41,9 @@ export default function FeedScreen() {
   const [sharingGig, setSharingGig] = useState(null)
   const [reportingGig, setReportingGig] = useState(null)
 
-  const cleanExpiredGigs = async () => {
-    await supabase
-      .from('gigs')
-      .delete()
-      .lt('expires_at', new Date().toISOString())
-      .eq('status', 'open')
-  }
-
   useEffect(() => {
     fetchGigs()
     fetchSavedIds()
-    cleanExpiredGigs()
     const channel = supabase
       .channel('feed-channel')
       .on('postgres_changes', {
@@ -98,6 +89,7 @@ export default function FeedScreen() {
         )
       `)
       .eq('status', 'open')
+      .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
       .order('created_at', { ascending: false })
 
     if (error) {

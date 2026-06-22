@@ -182,14 +182,15 @@ export default function MyGigsScreen() {
 
       if (acceptError) throw acceptError
 
-      // Update gig with worker_id
+      // Update gig with worker_id (also lock escrow_amount for wallet gigs)
       const { error: gigError } = await supabase
         .from('gigs')
         .update({
           status: 'in_progress',
           worker_id: application.worker_id,
           worker_name: application.users?.full_name,
-          accepted_at: new Date().toISOString()
+          accepted_at: new Date().toISOString(),
+          ...(isWalletGig ? { escrow_amount: Number(gig.pay_min) } : {})
         })
         .eq('id', gig.id)
 

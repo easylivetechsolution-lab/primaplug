@@ -76,6 +76,7 @@ export default function ChatScreen() {
   const typingTimeoutRef = useRef()
   const channelRef = useRef()
   const presenceChannelRef = useRef()
+  const longPressTimerRef = useRef()
 
   useEffect(() => {
     fetchConversations()
@@ -220,7 +221,9 @@ export default function ChatScreen() {
         .upload(path, file, { upsert: false })
       if (upErr) throw upErr
       const { data: urlData } = supabase.storage.from('chat-attachments').getPublicUrl(path)
-      await sendMessage(urlData.publicUrl)
+      // Strip any auth tokens that may appear as query params on the storage URL
+      const cleanUrl = urlData.publicUrl.split('?')[0]
+      await sendMessage(cleanUrl)
     } catch (err) {
       alert('Upload failed: ' + err.message)
     }
@@ -282,17 +285,42 @@ export default function ChatScreen() {
     const text = content.trim()
     setNewMessage('')
     setShowQuickReplies(false)
+
+    // Show the message immediately before the server responds
+    const tempId = 'temp-' + Date.now()
+    const optimisticMsg = {
+      id: tempId,
+      conversation_id: activeConvo.id,
+      sender_id: user.id,
+      content: text,
+      type: 'text',
+      created_at: new Date().toISOString(),
+      read: false,
+      reactions: {},
+      reply_to_id: replyingTo?.id || null,
+      reply_to_content: replyingTo?.content || null,
+      reply_to_sender_name: replyingTo?.senderName || null,
+    }
+    setMessages(prev => [...prev, optimisticMsg])
+    const pendingReply = replyingTo
+    setReplyingTo(null)
+
     try {
-      const result = await sendChatMessage({ user, conversation: activeConvo, content: text, replyTo: replyingTo })
-      setReplyingTo(null)
+      const result = await sendChatMessage({ user, conversation: activeConvo, content: text, replyTo: pendingReply })
       if (result?.conversation?.id && !activeConvo.id) setActiveConvo(result.conversation)
       if (result?.message) {
-        setMessages(prev =>
-          prev.find(m => m.id === result.message.id) ? prev : [...prev, result.message]
-        )
+        // Swap the optimistic placeholder with the real message from the server
+        setMessages(prev => {
+          const without = prev.filter(m => m.id !== tempId)
+          return without.find(m => m.id === result.message.id) ? without : [...without, result.message]
+        })
       }
-      await fetchConversations()
+      fetchConversations()
     } catch (e) {
+      // Roll back the optimistic message and restore the input text
+      setMessages(prev => prev.filter(m => m.id !== tempId))
+      setNewMessage(text)
+      setReplyingTo(pendingReply)
       alert('Could not send message: ' + e.message)
     } finally {
       setSending(false)
@@ -520,6 +548,22 @@ export default function ChatScreen() {
 
   const isMobile = window.innerWidth < 768
 
+  const startMsgLongPress = (msgId) => {
+    longPressTimerRef.current = setTimeout(() => {
+      if (navigator.vibrate) navigator.vibrate(30)
+      setMessageMenu(msgId)
+      setReactingTo(null)
+    }, 800)
+  }
+  const cancelMsgLongPress = () => clearTimeout(longPressTimerRef.current)
+
+  const startConvoLongPress = (convoId) => {
+    longPressTimerRef.current = setTimeout(() => {
+      if (navigator.vibrate) navigator.vibrate(30)
+      setConversationMenu(convoId)
+    }, 800)
+  }
+
   return (
     <div style={{
       display: 'flex', height: '100%',
@@ -615,7 +659,10 @@ export default function ChatScreen() {
                   onMouseLeave={e => {
                     if (!isActive) e.currentTarget.style.background = '#fff'
                     setHoveredConvo(null)
-                  }}>
+                  }}
+                  onTouchStart={() => startConvoLongPress(convo.id)}
+                  onTouchEnd={cancelMsgLongPress}
+                  onTouchMove={cancelMsgLongPress}>
 
                   {/* Avatar */}
                   <div style={{ position: 'relative', flexShrink: 0 }}>
@@ -695,7 +742,7 @@ export default function ChatScreen() {
                         overflow: 'hidden', textOverflow: 'ellipsis',
                         whiteSpace: 'nowrap', flex: 1
                       }}>
-                        {convo.last_message || 'No messages yet'}
+                        {isImageUrl(convo.last_message) ? '📷 Photo' : (convo.last_message || 'No messages yet')}
                       </div>
                       {unread > 0 && (
                         <div style={{
@@ -1022,6 +1069,9 @@ export default function ChatScreen() {
                         <div
                           onMouseEnter={() => setHoveredMsg(msg.id)}
                           onMouseLeave={() => setHoveredMsg(null)}
+                          onTouchStart={() => startMsgLongPress(msg.id)}
+                          onTouchEnd={cancelMsgLongPress}
+                          onTouchMove={cancelMsgLongPress}
                           style={{
                             display: 'flex',
                             justifyContent: isMe ? 'flex-end' : 'flex-start',

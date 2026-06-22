@@ -116,6 +116,18 @@ export default function Layout() {
     }
   }, [profile, loading, user])
 
+  // Broadcast presence as soon as the user is on the dashboard — not just when chat is open
+  useEffect(() => {
+    if (!user?.id) return
+    const presenceCh = supabase.channel('prima-presence')
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await presenceCh.track({ user_id: user.id })
+        }
+      })
+    return () => { supabase.removeChannel(presenceCh) }
+  }, [user?.id])
+
   // Mark the current dashboard history entry without adding an extra Back step.
   useEffect(() => {
     const currentScreen = window.history.state?.screen || 'map'
@@ -194,10 +206,10 @@ useEffect(() => {
 
   const mobileMoreItems = [
     { key: 'discover', icon: 'discover', label: 'Discover', action: () => navigateTo('discover') },
-    { key: 'referral', emoji: '🎁', label: 'Refer & Earn', action: () => navigateTo('referral') },
-    { key: 'wallet', emoji: '💳', label: 'Wallet', action: () => navigateTo('wallet') },
-    { key: 'commission', emoji: '💰', label: 'Commission', action: () => navigateTo('commission') },
-    { key: 'withdrawal', emoji: '💸', label: 'Withdraw Credits', action: () => navigateTo('withdrawal') },
+    { key: 'referral', icon: 'refer', label: 'Refer & Earn', action: () => navigateTo('referral') },
+    { key: 'wallet', icon: 'wallet', label: 'Wallet', action: () => navigateTo('wallet') },
+    { key: 'commission', icon: 'owed', label: 'Commission', action: () => navigateTo('commission') },
+    { key: 'withdrawal', icon: 'withdraw', label: 'Withdraw Credits', action: () => navigateTo('withdrawal') },
     { key: 'saved', icon: 'saved', label: 'Saved Gigs', action: () => navigateTo('saved') },
     { key: 'stats', icon: 'stats', label: 'My Stats', action: () => navigateTo('stats') },
     { key: 'settings', icon: 'settings', label: 'Settings', action: () => navigateTo('settings') },
@@ -422,13 +434,13 @@ useEffect(() => {
             >
                   {item.emoji ? (
                 <span style={{
-                  width: 34, height: 34, borderRadius: '10px',
+                  width: 38, height: 38, borderRadius: '10px',
                   background: screen === item.key ? '#EEE9FF' : '#F5F4FF',
                   display: 'flex', alignItems: 'center',
-                  justifyContent: 'center', fontSize: '18px', flexShrink: 0
+                  justifyContent: 'center', fontSize: '20px', flexShrink: 0
                 }}>{item.emoji}</span>
               ) : (
-                <BrandIcon name={item.icon} size={34} active={screen === item.key || item.key === 'search'} />
+                <BrandIcon name={item.icon} size={38} active={screen === item.key || item.key === 'search'} />
               )}
               <span style={{
                 fontSize: '13px',
@@ -480,7 +492,7 @@ useEffect(() => {
               e.currentTarget.style.background = 'transparent'
               e.currentTarget.style.borderColor = 'transparent'
             }}>
-            <BrandIcon name="search" size={32} />
+            <BrandIcon name="search" size={36} />
             <span style={{ fontSize: '9px', fontWeight: '600', color: '#A09DC8' }}>Search</span>
           </button>
 
@@ -508,7 +520,7 @@ useEffect(() => {
                 e.currentTarget.style.borderColor = 'transparent'
               }
             }}>
-            <BrandIcon name="saved" size={32} active={screen === 'saved'} />
+            <BrandIcon name="saved" size={36} active={screen === 'saved'} />
             <span style={{ fontSize: '9px', fontWeight: '600', color: screen === 'saved' ? '#6C47FF' : '#A09DC8' }}>Saved</span>
           </button>
 
@@ -536,7 +548,7 @@ useEffect(() => {
                 e.currentTarget.style.borderColor = 'transparent'
               }
             }}>
-            <BrandIcon name="stats" size={32} active={screen === 'stats'} />
+            <BrandIcon name="stats" size={36} active={screen === 'stats'} />
             <span style={{ fontSize: '9px', fontWeight: '600', color: screen === 'stats' ? '#6C47FF' : '#A09DC8' }}>Stats</span>
           </button>
 
@@ -545,7 +557,7 @@ useEffect(() => {
             onClick={() => navigateTo('referral')}
             title="Refer & Earn"
             style={{
-              width: '48px', height: '48px',
+              width: '56px', height: '58px',
               borderRadius: '12px',
               background: screen === 'referral' ? '#EEE9FF' : 'transparent',
               border: `1.5px solid ${screen === 'referral' ? '#B8A5FF' : 'transparent'}`,
@@ -564,7 +576,7 @@ useEffect(() => {
                 e.currentTarget.style.borderColor = 'transparent'
               }
             }}>
-            <span style={{ fontSize: '20px' }}>🎁</span>
+            <BrandIcon name="refer" size={36} active={screen === 'referral'} />
             <span style={{
               fontSize: '9px', fontWeight: '600',
               color: screen === 'referral' ? '#6C47FF' : '#A09DC8'
@@ -572,106 +584,105 @@ useEffect(() => {
           </button>
 
           {/* Wallet */}
-<button
-  onClick={() => navigateTo('wallet')}
-  title="Wallet"
-  style={{
-    width: '48px', height: '48px',
-    borderRadius: '12px',
-    background: screen === 'wallet' ? '#EEE9FF' : 'transparent',
-    border: `1.5px solid ${screen === 'wallet' ? '#B8A5FF' : 'transparent'}`,
-    display: 'flex', flexDirection: 'column',
-    alignItems: 'center', justifyContent: 'center',
-    gap: '3px', cursor: 'pointer',
-    transition: 'all 0.15s', fontFamily: 'inherit'
-  }}
-  onMouseEnter={e => {
-    e.currentTarget.style.background = '#EEE9FF'
-    e.currentTarget.style.borderColor = '#B8A5FF'
-  }}
-  onMouseLeave={e => {
-    if (screen !== 'wallet') {
-      e.currentTarget.style.background = 'transparent'
-      e.currentTarget.style.borderColor = 'transparent'
-    }
-  }}>
-  <span style={{ fontSize: '20px' }}>💳</span>
-  <span style={{
-    fontSize: '9px', fontWeight: '600',
-    color: screen === 'wallet' ? '#6C47FF' : '#A09DC8'
-  }}>Wallet</span>
-</button>
+          <button
+            onClick={() => navigateTo('wallet')}
+            title="Wallet"
+            style={{
+              width: '56px', height: '58px',
+              borderRadius: '12px',
+              background: screen === 'wallet' ? '#EEE9FF' : 'transparent',
+              border: `1.5px solid ${screen === 'wallet' ? '#B8A5FF' : 'transparent'}`,
+              display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center',
+              gap: '3px', cursor: 'pointer',
+              transition: 'all 0.15s', fontFamily: 'inherit'
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = '#EEE9FF'
+              e.currentTarget.style.borderColor = '#B8A5FF'
+            }}
+            onMouseLeave={e => {
+              if (screen !== 'wallet') {
+                e.currentTarget.style.background = 'transparent'
+                e.currentTarget.style.borderColor = 'transparent'
+              }
+            }}>
+            <BrandIcon name="wallet" size={36} active={screen === 'wallet'} />
+            <span style={{
+              fontSize: '9px', fontWeight: '600',
+              color: screen === 'wallet' ? '#6C47FF' : '#A09DC8'
+            }}>Wallet</span>
+          </button>
 
-{/* Withdraw Credits */}
-<button
-  onClick={() => navigateTo('withdrawal')}
-  title="Withdraw Credits"
-  style={{
-    width: '48px', height: '48px',
-    borderRadius: '12px',
-    background: screen === 'withdrawal' ? '#EEE9FF' : 'transparent',
-    border: `1.5px solid ${screen === 'withdrawal' ? '#B8A5FF' : 'transparent'}`,
-    display: 'flex', flexDirection: 'column',
-    alignItems: 'center', justifyContent: 'center',
-    gap: '3px', cursor: 'pointer',
-    transition: 'all 0.15s', fontFamily: 'inherit'
-  }}
-  onMouseEnter={e => {
-    e.currentTarget.style.background = '#EEE9FF'
-    e.currentTarget.style.borderColor = '#B8A5FF'
-  }}
-  onMouseLeave={e => {
-    if (screen !== 'withdrawal') {
-      e.currentTarget.style.background = 'transparent'
-      e.currentTarget.style.borderColor = 'transparent'
-    }
-  }}>
-  <span style={{ fontSize: '20px' }}>💸</span>
-  <span style={{
-    fontSize: '9px', fontWeight: '600',
-    color: screen === 'withdrawal' ? '#6C47FF' : '#A09DC8'
-  }}>Withdraw</span>
-</button>
+          {/* Withdraw Credits */}
+          <button
+            onClick={() => navigateTo('withdrawal')}
+            title="Withdraw Credits"
+            style={{
+              width: '56px', height: '58px',
+              borderRadius: '12px',
+              background: screen === 'withdrawal' ? '#EEE9FF' : 'transparent',
+              border: `1.5px solid ${screen === 'withdrawal' ? '#B8A5FF' : 'transparent'}`,
+              display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center',
+              gap: '3px', cursor: 'pointer',
+              transition: 'all 0.15s', fontFamily: 'inherit'
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = '#EEE9FF'
+              e.currentTarget.style.borderColor = '#B8A5FF'
+            }}
+            onMouseLeave={e => {
+              if (screen !== 'withdrawal') {
+                e.currentTarget.style.background = 'transparent'
+                e.currentTarget.style.borderColor = 'transparent'
+              }
+            }}>
+            <BrandIcon name="withdraw" size={36} active={screen === 'withdrawal'} />
+            <span style={{
+              fontSize: '9px', fontWeight: '600',
+              color: screen === 'withdrawal' ? '#6C47FF' : '#A09DC8'
+            }}>Withdraw</span>
+          </button>
 
-
-{/* Commission */}
-<button
-  onClick={() => navigateTo('commission')}
-  title="Commission"
-  style={{
-    width: '48px', height: '48px',
-    borderRadius: '12px',
-    background: screen === 'commission' ? '#EEE9FF' : 'transparent',
-    border: `1.5px solid ${screen === 'commission' ? '#B8A5FF' : 'transparent'}`,
-    display: 'flex', flexDirection: 'column',
-    alignItems: 'center', justifyContent: 'center',
-    gap: '3px', cursor: 'pointer',
-    transition: 'all 0.15s', fontFamily: 'inherit',
-    position: 'relative'
-  }}
-  onMouseEnter={e => {
-    e.currentTarget.style.background = '#EEE9FF'
-    e.currentTarget.style.borderColor = '#B8A5FF'
-  }}
-  onMouseLeave={e => {
-    if (screen !== 'commission') {
-      e.currentTarget.style.background = 'transparent'
-      e.currentTarget.style.borderColor = 'transparent'
-    }
-  }}>
-  <span style={{ fontSize: '20px' }}>💰</span>
-  <span style={{
-    fontSize: '9px', fontWeight: '600',
-    color: screen === 'commission' ? '#6C47FF' : '#A09DC8'
-  }}>Owed</span>
-  {hasUnpaidCommissions && (
-    <span style={{
-      position: 'absolute', top: '4px', right: '6px',
-      width: '7px', height: '7px', borderRadius: '50%',
-      background: '#FF3366', border: '1.5px solid #fff'
-    }} />
-  )}
-</button>
+          {/* Commission / Owed */}
+          <button
+            onClick={() => navigateTo('commission')}
+            title="Commission Owed"
+            style={{
+              width: '56px', height: '58px',
+              borderRadius: '12px',
+              background: screen === 'commission' ? '#EEE9FF' : 'transparent',
+              border: `1.5px solid ${screen === 'commission' ? '#B8A5FF' : 'transparent'}`,
+              display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center',
+              gap: '3px', cursor: 'pointer',
+              transition: 'all 0.15s', fontFamily: 'inherit',
+              position: 'relative'
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = '#EEE9FF'
+              e.currentTarget.style.borderColor = '#B8A5FF'
+            }}
+            onMouseLeave={e => {
+              if (screen !== 'commission') {
+                e.currentTarget.style.background = 'transparent'
+                e.currentTarget.style.borderColor = 'transparent'
+              }
+            }}>
+            <BrandIcon name="owed" size={36} active={screen === 'commission'} />
+            <span style={{
+              fontSize: '9px', fontWeight: '600',
+              color: screen === 'commission' ? '#6C47FF' : '#A09DC8'
+            }}>Owed</span>
+            {hasUnpaidCommissions && (
+              <span style={{
+                position: 'absolute', top: '4px', right: '6px',
+                width: '7px', height: '7px', borderRadius: '50%',
+                background: '#FF3366', border: '1.5px solid #fff'
+              }} />
+            )}
+          </button>
 
           {/* Divider */}
           <div style={{
@@ -703,7 +714,7 @@ useEffect(() => {
                 e.currentTarget.style.borderColor = 'transparent'
               }
             }}>
-            <BrandIcon name="settings" size={32} active={screen === 'settings'} />
+            <BrandIcon name="settings" size={36} active={screen === 'settings'} />
             <span style={{ fontSize: '9px', fontWeight: '600', color: screen === 'settings' ? '#6C47FF' : '#A09DC8' }}>Settings</span>
           </button>
 
@@ -890,14 +901,14 @@ useEffect(() => {
                 gap: '3px', cursor: 'pointer', fontFamily: 'inherit'
               }}>
               <div style={{
-                width: '48px', height: '40px', borderRadius: '12px',
+                width: '52px', height: '44px', borderRadius: '12px',
                 background: active ? '#EEE9FF' : 'transparent',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 transition: 'background 0.15s', position: 'relative'
               }}>
                 {item.emoji
-                  ? <span style={{ fontSize: active ? '26px' : '24px', lineHeight: '1', filter: active ? 'none' : 'grayscale(20%)' }}>{item.emoji}</span>
-                  : <BrandIcon name={item.icon} size={36} active={active} />
+                  ? <span style={{ fontSize: active ? '28px' : '26px', lineHeight: '1', filter: active ? 'none' : 'grayscale(20%)' }}>{item.emoji}</span>
+                  : <BrandIcon name={item.icon} size={40} active={active} />
                 }
                 {item.key === 'mygigs' && hasUnpaidCommissions && (
                   <span style={{

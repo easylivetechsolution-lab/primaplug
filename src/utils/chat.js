@@ -229,7 +229,8 @@ export const sendMessage = async ({ user, conversation, content, replyTo = null,
   const senderName = sender?.full_name || user.email?.split('@')[0] || 'Someone'
   const snippet = text.length > 40 ? text.substring(0, 40) + '...' : text
 
-  await supabase.from('notifications').insert({
+  // Fire and forget — notification insert should not block message delivery
+  supabase.from('notifications').insert({
     user_id: otherUserId,
     title: `${senderName} sent you a message`,
     message: snippet,

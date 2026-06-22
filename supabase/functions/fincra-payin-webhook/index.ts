@@ -85,26 +85,49 @@ serve(async (req) => {
 
       console.log('Transaction lookup result:', JSON.stringify(txRow), 'error:', JSON.stringify(txFindError))
 
-      if (txRow) {
+      let resolvedTx = txRow
+
+      // Fallback: if no match by reference, look up by user_id from Fincra metadata
+      if (!resolvedTx && data?.metadata?.userId) {
+        console.log('Reference mismatch — trying fallback lookup via metadata.userId:', data.metadata.userId)
+        const { data: fallbackTx } = await supabase
+          .from('wallet_transactions')
+          .select('*')
+          .eq('user_id', data.metadata.userId)
+          .eq('status', 'pending')
+          .eq('type', 'fund_in')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+        resolvedTx = fallbackTx
+        console.log('Fallback tx:', JSON.stringify(resolvedTx))
+      }
+
+      if (resolvedTx) {
         const { data: userRow } = await supabase
           .from('users')
-          .select('wallet_balance')
-          .eq('id', txRow.user_id)
+          .select('wallet_balance, wallet_currency')
+          .eq('id', resolvedTx.user_id)
           .single()
 
-        const newBalance = Number(userRow?.wallet_balance || 0) + Number(txRow.amount)
+        const newBalance = Number(userRow?.wallet_balance || 0) + Number(resolvedTx.amount)
         console.log('Updating wallet balance to:', newBalance)
 
-        await supabase.from('users').update({ wallet_balance: newBalance }).eq('id', txRow.user_id)
+        const updatePayload: Record<string, unknown> = { wallet_balance: newBalance }
+        if (!userRow?.wallet_currency && resolvedTx.currency) {
+          updatePayload.wallet_currency = resolvedTx.currency
+        }
+
+        await supabase.from('users').update(updatePayload).eq('id', resolvedTx.user_id)
         await supabase.from('wallet_transactions').update({
           status: 'completed', balance_after: newBalance
-        }).eq('id', txRow.id)
+        }).eq('id', resolvedTx.id)
         await supabase.from('fincra_webhook_events').update({ processed: true }).eq('fincra_reference', fincraRef)
 
         await supabase.from('notifications').insert({
-          user_id: txRow.user_id,
+          user_id: resolvedTx.user_id,
           title: '💰 Wallet Funded',
-          message: `Your wallet has been credited with ${txRow.currency} ${Number(txRow.amount).toLocaleString()}`,
+          message: `Your wallet has been credited with ${resolvedTx.currency} ${Number(resolvedTx.amount).toLocaleString()}`,
           type: 'wallet',
         })
 

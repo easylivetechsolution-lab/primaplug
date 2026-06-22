@@ -428,6 +428,8 @@ export default function ProfileScreen({ onLogout }) {
     { label: 'Reviews', value: `${reviewsCount}/${nextReviewTarget}`, current: reviewsCount, max: nextReviewTarget, color: 'linear-gradient(90deg,#FF4DCF,#9B59FF)' },
   ]
 
+  const isMobile = window.innerWidth < 768
+
   return (
     <div style={{
       padding: '24px 20px 100px',
@@ -435,6 +437,14 @@ export default function ProfileScreen({ onLogout }) {
       maxWidth: '1180px',
       margin: '0 auto'
     }}>
+      <style>{`
+        @media (max-width: 767px) {
+          .profile-stats-strip { display: none !important; }
+          .profile-logout-sidebar { display: none !important; }
+          .profile-dashboard-grid { grid-template-columns: 1fr !important; }
+          .profile-sidebar { position: static !important; }
+        }
+      `}</style>
 
       {/* EDIT MODAL */}
       {editing && (
@@ -809,7 +819,7 @@ export default function ProfileScreen({ onLogout }) {
             </div>
           )}
 
-          <button onClick={onLogout} style={{
+          <button className="profile-logout-sidebar" onClick={onLogout} style={{
             width: '100%', background: '#FFE8EE', border: '1.5px solid #FF99B3', borderRadius: '12px',
             padding: '13px', fontSize: '13px', fontWeight: '700', color: '#FF3366', cursor: 'pointer', fontFamily: 'inherit'
           }}>Log Out of Prima</button>
@@ -818,8 +828,8 @@ export default function ProfileScreen({ onLogout }) {
         {/* ═══════════ MAIN CONTENT ═══════════ */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', minWidth: 0 }}>
 
-          {/* METRICS STRIP */}
-          <div style={{
+          {/* METRICS STRIP — hidden on mobile */}
+          <div className="profile-stats-strip" style={{
             display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px'
           }}>
             <StatCard icon={<ProfileToneIcon name="rating" tone="linear-gradient(135deg, #FFB800, #FF6B2B)" size={30} />} label="Rating" value={reviewsCount > 0 ? `${Number(profile?.rating || 0).toFixed(1)}★` : '0.0★'} color="#FFB800" bg="#FFF8E0" />
@@ -1101,7 +1111,19 @@ export default function ProfileScreen({ onLogout }) {
             position: static !important;
           }
         }
+        @media (min-width: 768px) {
+          .profile-logout-mobile { display: none !important; }
+        }
       `}</style>
+
+      {/* Mobile logout — fixed at bottom, hidden on desktop */}
+      <div className="profile-logout-mobile" style={{ marginTop: '24px' }}>
+        <button onClick={onLogout} style={{
+          width: '100%', background: '#FFE8EE', border: '1.5px solid #FF99B3',
+          borderRadius: '14px', padding: '15px', fontSize: '14px', fontWeight: '700',
+          color: '#FF3366', cursor: 'pointer', fontFamily: 'inherit'
+        }}>Log Out of Prima</button>
+      </div>
 
       {showSelfie && (
         <SelfieVerification

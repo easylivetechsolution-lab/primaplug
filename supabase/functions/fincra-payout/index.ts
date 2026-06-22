@@ -8,6 +8,10 @@ const corsHeaders = {
 }
 
 const FINCRA_CURRENCIES = ['NGN', 'GHS', 'KES', 'ZAR', 'USD', 'EUR', 'GBP']
+const CURRENCY_TO_COUNTRY: Record<string, string> = {
+  NGN: 'NG', GHS: 'GH', KES: 'KE', ZAR: 'ZA',
+  USD: 'US', EUR: 'DE', GBP: 'GB'
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -101,7 +105,7 @@ serve(async (req) => {
         lastName: payoutLastName,
         accountHolderName: accountName || `${payoutFirstName} ${payoutLastName}`,
         accountNumber: accountNumber,
-        country: 'NG',
+        country: CURRENCY_TO_COUNTRY[currency] || 'NG',
         bankCode: bankCode,
         type: 'individual',
         email: email || 'user@primaplug.com',
