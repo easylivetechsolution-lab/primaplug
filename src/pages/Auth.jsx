@@ -70,17 +70,19 @@ export default function Auth() {
 
   return (
     <div style={{
-      minHeight: '100vh',
+      minHeight: '100dvh',
       background: 'linear-gradient(135deg, #6C47FF 0%, #9B59FF 50%, #FF4DCF 100%)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '12px'
+      padding: '12px',
+      boxSizing: 'border-box',
+      overflowY: 'auto'
     }}>
       <div style={{
         background: '#fff',
         borderRadius: '20px',
-        padding: 'clamp(20px, 6vw, 40px)',
+        padding: 'clamp(16px, 5vw, 32px)',
         width: '100%',
         maxWidth: '350px',
         boxShadow: '0 20px 60px rgba(108,71,255,0.3)'
@@ -88,10 +90,10 @@ export default function Auth() {
         {/* Language Selector */}
         <div style={{
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          marginBottom: '16px', position: 'relative'
+          marginBottom: '10px', position: 'relative'
         }}>
           <div style={{
-            width: 'clamp(50px, 14vw, 68px)', height: 'clamp(50px, 14vw, 68px)', borderRadius: '50%',
+            width: 'clamp(44px, 12vw, 56px)', height: 'clamp(44px, 12vw, 56px)', borderRadius: '50%',
             background: '#EEE9FF', border: '1.5px solid #E2E0FF',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             flexShrink: 0
@@ -99,7 +101,7 @@ export default function Auth() {
             <img
               src="/prima-logo.png"
               alt="PrimaPlug"
-              style={{ width: 'clamp(38px, 11vw, 52px)', height: 'clamp(38px, 11vw, 52px)', borderRadius: '10px', objectFit: 'contain' }}
+              style={{ width: 'clamp(32px, 9vw, 42px)', height: 'clamp(32px, 9vw, 42px)', borderRadius: '10px', objectFit: 'contain' }}
             />
           </div>
           <button
@@ -167,17 +169,17 @@ export default function Auth() {
         </div>
 
         {/* Logo */}
-        <div style={{ textAlign: 'center', marginBottom: 'clamp(18px, 5vw, 32px)' }}>
-          <div style={{ marginBottom: '4px' }}>
+        <div style={{ textAlign: 'center', marginBottom: 'clamp(12px, 4vw, 24px)' }}>
+          <div style={{ marginBottom: '2px' }}>
             <span style={{
-              fontSize: 'clamp(36px, 11vw, 52px)', fontWeight: '800',
+              fontSize: 'clamp(30px, 9vw, 44px)', fontWeight: '800',
               color: '#14123A', letterSpacing: '-2px',
               lineHeight: 1,
               fontFamily: 'Georgia, "Times New Roman", serif',
               fontStyle: 'italic'
             }}>Prima</span>
           </div>
-          <div style={{ fontSize: '12px', color: '#8B8FAF', marginTop: '2px' }}>Real-Time Labor Network</div>
+          <div style={{ fontSize: '11px', color: '#8B8FAF', marginTop: '2px' }}>Real-Time Labor Network</div>
         </div>
 
         {/* Toggle */}
@@ -186,7 +188,7 @@ export default function Auth() {
           background: '#F5F4FF',
           borderRadius: '12px',
           padding: '4px',
-          marginBottom: '24px'
+          marginBottom: '16px'
         }}>
           {['login', 'signup'].map(m => (
             <button key={m} onClick={() => { setMode(m); setError(''); setMessage(''); }}
@@ -207,14 +209,14 @@ export default function Auth() {
         </div>
 
         {/* Fields */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
           {mode === 'signup' && (
             <input
               placeholder={t('fullName')}
               value={fullName}
               onChange={e => setFullName(e.target.value)}
               style={{
-                padding: '13px 16px', borderRadius: '10px',
+                padding: '11px 14px', borderRadius: '10px',
                 border: '1.5px solid #E2E0FF', fontSize: '14px',
                 outline: 'none', fontFamily: 'inherit', color: '#14123A',
                 background: '#F5F4FF'
@@ -241,7 +243,7 @@ export default function Auth() {
               onChange={e => setPassword(e.target.value)}
               style={{
                 width: '100%', boxSizing: 'border-box',
-                padding: '13px 44px 13px 16px', borderRadius: '10px',
+                padding: '11px 44px 11px 14px', borderRadius: '10px',
                 border: '1.5px solid #E2E0FF', fontSize: '14px',
                 outline: 'none', fontFamily: 'inherit', color: '#14123A',
                 background: '#F5F4FF'
@@ -302,8 +304,8 @@ export default function Auth() {
             background: '#fff',
             border: '1.5px solid #E2E0FF',
             borderRadius: '12px',
-            padding: '13px',
-            fontSize: '14px',
+            padding: '11px',
+            fontSize: '13px',
             fontWeight: '600',
             color: '#14123A',
             cursor: 'pointer',
@@ -312,7 +314,7 @@ export default function Auth() {
             alignItems: 'center',
             justifyContent: 'center',
             gap: '10px',
-            marginBottom: '16px',
+            marginBottom: '10px',
             transition: 'all 0.15s',
             boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
           }}
@@ -336,7 +338,7 @@ export default function Auth() {
         {/* Divider */}
         <div style={{
           display: 'flex', alignItems: 'center',
-          gap: '12px', marginBottom: '16px'
+          gap: '12px', marginBottom: '10px'
         }}>
           <div style={{ flex: 1, height: '1px', background: '#E2E0FF' }} />
           <span style={{ fontSize: '12px', color: '#A09DC8', fontWeight: '500' }}>
@@ -350,7 +352,7 @@ export default function Auth() {
           onClick={mode === 'login' ? handleLogin : handleSignup}
           disabled={loading}
           style={{
-            width: '100%', padding: '14px',
+            width: '100%', padding: '12px',
             background: loading ? '#B8A5FF' : 'linear-gradient(135deg, #6C47FF, #9B59FF)',
             border: 'none', borderRadius: '12px',
             fontSize: '15px', fontWeight: '700',
@@ -361,7 +363,7 @@ export default function Auth() {
           {loading ? 'Please wait...' : mode === 'login' ? t('signIn') : t('signUp')}
         </button>
 
-        <div style={{ textAlign: 'center', marginTop: '20px', fontSize: '12px', color: '#A09DC8' }}>
+        <div style={{ textAlign: 'center', marginTop: '12px', fontSize: '11px', color: '#A09DC8' }}>
           By continuing you agree to Prima's{' '}
           <Link
             to="/terms"
