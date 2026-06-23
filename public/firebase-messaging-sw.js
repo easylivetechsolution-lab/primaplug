@@ -20,6 +20,7 @@ self.addEventListener('message', (event) => {
           body: body || 'You have a new notification',
           icon: '/prima-logo.png',
           vibrate: [200, 100, 200],
+          data: payload.data || {},
         })
       })
     } catch (e) {
@@ -31,14 +32,15 @@ self.addEventListener('message', (event) => {
 self.addEventListener('push', (event) => {
   if (!event.data) return
   try {
-    const data = event.data.json()
-    const title = data?.notification?.title || 'PrimaPlug'
-    const body = data?.notification?.body || 'You have a new notification'
+    const payload = event.data.json()
+    const title = payload?.notification?.title || 'PrimaPlug'
+    const body = payload?.notification?.body || 'You have a new notification'
     event.waitUntil(
       self.registration.showNotification(title, {
         body,
         icon: '/prima-logo.png',
         vibrate: [200, 100, 200],
+        data: payload?.data || {},
       })
     )
   } catch (e) {
@@ -48,10 +50,28 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
+  const notifData = event.notification.data || {}
+  const notifType = notifData.type || ''
+
+  const screenMap = {
+    message: 'chat',
+    wallet: 'wallet',
+    receipt: 'mygigs',
+    review: 'mygigs',
+    application: 'mygigs',
+    accepted: 'feed',
+    rejected: 'feed',
+  }
+  const targetScreen = screenMap[notifType] || 'feed'
+
   event.waitUntil(
-    clients.matchAll({ type: 'window' }).then(clientList => {
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
       for (const client of clientList) {
-        if ('focus' in client) return client.focus()
+        if ('focus' in client) {
+          client.focus()
+          client.postMessage({ type: 'PUSH_NAVIGATE', screen: targetScreen })
+          return
+        }
       }
       return clients.openWindow('https://primaplug.com/dashboard')
     })

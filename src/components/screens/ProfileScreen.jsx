@@ -769,7 +769,7 @@ export default function ProfileScreen({ onLogout }) {
                       borderRight: `1.5px solid ${currentLevel.border}`,
                       paddingRight: '16px', gap: '8px'
                     }}>
-                      <ProfileToneIcon name={currentLevel.icon} tone={currentLevel.tone} size={56} />
+                      <ProfileToneIcon name={currentLevel.icon} tone={currentLevel.tone} size={36} />
                       <div style={{ textAlign: 'center' }}>
                         <div style={{ fontSize: '10px', color: currentLevel.color, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '3px' }}>Current Level</div>
                         <div style={{ fontSize: '18px', fontWeight: '800', color: '#14123A' }}>{currentLevel.label}</div>
@@ -935,10 +935,10 @@ export default function ProfileScreen({ onLogout }) {
           {!isMobile && <div style={{
             display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px'
           }}>
-            <StatCard icon={<ProfileToneIcon name="rating" tone="linear-gradient(135deg, #FFB800, #FF6B2B)" size={30} />} label="Rating" value={reviewsCount > 0 ? `${Number(profile?.rating || 0).toFixed(1)}★` : '0.0★'} color="#FFB800" bg="#FFF8E0" />
+            <StatCard icon={<ProfileToneIcon name="rating" tone="linear-gradient(135deg, #FFB800, #FF6B2B)" size={30} />} label="Rating" value={reviewsCount > 0 ? `${Number(profile?.rating || 0).toFixed(1)}` : '0.0'} color="#FFB800" bg="#FFF8E0" />
             <StatCard icon={<ProfileToneIcon name="completed" tone="linear-gradient(135deg, #00C48C, #00A878)" size={30} />} label="Gigs Done" value={gigsCompleted} sub={`${nextLevelTarget - gigsCompleted} to next level`} color="#00C48C" bg="#DFFDF4" />
             <StatCard icon={<ProfileToneIcon name="reviews" tone="linear-gradient(135deg, #6C47FF, #9B59FF)" size={30} />} label="Reviews" value={reviewsCount} color="#6C47FF" bg="#EEE9FF" />
-            <StatCard icon={<ProfileToneIcon name="open" tone="linear-gradient(135deg, #FF6B2B, #FF4DCF)" size={30} />} label="Response" value={profile?.response_time || '< 1h'} color="#FF6B2B" bg="#FFF0E8" />
+            <StatCard icon={<ProfileToneIcon name="open" tone="linear-gradient(135deg, #FF6B2B, #FF4DCF)" size={30} />} label="Response" value={(profile?.response_time || '1h').replace(/^<\s*/, '')} color="#FF6B2B" bg="#FFF0E8" />
           </div>}
 
           {/* LEVEL PROGRESS CARD — desktop only; on mobile it appears in the sidebar after credits */}
@@ -954,7 +954,7 @@ export default function ProfileScreen({ onLogout }) {
               borderRight: `1.5px solid ${currentLevel.border}`,
               paddingRight: '20px', gap: '10px'
             }}>
-              <ProfileToneIcon name={currentLevel.icon} tone={currentLevel.tone} size={60} />
+              <ProfileToneIcon name={currentLevel.icon} tone={currentLevel.tone} size={36} />
               <div style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: '11px', color: currentLevel.color, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Current Level</div>
                 <div style={{ fontSize: '20px', fontWeight: '800', color: '#14123A' }}>{currentLevel.label}</div>
@@ -1049,7 +1049,7 @@ export default function ProfileScreen({ onLogout }) {
                     ['location', 'Location', profile?.location || 'Not set'],
                     ['notifications', 'Email', user?.email || '—'],
                     ['phone', 'Phone', profile?.phone || 'Not set'],
-                    ['open', 'Response', profile?.response_time || '< 1 hour'],
+                    ['open', 'Response', (profile?.response_time || '1 hour').replace(/^<\s*/, '')],
                     ['completed', 'Joined', profile?.joined_at ? new Date(profile.joined_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'Recently'],
                     ['accepted', 'Status', profile?.is_available ? 'Available' : 'Busy'],
                   ].map(([icon, key, val]) => (
@@ -1109,7 +1109,7 @@ export default function ProfileScreen({ onLogout }) {
                 {[
                   ['Total Earned', `$${totalEarned}`, '#00C48C'],
                   ['Gigs Completed', gigsCompleted, '#14123A'],
-                  ['Avg. Rating', reviewsCount > 0 ? `${Number(profile?.rating || 0).toFixed(1)} ★` : '0.0 ★', '#FFB800'],
+                  ['Avg. Rating', reviewsCount > 0 ? `${Number(profile?.rating || 0).toFixed(1)}` : '0.0', '#FFB800'],
                 ].map(([label, val, color]) => (
                   <div key={label} style={{
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',

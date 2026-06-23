@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { generateReferralCode } from '../utils/referral'
+import { getCurrency } from '../data/currencies'
 
 export default function ShareGig({ gig, onClose }) {
-  const { profile } = useAuth()
+  const { profile, refreshProfile } = useAuth()
   const [copied, setCopied] = useState(false)
+  const [generatingCode, setGeneratingCode] = useState(false)
 
   useEffect(() => {
     window.history.pushState({ modal: 'open' }, '', '')
@@ -12,18 +15,29 @@ export default function ShareGig({ gig, onClose }) {
     return () => window.removeEventListener('popstate', handleBack)
   }, [])
 
+  useEffect(() => {
+    if (!profile?.referral_code && profile?.id && !generatingCode) {
+      setGeneratingCode(true)
+      generateReferralCode(profile.id, profile.username, profile.full_name)
+        .then(code => { if (code) refreshProfile() })
+        .finally(() => setGeneratingCode(false))
+    }
+  }, [profile?.id])
+
   const referralCode = profile?.referral_code || ''
+  const hasCode = !!referralCode
   const shareLink = `https://primaplug.com/?gigref=${gig.id}&ref=${referralCode}`
 
   const copyLink = () => {
+    if (!hasCode) return
     navigator.clipboard.writeText(shareLink)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
 
   const gigValue = ((gig.pay_min + gig.pay_max) / 2)
-  const estimatedCredits = Math.round(gigValue * 0.05 * 50)
-  const estimatedDollars = (gigValue * 0.05).toFixed(2)
+  const estimatedEarning = (gigValue * 0.05).toFixed(2)
+  const currency = getCurrency(gig.currency || 'USD')
 
   const shareWhatsApp = () => {
     const text = `🔥 Check out this gig on PrimaPlug!\n\n*${gig.title}*\n💰 $${gig.pay_min}–$${gig.pay_max}\n📍 ${gig.location || 'Remote'}\n\nApply here: ${shareLink}`
@@ -96,64 +110,80 @@ export default function ShareGig({ gig, onClose }) {
           <div style={{
             fontSize: '32px', fontWeight: '800',
             letterSpacing: '-1px', marginBottom: '3px'
-          }}>~{estimatedCredits} Credits</div>
+          }}>~{currency.symbol}{estimatedEarning}</div>
           <div style={{ fontSize: '12px', opacity: 0.8 }}>
-            ≈ ${estimatedDollars} · 5% of avg gig value
+            5% of avg gig value · paid to your wallet
           </div>
         </div>
 
         {/* Share link */}
-        <div style={{
-          background: '#F5F4FF', borderRadius: '12px',
-          padding: '12px 14px', marginBottom: '14px',
-          display: 'flex', justifyContent: 'space-between',
-          alignItems: 'center', gap: '10px'
-        }}>
+        {generatingCode ? (
           <div style={{
-            fontSize: '11px', color: '#6C47FF',
-            fontWeight: '600', overflow: 'hidden',
-            textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            flex: 1
-          }}>{shareLink}</div>
-          <button
-            onClick={copyLink}
-            style={{
-              background: copied ? '#DFFDF4' : '#EEE9FF',
-              border: `1.5px solid ${copied ? '#7EECD2' : '#B8A5FF'}`,
-              borderRadius: '8px', padding: '6px 12px',
-              fontSize: '12px', fontWeight: '700',
-              color: copied ? '#00C48C' : '#6C47FF',
-              cursor: 'pointer', fontFamily: 'inherit',
-              whiteSpace: 'nowrap', flexShrink: 0,
-              transition: 'all 0.2s'
-            }}>
-            {copied ? '✓ Copied!' : '📋 Copy'}
-          </button>
-        </div>
+            background: '#F5F4FF', borderRadius: '12px',
+            padding: '14px', marginBottom: '14px',
+            textAlign: 'center', fontSize: '12px', color: '#A09DC8', fontWeight: '600'
+          }}>Setting up your referral link...</div>
+        ) : !hasCode ? (
+          <div style={{
+            background: '#FFE8EE', border: '1.5px solid #FF99B3',
+            borderRadius: '12px', padding: '12px 14px', marginBottom: '14px',
+            fontSize: '12px', color: '#FF3366', fontWeight: '600'
+          }}>Could not generate your referral link. Please visit Refer &amp; Earn first.</div>
+        ) : (
+          <div style={{
+            background: '#F5F4FF', borderRadius: '12px',
+            padding: '12px 14px', marginBottom: '14px',
+            display: 'flex', justifyContent: 'space-between',
+            alignItems: 'center', gap: '10px'
+          }}>
+            <div style={{
+              fontSize: '11px', color: '#6C47FF',
+              fontWeight: '600', overflow: 'hidden',
+              textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              flex: 1
+            }}>{shareLink}</div>
+            <button
+              onClick={copyLink}
+              style={{
+                background: copied ? '#DFFDF4' : '#EEE9FF',
+                border: `1.5px solid ${copied ? '#7EECD2' : '#B8A5FF'}`,
+                borderRadius: '8px', padding: '6px 12px',
+                fontSize: '12px', fontWeight: '700',
+                color: copied ? '#00C48C' : '#6C47FF',
+                cursor: 'pointer', fontFamily: 'inherit',
+                whiteSpace: 'nowrap', flexShrink: 0,
+                transition: 'all 0.2s'
+              }}>
+              {copied ? '✓ Copied!' : '📋 Copy'}
+            </button>
+          </div>
+        )}
 
         {/* Share buttons */}
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-          <button
-            onClick={shareWhatsApp}
-            style={{
-              flex: 1, background: '#25D366', border: 'none',
-              borderRadius: '12px', padding: '12px',
-              fontSize: '13px', fontWeight: '700', color: '#fff',
-              cursor: 'pointer', fontFamily: 'inherit',
-              display: 'flex', alignItems: 'center',
-              justifyContent: 'center', gap: '6px'
-            }}>💬 WhatsApp</button>
-          <button
-            onClick={shareTwitter}
-            style={{
-              flex: 1, background: '#14123A', border: 'none',
-              borderRadius: '12px', padding: '12px',
-              fontSize: '13px', fontWeight: '700', color: '#fff',
-              cursor: 'pointer', fontFamily: 'inherit',
-              display: 'flex', alignItems: 'center',
-              justifyContent: 'center', gap: '6px'
-            }}>🐦 Twitter</button>
-        </div>
+        {hasCode && (
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+            <button
+              onClick={shareWhatsApp}
+              style={{
+                flex: 1, background: '#25D366', border: 'none',
+                borderRadius: '12px', padding: '12px',
+                fontSize: '13px', fontWeight: '700', color: '#fff',
+                cursor: 'pointer', fontFamily: 'inherit',
+                display: 'flex', alignItems: 'center',
+                justifyContent: 'center', gap: '6px'
+              }}>💬 WhatsApp</button>
+            <button
+              onClick={shareTwitter}
+              style={{
+                flex: 1, background: '#14123A', border: 'none',
+                borderRadius: '12px', padding: '12px',
+                fontSize: '13px', fontWeight: '700', color: '#fff',
+                cursor: 'pointer', fontFamily: 'inherit',
+                display: 'flex', alignItems: 'center',
+                justifyContent: 'center', gap: '6px'
+              }}>🐦 Twitter</button>
+          </div>
+        )}
 
         {/* How it works */}
         <div style={{
@@ -168,7 +198,7 @@ export default function ShareGig({ gig, onClose }) {
           <div>1. Share your link with someone who can do this gig</div>
           <div>2. They click your link and apply</div>
           <div>3. They get accepted and complete the gig</div>
-          <div>4. You automatically earn 5% in Prima Credits</div>
+          <div>4. You automatically earn 5% of the gig payment to your wallet</div>
         </div>
 
         <style>{`

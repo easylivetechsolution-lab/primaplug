@@ -63,6 +63,17 @@ export default function Layout() {
     return () => document.removeEventListener('keydown', handleKey)
   }, [])
 
+  // Navigate when a push notification is tapped from the OS
+  useEffect(() => {
+    if (!navigator.serviceWorker) return
+    const handler = (event) => {
+      if (event.data?.type !== 'PUSH_NAVIGATE') return
+      navigateTo(event.data.screen || 'feed')
+    }
+    navigator.serviceWorker.addEventListener('message', handler)
+    return () => navigator.serviceWorker.removeEventListener('message', handler)
+  }, [navigateTo])
+
   useEffect(() => {
     const unlock = () => {
       const AudioContext = window.AudioContext || window.webkitAudioContext
@@ -840,7 +851,6 @@ useEffect(() => {
     gap: '12px', cursor: 'pointer', color: '#fff'
   }} onClick={() => {
     window.dispatchEvent(new CustomEvent('openGigDetail', { detail: pendingGigReferral.gigId }))
-    clearGigReferral()
     setPendingGigReferral(null)
   }}>
     <div>

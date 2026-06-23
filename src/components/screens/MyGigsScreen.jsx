@@ -320,7 +320,17 @@ const { error: notifError } = await supabase
 
       if (error) throw error
 
-      await markGigReferralPaid(referral.id, amount, gig.currency, referrerShare)
+      await supabase
+        .from('gig_referrals')
+        .update({
+          status: 'completed',
+          reward_given: true,
+          gig_amount: amount,
+          reward_amount: referrerShare,
+          reward_currency: gig.currency,
+          completed_at: new Date().toISOString()
+        })
+        .eq('id', referral.id)
 
       await supabase.from('notifications').insert({
         user_id: referral.referrer_id,
@@ -372,10 +382,10 @@ const { error: notifError } = await supabase
       alert('Error releasing payment: ' + e.message)
     }
   }
-  const declineApplication = async (application, gigTitle) => {
+  const declineApplication = async (application, gigTitle, gigId) => {
     await supabase
       .from('applications')
-      .update({ status: 'declined', declined_at: new Date().toISOString() })
+      .update({ status: 'declined' })
       .eq('id', application.id)
 
     await supabase.from('notifications').insert({
@@ -383,7 +393,7 @@ const { error: notifError } = await supabase
       title: 'Application Update',
       message: `Your application for "${gigTitle}" was not selected.`,
       type: 'rejected',
-      gig_id: application.gig_id
+      gig_id: gigId || null
     })
 
     try {
@@ -391,7 +401,7 @@ const { error: notifError } = await supabase
         application.worker_id,
         'Application Update',
         `Your application for "${gigTitle}" was not selected.`,
-        { type: 'rejected', gigId: application.gig_id }
+        { type: 'rejected', gigId: gigId || null }
       )
     } catch (e) {
       console.log('Push error:', e)
@@ -401,7 +411,26 @@ const { error: notifError } = await supabase
   }
 
   const deleteGig = async (gigId) => {
-    if (!window.confirm('Delete this gig?')) return
+    if (!window.confirm('Delete this gig? This cannot be undone.')) return
+
+    const { data: current } = await supabase
+      .from('gigs')
+      .select('status, applications(id, status)')
+      .eq('id', gigId)
+      .maybeSingle()
+
+    if (!current) return
+
+    const hasActiveWorker =
+      current.status === 'in_progress' ||
+      current.applications?.some(a => a.status === 'accepted')
+
+    if (hasActiveWorker) {
+      alert('This gig cannot be deleted while a worker is active on it. Complete or resolve the job first.')
+      await fetchAll()
+      return
+    }
+
     await supabase.from('gigs').delete().eq('id', gigId)
     await fetchAll()
   }
@@ -764,7 +793,8 @@ const { error: notifError } = await supabase
             setApplicantsGig(null)
           }}
           onDecline={(app) => {
-            declineApplication(app, applicantsGig.title)
+            declineApplication(app, applicantsGig.title, applicantsGig.id)
+            setApplicantsGig(null)
           }}
           onViewProfile={setViewingProfile}
         />
@@ -1218,18 +1248,20 @@ function PostedGigCard({
               }}>
               <BrandIcon name="edit" size={18} active={false} /> Edit
             </button>
-            <button
-              onClick={() => onDelete(gig.id)}
-              style={{
-                background: '#FFE8EE',
-                border: '1.5px solid #FF99B3',
-                borderRadius: '10px', padding: '10px 14px',
-                cursor: 'pointer', fontFamily: 'inherit',
-                display: 'flex', alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-              <span style={{ fontSize: '16px', lineHeight: 1 }}>🗑</span>
-            </button>
+            {['open', 'hasapplicants'].includes(status) && (
+              <button
+                onClick={() => onDelete(gig.id)}
+                style={{
+                  background: '#FFE8EE',
+                  border: '1.5px solid #FF99B3',
+                  borderRadius: '10px', padding: '10px 14px',
+                  cursor: 'pointer', fontFamily: 'inherit',
+                  display: 'flex', alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                <span style={{ fontSize: '16px', lineHeight: 1 }}>🗑</span>
+              </button>
+            )}
           </div>
         )}
 
