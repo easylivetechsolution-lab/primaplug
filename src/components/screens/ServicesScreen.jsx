@@ -8,6 +8,7 @@ import PublicProfile from '../PublicProfile'
 import { CATEGORIES } from '../../data/categories'
 import BrandIcon from '../BrandIcon'
 import EmptyState from '../EmptyState'
+import ScreenLoader from '../ScreenLoader'
 
 export default function ServicesScreen() {
   const { user } = useAuth()
@@ -198,10 +199,7 @@ export default function ServicesScreen() {
         padding: '16px 20px 100px'
       }}>
         {loading ? (
-          <div style={{
-            textAlign: 'center', padding: '48px',
-            color: '#A09DC8', fontSize: '14px'
-          }}>Loading services...</div>
+          <ScreenLoader />
         ) : filtered.length === 0 ? (
           <EmptyState
             icon="services"

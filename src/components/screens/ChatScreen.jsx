@@ -3,6 +3,7 @@ import { supabase } from '../../supabase'
 import { useAuth } from '../../context/AuthContext'
 import PublicProfile from '../PublicProfile'
 import BrandIcon from '../BrandIcon'
+import ScreenLoader from '../ScreenLoader'
 import EmptyState from '../EmptyState'
 import { playMessage } from '../../utils/sounds'
 import {
@@ -44,7 +45,21 @@ const COMMON_EMOJIS = [
 ]
 
 const isImageUrl = (content) =>
-  /^https?:\/\/.+\.(jpg|jpeg|png|gif|webp|heic|svg)(\?.*)?$/i.test(content)
+  /^https?:\/\/.+\.(jpg|jpeg|png|gif|webp|heic|heif|avif|bmp|svg)(\?.*)?$/i.test(content)
+
+const isVideoUrl = (content) =>
+  /^https?:\/\/.+\.(mp4|mov|avi|webm|mkv|m4v|3gp|ogv)(\?.*)?$/i.test(content)
+
+const isStorageUrl = (content) =>
+  typeof content === 'string' && content.startsWith('https://') && content.includes('supabase.co/storage')
+
+const getAttachmentFilename = (url) => {
+  try {
+    const seg = decodeURIComponent(url.split('/').pop().split('?')[0])
+    const dash = seg.indexOf('-')
+    return dash > -1 ? seg.slice(dash + 1) : seg
+  } catch { return 'File' }
+}
 
 export default function ChatScreen() {
   const { user } = useAuth()
@@ -70,6 +85,7 @@ export default function ChatScreen() {
   const [forwardMsg, setForwardMsg] = useState(null)
   const [hoveredConvo, setHoveredConvo] = useState(null)
   const [hoveredMsg, setHoveredMsg] = useState(null)
+  const [lightboxImg, setLightboxImg] = useState(null)
   const messagesEndRef = useRef()
   const inputRef = useRef()
   const fileInputRef = useRef()
@@ -80,7 +96,7 @@ export default function ChatScreen() {
 
   useEffect(() => {
     fetchConversations()
-  }, [user])
+  }, [user?.id])
 
   useEffect(() => {
     const handleOpenChat = async (e) => {
@@ -214,8 +230,8 @@ export default function ChatScreen() {
     if (file.size > 10 * 1024 * 1024) { alert('File must be under 10 MB'); return }
     setUploadingFile(true)
     try {
-      const ext = file.name.split('.').pop()
-      const path = `${user.id}/${Date.now()}.${ext}`
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 80)
+      const path = `${user.id}/${Date.now()}-${safeName}`
       const { error: upErr } = await supabase.storage
         .from('chat-attachments')
         .upload(path, file, { upsert: false })
@@ -309,10 +325,11 @@ export default function ChatScreen() {
       const result = await sendChatMessage({ user, conversation: activeConvo, content: text, replyTo: pendingReply })
       if (result?.conversation?.id && !activeConvo.id) setActiveConvo(result.conversation)
       if (result?.message) {
-        // Swap the optimistic placeholder with the real message from the server
+        // Remove both the temp placeholder AND any realtime-received copy (which may lack reply fields),
+        // then insert result.message which has all fields set (including reply metadata).
         setMessages(prev => {
-          const without = prev.filter(m => m.id !== tempId)
-          return without.find(m => m.id === result.message.id) ? without : [...without, result.message]
+          const without = prev.filter(m => m.id !== tempId && m.id !== result.message.id)
+          return [...without, result.message]
         })
       }
       fetchConversations()
@@ -566,7 +583,7 @@ export default function ChatScreen() {
 
   return (
     <div style={{
-      display: 'flex', height: '100%',
+      display: 'flex', flex: 1, minHeight: 0,
       fontFamily: "'Plus Jakarta Sans', sans-serif",
       overflow: 'hidden'
     }}>
@@ -616,10 +633,7 @@ export default function ChatScreen() {
         {/* Conversation List */}
         <div style={{ flex: 1, overflowY: 'auto' }}>
           {loading ? (
-            <div style={{
-              padding: '32px', textAlign: 'center',
-              color: '#A09DC8', fontSize: '14px'
-            }}>Loading...</div>
+            <ScreenLoader />
           ) : conversations.length === 0 ? (
             <div style={{ padding: '24px 16px' }}>
               <EmptyState
@@ -742,7 +756,7 @@ export default function ChatScreen() {
                         overflow: 'hidden', textOverflow: 'ellipsis',
                         whiteSpace: 'nowrap', flex: 1
                       }}>
-                        {isImageUrl(convo.last_message) ? '📷 Photo' : (convo.last_message || 'No messages yet')}
+                        {isImageUrl(convo.last_message) ? '📷 Photo' : isVideoUrl(convo.last_message) ? '🎥 Video' : isStorageUrl(convo.last_message) ? '📎 File' : (convo.last_message || 'No messages yet')}
                       </div>
                       {unread > 0 && (
                         <div style={{
@@ -1015,10 +1029,7 @@ export default function ChatScreen() {
               gap: '4px'
             }}>
               {loadingMessages ? (
-                <div style={{
-                  textAlign: 'center', padding: '32px',
-                  color: '#A09DC8', fontSize: '14px'
-                }}>Loading messages...</div>
+                <ScreenLoader />
               ) : messages.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '32px' }}>
                   <div style={{
@@ -1051,7 +1062,7 @@ export default function ChatScreen() {
                       parseTimestamp(msg.created_at) - parseTimestamp(prevMsg.created_at) < 60000
 
                     return (
-                      <div key={msg.id}>
+                      <div key={msg.id} id={`msg-${msg.id}`}>
                         {/* Date divider */}
                         {(!prevMsg ||
                           parseTimestamp(msg.created_at).toDateString() !==
@@ -1115,20 +1126,31 @@ export default function ChatScreen() {
                                 : '0 2px 8px rgba(0,0,0,0.06)',
                               border: isMe ? 'none' : '1px solid #E2E0FF',
                               wordBreak: 'break-word',
-                              padding: isImageUrl(msg.content) ? '4px' : '10px 14px',
+                              padding: (isImageUrl(msg.content) || isVideoUrl(msg.content)) ? '4px' : '10px 14px',
                               overflow: 'hidden'
                             }}>
                               {/* Reply context block */}
                               {msg.reply_to_id && (
-                                <div style={{
-                                  background: isMe ? 'rgba(255,255,255,0.15)' : '#F5F4FF',
-                                  borderLeft: `3px solid ${isMe ? 'rgba(255,255,255,0.6)' : '#6C47FF'}`,
-                                  borderRadius: '6px',
-                                  padding: '6px 10px',
-                                  marginBottom: '8px',
-                                  fontSize: '12px',
-                                  opacity: 0.9
-                                }}>
+                                <div
+                                  onClick={() => {
+                                    const el = document.getElementById(`msg-${msg.reply_to_id}`)
+                                    if (el) {
+                                      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                                      el.style.transition = 'background 0.2s'
+                                      el.style.background = 'rgba(108,71,255,0.12)'
+                                      setTimeout(() => { el.style.background = '' }, 1200)
+                                    }
+                                  }}
+                                  style={{
+                                    background: isMe ? 'rgba(255,255,255,0.15)' : '#F5F4FF',
+                                    borderLeft: `3px solid ${isMe ? 'rgba(255,255,255,0.6)' : '#6C47FF'}`,
+                                    borderRadius: '6px',
+                                    padding: '6px 10px',
+                                    marginBottom: '8px',
+                                    fontSize: '12px',
+                                    opacity: 0.9,
+                                    cursor: 'pointer',
+                                  }}>
                                   <div style={{ fontWeight: '700', marginBottom: '2px', fontSize: '11px' }}>
                                     {msg.reply_to_sender_name}
                                   </div>
@@ -1136,7 +1158,7 @@ export default function ChatScreen() {
                                     overflow: 'hidden', textOverflow: 'ellipsis',
                                     whiteSpace: 'nowrap', maxWidth: '200px'
                                   }}>
-                                    {msg.reply_to_content}
+                                    {isImageUrl(msg.reply_to_content) ? '📷 Photo' : isVideoUrl(msg.reply_to_content) ? '🎥 Video' : isStorageUrl(msg.reply_to_content) ? '📎 File' : msg.reply_to_content}
                                   </div>
                                 </div>
                               )}
@@ -1149,8 +1171,35 @@ export default function ChatScreen() {
                                     borderRadius: '12px', display: 'block',
                                     objectFit: 'cover', cursor: 'pointer'
                                   }}
-                                  onClick={() => window.open(msg.content, '_blank')}
+                                  onClick={() => setLightboxImg(msg.content)}
                                 />
+                              ) : isVideoUrl(msg.content) ? (
+                                <video
+                                  src={msg.content}
+                                  controls
+                                  style={{
+                                    maxWidth: '240px', maxHeight: '200px',
+                                    borderRadius: '12px', display: 'block'
+                                  }}
+                                />
+                              ) : isStorageUrl(msg.content) ? (
+                                <a
+                                  href={msg.content}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{
+                                    display: 'flex', alignItems: 'center', gap: '8px',
+                                    color: isMe ? '#fff' : '#6C47FF',
+                                    textDecoration: 'none',
+                                    padding: '6px 2px'
+                                  }}
+                                >
+                                  <span style={{ fontSize: '22px', flexShrink: 0 }}>📎</span>
+                                  <span style={{
+                                    textDecoration: 'underline',
+                                    wordBreak: 'break-all', fontSize: '13px'
+                                  }}>{getAttachmentFilename(msg.content)}</span>
+                                </a>
                               ) : msg.content}
                             </div>
 
@@ -1655,6 +1704,51 @@ export default function ChatScreen() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Image lightbox */}
+      {lightboxImg && (
+        <div
+          onClick={() => setLightboxImg(null)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 99999,
+            background: 'rgba(0,0,0,0.92)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          <img
+            src={lightboxImg}
+            alt="attachment"
+            onClick={e => e.stopPropagation()}
+            style={{
+              maxWidth: '95vw', maxHeight: '90vh',
+              borderRadius: '12px', objectFit: 'contain',
+              boxShadow: '0 8px 40px rgba(0,0,0,0.5)',
+            }}
+          />
+          <button
+            onClick={() => setLightboxImg(null)}
+            style={{
+              position: 'absolute', top: '16px', right: '16px',
+              width: '36px', height: '36px', borderRadius: '50%',
+              background: 'rgba(255,255,255,0.15)', border: 'none',
+              color: '#fff', fontSize: '20px', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+          >×</button>
+          <a
+            href={lightboxImg}
+            download
+            onClick={e => e.stopPropagation()}
+            style={{
+              position: 'absolute', bottom: '24px',
+              background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)',
+              borderRadius: '20px', padding: '8px 20px',
+              color: '#fff', fontSize: '13px', fontWeight: '600',
+              textDecoration: 'none',
+            }}
+          >⬇ Download</a>
         </div>
       )}
 

@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext'
 import PublicProfile from '../PublicProfile'
 import BrandIcon from '../BrandIcon'
 import EmptyState from '../EmptyState'
+import ScreenLoader from '../ScreenLoader'
 import { getCurrency } from '../../data/currencies'
 import ShareGig from '../ShareGig'
 import { getProfileCompletion } from '../../utils/profileComplete'
@@ -136,16 +137,7 @@ export default function SavedScreen() {
       </div>
 
       {loading ? (
-        <div style={{
-          textAlign: 'center', padding: '48px'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
-            <BrandIcon name="saved" size={46} />
-          </div>
-          <div style={{ fontSize: '14px', color: '#A09DC8', fontWeight: '600' }}>
-            Loading saved gigs...
-          </div>
-        </div>
+        <ScreenLoader />
       ) : savedGigs.length === 0 ? (
         <EmptyState
           icon="saved"

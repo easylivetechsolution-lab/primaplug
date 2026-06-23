@@ -3,6 +3,7 @@ import { supabase } from '../../supabase'
 import { useAuth } from '../../context/AuthContext'
 import CategoryPicker from '../CategoryPicker'
 import BrandIcon from '../BrandIcon'
+import ScreenLoader from '../ScreenLoader'
 import { completeReferral } from '../../utils/referral'
 import { getProfileCompletion } from '../../utils/profileComplete'
 import { useCredits } from '../../context/CreditsContext'
@@ -401,11 +402,7 @@ export default function ProfileScreen({ onLogout }) {
     display: 'block', marginBottom: '6px'
   }
 
-  if (loading) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '60px', color: '#A09DC8', fontSize: '14px' }}>
-      Loading profile...
-    </div>
-  )
+  if (loading) return <ScreenLoader />
 
   const { score: completionScore } = getProfileCompletion(profile || {})
   const trustScore = profile?.trust_score ?? 0

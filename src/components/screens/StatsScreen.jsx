@@ -3,6 +3,7 @@ import { supabase } from '../../supabase'
 import { useAuth } from '../../context/AuthContext'
 import BrandIcon from '../BrandIcon'
 import { useCredits } from '../../context/CreditsContext'
+import ScreenLoader from '../ScreenLoader'
 
 const LEVELS = [
   {
@@ -121,18 +122,7 @@ export default function StatsScreen() {
     return idx < LEVELS.length - 1 ? LEVELS[idx + 1] : null
   }
 
-  if (loading) return (
-    <div style={{
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      flexDirection: 'column', gap: '12px',
-      padding: '60px', fontFamily: "'Plus Jakarta Sans', sans-serif"
-    }}>
-      <BrandIcon name="stats" size={46} />
-      <div style={{ color: '#A09DC8', fontSize: '14px', fontWeight: '600' }}>
-        Loading stats...
-      </div>
-    </div>
-  )
+  if (loading) return <ScreenLoader />
 
   const currentLevel = getCurrentLevel(stats?.profile)
   const nextLevel = getNextLevel(stats?.profile)

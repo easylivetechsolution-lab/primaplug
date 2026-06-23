@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { Capacitor } from '@capacitor/core'
 import { Geolocation } from '@capacitor/geolocation'
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { supabase } from '../../supabase'
@@ -18,6 +18,49 @@ import BrandIcon from '../BrandIcon'
 import { applyToGig } from '../../utils/gigApplications'
 
 const getCurrencySymbol = (code) => getCurrency(code || 'USD').symbol
+
+const timeAgo = (d) => {
+  const s = Math.floor((Date.now() - new Date(d)) / 1000)
+  if (s < 60) return 'just now'
+  const m = Math.floor(s / 60)
+  if (m < 60) return `${m}m ago`
+  const h = Math.floor(m / 60)
+  if (h < 24) return `${h}h ago`
+  const days = Math.floor(h / 24)
+  if (days < 7) return `${days}d ago`
+  return `${Math.floor(days / 7)}w ago`
+}
+
+const timeUntil = (d) => {
+  const diff = new Date(d) - Date.now()
+  if (diff <= 0) return null
+  const m = Math.floor(diff / 60000)
+  if (m < 60) return `${m}m`
+  const h = Math.floor(m / 60)
+  if (h < 24) return `${h}h`
+  const days = Math.floor(h / 24)
+  return days === 1 ? '1 day' : `${days} days`
+}
+
+const ExpiryBadge = ({ expiresAt }) => {
+  if (!expiresAt) return null
+  const remaining = timeUntil(expiresAt)
+  if (!remaining) return null
+  const isUrgent = new Date(expiresAt) - Date.now() < 24 * 60 * 60 * 1000
+  const isWarning = new Date(expiresAt) - Date.now() < 3 * 24 * 60 * 60 * 1000
+  const color = isUrgent ? '#FF3366' : isWarning ? '#FF6B2B' : '#A09DC8'
+  const bg = isUrgent ? '#FFE8EE' : isWarning ? '#FFF0E8' : '#F5F4FF'
+  const border = isUrgent ? '#FF99B3' : isWarning ? '#FFBC99' : '#E2E0FF'
+  return (
+    <span style={{
+      fontSize: '11px', fontWeight: '700', color,
+      background: bg, border: `1px solid ${border}`,
+      borderRadius: '6px', padding: '2px 8px',
+      display: 'inline-flex', alignItems: 'center', gap: '3px',
+      whiteSpace: 'nowrap',
+    }}>{remaining} left</span>
+  )
+}
 
 // Fix leaflet default icon
 delete L.Icon.Default.prototype._getIconUrl
@@ -420,33 +463,8 @@ export default function MapScreen() {
                     setApplied(false)
                   }
                 }}
-              >
-                <Popup>
-                  <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", minWidth: '200px' }}>
-                    {(gig.house_number || gig.street || gig.landmark) && (
-                      <div style={{
-                        background: '#F5F4FF', borderRadius: '8px',
-                        padding: '8px 10px', marginBottom: '8px',
-                        fontSize: '11px', color: '#5B5887',
-                        display: 'flex', flexDirection: 'column', gap: '3px'
-                      }}>
-                        {gig.house_number && <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}><BrandIcon name="physical" size={14} /> {gig.house_number}</div>}
-                        {gig.street && <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}><BrandIcon name="location" size={14} /> {gig.street}</div>}
-                        {gig.landmark && <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}><BrandIcon name="location" size={14} /> Near {gig.landmark}</div>}
-                      </div>
-                    )}
-                    <div style={{ fontSize: '13px', fontWeight: '700', color: '#14123A', marginBottom: '4px' }}>
-                      {gig.title}
-                    </div>
-                    <div style={{ fontSize: '14px', fontWeight: '800', color: '#00C48C', marginBottom: '6px' }}>
-                      {getCurrencySymbol(gig.currency)}{gig.pay_min}–{getCurrencySymbol(gig.currency)}{gig.pay_max}
-                    </div>
-                    <div style={{ fontSize: '11px', color: '#8B8FAF' }}>
-                      Posted by {gig.poster?.full_name}
-                    </div>
-                  </div>
-                </Popup>
-              </Marker>
+              />
+
             )
           })}
         </MapContainer>
@@ -868,8 +886,19 @@ export default function MapScreen() {
                 {/* Title */}
                 <h2 style={{
                   fontSize: '20px', fontWeight: '800',
-                  color: '#14123A', lineHeight: '1.3', marginBottom: '16px'
+                  color: '#14123A', lineHeight: '1.3', marginBottom: '8px'
                 }}>{selectedGig.title}</h2>
+
+                {/* Posted / Expiry timing */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
+                  <span style={{ fontSize: '11px', color: '#A09DC8' }}>
+                    Posted {timeAgo(selectedGig.created_at)}
+                  </span>
+                  {selectedGig.expires_at
+                    ? <ExpiryBadge expiresAt={selectedGig.expires_at} />
+                    : <span style={{ fontSize: '11px', color: '#A09DC8' }}>· Open-ended</span>
+                  }
+                </div>
 
                 {/* Pay + Location */}
                 <div style={{

@@ -227,7 +227,7 @@ useEffect(() => {
     saved: <SavedScreen />,
     stats: <StatsScreen />,
     settings: <SettingsScreen onLogout={handleLogout} />,
-    chat: <ChatScreen />,
+    // chat is always mounted below (persistent wrapper)
     services: <ServicesScreen />,
     referral: <ReferralScreen />,
     wallet: <WalletScreen />,
@@ -864,9 +864,18 @@ useEffect(() => {
             minHeight: 0,
             overflowY: screen === 'map' ? 'hidden' : 'auto',
             overflowX: 'hidden',
-            WebkitOverflowScrolling: 'touch'
+            WebkitOverflowScrolling: 'touch',
+            position: 'relative',
           }} className="screen-scroll">
-            {screens[screen]}
+            {/* Chat — always mounted so it never shows blank on navigate */}
+            <div className="chat-persistent-wrapper" style={{
+              display: screen === 'chat' ? 'flex' : 'none',
+              position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+              flexDirection: 'column',
+            }}>
+              <ChatScreen />
+            </div>
+            {screen !== 'chat' && screens[screen]}
           </div>
         </div>
       </div>
@@ -992,6 +1001,9 @@ useEffect(() => {
           }
           .screen-scroll {
             padding-bottom: 96px !important;
+          }
+          .chat-persistent-wrapper {
+            bottom: 96px !important;
           }
           .mobile-nav {
             position: fixed !important;

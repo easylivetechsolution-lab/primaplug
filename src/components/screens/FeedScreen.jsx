@@ -3,6 +3,7 @@ import { supabase } from '../../supabase'
 import PublicProfile from '../PublicProfile'
 import BrandIcon from '../BrandIcon'
 import EmptyState from '../EmptyState'
+import ScreenLoader from '../ScreenLoader'
 import { CATEGORIES, ALL_FIELDS } from '../../data/categories'
 import { getCurrency } from '../../data/currencies'
 import { getProfileCompletion } from '../../utils/profileComplete'
@@ -22,6 +23,52 @@ const URGENCY = {
 }
 
 const getCurrencySymbol = (code) => getCurrency(code || 'USD').symbol
+
+const timeAgo = (d) => {
+  const s = Math.floor((Date.now() - new Date(d)) / 1000)
+  if (s < 60) return 'just now'
+  const m = Math.floor(s / 60)
+  if (m < 60) return `${m}m ago`
+  const h = Math.floor(m / 60)
+  if (h < 24) return `${h}h ago`
+  const days = Math.floor(h / 24)
+  if (days < 7) return `${days}d ago`
+  return `${Math.floor(days / 7)}w ago`
+}
+
+const timeUntil = (d) => {
+  const diff = new Date(d) - Date.now()
+  if (diff <= 0) return null
+  const m = Math.floor(diff / 60000)
+  if (m < 60) return `${m}m`
+  const h = Math.floor(m / 60)
+  if (h < 24) return `${h}h`
+  const days = Math.floor(h / 24)
+  return days === 1 ? '1 day' : `${days} days`
+}
+
+const ExpiryBadge = ({ expiresAt, small = false }) => {
+  if (!expiresAt) return null
+  const remaining = timeUntil(expiresAt)
+  if (!remaining) return null
+  const isUrgent = new Date(expiresAt) - Date.now() < 24 * 60 * 60 * 1000
+  const isWarning = new Date(expiresAt) - Date.now() < 3 * 24 * 60 * 60 * 1000
+  const color = isUrgent ? '#FF3366' : isWarning ? '#FF6B2B' : '#A09DC8'
+  const bg = isUrgent ? '#FFE8EE' : isWarning ? '#FFF0E8' : '#F5F4FF'
+  const border = isUrgent ? '#FF99B3' : isWarning ? '#FFBC99' : '#E2E0FF'
+  return (
+    <span style={{
+      fontSize: small ? '9px' : '11px', fontWeight: '700', color,
+      background: bg, border: `1px solid ${border}`,
+      borderRadius: small ? '4px' : '6px',
+      padding: small ? '1px 5px' : '2px 8px',
+      display: 'inline-flex', alignItems: 'center', gap: '3px',
+      whiteSpace: 'nowrap',
+    }}>
+      {remaining} left
+    </span>
+  )
+}
 
 export default function FeedScreen() {
   const { profile, user } = useAuth()
@@ -213,9 +260,7 @@ export default function FeedScreen() {
           }}>AI Matched For You</span>
         </div>
         {loading ? (
-          <div style={{ fontSize: '13px', color: '#A09DC8' }}>
-            Finding your best matches...
-          </div>
+          <ScreenLoader />
         ) : gigs.length === 0 ? (
           <div style={{ fontSize: '13px', color: '#A09DC8' }}>
             No gigs yet — be the first to post one! 🚀
@@ -420,14 +465,7 @@ export default function FeedScreen() {
 
       {/* Gig List */}
       {loading ? (
-        <div style={{
-          textAlign: 'center', padding: '48px 0'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
-            <BrandIcon name="feed" size={46} />
-          </div>
-          <div style={{ fontSize: '14px', color: '#A09DC8', fontWeight: '600' }}>Loading gigs...</div>
-        </div>
+        <ScreenLoader />
       ) : filtered.length === 0 ? (
         <EmptyState
           icon="search"
@@ -558,15 +596,16 @@ export default function FeedScreen() {
                     </div>
                   </div>
                 </div>
-                <div style={{ textAlign: 'right' }}>
+                <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: '3px', alignItems: 'flex-end' }}>
                   {gig.location && (
-                    <div style={{
-                      fontSize: '10px', color: '#FF6B2B', marginBottom: '1px'
-                    }}>📍 {gig.location}</div>
+                    <div style={{ fontSize: '10px', color: '#FF6B2B' }}>
+                      📍 {gig.location}
+                    </div>
                   )}
                   <div style={{ fontSize: '10px', color: '#A09DC8' }}>
-                    {new Date(gig.created_at).toLocaleDateString()}
+                    {timeAgo(gig.created_at)}
                   </div>
+                  <ExpiryBadge expiresAt={gig.expires_at} small />
                 </div>
               </div>
             </div>
@@ -638,6 +677,21 @@ export default function FeedScreen() {
                       borderRadius: '6px', padding: '3px 9px',
                       fontSize: '9px', fontWeight: '700', color: '#00C48C'
                     }}>{selectedGig.slots} OPEN SLOTS</span>
+                  )}
+                </div>
+
+                {/* Timing row */}
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: '8px',
+                  flexWrap: 'wrap', marginBottom: '12px'
+                }}>
+                  <span style={{ fontSize: '11px', color: '#A09DC8' }}>
+                    Posted {timeAgo(selectedGig.created_at)}
+                  </span>
+                  {selectedGig.expires_at ? (
+                    <ExpiryBadge expiresAt={selectedGig.expires_at} />
+                  ) : (
+                    <span style={{ fontSize: '11px', color: '#A09DC8' }}>· Open-ended</span>
                   )}
                 </div>
 

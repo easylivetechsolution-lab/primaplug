@@ -7,10 +7,43 @@ import Onboarding from './pages/Onboarding'
 import Dashboard from './pages/Dashboard'
 import Admin from './pages/Admin'
 import LegalPage from './pages/LegalPage'
-import BrandIcon from './components/BrandIcon'
 import { LanguageProvider } from './context/LanguageContext'
 import { CreditsProvider } from './context/CreditsContext'
 import { captureReferralCode, captureGigReferral } from './utils/referral'
+
+function AppLoader({ message }) {
+  return (
+    <div style={{
+      minHeight: '100vh', display: 'flex', alignItems: 'center',
+      justifyContent: 'center', flexDirection: 'column', gap: '24px',
+      background: '#F8F7FF', fontFamily: "'Plus Jakarta Sans', sans-serif"
+    }}>
+      <div style={{ position: 'relative', width: '96px', height: '96px' }}>
+        <div style={{
+          position: 'absolute', inset: 0,
+          border: '4px solid #E2E0FF',
+          borderTop: '4px solid #6C47FF',
+          borderRadius: '50%',
+          animation: 'primaspin 0.8s linear infinite',
+          boxSizing: 'border-box',
+        }} />
+        <img src="/prima-logo.png" alt="PrimaPlug" style={{
+          position: 'absolute',
+          top: '12px', left: '12px',
+          width: '72px', height: '72px',
+          borderRadius: '18px',
+          objectFit: 'contain',
+        }} />
+      </div>
+      {message && (
+        <div style={{ fontSize: '13px', color: '#A09DC8', fontWeight: '600', textAlign: 'center', maxWidth: '220px', lineHeight: '1.5' }}>
+          {message}
+        </div>
+      )}
+      <style>{`@keyframes primaspin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  )
+}
 
 function AuthCallback() {
   const navigate = useNavigate()
@@ -90,74 +123,13 @@ function AuthCallback() {
     handleCallback()
   }, [])
 
-  return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex', alignItems: 'center',
-      justifyContent: 'center', flexDirection: 'column',
-      gap: '16px', background: '#F8F7FF',
-      fontFamily: "'Plus Jakarta Sans', sans-serif"
-    }}>
-      <div style={{
-        width: '64px', height: '64px',
-        borderRadius: '18px',
-        background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
-        display: 'flex', alignItems: 'center',
-        justifyContent: 'center', fontSize: '32px',
-        boxShadow: '0 8px 32px rgba(108,71,255,0.4)'
-      }}>⚡</div>
-      <div style={{
-        fontSize: '24px', fontWeight: '800', color: '#14123A'
-      }}>PrimaPlug</div>
-      <div style={{
-        fontSize: '14px', color: '#8B8FAF',
-        textAlign: 'center', maxWidth: '240px',
-        lineHeight: '1.5'
-      }}>{message}</div>
-      <div style={{
-        width: '120px', height: '4px',
-        borderRadius: '2px', background: '#E2E0FF',
-        overflow: 'hidden', marginTop: '8px'
-      }}>
-        <div style={{
-          height: '100%', background: 'linear-gradient(90deg, #6C47FF, #9B59FF)',
-          borderRadius: '2px',
-          animation: 'loading 1.2s ease infinite'
-        }} />
-      </div>
-      <style>{`
-        @keyframes loading {
-          0% { width: 0%; margin-left: 0%; }
-          50% { width: 60%; margin-left: 20%; }
-          100% { width: 0%; margin-left: 100%; }
-        }
-      `}</style>
-    </div>
-  )
+  return <AppLoader message={message} />
 }
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
 
-  if (loading) return (
-    <div style={{
-      minHeight: '100vh', display: 'flex',
-      alignItems: 'center', justifyContent: 'center',
-      background: '#F8F7FF', flexDirection: 'column', gap: '16px',
-      fontFamily: "'Plus Jakarta Sans', sans-serif"
-    }}>
-      <div style={{
-        width: '56px', height: '56px', borderRadius: '16px',
-        background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
-        display: 'flex', alignItems: 'center',
-        justifyContent: 'center', fontSize: '28px'
-      }}>⚡</div>
-      <div style={{ fontSize: '20px', fontWeight: '800', color: '#14123A' }}>
-        PrimaPlug
-      </div>
-      <div style={{ fontSize: '13px', color: '#A09DC8' }}>Loading...</div>
-    </div>
-  )
+  if (loading) return <AppLoader />
 
   return user ? children : <Navigate to="/" replace />
 }
@@ -170,31 +142,7 @@ function AppRoutes() {
     captureGigReferral()
   }, [])
 
-  if (loading) return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: '#F5F4FF',
-      fontFamily: "'Plus Jakarta Sans', sans-serif"
-    }}>
-      <div style={{ textAlign: 'center' }}>
-        <div style={{
-          width: '48px', height: '48px',
-          borderRadius: '12px',
-          display: 'flex', alignItems: 'center',
-          justifyContent: 'center',
-          margin: '0 auto 12px'
-        }}>
-          <BrandIcon name="map" size={48} />
-        </div>
-        <div style={{ fontSize: '14px', color: '#8B8FAF', fontWeight: '600' }}>
-          Loading Prima...
-        </div>
-      </div>
-    </div>
-  )
+  if (loading) return <AppLoader />
 
   return (
     <Routes>

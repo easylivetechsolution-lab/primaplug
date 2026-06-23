@@ -96,7 +96,7 @@ serve(async (req) => {
       business: Deno.env.get('FINCRA_BUSINESS_ID'),
       sourceCurrency: currency,
       destinationCurrency: currency,
-      amount: String(amount),
+      amount: Number(amount),
       description: 'Prima withdrawal',
       customerReference: reference,
       paymentDestination: 'bank_account',
@@ -145,9 +145,10 @@ serve(async (req) => {
         .update({ status: 'failed', description: 'Payout failed to initiate - refunded' })
         .eq('fincra_reference', reference)
 
+      const fincraMessage = fincraData?.message || fincraData?.error || 'Payment provider declined the transfer'
       return new Response(
-        JSON.stringify({ error: 'Payout failed', details: fincraData }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: fincraMessage, details: fincraData }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 

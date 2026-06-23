@@ -3,6 +3,7 @@ import { supabase } from '../../supabase'
 import { useAuth } from '../../context/AuthContext'
 import { CATEGORIES } from '../../data/categories'
 import BrandIcon from '../BrandIcon'
+import ScreenLoader from '../ScreenLoader'
 
 const CATEGORY_ICONS = {
   'Technology & Digital': 'tech',
@@ -281,10 +282,7 @@ export default function DiscoverScreen() {
             {loading ? 'Loading...' : `${gigs.length} Gig${gigs.length !== 1 ? 's' : ''} in ${selectedField}`}
           </div>
           {loading ? (
-            <div style={{
-              textAlign: 'center', padding: '32px',
-              color: '#A09DC8', fontSize: '14px'
-            }}>Loading gigs...</div>
+            <ScreenLoader />
           ) : gigs.length === 0 ? (
             <div style={{
               textAlign: 'center', padding: '32px',

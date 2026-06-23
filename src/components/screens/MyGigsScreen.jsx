@@ -6,6 +6,7 @@ import { getCurrency } from '../../data/currencies'
 import PublicProfile from '../PublicProfile'
 import { getPendingGigReferralForPayout } from '../../utils/referral'
 import ReceiptFlow from '../ReceiptFlow'
+import ScreenLoader from '../ScreenLoader'
 import LiveTracking from '../LiveTracking'
 import EditGig from '../EditGig'
 import BrandIcon from '../BrandIcon'
@@ -31,6 +32,38 @@ const timeAgo = (date) => {
 const daysSince = (date) => {
   if (!date) return 0
   return Math.floor((new Date() - new Date(date)) / (1000 * 60 * 60 * 24))
+}
+
+const timeUntil = (d) => {
+  const diff = new Date(d) - Date.now()
+  if (diff <= 0) return null
+  const m = Math.floor(diff / 60000)
+  if (m < 60) return `${m}m`
+  const h = Math.floor(m / 60)
+  if (h < 24) return `${h}h`
+  const days = Math.floor(h / 24)
+  return days === 1 ? '1 day' : `${days} days`
+}
+
+const ExpiryBadge = ({ expiresAt }) => {
+  if (!expiresAt) return null
+  const remaining = timeUntil(expiresAt)
+  if (!remaining) return <span style={{ fontSize: '10px', color: '#FF3366', fontWeight: '700' }}>Expired</span>
+  const isUrgent = new Date(expiresAt) - Date.now() < 24 * 60 * 60 * 1000
+  const isWarning = new Date(expiresAt) - Date.now() < 3 * 24 * 60 * 60 * 1000
+  const color = isUrgent ? '#FF3366' : isWarning ? '#FF6B2B' : '#A09DC8'
+  const bg = isUrgent ? '#FFE8EE' : isWarning ? '#FFF0E8' : '#F5F4FF'
+  const border = isUrgent ? '#FF99B3' : isWarning ? '#FFBC99' : '#E2E0FF'
+  return (
+    <span style={{
+      fontSize: '10px', fontWeight: '700', color,
+      background: bg, border: `1px solid ${border}`,
+      borderRadius: '5px', padding: '1px 6px',
+      display: 'inline-flex', alignItems: 'center', gap: '3px',
+    }}>
+      {remaining} left
+    </span>
+  )
 }
 
 // ─── MAIN COMPONENT ───────────────────────────────────
@@ -635,10 +668,7 @@ const { error: notifError } = await supabase
         flex: 1, overflowY: 'auto', padding: '0 16px 100px'
       }}>
         {loading ? (
-          <div style={{
-            textAlign: 'center', padding: '48px',
-            color: '#A09DC8', fontSize: '14px'
-          }}>Loading...</div>
+          <ScreenLoader />
         ) : (
           <>
             {/* ── MY POSTS TAB ── */}
@@ -902,6 +932,12 @@ function PostedGigCard({
             }}>
               {currency.symbol}{gig.pay_min}–{currency.symbol}{gig.pay_max} ·{' '}
               {gig.location || 'Remote'} · {timeAgo(gig.created_at)}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '5px' }}>
+              <ExpiryBadge expiresAt={gig.expires_at} />
+              {!gig.expires_at && (
+                <span style={{ fontSize: '10px', color: '#A09DC8' }}>No expiry</span>
+              )}
             </div>
           </div>
           <span style={{
