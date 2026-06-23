@@ -51,16 +51,16 @@ serve(async (req) => {
     }
 
     // Call Fincra's verify endpoint using OUR reference (merchant-reference)
+    const verifyHeaders: Record<string, string> = {
+      'accept': 'application/json',
+      'api-key': Deno.env.get('FINCRA_SECRET_KEY')!,
+    }
+    const businessId = Deno.env.get('FINCRA_BUSINESS_ID')
+    if (businessId) verifyHeaders['x-business-id'] = businessId
+
     const verifyRes = await fetch(
       `https://sandboxapi.fincra.com/checkout/payments/merchant-reference/${reference}`,
-      {
-        method: 'GET',
-        headers: {
-          'accept': 'application/json',
-          'api-key': Deno.env.get('FINCRA_SECRET_KEY')!,
-          'x-business-id': Deno.env.get('FINCRA_BUSINESS_ID')!,
-        },
-      }
+      { method: 'GET', headers: verifyHeaders }
     )
 
     const verifyData = await verifyRes.json()
@@ -73,9 +73,10 @@ serve(async (req) => {
       )
     }
 
-    const txStatus = verifyData?.data?.status
+    const txStatus = String(verifyData?.data?.status || '').toLowerCase()
+    const isSuccessful = ['success', 'successful', 'completed', 'paid'].includes(txStatus)
 
-    if (txStatus !== 'success' && txStatus !== 'successful') {
+    if (!isSuccessful) {
       return new Response(
         JSON.stringify({ status: 'not_yet_successful', fincraStatus: txStatus, details: verifyData }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
