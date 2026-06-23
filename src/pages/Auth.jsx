@@ -75,12 +75,12 @@ export default function Auth() {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '20px'
+      padding: '12px'
     }}>
       <div style={{
         background: '#fff',
-        borderRadius: '24px',
-        padding: '40px',
+        borderRadius: '20px',
+        padding: 'clamp(20px, 6vw, 40px)',
         width: '100%',
         maxWidth: '420px',
         boxShadow: '0 20px 60px rgba(108,71,255,0.3)'
@@ -91,7 +91,7 @@ export default function Auth() {
           marginBottom: '16px', position: 'relative'
         }}>
           <div style={{
-            width: '68px', height: '68px', borderRadius: '50%',
+            width: 'clamp(50px, 14vw, 68px)', height: 'clamp(50px, 14vw, 68px)', borderRadius: '50%',
             background: '#EEE9FF', border: '1.5px solid #E2E0FF',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             flexShrink: 0
@@ -99,7 +99,7 @@ export default function Auth() {
             <img
               src="/prima-logo.png"
               alt="PrimaPlug"
-              style={{ width: '52px', height: '52px', borderRadius: '10px', objectFit: 'contain' }}
+              style={{ width: 'clamp(38px, 11vw, 52px)', height: 'clamp(38px, 11vw, 52px)', borderRadius: '10px', objectFit: 'contain' }}
             />
           </div>
           <button
@@ -167,23 +167,17 @@ export default function Auth() {
         </div>
 
         {/* Logo */}
-        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <div style={{ marginBottom: '6px' }}>
+        <div style={{ textAlign: 'center', marginBottom: 'clamp(18px, 5vw, 32px)' }}>
+          <div style={{ marginBottom: '4px' }}>
             <span style={{
-              fontSize: '52px', fontWeight: '800',
-              color: '#14123A', letterSpacing: '-3px',
+              fontSize: 'clamp(36px, 11vw, 52px)', fontWeight: '800',
+              color: '#14123A', letterSpacing: '-2px',
               lineHeight: 1,
               fontFamily: 'Georgia, "Times New Roman", serif',
               fontStyle: 'italic'
-            }}>P</span><span style={{
-              fontSize: '52px', fontWeight: '800',
-              color: '#14123A', letterSpacing: '-3px',
-              lineHeight: 1,
-              fontFamily: 'Georgia, "Times New Roman", serif',
-              fontStyle: 'italic'
-            }}>rima</span>
+            }}>Prima</span>
           </div>
-          <div style={{ fontSize: '13px', color: '#8B8FAF', marginTop: '2px' }}>Real-Time Labor Network</div>
+          <div style={{ fontSize: '12px', color: '#8B8FAF', marginTop: '2px' }}>Real-Time Labor Network</div>
         </div>
 
         {/* Toggle */}

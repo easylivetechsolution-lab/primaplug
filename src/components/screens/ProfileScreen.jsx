@@ -714,29 +714,29 @@ export default function ProfileScreen({ onLogout }) {
                       onClick={() => window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'wallet' }))}
                       style={{
                         flex: 1, background: 'linear-gradient(135deg, #00C48C, #00A878)',
-                        borderRadius: '14px', padding: '12px', color: '#fff', cursor: 'pointer'
+                        borderRadius: '14px', padding: '14px', color: '#fff', cursor: 'pointer'
                       }}>
-                      <div style={{ fontSize: '8px', opacity: 0.8, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Wallet</div>
-                      <div style={{ fontSize: '15px', fontWeight: '800', marginBottom: '3px' }}>
+                      <div style={{ fontSize: '11px', opacity: 0.85, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '6px', fontWeight: '700' }}>Wallet</div>
+                      <div style={{ fontSize: '18px', fontWeight: '800', marginBottom: '4px' }}>
                         {profile?.wallet_currency || 'NGN'} {(profile?.wallet_balance || 0).toLocaleString()}
                       </div>
-                      <div style={{ fontSize: '9px', opacity: 0.75 }}>Tap to fund →</div>
+                      <div style={{ fontSize: '11px', opacity: 0.8 }}>Tap to fund →</div>
                     </div>
                     <div
                       onClick={() => window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'commission' }))}
                       style={{
                         flex: 1, background: hasUnpaidCommissions ? '#FFE8EE' : '#DFFDF4',
                         border: `1.5px solid ${hasUnpaidCommissions ? '#FF99B3' : '#7EECD2'}`,
-                        borderRadius: '14px', padding: '12px', cursor: 'pointer'
+                        borderRadius: '14px', padding: '14px', cursor: 'pointer'
                       }}>
-                      <div style={{ fontSize: '8px', color: hasUnpaidCommissions ? '#FF3366' : '#00C48C', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Commission</div>
+                      <div style={{ fontSize: '11px', color: hasUnpaidCommissions ? '#FF3366' : '#00C48C', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '6px' }}>Commission</div>
                       {hasUnpaidCommissions ? (
                         <>
-                          <div style={{ fontSize: '15px', fontWeight: '800', color: '#FF3366' }}>${totalOwed.toFixed(2)}</div>
-                          <div style={{ fontSize: '9px', color: '#FF3366', opacity: 0.8 }}>{pendingCommissions.length} pending →</div>
+                          <div style={{ fontSize: '18px', fontWeight: '800', color: '#FF3366' }}>${totalOwed.toFixed(2)}</div>
+                          <div style={{ fontSize: '11px', color: '#FF3366', opacity: 0.85, marginTop: '4px' }}>{pendingCommissions.length} pending →</div>
                         </>
                       ) : (
-                        <div style={{ fontSize: '13px', fontWeight: '700', color: '#00C48C' }}>✓ Clear</div>
+                        <div style={{ fontSize: '14px', fontWeight: '700', color: '#00C48C' }}>✓ Clear</div>
                       )}
                     </div>
                   </div>
