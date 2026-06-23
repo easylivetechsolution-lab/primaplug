@@ -908,18 +908,86 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
                 fontSize: '13px', color: '#8B8FAF',
                 lineHeight: '1.7', marginBottom: '20px'
               }}>
-                The worker has disputed the payment amount.
-                Our team will review and resolve this within 24 hours.
-                Both parties will be notified of the outcome.
+                {isWorker
+                  ? 'You raised a dispute on this payment. If you\'ve since found the payment, you can confirm it below — otherwise our team will review within 24 hours.'
+                  : 'The worker has disputed the payment amount. Our team will review and resolve this within 24 hours. Both parties will be notified of the outcome.'
+                }
               </div>
               <div style={{
                 background: '#FFF0E8', border: '1.5px solid #FFBC99',
                 borderRadius: '12px', padding: '14px',
-                fontSize: '12px', color: '#FF6B2B', lineHeight: '1.6'
+                fontSize: '12px', color: '#FF6B2B', lineHeight: '1.6',
+                marginBottom: isWorker ? '20px' : '0'
               }}>
                 In the meantime please have your payment proof ready.
                 Our admin team may contact you for more information.
               </div>
+
+              {/* Worker can self-resolve if they found the payment */}
+              {isWorker && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '4px' }}>
+                  <div style={{
+                    background: '#F5F4FF', border: '1.5px solid #E2E0FF',
+                    borderRadius: '12px', padding: '12px 14px',
+                    fontSize: '12px', color: '#6C47FF', lineHeight: '1.5',
+                    textAlign: 'left'
+                  }}>
+                    💡 Found the payment? Tap below to confirm and close this dispute without waiting for admin.
+                  </div>
+                  <button
+                    onClick={async () => {
+                      if (!window.confirm('Are you sure you received the payment and want to close this dispute?')) return
+                      setSubmitting(true)
+                      try {
+                        const { data: currentReceipt } = await supabase
+                          .from('receipts')
+                          .select('*')
+                          .eq('gig_id', gig.id)
+                          .single()
+
+                        await supabase
+                          .from('receipts')
+                          .update({ disputed: false, dispute_reason: null })
+                          .eq('id', currentReceipt.id)
+
+                        // Notify poster dispute is resolved
+                        await supabase.from('notifications').insert({
+                          user_id: gig.poster_id,
+                          title: '✅ Dispute Resolved',
+                          message: `The worker confirmed they received payment for "${gig.title}" and has closed the dispute.`,
+                          type: 'general',
+                          gig_id: gig.id
+                        })
+
+                        // Proceed with full confirmation
+                        await handleWorkerConfirm(true)
+                      } catch (e) {
+                        setError('Error resolving dispute: ' + e.message)
+                        setSubmitting(false)
+                      }
+                    }}
+                    disabled={submitting}
+                    style={{
+                      width: '100%',
+                      background: submitting ? '#B8A5FF' : 'linear-gradient(135deg, #00C48C, #00A878)',
+                      border: 'none', borderRadius: '12px', padding: '14px',
+                      fontSize: '14px', fontWeight: '700', color: '#fff',
+                      cursor: submitting ? 'not-allowed' : 'pointer',
+                      fontFamily: 'inherit',
+                      boxShadow: submitting ? 'none' : '0 4px 16px rgba(0,196,140,0.35)'
+                    }}>
+                    {submitting ? '⏳ Processing...' : '✓ I Found It — Confirm Payment'}
+                  </button>
+                </div>
+              )}
+
+              {error && (
+                <div style={{
+                  background: '#FFE8EE', border: '1.5px solid #FF99B3',
+                  borderRadius: '10px', padding: '10px 14px',
+                  fontSize: '12px', color: '#FF3366', marginTop: '12px'
+                }}>{error}</div>
+              )}
             </div>
           )}
 

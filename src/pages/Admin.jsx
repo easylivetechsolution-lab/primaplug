@@ -119,7 +119,12 @@ export default function Admin() {
       case 'disputes':
         const { data: disputesData } = await supabase
           .from('receipts')
-          .select('*, gigs(title), poster:users!receipts_poster_id_fkey(full_name, email), worker:users!receipts_worker_id_fkey(full_name, email)')
+          .select(`
+            *,
+            gigs(id, title, payment_method, currency, escrow_amount, pay_min),
+            poster:users!receipts_poster_id_fkey(full_name, email),
+            worker:users!receipts_worker_id_fkey(full_name, email)
+          `)
           .eq('disputed', true)
           .order('created_at', { ascending: false })
         setDisputes(disputesData || [])
@@ -190,25 +195,163 @@ export default function Admin() {
   }
 
   const resolveDispute = async (receiptId, favor) => {
-    // favor = 'poster' or 'worker'
-    await supabase
-      .from('receipts')
-      .update({
-        disputed: false,
-        dispute_reason: `Resolved in favor of ${favor}`,
-        completed: favor === 'worker',
-        status: 'resolved'
-      })
-      .eq('id', receiptId)
+    const dispute = disputes.find(d => d.id === receiptId)
+    if (!dispute) return
 
-    await supabase.from('notifications').insert({
-      user_id: favor === 'worker'
-        ? disputes.find(d => d.id === receiptId)?.worker_id
-        : disputes.find(d => d.id === receiptId)?.poster_id,
-      title: '✅ Dispute Resolved',
-      message: 'Your dispute has been reviewed and resolved by Prima admin.',
-      type: 'general'
-    })
+    const gig = dispute.gigs
+    const isWalletGig = gig?.payment_method === 'wallet'
+
+    if (favor === 'worker') {
+      // Mark receipt fully completed
+      await supabase.from('receipts').update({
+        disputed: false,
+        dispute_reason: `Resolved in favor of worker by admin`,
+        worker_confirmed: true,
+        worker_confirmed_at: new Date().toISOString(),
+        completed: true,
+        completed_at: new Date().toISOString(),
+        status: 'completed'
+      }).eq('id', receiptId)
+
+      if (isWalletGig && gig?.id) {
+        // Release escrow to worker
+        await supabase.rpc('release_gig_escrow', {
+          p_gig_id: gig.id,
+          p_poster_id: dispute.poster_id,
+          p_worker_id: dispute.worker_id,
+          p_amount: Number(gig.escrow_amount || gig.pay_min || dispute.amount)
+        })
+      } else if (gig?.id) {
+        // Create commission debt for worker (manual payment gig)
+        const commissionAmount = Math.round((dispute.amount || 0) * 0.1 * 100) / 100
+        const { data: existing } = await supabase
+          .from('commissions')
+          .select('id, status')
+          .eq('gig_id', gig.id)
+          .eq('worker_id', dispute.worker_id)
+          .maybeSingle()
+
+        if (!existing) {
+          await supabase.from('commissions').insert({
+            gig_id: gig.id,
+            worker_id: dispute.worker_id,
+            gig_amount: dispute.amount,
+            commission_amount: commissionAmount,
+            currency: dispute.currency || 'NGN',
+            status: 'pending',
+            due_date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
+          })
+        }
+      }
+
+      if (gig?.id) {
+        await supabase.rpc('increment_gigs_completed', { worker_id: dispute.worker_id })
+      }
+
+      const paymentDeadline = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString()
+
+      if (!isWalletGig) {
+        // Set a 5-day payment deadline — pg_cron will auto-ban if missed
+        await supabase.from('receipts').update({
+          payment_ordered: true,
+          payment_deadline: paymentDeadline
+        }).eq('id', receiptId)
+      }
+
+      // Notify winner (worker)
+      await supabase.from('notifications').insert({
+        user_id: dispute.worker_id,
+        title: '✅ Dispute Resolved — In Your Favor',
+        message: isWalletGig
+          ? `Admin reviewed the dispute for "${gig?.title}" and ruled in your favor. Your payment has been released to your wallet.`
+          : `Admin reviewed the dispute for "${gig?.title}" and ruled in your favor. The poster has been ordered to pay you within 5 days. Commission is due within 3 days of receipt.`,
+        type: isWalletGig ? 'wallet' : 'general',
+        gig_id: gig?.id || null
+      })
+
+      // Notify loser (poster) — stern legal warning for manual gigs
+      await supabase.from('notifications').insert({
+        user_id: dispute.poster_id,
+        title: isWalletGig ? 'Dispute Outcome — Favor Worker' : '⚠️ Payment Order — Action Required',
+        message: isWalletGig
+          ? `Admin reviewed the payment dispute for "${gig?.title}" and ruled in the worker's favor. The gig is now marked complete.`
+          : `Admin has reviewed the dispute for "${gig?.title}" and ruled in the worker's favor. You are required to release the agreed payment to the worker within 5 days (by ${new Date(paymentDeadline).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}). Failure to comply will result in an immediate account ban and referral for legal action.`,
+        type: 'general',
+        gig_id: gig?.id || null
+      })
+
+    } else {
+      // Favor poster — reset receipt so parties can re-negotiate
+      await supabase.from('receipts').update({
+        disputed: false,
+        dispute_reason: `Resolved in favor of poster by admin`,
+        poster_confirmed: false,
+        worker_confirmed: false,
+        completed: false,
+        status: 'pending'
+      }).eq('id', receiptId)
+
+      if (isWalletGig && gig?.id) {
+        // Return locked escrow back to poster's wallet
+        await supabase.rpc('unlock_gig_escrow', {
+          p_gig_id: gig.id,
+          p_poster_id: dispute.poster_id,
+          p_amount: Number(gig.escrow_amount || gig.pay_min || dispute.amount)
+        })
+      }
+
+      // Notify winner (poster)
+      await supabase.from('notifications').insert({
+        user_id: dispute.poster_id,
+        title: '✅ Dispute Resolved — In Your Favor',
+        message: isWalletGig
+          ? `Admin reviewed the dispute for "${gig?.title}" and ruled in your favor. Your escrowed funds have been returned to your wallet.`
+          : `Admin reviewed the dispute for "${gig?.title}" and ruled in your favor. You may re-submit a corrected receipt.`,
+        type: isWalletGig ? 'wallet' : 'general',
+        gig_id: gig?.id || null
+      })
+
+      // Notify loser (worker)
+      await supabase.from('notifications').insert({
+        user_id: dispute.worker_id,
+        title: 'Dispute Outcome — Favor Poster',
+        message: `Admin reviewed your dispute for "${gig?.title}" and ruled in the poster's favor. Please contact the poster to resolve the payment directly.`,
+        type: 'general',
+        gig_id: gig?.id || null
+      })
+    }
+
+    fetchTabData('disputes')
+    fetchOverview()
+  }
+
+  const dismissDispute = async (receiptId) => {
+    const dispute = disputes.find(d => d.id === receiptId)
+    // Reset to worker_confirm step so worker sees the receipt again
+    await supabase.from('receipts').update({
+      disputed: false,
+      dispute_reason: null,
+      status: 'pending'
+    }).eq('id', receiptId)
+
+    const gig = dispute?.gigs
+
+    await supabase.from('notifications').insert([
+      {
+        user_id: dispute.worker_id,
+        title: 'Dispute Dismissed — Please Confirm',
+        message: `Admin reviewed the dispute for "${gig?.title}" and dismissed it. Please review the receipt and confirm or re-raise your concern.`,
+        type: 'receipt',
+        gig_id: gig?.id || null
+      },
+      {
+        user_id: dispute.poster_id,
+        title: 'Dispute Dismissed',
+        message: `The dispute raised on "${gig?.title}" was dismissed. The worker has been asked to review the receipt again.`,
+        type: 'general',
+        gig_id: gig?.id || null
+      }
+    ])
 
     fetchTabData('disputes')
     fetchOverview()
@@ -874,13 +1017,7 @@ export default function Admin() {
                         fontFamily: 'inherit'
                       }}>✓ Favor Worker</button>
                     <button
-                      onClick={async () => {
-                        await supabase
-                          .from('receipts')
-                          .update({ disputed: false, status: 'pending' })
-                          .eq('id', dispute.id)
-                        fetchTabData('disputes')
-                      }}
+                      onClick={() => dismissDispute(dispute.id)}
                       style={{
                         background: '#F5F4FF',
                         border: '1.5px solid #E2E0FF',
