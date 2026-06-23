@@ -409,22 +409,34 @@ useEffect(() => {
       </div>
 
       {showMobileMore && (
-        <div
-          className="mobile-more-menu"
-          style={{
-            display: 'none',
-            position: 'fixed',
-            top: '62px',
-            right: '12px',
-            width: '220px',
-            background: '#fff',
-            border: '1.5px solid #E2E0FF',
-            borderRadius: '16px',
-            boxShadow: '0 16px 44px rgba(108,71,255,0.18)',
-            zIndex: 9600,
-            overflow: 'hidden'
-          }}
-        >
+        <>
+          {/* Invisible backdrop — tap anywhere outside to close */}
+          <div
+            className="mobile-more-menu"
+            onClick={() => setShowMobileMore(false)}
+            style={{
+              display: 'none',
+              position: 'fixed',
+              inset: 0,
+              zIndex: 9599,
+            }}
+          />
+          <div
+            className="mobile-more-menu"
+            style={{
+              display: 'none',
+              position: 'fixed',
+              top: '62px',
+              right: '12px',
+              width: '220px',
+              background: '#fff',
+              border: '1.5px solid #E2E0FF',
+              borderRadius: '16px',
+              boxShadow: '0 16px 44px rgba(108,71,255,0.18)',
+              zIndex: 9600,
+              overflow: 'hidden'
+            }}
+          >
           {mobileMoreItems.map(item => (
             <button
               key={item.key}
@@ -466,6 +478,7 @@ useEffect(() => {
             </button>
           ))}
         </div>
+        </>
       )}
 
       {/* BODY */}

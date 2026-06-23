@@ -87,9 +87,21 @@ export default function Auth() {
       }}>
         {/* Language Selector */}
         <div style={{
-          display: 'flex', justifyContent: 'flex-end',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           marginBottom: '16px', position: 'relative'
         }}>
+          <div style={{
+            width: '68px', height: '68px', borderRadius: '50%',
+            background: '#EEE9FF', border: '1.5px solid #E2E0FF',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0
+          }}>
+            <img
+              src="/prima-logo.png"
+              alt="PrimaPlug"
+              style={{ width: '52px', height: '52px', borderRadius: '10px', objectFit: 'contain' }}
+            />
+          </div>
           <button
             onClick={() => setShowLangPicker(s => !s)}
             style={{
@@ -156,17 +168,22 @@ export default function Auth() {
 
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <div style={{
-            width: '56px', height: '56px',
-            borderRadius: '16px',
-            display: 'flex', alignItems: 'center',
-            justifyContent: 'center',
-            margin: '0 auto 12px'
-          }}>
-            <BrandIcon name="map" size={56} />
+          <div style={{ marginBottom: '6px' }}>
+            <span style={{
+              fontSize: '52px', fontWeight: '800',
+              color: '#14123A', letterSpacing: '-3px',
+              lineHeight: 1,
+              fontFamily: 'Georgia, "Times New Roman", serif',
+              fontStyle: 'italic'
+            }}>P</span><span style={{
+              fontSize: '52px', fontWeight: '800',
+              color: '#14123A', letterSpacing: '-3px',
+              lineHeight: 1,
+              fontFamily: 'Georgia, "Times New Roman", serif',
+              fontStyle: 'italic'
+            }}>rima</span>
           </div>
-          <div style={{ fontSize: '28px', fontWeight: '800', color: '#14123A', letterSpacing: '-0.5px' }}>Prima</div>
-          <div style={{ fontSize: '13px', color: '#8B8FAF', marginTop: '4px' }}>Real-Time Labor Network</div>
+          <div style={{ fontSize: '13px', color: '#8B8FAF', marginTop: '2px' }}>Real-Time Labor Network</div>
         </div>
 
         {/* Toggle */}

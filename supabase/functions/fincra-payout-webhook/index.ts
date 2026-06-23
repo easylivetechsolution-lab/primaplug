@@ -48,24 +48,37 @@ serve(async (req) => {
       console.log('Could not parse body as JSON')
     }
 
-    const customerReference = payload?.data?.customerReference || `unknown_${Date.now()}`
+    const event = payload?.event
+    const data = payload?.data
 
-    await supabase.from('fincra_webhook_events').insert({
-      event_type: payload?.event || 'unknown',
+    // Pick the right reference field depending on event type
+    const customerReference =
+      data?.customerReference ||   // payout events
+      data?.reference ||           // charge events
+      data?.chargeReference ||     // charge events (fallback)
+      data?.merchantReference ||
+      `unknown_${Date.now()}`
+
+    console.log('EVENT TYPE:', event, '| REFERENCE:', customerReference)
+
+    // Ignore duplicate events (unique constraint on fincra_reference)
+    const { error: insertErr } = await supabase.from('fincra_webhook_events').insert({
+      event_type: event || 'unknown',
       fincra_reference: customerReference,
       payload: payload,
       processed: false,
     })
+    if (insertErr?.code === '23505') {
+      console.log('Duplicate webhook received, skipping:', customerReference)
+      return new Response(JSON.stringify({ status: 'duplicate' }), {
+        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
 
     // Signature is a warning, not a gate — never lose a payment due to a missing secret
     if (!isValid) {
       console.log('WARNING: Signature mismatch — processing anyway to avoid lost payments')
     }
-
-    const event = payload?.event
-    const data = payload?.data
-
-    console.log('EVENT TYPE:', event)
 
     // ── WALLET FUNDING (charge.successful) ──────────────────────────────────
     if (event === 'charge.successful') {
