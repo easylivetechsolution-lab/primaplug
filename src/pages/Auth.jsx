@@ -82,7 +82,7 @@ export default function Auth() {
         borderRadius: '20px',
         padding: 'clamp(20px, 6vw, 40px)',
         width: '100%',
-        maxWidth: '380px',
+        maxWidth: '340px',
         boxShadow: '0 20px 60px rgba(108,71,255,0.3)'
       }}>
         {/* Language Selector */}
