@@ -42,11 +42,11 @@ export default function Withdrawal({ onClose }) {
         }
       )
       const json = await res.json()
-      if (json?.banks) {
-        setBanks(json.banks)
-      } else if (Array.isArray(json)) {
-        setBanks(json)
-      }
+      if (json?.error) throw new Error(json.error)
+      const banks = Array.isArray(json?.data)
+        ? json.data
+        : (json?.data?.banks || json?.banks || (Array.isArray(json) ? json : []))
+      setBanks(banks)
     } catch (e) {
       console.error('Load banks error:', e)
     }

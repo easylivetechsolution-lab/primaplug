@@ -13,6 +13,8 @@ export default function WithdrawalScreen() {
 
   const [banks, setBanks] = useState([])
   const [bankCode, setBankCode] = useState('')
+  const [bankSearch, setBankSearch] = useState('')
+  const [showBankList, setShowBankList] = useState(false)
   const [accountNumber, setAccountNumber] = useState('')
   const [verifiedName, setVerifiedName] = useState('')
   const [verifying, setVerifying] = useState(false)
@@ -161,7 +163,7 @@ export default function WithdrawalScreen() {
         </div>
         <button
           onClick={() => {
-            setDone(false); setAmount(''); setBankCode('')
+            setDone(false); setAmount(''); setBankCode(''); setBankSearch('')
             setAccountNumber(''); setVerifiedName('')
           }}
           style={{
@@ -226,14 +228,106 @@ export default function WithdrawalScreen() {
       {/* Bank selection */}
       <div style={{ marginBottom: '14px' }}>
         <label style={labelStyle}>Bank</label>
-        <select
-          value={bankCode}
-          onChange={e => { setBankCode(e.target.value); setVerifiedName('') }}
-          style={{ ...inputStyle, appearance: 'none' }}>
-          <option value="">Select your bank</option>
-          {banks.map((b, i) => <option key={i} value={b.code}>{b.name}</option>)}
-        </select>
+        <div
+          onClick={() => setShowBankList(true)}
+          style={{
+            ...inputStyle, display: 'flex', alignItems: 'center',
+            gap: '8px', cursor: 'pointer',
+            border: bankCode ? '1.5px solid #6C47FF' : '1.5px solid #E2E0FF',
+          }}
+        >
+          <span style={{ fontSize: '14px', flexShrink: 0 }}>🏦</span>
+          <span style={{ flex: 1, fontSize: '13px', color: bankCode ? '#14123A' : '#8B8FAF' }}>
+            {banks.find(b => b.code === bankCode)?.name || 'Search and select your bank'}
+          </span>
+          {bankCode
+            ? <span style={{ fontSize: '11px', color: '#6C47FF', fontWeight: '700', cursor: 'pointer' }}
+                onClick={e => { e.stopPropagation(); setBankCode(''); setBankSearch(''); setVerifiedName('') }}>✕</span>
+            : <span style={{ fontSize: '16px', color: '#8B8FAF' }}>›</span>
+          }
+        </div>
       </div>
+
+      {/* Bank picker modal */}
+      {showBankList && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 9999,
+          background: 'rgba(20,18,58,0.6)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+          fontFamily: "'Plus Jakarta Sans', sans-serif",
+        }} onClick={() => { setShowBankList(false); setBankSearch('') }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            background: '#fff', borderRadius: '20px 20px 0 0',
+            width: '100%', maxWidth: '540px',
+            height: '75vh', display: 'flex', flexDirection: 'column',
+            padding: '0 0 20px',
+          }}>
+            {/* Handle */}
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 8px' }}>
+              <div style={{ width: '40px', height: '4px', background: '#E2E0FF', borderRadius: '2px' }} />
+            </div>
+            <div style={{ textAlign: 'center', fontSize: '16px', fontWeight: '800', color: '#14123A', marginBottom: '14px' }}>
+              Select Bank
+            </div>
+
+            {/* Search */}
+            <div style={{ padding: '0 16px 12px' }}>
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: '8px',
+                background: '#F5F4FF', border: '1.5px solid #E2E0FF',
+                borderRadius: '12px', padding: '10px 14px',
+              }}>
+                <span style={{ fontSize: '16px' }}>🔍</span>
+                <input
+                  autoFocus
+                  value={bankSearch}
+                  onChange={e => setBankSearch(e.target.value)}
+                  placeholder="Type bank name..."
+                  style={{
+                    flex: 1, border: 'none', outline: 'none',
+                    background: 'transparent', fontSize: '14px',
+                    color: '#14123A', fontFamily: 'inherit',
+                  }}
+                />
+                {bankSearch && (
+                  <span onClick={() => setBankSearch('')}
+                    style={{ fontSize: '12px', color: '#8B8FAF', cursor: 'pointer', fontWeight: '700' }}>✕</span>
+                )}
+              </div>
+            </div>
+
+            {/* Bank list */}
+            <div style={{ flex: 1, overflowY: 'auto' }}>
+              {banks
+                .filter(b => b.name?.toLowerCase().includes(bankSearch.toLowerCase()))
+                .map((b, i) => (
+                  <div
+                    key={i}
+                    onClick={() => { setBankCode(b.code); setBankSearch(''); setShowBankList(false); setVerifiedName('') }}
+                    style={{
+                      padding: '13px 20px', fontSize: '14px',
+                      color: b.code === bankCode ? '#6C47FF' : '#14123A',
+                      background: b.code === bankCode ? '#F5F4FF' : 'transparent',
+                      fontWeight: b.code === bankCode ? '700' : '500',
+                      cursor: 'pointer',
+                      borderBottom: '1px solid #F5F4FF',
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    }}
+                  >
+                    <span>{b.name}</span>
+                    {b.code === bankCode && <span style={{ fontSize: '16px', color: '#6C47FF' }}>✓</span>}
+                  </div>
+                ))
+              }
+              {banks.filter(b => b.name?.toLowerCase().includes(bankSearch.toLowerCase())).length === 0 && (
+                <div style={{ padding: '40px 20px', textAlign: 'center', color: '#8B8FAF', fontSize: '13px' }}>
+                  No bank found for "{bankSearch}"
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div style={{ marginBottom: '10px' }}>
         <label style={labelStyle}>Account Number</label>

@@ -1,6 +1,4 @@
 import { useEffect, useState, useRef } from 'react'
-import { Capacitor } from '@capacitor/core'
-import { Geolocation } from '@capacitor/geolocation'
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -212,39 +210,11 @@ export default function MapScreen() {
   useEffect(() => {
     const getLocation = async () => {
       try {
-        if (Capacitor.isNativePlatform()) {
-          // Request native Android permission
-          const permission = await Geolocation.requestPermissions()
-          console.log('Location permission:', permission)
-
-          if (permission.location === 'granted') {
-            const pos = await Geolocation.getCurrentPosition({
-              enableHighAccuracy: true,
-              timeout: 10000
-            })
-            setUserPos([pos.coords.latitude, pos.coords.longitude])
-
-            // Watch position
-            Geolocation.watchPosition(
-              { enableHighAccuracy: true },
-              (position) => {
-                if (position) {
-                  setUserPos([
-                    position.coords.latitude,
-                    position.coords.longitude
-                  ])
-                }
-              }
-            )
-          }
-        } else {
-          // Web browser
-          navigator.geolocation.getCurrentPosition(
-            (pos) => setUserPos([pos.coords.latitude, pos.coords.longitude]),
-            () => setUserPos([6.5244, 3.3792]),
-            { enableHighAccuracy: true, timeout: 10000 }
-          )
-        }
+        navigator.geolocation.getCurrentPosition(
+          (pos) => setUserPos([pos.coords.latitude, pos.coords.longitude]),
+          () => setUserPos([6.5244, 3.3792]),
+          { enableHighAccuracy: true, timeout: 10000 }
+        )
       } catch (e) {
         console.log('Location error:', e)
         setUserPos([6.5244, 3.3792])
@@ -314,14 +284,19 @@ export default function MapScreen() {
         event: 'DELETE', schema: 'public', table: 'gigs'
       }, () => fetchGigs())
       .subscribe()
-    return () => supabase.removeChannel(channel)
+    const expireInterval = setInterval(fetchGigs, 60000)
+    return () => {
+      supabase.removeChannel(channel)
+      clearInterval(expireInterval)
+    }
   }, [])
 
   const fetchGigs = async () => {
     const { data, error } = await supabase
       .from('gigs')
       .select('*, poster:users!gigs_poster_id_fkey(full_name, avatar_url, trust_score, rating, gigs_completed, phone)')
-      .in('status', ['open', 'completed'])
+      .eq('status', 'open')
+      .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
       .not('latitude', 'is', null)
       .not('longitude', 'is', null)
     if (error) console.log('Map fetch error:', error.message)

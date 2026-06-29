@@ -93,7 +93,7 @@ export default function FeedScreen() {
       window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'map' }))
       setTimeout(() => {
         window.dispatchEvent(new CustomEvent('openGigOnMap', { detail: gig }))
-      }, 120)
+      }, 350)
     } else {
       setSelectedGig(gig)
     }
@@ -104,13 +104,15 @@ export default function FeedScreen() {
     fetchSavedIds()
     const channel = supabase
       .channel('feed-channel')
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'gigs'
-      }, () => fetchGigs())
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'gigs' }, () => fetchGigs())
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'gigs' }, () => fetchGigs())
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'gigs' }, () => fetchGigs())
       .subscribe()
-    return () => supabase.removeChannel(channel)
+    const expireInterval = setInterval(fetchGigs, 60000)
+    return () => {
+      supabase.removeChannel(channel)
+      clearInterval(expireInterval)
+    }
   }, [])
 
   useEffect(() => {

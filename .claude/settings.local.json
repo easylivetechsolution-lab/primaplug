@@ -3,7 +3,8 @@
     "allow": [
       "Bash(del \"c:\\\\primeplug\\\\src\\\\components\\\\screens\\\\ServicesScreen.jsx\")",
       "Bash(git restore *)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "PowerShell(cd C:\\\\prima_app; $env:JAVA_HOME = \"C:\\\\Program Files\\\\Android\\\\Android Studio\\\\jbr\"; C:\\\\flutter\\\\bin\\\\flutter.bat pub get 2>&1 | Select-Object -Last 10)"
     ]
   }
 }
