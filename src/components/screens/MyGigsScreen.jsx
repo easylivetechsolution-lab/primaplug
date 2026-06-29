@@ -415,15 +415,17 @@ const { error: notifError } = await supabase
 
     const { data: current } = await supabase
       .from('gigs')
-      .select('status, applications(id, status)')
+      .select('status, expires_at, applications(id, status)')
       .eq('id', gigId)
       .maybeSingle()
 
     if (!current) return
 
-    const hasActiveWorker =
+    const isExpired = current.expires_at && new Date(current.expires_at) < new Date()
+    const hasActiveWorker = !isExpired && (
       current.status === 'in_progress' ||
       current.applications?.some(a => a.status === 'accepted')
+    )
 
     if (hasActiveWorker) {
       alert('This gig cannot be deleted while a worker is active on it. Complete or resolve the job first.')
