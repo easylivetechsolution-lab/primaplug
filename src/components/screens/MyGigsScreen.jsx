@@ -421,19 +421,42 @@ const { error: notifError } = await supabase
 
     if (!current) return
 
-    const isExpired = current.expires_at && new Date(current.expires_at) < new Date()
-    const hasActiveWorker = !isExpired && (
-      current.status === 'in_progress' ||
-      current.applications?.some(a => a.status === 'accepted')
-    )
-
-    if (hasActiveWorker) {
-      alert('This gig cannot be deleted while a worker is active on it. Complete or resolve the job first.')
-      await fetchAll()
+    // Always block if a worker is actively on the job, regardless of expiry
+    if (current.status === 'in_progress') {
+      alert('A worker is actively on this job. Complete or resolve it before deleting.')
       return
     }
 
-    await supabase.from('gigs').delete().eq('id', gigId)
+    // Block if there is an accepted application and the gig is not expired or completed
+    const isExpired = current.expires_at && new Date(current.expires_at) < new Date()
+    const isCompleted = current.status === 'completed'
+    const hasAccepted = current.applications?.some(a => a.status === 'accepted')
+    if (hasAccepted && !isExpired && !isCompleted) {
+      alert('A worker has been accepted for this gig. Complete or resolve it before deleting.')
+      return
+    }
+
+    // Notify pending applicants before wiping their applications
+    const pendingApps = current.applications?.filter(a => a.status === 'pending') || []
+    if (pendingApps.length > 0) {
+      await supabase.from('notifications').insert(
+        pendingApps.map(a => ({
+          user_id: a.worker_id,
+          title: 'Gig Removed',
+          message: `A gig you applied for has been removed by the poster.`,
+          type: 'rejected',
+          gig_id: null
+        }))
+      )
+    }
+
+    await supabase.from('notifications').delete().eq('gig_id', gigId)
+    await supabase.from('receipts').delete().eq('gig_id', gigId)
+    await supabase.from('applications').delete().eq('gig_id', gigId)
+    const { error } = await supabase.from('gigs').delete().eq('id', gigId)
+    if (error) {
+      alert('Failed to delete gig: ' + error.message)
+    }
     await fetchAll()
   }
 
