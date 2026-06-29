@@ -260,9 +260,10 @@ export default function MapScreen() {
   const cleanExpiredGigs = async () => {
     await supabase
       .from('gigs')
-      .delete()
+      .update({ deleted_at: new Date().toISOString() })
       .lt('expires_at', new Date().toISOString())
-      .in('status', ['open', 'completed'])
+      .eq('status', 'open')
+      .is('deleted_at', null)
   }
 
   useEffect(() => {
@@ -296,6 +297,7 @@ export default function MapScreen() {
       .from('gigs')
       .select('*, poster:users!gigs_poster_id_fkey(full_name, avatar_url, trust_score, rating, gigs_completed, phone)')
       .eq('status', 'open')
+      .is('deleted_at', null)
       .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
       .not('latitude', 'is', null)
       .not('longitude', 'is', null)

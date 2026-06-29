@@ -66,6 +66,7 @@ export default function Search({ onClose }) {
         .from('gigs')
         .select('*, users(full_name, avatar_url, trust_score, rating)')
         .in('status', ['open', 'completed'])
+        .is('deleted_at', null)
         .textSearch('search_vector', q.trim().split(' ').join(' & '), {
           type: 'websearch'
         })

@@ -118,6 +118,7 @@ export default function PublicProfile({ userId, onClose }) {
       .select('*')
       .eq('poster_id', userId)
       .eq('status', 'open')
+      .is('deleted_at', null)
       .order('created_at', { ascending: false })
       .limit(5)
     if (data) setGigs(data)

@@ -54,6 +54,7 @@ export default function DiscoverScreen() {
       .from('gigs')
       .select('*, users(full_name, trust_score, rating, avatar_url)')
       .in('status', ['open', 'completed'])
+      .is('deleted_at', null)
       .order('created_at', { ascending: false })
     if (data) {
       setAllGigs(data.filter(gig =>
@@ -68,6 +69,7 @@ export default function DiscoverScreen() {
       .from('gigs')
       .select('*, users(full_name, trust_score, rating, avatar_url)')
       .in('status', ['open', 'completed'])
+      .is('deleted_at', null)
       .eq('field', field)
       .order('created_at', { ascending: false })
     if (data) {

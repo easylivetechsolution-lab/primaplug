@@ -136,6 +136,7 @@ export default function MyGigsScreen() {
       `)
       .eq('poster_id', user.id)
       .neq('status', 'completed')
+      .is('deleted_at', null)
       .order('created_at', { ascending: false })
     if (data) setPostedGigs(data)
   }
@@ -162,7 +163,7 @@ export default function MyGigsScreen() {
       .order('created_at', { ascending: false })
 
     if (data) {
-      const valid = data.filter(a => a.gigs)
+      const valid = data.filter(a => a.gigs && !a.gigs.deleted_at)
       setWorkingGigs(valid)
     }
   }
@@ -436,27 +437,25 @@ const { error: notifError } = await supabase
       return
     }
 
-    // Notify pending applicants before wiping their applications
+    // Notify pending applicants
     const pendingApps = current.applications?.filter(a => a.status === 'pending') || []
     if (pendingApps.length > 0) {
       await supabase.from('notifications').insert(
         pendingApps.map(a => ({
           user_id: a.worker_id,
           title: 'Gig Removed',
-          message: `A gig you applied for has been removed by the poster.`,
+          message: 'A gig you applied for has been removed by the poster.',
           type: 'rejected',
           gig_id: null
         }))
       )
     }
 
-    await supabase.from('notifications').delete().eq('gig_id', gigId)
-    await supabase.from('receipts').delete().eq('gig_id', gigId)
-    await supabase.from('applications').delete().eq('gig_id', gigId)
-    const { error } = await supabase.from('gigs').delete().eq('id', gigId)
-    if (error) {
-      alert('Failed to delete gig: ' + error.message)
-    }
+    const { error } = await supabase
+      .from('gigs')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', gigId)
+    if (error) alert('Failed to delete gig: ' + error.message)
     await fetchAll()
   }
 

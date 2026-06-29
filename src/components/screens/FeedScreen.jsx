@@ -149,6 +149,7 @@ export default function FeedScreen() {
         )
       `)
       .eq('status', 'open')
+      .is('deleted_at', null)
       .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
       .order('created_at', { ascending: false })
 
