@@ -182,7 +182,7 @@ export default function PostGig({ onClose }) {
     }
 
     const expiresAt = form.expires_on ? new Date(`${form.expires_on}T23:59:59`) : new Date()
-    if (!form.expires_on) expiresAt.setDate(expiresAt.getDate() + 7)
+    if (!form.expires_on) expiresAt.setDate(expiresAt.getDate() + 5)
 
     const { error: err } = await supabase.from('gigs').insert({
   poster_id: user.id,
@@ -409,6 +409,7 @@ export default function PostGig({ onClose }) {
                     type="date"
                     value={form.expires_on}
                     min={new Date().toISOString().slice(0, 10)}
+                    max={new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)}
                     onChange={e => update('expires_on', e.target.value)}
                     style={inputStyle}
                   />
@@ -728,7 +729,7 @@ export default function PostGig({ onClose }) {
                     ['Urgency', form.urgency.toUpperCase()],
                     ['Pay Range', `${CURRENCIES.find(c => c.code === form.currency)?.symbol || '$'}${form.pay_min || '?'} - ${CURRENCIES.find(c => c.code === form.currency)?.symbol || '$'}${form.pay_max || '?'}`],
                     ['Payment', form.payment_method === PAYMENT_METHODS.WALLET ? 'Pay from Wallet' : 'Pay Manually'],
-                    ['Expires', form.expires_on || '7 days from posting'],
+                    ['Expires', form.expires_on || '5 days from posting'],
                     ['Location', form.type === 'digital' ? 'Remote' : (form.location || '—')],
                     ['Slots', form.slots],
                   ].map(([k, v]) => (

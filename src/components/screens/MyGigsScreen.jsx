@@ -447,6 +447,7 @@ const { error: notifError } = await supabase
     if (gig.status === 'in_progress') return 'inprogress'
     if (acceptedApp) return 'inprogress'
     if (pendingApps.length > 0) return 'hasapplicants'
+    if (gig.expires_at && new Date(gig.expires_at) < new Date()) return 'expired'
     return 'open'
   }
 
@@ -816,6 +817,7 @@ function PostedTab({
   )
   const inProgressGigs = gigs.filter(g => getStatus(g) === 'inprogress')
   const openGigs = gigs.filter(g => getStatus(g) === 'open')
+  const expiredGigs = gigs.filter(g => getStatus(g) === 'expired')
   const completedGigs = gigs.filter(g => getStatus(g) === 'completed')
 
   if (gigs.length === 0) {
@@ -871,6 +873,15 @@ function PostedTab({
           {openGigs.map(renderGig)}
         </GigCarousel>
       )}
+      {expiredGigs.length > 0 && (
+        <GigCarousel
+          title="Expired"
+          count={expiredGigs.length}
+          color="#A09DC8"
+        >
+          {expiredGigs.map(renderGig)}
+        </GigCarousel>
+      )}
       {completedGigs.length > 0 && (
         <GigCarousel
           title="Completed"
@@ -910,6 +921,7 @@ function PostedGigCard({
     hasapplicants: { color: '#FF3366', bg: '#FFE8EE', border: '#FF99B3', label: `${pendingApps.length} Applicant${pendingApps.length > 1 ? 's' : ''}` },
     inprogress: { color: '#FF6B2B', bg: '#FFF0E8', border: '#FFBC99', label: 'In Progress' },
     waiting: { color: '#6C47FF', bg: '#EEE9FF', border: '#B8A5FF', label: 'Awaiting Confirmation' },
+    expired: { color: '#A09DC8', bg: '#F5F4FF', border: '#E2E0FF', label: 'Expired' },
     completed: { color: '#8B8FAF', bg: '#F5F4FF', border: '#E2E0FF', label: 'Completed' },
   }
 
