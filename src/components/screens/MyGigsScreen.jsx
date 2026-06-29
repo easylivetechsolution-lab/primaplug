@@ -1279,13 +1279,24 @@ function PostedGigCard({
 
         {/* COMPLETED */}
         {status === 'completed' && (
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: '6px',
-            fontSize: '12px', color: '#00C48C', fontWeight: '600'
-          }}>
-            <BrandIcon name="completed" size={20} active />
-            {getCurrency(receipt?.currency || 'USD').symbol}
-            {receipt?.amount?.toLocaleString()} · Completed
+          <div>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: '6px',
+              fontSize: '12px', color: '#00C48C', fontWeight: '600',
+              marginBottom: '10px'
+            }}>
+              <BrandIcon name="completed" size={20} active />
+              {getCurrency(receipt?.currency || 'USD').symbol}
+              {receipt?.amount?.toLocaleString()} · Completed
+            </div>
+            <button
+              onClick={() => onDelete(gig.id)}
+              style={{
+                width: '100%', background: '#FFE8EE',
+                border: '1.5px solid #FF99B3', borderRadius: '10px',
+                padding: '10px', fontSize: '12px', fontWeight: '700',
+                color: '#FF3366', cursor: 'pointer', fontFamily: 'inherit'
+              }}>🗑 Delete Gig</button>
           </div>
         )}
       </div>
