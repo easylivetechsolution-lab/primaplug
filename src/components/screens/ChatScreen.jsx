@@ -3,6 +3,7 @@ import { supabase } from '../../supabase'
 import { useAuth } from '../../context/AuthContext'
 import PublicProfile from '../PublicProfile'
 import BrandIcon from '../BrandIcon'
+import { showToast } from '../../utils/toast'
 import ScreenLoader from '../ScreenLoader'
 import EmptyState from '../EmptyState'
 import { playMessage } from '../../utils/sounds'
@@ -227,7 +228,7 @@ export default function ChatScreen() {
   const handleFileAttach = async (e) => {
     const file = e.target.files?.[0]
     if (!file || !activeConvo) return
-    if (file.size > 10 * 1024 * 1024) { alert('File must be under 10 MB'); return }
+    if (file.size > 10 * 1024 * 1024) { showToast('File must be under 10 MB', 'error'); return }
     setUploadingFile(true)
     try {
       const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 80)
@@ -241,7 +242,7 @@ export default function ChatScreen() {
       const cleanUrl = urlData.publicUrl.split('?')[0]
       await sendMessage(cleanUrl)
     } catch (err) {
-      alert('Upload failed: ' + err.message)
+      showToast('Upload failed: ' + err.message, 'error')
     }
     setUploadingFile(false)
     if (e.target) e.target.value = ''
@@ -338,7 +339,7 @@ export default function ChatScreen() {
       setMessages(prev => prev.filter(m => m.id !== tempId))
       setNewMessage(text)
       setReplyingTo(pendingReply)
-      alert('Could not send message: ' + e.message)
+      showToast('Could not send message: ' + e.message, 'error')
     } finally {
       setSending(false)
     }
@@ -364,7 +365,7 @@ export default function ChatScreen() {
       .eq('sender_id', user.id)
 
     if (error) {
-      alert('Could not edit message: ' + error.message)
+      showToast('Could not edit message: ' + error.message, 'error')
       return
     }
 
@@ -386,7 +387,7 @@ export default function ChatScreen() {
       .eq('sender_id', user.id)
 
     if (error) {
-      alert('Could not delete message: ' + error.message)
+      showToast('Could not delete message: ' + error.message, 'error')
       return
     }
 
@@ -407,7 +408,7 @@ export default function ChatScreen() {
     try {
       await hideConversationForUser(convo, user.id)
     } catch (error) {
-      alert('Could not delete conversation: ' + error.message)
+      showToast('Could not delete conversation: ' + error.message, 'error')
       return
     }
 
@@ -431,7 +432,7 @@ export default function ChatScreen() {
     try {
       now = await clearConversationForUser(convo, user.id)
     } catch (error) {
-      alert('Could not clear chat: ' + error.message)
+      showToast('Could not clear chat: ' + error.message, 'error')
       return
     }
 
@@ -471,7 +472,7 @@ export default function ChatScreen() {
       const newReactions = await toggleMessageReaction(msg, emoji, user.id)
       setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, reactions: newReactions } : m))
     } catch (err) {
-      alert('Could not react: ' + err.message)
+      showToast('Could not react: ' + err.message, 'error')
     }
     setReactingTo(null)
   }
@@ -484,7 +485,7 @@ export default function ChatScreen() {
       await sendChatMessage({ user, conversation: targetConvo, content: forwardMsg.content })
       await fetchConversations()
     } catch (err) {
-      alert('Could not forward: ' + err.message)
+      showToast('Could not forward: ' + err.message, 'error')
     }
     setForwardMsg(null)
   }
@@ -498,7 +499,7 @@ export default function ChatScreen() {
       if (activeConvo?.id === convo.id)
         setActiveConvo(prev => prev ? { ...prev, [field]: newVal } : prev)
     } catch (err) {
-      alert('Could not pin: ' + err.message)
+      showToast('Could not pin: ' + err.message, 'error')
     }
     setConversationMenu(null)
   }
@@ -512,7 +513,7 @@ export default function ChatScreen() {
       if (activeConvo?.id === convo.id)
         setActiveConvo(prev => prev ? { ...prev, [field]: newVal } : prev)
     } catch (err) {
-      alert('Could not mute: ' + err.message)
+      showToast('Could not mute: ' + err.message, 'error')
     }
     setConversationMenu(null)
   }
@@ -524,7 +525,7 @@ export default function ChatScreen() {
       const field = convo.participant_1 === user.id ? 'unread_count_1' : 'unread_count_2'
       setConversations(prev => prev.map(c => c.id === convo.id ? { ...c, [field]: 1 } : c))
     } catch (err) {
-      alert('Could not mark unread: ' + err.message)
+      showToast('Could not mark unread: ' + err.message, 'error')
     }
     setConversationMenu(null)
   }

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
+import { showToast } from '../utils/toast'
 
 const TAGS_FOR_WORKER = [
   'Professional', 'On Time', 'Great Communication',
@@ -37,7 +38,7 @@ export default function ReviewModal({ gig, revieweeId, revieweeName, reviewType,
 
   const handleSubmit = () => {
     if (rating === 0) {
-      alert('Please select a rating')
+      showToast('Please select a rating', 'error')
       return
     }
     setSubmitting(true)

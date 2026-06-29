@@ -3,6 +3,7 @@ import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 import CategoryPicker from './CategoryPicker'
 import BrandIcon from './BrandIcon'
+import { showToast } from '../utils/toast'
 import { playAccepted } from '../utils/sounds'
 import { getProfileCompletion } from '../utils/profileComplete'
 import ProfilePrompt from './ProfilePrompt'
@@ -123,7 +124,7 @@ export default function PostGig({ onClose }) {
       .eq('id', user.id)
       .single()
     if (!userProfile?.selfie_verified) {
-      alert('Please complete selfie verification in your profile before posting gigs.')
+      showToast('Please complete selfie verification in your profile before posting gigs.', 'error')
       submittingRef.current = false
       setLoading(false)
       onClose()

@@ -3,6 +3,7 @@ import { supabase } from '../../supabase'
 import { useAuth } from '../../context/AuthContext'
 import { useCredits } from '../../context/CreditsContext'
 import { getCurrency } from '../../data/currencies'
+import { showToast } from '../../utils/toast'
 import PublicProfile from '../PublicProfile'
 import { getPendingGigReferralForPayout } from '../../utils/referral'
 import ReceiptFlow from '../ReceiptFlow'
@@ -199,7 +200,7 @@ export default function MyGigsScreen() {
         if (lockError) throw lockError
 
         if (!lockResult) {
-          alert('Your wallet balance is not enough to accept this worker. Please fund your wallet or use a manual-payment gig.')
+          showToast('Your wallet balance is not enough to accept this worker. Please fund your wallet or use a manual-payment gig.', 'error')
           window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'wallet' }))
           return
         }
@@ -293,13 +294,13 @@ const { error: notifError } = await supabase
       }
 
       await fetchAll()
-      alert(isWalletGig
+      showToast(isWalletGig
         ? 'Application accepted! Funds are now locked in escrow.'
         : 'Application accepted! Worker has been notified.')
 
     } catch (e) {
       console.error('Accept error:', e)
-      alert('Error accepting: ' + e.message)
+      showToast('Error accepting: ' + e.message, 'error')
     }
   }
 
@@ -380,7 +381,7 @@ const { error: notifError } = await supabase
 
     } catch (e) {
       console.error('Release escrow error:', e)
-      alert('Error releasing payment: ' + e.message)
+      showToast('Error releasing payment: ' + e.message, 'error')
     }
   }
   const declineApplication = async (application, gigTitle, gigId) => {
@@ -424,7 +425,7 @@ const { error: notifError } = await supabase
 
     // Always block if a worker is actively on the job, regardless of expiry
     if (current.status === 'in_progress') {
-      alert('A worker is actively on this job. Complete or resolve it before deleting.')
+      showToast('A worker is actively on this job. Complete or resolve it before deleting.', 'error')
       return
     }
 
@@ -433,7 +434,7 @@ const { error: notifError } = await supabase
     const isCompleted = current.status === 'completed'
     const hasAccepted = current.applications?.some(a => a.status === 'accepted')
     if (hasAccepted && !isExpired && !isCompleted) {
-      alert('A worker has been accepted for this gig. Complete or resolve it before deleting.')
+      showToast('A worker has been accepted for this gig. Complete or resolve it before deleting.', 'error')
       return
     }
 
@@ -455,7 +456,7 @@ const { error: notifError } = await supabase
       .from('gigs')
       .update({ deleted_at: new Date().toISOString() })
       .eq('id', gigId)
-    if (error) alert('Failed to delete gig: ' + error.message)
+    if (error) showToast('Failed to delete gig: ' + error.message, 'error')
     await fetchAll()
   }
 

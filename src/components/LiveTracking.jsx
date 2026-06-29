@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { supabase } from '../supabase'
+import { showToast } from '../utils/toast'
 import { useAuth } from '../context/AuthContext'
 
 // Worker moving pin
@@ -301,7 +302,7 @@ export default function LiveTracking({ gig, role, workerInfo, posterInfo, onClos
 
   const startTracking = () => {
     if (!navigator.geolocation) {
-      alert('Geolocation not supported on this device')
+      showToast('Geolocation not supported on this device', 'error')
       return
     }
 

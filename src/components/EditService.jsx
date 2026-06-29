@@ -3,6 +3,7 @@ import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 import CategoryPicker from './CategoryPicker'
 import { CURRENCIES } from '../data/currencies'
+import { showToast } from '../utils/toast'
 
 const inputStyle = {
   width: '100%', background: '#F5F4FF',
@@ -89,7 +90,7 @@ export default function EditService({ service, onClose, onUpdated }) {
 
         if (error) {
           console.error('Upload error:', error)
-          alert(`Upload failed: ${error.message}`)
+          showToast(`Upload failed: ${error.message}`, 'error')
           continue
         }
 
@@ -115,11 +116,11 @@ export default function EditService({ service, onClose, onUpdated }) {
 
   const handleSave = async () => {
     if (!form.title.trim()) {
-      alert('Please add a title')
+      showToast('Please add a title', 'error')
       return
     }
     if (!form.basic_price) {
-      alert('Please set at least the Basic package price')
+      showToast('Please set at least the Basic package price', 'error')
       return
     }
     setSaving(true)
@@ -152,7 +153,7 @@ export default function EditService({ service, onClose, onUpdated }) {
       .eq('id', service.id)
 
     if (error) {
-      alert('Error updating: ' + error.message)
+      showToast('Error updating: ' + error.message, 'error')
       setSaving(false)
       return
     }

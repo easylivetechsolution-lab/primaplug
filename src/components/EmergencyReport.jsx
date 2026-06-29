@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
+import { showToast } from '../utils/toast'
 
 export default function EmergencyReport({ onClose, gigId, reportedUserId }) {
   const { user, profile } = useAuth()
@@ -32,7 +33,7 @@ export default function EmergencyReport({ onClose, gigId, reportedUserId }) {
   }
 
   const handleSubmit = async () => {
-    if (!description.trim()) { alert('Please describe what happened'); return }
+    if (!description.trim()) { showToast('Please describe what happened', 'error'); return }
     setSubmitting(true)
     try {
       await supabase.from('emergency_reports').insert({
@@ -59,7 +60,7 @@ export default function EmergencyReport({ onClose, gigId, reportedUserId }) {
       }
       setSubmitted(true)
     } catch (e) {
-      alert('Error submitting report: ' + e.message)
+      showToast('Error submitting report: ' + e.message, 'error')
     }
     setSubmitting(false)
   }

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
 import BrandIcon from '../components/BrandIcon'
 import { SUPPORTED_LANGUAGES } from '../data/languages'
+import { showToast } from '../utils/toast'
 import { useLanguage } from '../context/LanguageContext'
 
 export default function Auth() {
@@ -296,7 +297,7 @@ export default function Auth() {
                 redirectTo: `${window.location.origin}/auth/callback`
               }
             })
-            if (error) alert(error.message)
+            if (error) showToast(error.message, 'error')
           }}
           type="button"
           style={{

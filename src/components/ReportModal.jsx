@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
+import { showToast } from '../utils/toast'
 
 const REPORT_REASONS = [
   { key: 'fake_profile', label: '🎭 Fake profile or impersonation' },
@@ -34,7 +35,7 @@ export default function ReportModal({
   }, [])
 
   const handleSubmit = async () => {
-    if (!reason) { alert('Please select a reason'); return }
+    if (!reason) { showToast('Please select a reason', 'error'); return }
     if (!user) return
     setSubmitting(true)
     try {
@@ -72,7 +73,7 @@ export default function ReportModal({
       }
       setSubmitted(true)
     } catch (e) {
-      alert('Error submitting report: ' + e.message)
+      showToast('Error submitting report: ' + e.message, 'error')
     }
     setSubmitting(false)
   }

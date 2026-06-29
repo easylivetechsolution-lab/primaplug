@@ -3,6 +3,7 @@ import { supabase } from '../../supabase'
 import { useAuth } from '../../context/AuthContext'
 import PublicProfile from '../PublicProfile'
 import BrandIcon from '../BrandIcon'
+import { showToast } from '../../utils/toast'
 import EmptyState from '../EmptyState'
 import ScreenLoader from '../ScreenLoader'
 import { getCurrency } from '../../data/currencies'
@@ -72,7 +73,7 @@ export default function SavedScreen() {
       .eq('id', user.id)
       .single()
     if (!userProfile?.selfie_verified) {
-      alert('Please complete selfie verification in your profile before applying for gigs.')
+      showToast('Please complete selfie verification in your profile before applying for gigs.', 'error')
       window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'profile' }))
       setApplying(false)
       return
@@ -91,14 +92,14 @@ export default function SavedScreen() {
       })
 
       if (result.blocked) {
-        alert(result.message)
+        showToast(result.message, 'error')
         window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'commission' }))
         setApplying(false)
         return
       }
 
       if (result.alreadyApplied) {
-        alert('You already applied for this gig!')
+        showToast('You already applied for this gig!')
         setApplying(false)
         return
       }
@@ -106,7 +107,7 @@ export default function SavedScreen() {
       setApplied(gig.id)
     } catch (e) {
       console.log('Apply error:', e)
-      alert('Error applying: ' + e.message)
+      showToast('Error applying: ' + e.message, 'error')
     }
     setApplying(false)
   }

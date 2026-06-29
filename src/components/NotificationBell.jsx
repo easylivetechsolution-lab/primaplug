@@ -3,6 +3,7 @@ import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 import PublicProfile from './PublicProfile'
 import BrandIcon from './BrandIcon'
+import { showToast } from '../utils/toast'
 import { ensureGigConversation } from '../utils/gigApplications'
 import {
   playNotification,
@@ -627,7 +628,7 @@ export default function NotificationBell({ onNavigate }) {
                                 let gig = detail?.gig
                                 const gigId = gig?.id || detail?.gig_id || detail?.notif?.gig_id || app.gig_id
                                 if (!gigId) {
-                                  alert('Could not find this gig. Please reopen the notification and try again.')
+                                  showToast('Could not find this gig. Please reopen the notification and try again.', 'error')
                                   return
                                 }
 
@@ -654,7 +655,7 @@ export default function NotificationBell({ onNavigate }) {
                                   })
                                   .eq('id', app.id)
                                 if (acceptError) {
-                                  alert('Error accepting: ' + acceptError.message)
+                                  showToast('Error accepting: ' + acceptError.message, 'error')
                                   return
                                 }
 
@@ -679,7 +680,7 @@ export default function NotificationBell({ onNavigate }) {
                                   })
                                   .eq('id', gigId)
                                 if (gigError) {
-                                  alert('Error updating gig: ' + gigError.message)
+                                  showToast('Error updating gig: ' + gigError.message, 'error')
                                   return
                                 }
 
@@ -708,7 +709,7 @@ export default function NotificationBell({ onNavigate }) {
                                   gig_id: gigId
                                 })
                                 if (notifError) {
-                                  alert('Accepted, but notification failed: ' + notifError.message)
+                                  showToast('Accepted, but notification failed: ' + notifError.message)
                                 }
 
                                 const { data: apps } = await supabase
@@ -734,7 +735,7 @@ export default function NotificationBell({ onNavigate }) {
                                 const gigId = gig?.id || detail?.gig_id || detail?.notif?.gig_id || app.gig_id
                                 const gigTitle = gig?.title || detail?.notif?.message?.match(/"([^"]+)"/)?.[1] || 'this gig'
                                 if (!gigId) {
-                                  alert('Could not find this gig. Please reopen the notification and try again.')
+                                  showToast('Could not find this gig. Please reopen the notification and try again.', 'error')
                                   return
                                 }
 

@@ -3,6 +3,7 @@ import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 import { playMessage } from '../utils/sounds'
 import { sendPushToUser } from '../utils/pushNotifications'
+import { showToast } from '../utils/toast'
 import PublicProfile from './PublicProfile'
 import BrandIcon from './BrandIcon'
 import {
@@ -266,7 +267,7 @@ export default function FloatingChat({ onOpenFullChat }) {
       setMessages(prev => prev.filter(m => m.id !== tempId))
       setNewMessage(text)
       setReplyingTo(pendingReply)
-      alert('Could not send: ' + e.message)
+      showToast('Could not send: ' + e.message, 'error')
     } finally {
       setSending(false)
     }
@@ -277,7 +278,7 @@ export default function FloatingChat({ onOpenFullChat }) {
       const newReactions = await toggleMessageReaction(msg, emoji, user.id)
       setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, reactions: newReactions } : m))
     } catch (err) {
-      alert('Could not react: ' + err.message)
+      showToast('Could not react: ' + err.message, 'error')
     }
     setReactingTo(null)
   }

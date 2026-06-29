@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
+import { showToast } from '../utils/toast'
 
 const PACKAGE_COLORS = {
   basic: { color: '#00C48C', bg: '#DFFDF4', border: '#7EECD2' },
@@ -53,8 +54,8 @@ export default function ServiceDetail({ service, onClose, onViewProfile }) {
   const isOwnService = service.worker_id === user?.id
 
   const handleOrder = async () => {
-    if (!user) { alert('Please log in to order'); return }
-    if (isOwnService) { alert("You can't order your own service"); return }
+    if (!user) { showToast('Please log in to order', 'error'); return }
+    if (isOwnService) { showToast("You can't order your own service", 'error'); return }
     setOrdering(true)
 
     try {
@@ -89,7 +90,7 @@ export default function ServiceDetail({ service, onClose, onViewProfile }) {
 
       setOrdered(true)
     } catch (e) {
-      alert('Error placing order: ' + e.message)
+      showToast('Error placing order: ' + e.message, 'error')
     }
     setOrdering(false)
   }

@@ -5,6 +5,7 @@ import CategoryPicker from '../CategoryPicker'
 import BrandIcon from '../BrandIcon'
 import ScreenLoader from '../ScreenLoader'
 import { completeReferral } from '../../utils/referral'
+import { showToast } from '../../utils/toast'
 import { getProfileCompletion } from '../../utils/profileComplete'
 import { useCredits } from '../../context/CreditsContext'
 import { CREDITS_PER_DOLLAR } from '../../utils/payments'
@@ -331,7 +332,7 @@ export default function ProfileScreen({ onLogout }) {
       .upload(fileName, file, { upsert: true })
 
     if (uploadError) {
-      alert('Upload failed: ' + uploadError.message)
+      showToast('Upload failed: ' + uploadError.message, 'error')
       setUploadingAvatar(false)
       return
     }
@@ -365,7 +366,7 @@ export default function ProfileScreen({ onLogout }) {
       .select()
 
     if (error) {
-      alert('Error saving: ' + error.message)
+      showToast('Error saving: ' + error.message, 'error')
       setSaving(false)
       return
     }

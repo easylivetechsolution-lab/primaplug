@@ -3,6 +3,7 @@ import { supabase } from '../../supabase'
 import PublicProfile from '../PublicProfile'
 import BrandIcon from '../BrandIcon'
 import EmptyState from '../EmptyState'
+import { showToast } from '../../utils/toast'
 import ScreenLoader from '../ScreenLoader'
 import { CATEGORIES, ALL_FIELDS } from '../../data/categories'
 import { getCurrency } from '../../data/currencies'
@@ -953,7 +954,7 @@ export default function FeedScreen() {
     .eq('id', user.id)
     .single()
   if (!userProfile?.selfie_verified) {
-    alert('Please complete selfie verification in your profile before applying for gigs.')
+    showToast('Please complete selfie verification in your profile before applying for gigs.', 'error')
     window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'profile' }))
     setApplying(false)
     return
@@ -969,13 +970,13 @@ export default function FeedScreen() {
     const { data: { session } } = await supabase.auth.getSession()
     const userId = session?.user?.id
     if (!userId) {
-      alert('Please log in to apply')
+      showToast('Please log in to apply', 'error')
       setApplying(false)
       return
     }
     const blocker = await findApplicationBlocker(userId)
     if (blocker) {
-      alert(blocker)
+      showToast(blocker, 'error')
       window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'commission' }))
       setApplying(false)
       return
@@ -987,7 +988,7 @@ export default function FeedScreen() {
       .eq('id', userId)
       .single()
     if (userStatus?.account_status === 'restricted') {
-      alert('Your account is restricted due to unpaid platform commission. Please pay to restore full access.')
+      showToast('Your account is restricted due to unpaid platform commission. Please pay to restore full access.', 'error')
       setApplying(false)
       return
     }
@@ -999,7 +1000,7 @@ export default function FeedScreen() {
       .eq('worker_id', userId)
       .limit(1)
     if (existingApps?.length > 0) {
-      alert('You already applied for this gig!')
+      showToast('You already applied for this gig!')
       setApplying(false)
       return
     }
@@ -1012,7 +1013,7 @@ export default function FeedScreen() {
         status: 'pending'
       })
     if (error) {
-      alert('Error applying: ' + error.message)
+      showToast('Error applying: ' + error.message, 'error')
       setApplying(false)
       return
     }

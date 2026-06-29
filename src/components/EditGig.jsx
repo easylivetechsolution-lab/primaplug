@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 import { CURRENCIES } from '../data/currencies'
+import { showToast } from '../utils/toast'
 
 const inputStyle = {
   width: '100%',
@@ -60,7 +61,7 @@ export default function EditGig({ gig, onClose, onSaved }) {
   const update = (key, val) => setForm(f => ({ ...f, [key]: val }))
 
   const handleSave = async () => {
-    if (!form.title.trim()) { alert('Please enter a title'); return }
+    if (!form.title.trim()) { showToast('Please enter a title', 'error'); return }
     setSaving(true)
     try {
       const expiresAt = new Date()
@@ -91,7 +92,7 @@ export default function EditGig({ gig, onClose, onSaved }) {
         onClose()
       }, 1200)
     } catch (e) {
-      alert('Error saving: ' + e.message)
+      showToast('Error saving: ' + e.message, 'error')
     }
     setSaving(false)
   }

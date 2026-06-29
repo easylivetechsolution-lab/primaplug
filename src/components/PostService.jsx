@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 import CategoryPicker from './CategoryPicker'
+import { showToast } from '../utils/toast'
 
 const inputStyle = {
   width: '100%',
@@ -66,11 +67,11 @@ export default function PostService({ onClose, onPosted }) {
 
   const handleSubmit = async () => {
     if (!form.title.trim()) {
-      alert('Please add a service title')
+      showToast('Please add a service title', 'error')
       return
     }
     if (!form.basic_price) {
-      alert('Please set at least the Basic package price')
+      showToast('Please set at least the Basic package price', 'error')
       return
     }
 
@@ -107,7 +108,7 @@ export default function PostService({ onClose, onPosted }) {
         onClose()
       }, 2000)
     } catch (e) {
-      alert('Error posting service: ' + e.message)
+      showToast('Error posting service: ' + e.message, 'error')
     }
     setLoading(false)
   }
@@ -357,7 +358,7 @@ export default function PostService({ onClose, onPosted }) {
 
                               if (error) {
                                 console.error('Upload error:', error)
-                                alert(`Upload failed: ${error.message}`)
+                                showToast(`Upload failed: ${error.message}`, 'error')
                                 continue
                               }
 
@@ -611,7 +612,7 @@ export default function PostService({ onClose, onPosted }) {
                 <button
                   onClick={() => {
                     if (step === 1 && !form.title.trim()) {
-                      alert('Please add a service title')
+                      showToast('Please add a service title', 'error')
                       return
                     }
                     setStep(s => s + 1)

@@ -3,6 +3,7 @@ import { supabase } from '../../supabase'
 import { useAuth } from '../../context/AuthContext'
 import { useCredits } from '../../context/CreditsContext'
 import { getCurrency } from '../../data/currencies'
+import { showToast } from '../../utils/toast'
 import EmptyState from '../EmptyState'
 import { CREDITS_PER_DOLLAR } from '../../utils/payments'
 import { convertToUSD, dollarsToCredits } from '../../utils/payments'
@@ -41,12 +42,12 @@ export default function CommissionScreen() {
     const commissionCurrency = commission.currency || 'NGN'
 
     if (walletCurrency !== commissionCurrency) {
-      alert(`Your wallet is in ${walletCurrency} but this commission is in ${commissionCurrency}. Please pay via Fincra or Prima Credits.`)
+      showToast(`Your wallet is in ${walletCurrency} but this commission is in ${commissionCurrency}. Please pay via Fincra or Prima Credits.`, 'error')
       return
     }
 
     if (walletBalance < commission.commission_amount) {
-      alert(`Insufficient wallet balance. You need ${getCurrency(commissionCurrency).symbol}${commission.commission_amount.toLocaleString()} but have ${getCurrency(walletCurrency).symbol}${walletBalance.toLocaleString()}.`)
+      showToast(`Insufficient wallet balance. You need ${getCurrency(commissionCurrency).symbol}${commission.commission_amount.toLocaleString()} but have ${getCurrency(walletCurrency).symbol}${walletBalance.toLocaleString()}.`, 'error')
       return
     }
 
@@ -94,7 +95,7 @@ export default function CommissionScreen() {
       refreshProfile()
       await fetchCommissions()
     } catch (e) {
-      alert('Payment error: ' + e.message)
+      showToast('Payment error: ' + e.message, 'error')
     }
     setPaying(null)
   }
@@ -105,7 +106,7 @@ export default function CommissionScreen() {
     const currentBalance = credits?.balance || 0
 
     if (currentBalance < creditsNeeded) {
-      alert(`You need ${creditsNeeded} Prima Credits but only have ${currentBalance}. Please pay via bank transfer.`)
+      showToast(`You need ${creditsNeeded} Prima Credits but only have ${currentBalance}. Please pay via bank transfer.`, 'error')
       return
     }
 
@@ -142,10 +143,10 @@ export default function CommissionScreen() {
 
         await fetchCommissions()
       } else {
-        alert('Payment failed. Please check your credits balance and try again.')
+        showToast('Payment failed. Please check your credits balance and try again.', 'error')
       }
     } catch (e) {
-      alert('Payment error: ' + e.message)
+      showToast('Payment error: ' + e.message, 'error')
     }
     setPaying(null)
   }
@@ -371,7 +372,7 @@ export default function CommissionScreen() {
 
                         window.location.href = response.checkoutUrl
                       } catch (e) {
-                        alert(e.message || 'Could not start Fincra payment.')
+                        showToast(e.message || 'Could not start Fincra payment.', 'error')
                         setPaying(null)
                       }
                     }}

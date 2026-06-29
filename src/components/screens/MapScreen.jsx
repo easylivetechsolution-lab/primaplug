@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { supabase } from '../../supabase'
+import { showToast } from '../../utils/toast'
 import PublicProfile from '../PublicProfile'
 import { playMapPing } from '../../utils/sounds'
 import { useAuth } from '../../context/AuthContext'
@@ -1087,7 +1088,7 @@ export default function MapScreen() {
                         .eq('id', user.id)
                         .single()
                       if (!userProfile?.selfie_verified) {
-                        alert('Please complete selfie verification in your profile before applying for gigs.')
+                        showToast('Please complete selfie verification in your profile before applying for gigs.', 'error')
                         window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'profile' }))
                         setApplying(false)
                         return
@@ -1104,7 +1105,7 @@ export default function MapScreen() {
                         const { data: { session } } = await supabase.auth.getSession()
                         const userId = session?.user?.id
                         if (!userId) {
-                          alert('Please log in to apply')
+                          showToast('Please log in to apply', 'error')
                           setApplying(false)
                           return
                         }
@@ -1115,14 +1116,14 @@ export default function MapScreen() {
                         })
 
                         if (result.blocked) {
-                          alert(result.message)
+                          showToast(result.message, 'error')
                           window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'commission' }))
                           setApplying(false)
                           return
                         }
 
                         if (result.alreadyApplied) {
-                          alert('You already applied for this gig!')
+                          showToast('You already applied for this gig!')
                           setApplying(false)
                           return
                         }
@@ -1130,7 +1131,7 @@ export default function MapScreen() {
                         setApplied(true)
                       } catch (e) {
                         console.log('Apply error:', e)
-                        alert('Error applying: ' + e.message)
+                        showToast('Error applying: ' + e.message, 'error')
                       }
                       setApplying(false)
                     }}
