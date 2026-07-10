@@ -758,20 +758,22 @@ export default function MapScreen() {
                     </div>
 
                     {selectedGig.latitude && selectedGig.longitude && (
-                      <a
-                        href={`https://www.google.com/maps?q=${selectedGig.latitude},${selectedGig.longitude}`}
-                        target="_blank" rel="noreferrer"
+                      <button
+                        onClick={() => {
+                          setFlyToCoords([selectedGig.latitude, selectedGig.longitude])
+                          setSelectedGig(null)
+                        }}
                         style={{
                           display: 'flex', alignItems: 'center',
                           justifyContent: 'center', gap: '8px',
-                          marginTop: '14px',
+                          marginTop: '14px', width: '100%',
                           background: '#fff', border: '1.5px solid #B8A5FF',
                           borderRadius: '10px', padding: '10px',
                           fontSize: '13px', fontWeight: '700',
-                          color: '#6C47FF', textDecoration: 'none'
+                          color: '#6C47FF', cursor: 'pointer', fontFamily: 'inherit'
                         }}>
-                        <BrandIcon name="map" size={22} active /> Open in Google Maps
-                      </a>
+                        <BrandIcon name="map" size={22} active /> Show on Map
+                      </button>
                     )}
                   </div>
                 )}

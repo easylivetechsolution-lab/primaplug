@@ -29,6 +29,120 @@ import { initPushNotifications } from '../utils/pushNotifications'
 import { useCredits } from '../context/CreditsContext'
 import { useLanguage } from '../context/LanguageContext'
 
+// ── App Download Banner ──────────────────────────────────────────────────────
+const ANDROID_APK_URL = 'https://primaplug.com/app/primaplug.apk' // ← swap this when you host the APK
+const IOS_APP_URL     = null // ← paste App Store link here when ready
+
+function AppDownloadBanner() {
+  const [visible, setVisible] = useState(() => {
+    try { return !localStorage.getItem('prima_app_banner_dismissed') } catch (_) { return true }
+  })
+  const [showIOSHint, setShowIOSHint] = useState(false)
+
+  if (!visible) return null
+
+  const ua = navigator.userAgent || ''
+  const isIOS     = /iphone|ipad|ipod/i.test(ua)
+  const isAndroid = /android/i.test(ua)
+
+  const dismiss = () => {
+    try { localStorage.setItem('prima_app_banner_dismissed', '1') } catch (_) {}
+    setVisible(false)
+  }
+
+  // On desktop show both; on mobile show only the relevant one
+  const showAndroid = !isIOS
+  const showIOS     = !isAndroid
+
+  return (
+    <div style={{
+      background: 'linear-gradient(135deg, #14123A 0%, #1E1B4B 100%)',
+      padding: '10px 16px',
+      display: 'flex', alignItems: 'center', gap: '10px',
+      flexShrink: 0, zIndex: 9400, position: 'relative'
+    }}>
+      <span style={{ fontSize: '22px', flexShrink: 0 }}>📱</span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: '12px', fontWeight: '700', color: '#fff', marginBottom: '2px' }}>
+          Get the PrimaPlug App
+        </div>
+        <div style={{ fontSize: '10px', color: '#A09DC8', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          Faster experience — real-time notifications & live tracking
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: '6px', flexShrink: 0, alignItems: 'center' }}>
+        {showAndroid && (
+          <a
+            href={ANDROID_APK_URL}
+            download
+            style={{
+              background: '#6C47FF', color: '#fff',
+              padding: '6px 12px', borderRadius: '8px',
+              fontSize: '11px', fontWeight: '700',
+              textDecoration: 'none', whiteSpace: 'nowrap',
+              display: 'flex', alignItems: 'center', gap: '4px'
+            }}>
+            🤖 Android
+          </a>
+        )}
+        {showIOS && (
+          <button
+            onClick={() => setShowIOSHint(h => !h)}
+            style={{
+              background: 'rgba(255,255,255,0.12)',
+              border: '1px solid rgba(255,255,255,0.25)',
+              color: '#fff',
+              padding: '6px 12px', borderRadius: '8px',
+              fontSize: '11px', fontWeight: '700',
+              whiteSpace: 'nowrap', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: '4px',
+              position: 'relative', fontFamily: 'inherit'
+            }}>
+            🍎 Add to iPhone
+            {showIOSHint && (
+              <div
+                onClick={e => e.stopPropagation()}
+                style={{
+                  position: 'absolute', bottom: 'calc(100% + 8px)', right: 0,
+                  background: '#fff', borderRadius: '12px',
+                  border: '1.5px solid #E2E0FF',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+                  padding: '12px 14px', minWidth: '220px',
+                  textAlign: 'left', color: '#14123A', zIndex: 9999,
+                  fontWeight: '400'
+                }}>
+                <div style={{ fontSize: '12px', fontWeight: '700', marginBottom: '8px', color: '#14123A' }}>
+                  Add PrimaPlug to iPhone
+                </div>
+                {[
+                  '1. Open this page in Safari',
+                  '2. Tap the Share button (⬜↑)',
+                  '3. Scroll down → "Add to Home Screen"',
+                  '4. Tap "Add" to confirm',
+                ].map((step, i) => (
+                  <div key={i} style={{ fontSize: '11px', color: '#4B5563', marginBottom: '5px', lineHeight: '1.4' }}>
+                    {step}
+                  </div>
+                ))}
+                <div style={{ fontSize: '10px', color: '#A09DC8', marginTop: '8px', borderTop: '1px solid #F5F4FF', paddingTop: '6px' }}>
+                  Must use Safari — Chrome on iOS won't work
+                </div>
+              </div>
+            )}
+          </button>
+        )}
+      </div>
+      <button
+        onClick={dismiss}
+        style={{
+          background: 'none', border: 'none', color: '#8B8FAF',
+          fontSize: '18px', cursor: 'pointer', padding: '0 2px',
+          lineHeight: 1, flexShrink: 0
+        }}>×</button>
+    </div>
+  )
+}
+
 export default function Layout() {
   const { user, profile, loading } = useAuth()
   const { isAdmin } = useAdmin()
@@ -480,6 +594,9 @@ useEffect(() => {
         </div>
         </>
       )}
+
+      {/* APP DOWNLOAD BANNER */}
+      <AppDownloadBanner />
 
       {/* BODY */}
       <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }} className="app-body">

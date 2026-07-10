@@ -1,0 +1,1 @@
+{"statusCode":"403","error":"Unauthorized","message":"Invalid Compact JWS"}

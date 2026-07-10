@@ -522,13 +522,13 @@ const { error: notifError } = await supabase
       {/* Header */}
       <div style={{
         background: 'linear-gradient(180deg, #FFFFFF 0%, #F8F7FF 100%)',
-        padding: '18px 20px 0',
+        padding: '10px 20px 0',
         borderBottom: '1.5px solid #E2E0FF', flexShrink: 0,
         boxShadow: '0 10px 30px rgba(20,18,58,0.06)'
       }}>
         <div style={{
           display: 'flex', justifyContent: 'space-between',
-          alignItems: 'flex-start', gap: '14px', marginBottom: '14px'
+          alignItems: 'flex-start', gap: '14px', marginBottom: '10px'
         }}>
           <div>
             <div style={{
@@ -564,7 +564,7 @@ const { error: notifError } = await supabase
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-          gap: '8px', marginBottom: '12px'
+          gap: '8px', marginBottom: '8px'
         }}>
           <HeaderStat label="Posted" value={postedGigs.length} color="#6C47FF" />
           <HeaderStat label="Working" value={workingGigs.length} color="#00A878" />
@@ -1285,20 +1285,6 @@ function PostedGigCard({
               }}>
               <BrandIcon name="edit" size={18} active={false} /> Edit
             </button>
-            {['open', 'hasapplicants'].includes(status) && (
-              <button
-                onClick={() => onDelete(gig.id)}
-                style={{
-                  background: '#FFE8EE',
-                  border: '1.5px solid #FF99B3',
-                  borderRadius: '10px', padding: '10px 14px',
-                  cursor: 'pointer', fontFamily: 'inherit',
-                  display: 'flex', alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                <span style={{ fontSize: '16px', lineHeight: 1 }}>🗑</span>
-              </button>
-            )}
           </div>
         )}
 
@@ -1314,14 +1300,6 @@ function PostedGigCard({
               {getCurrency(receipt?.currency || 'USD').symbol}
               {receipt?.amount?.toLocaleString()} · Completed
             </div>
-            <button
-              onClick={() => onDelete(gig.id)}
-              style={{
-                width: '100%', background: '#FFE8EE',
-                border: '1.5px solid #FF99B3', borderRadius: '10px',
-                padding: '10px', fontSize: '12px', fontWeight: '700',
-                color: '#FF3366', cursor: 'pointer', fontFamily: 'inherit'
-              }}>🗑 Delete Gig</button>
           </div>
         )}
       </div>
@@ -1916,7 +1894,7 @@ function HeaderStat({ label, value, color }) {
 
 function GigCarousel({ title, count, color, children }) {
   return (
-    <section style={{ marginTop: '16px' }}>
+    <section style={{ marginTop: '10px' }}>
       <div style={{
         display: 'flex', alignItems: 'center',
         justifyContent: 'space-between', gap: '12px',

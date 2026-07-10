@@ -18,6 +18,7 @@ export default function Auth() {
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [showIOSSteps, setShowIOSSteps] = useState(false)
 
   const handleSignup = async () => {
     if (!fullName || !email || !password) {
@@ -74,6 +75,7 @@ export default function Auth() {
       minHeight: '100dvh',
       background: 'linear-gradient(135deg, #6C47FF 0%, #9B59FF 50%, #FF4DCF 100%)',
       display: 'flex',
+      flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
       padding: '12px',
@@ -170,17 +172,21 @@ export default function Auth() {
         </div>
 
         {/* Logo */}
-        <div style={{ textAlign: 'center', marginBottom: 'clamp(12px, 4vw, 24px)' }}>
-          <div style={{ marginBottom: '2px' }}>
+        <div style={{ textAlign: 'center', marginBottom: 'clamp(10px, 4vw, 20px)' }}>
+          <div style={{ marginBottom: '4px', lineHeight: 1, textAlign: 'center' }}>
             <span style={{
-              fontSize: 'clamp(30px, 9vw, 44px)', fontWeight: '800',
-              color: '#14123A', letterSpacing: '-2px',
-              lineHeight: 1,
+              fontSize: 'clamp(18px, 5vw, 24px)',
+              fontWeight: '900',
+              color: '#14123A',
+              letterSpacing: '-1.5px',
               fontFamily: 'Georgia, "Times New Roman", serif',
-              fontStyle: 'italic'
+              fontStyle: 'italic',
+              lineHeight: 1,
             }}>Prima</span>
           </div>
-          <div style={{ fontSize: '11px', color: '#8B8FAF', marginTop: '2px' }}>Real-Time Labor Network</div>
+          <div style={{ fontSize: '10px', color: '#A09DC8', letterSpacing: '1.5px', textTransform: 'uppercase' }}>
+            Real-Time Workforce Network
+          </div>
         </div>
 
         {/* Toggle */}
@@ -365,7 +371,7 @@ export default function Auth() {
         </button>
 
         <div style={{ textAlign: 'center', marginTop: '12px', fontSize: '11px', color: '#A09DC8' }}>
-          By continuing you agree to Prima's{' '}
+          By continuing you agree to PrimaPlug's{' '}
           <Link
             to="/terms"
             style={{ color: '#6C47FF', fontWeight: '700', textDecoration: 'none' }}
@@ -380,6 +386,99 @@ export default function Auth() {
             Privacy Policy
           </Link>
         </div>
+      </div>
+
+      {/* ── Download the App ─────────────────────────────────────────────── */}
+      <div style={{
+        marginTop: '14px',
+        width: '100%', maxWidth: '350px',
+        boxSizing: 'border-box'
+      }}>
+        <p style={{
+          fontSize: '10px', color: 'rgba(255,255,255,0.55)',
+          textAlign: 'center', margin: '0 0 8px',
+          textTransform: 'uppercase', letterSpacing: '1px'
+        }}>
+          Get the native app
+        </p>
+
+        <div style={{ display: 'flex', gap: '10px' }}>
+          {/* Android */}
+          <a
+            href="https://eiwytpjtrawmocinxpid.supabase.co/storage/v1/object/public/app/primaplug.apk"
+            download="PrimaPlug.apk"
+            style={{
+              flex: 1, textDecoration: 'none',
+              background: '#fff',
+              borderRadius: '14px',
+              padding: '12px 10px',
+              display: 'flex', alignItems: 'center', gap: '10px',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.15)'
+            }}>
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="none">
+              <path d="M17.6 9.48l1.84-3.18c.16-.31.04-.69-.26-.85-.29-.15-.65-.06-.83.22l-1.88 3.24A10.27 10.27 0 0 0 12 8c-1.53 0-2.98.35-4.47.91L5.65 5.67a.64.64 0 0 0-.83-.22.64.64 0 0 0-.26.85l1.84 3.18A9.98 9.98 0 0 0 2 17h20a9.98 9.98 0 0 0-4.4-7.52zM8.5 14a1 1 0 1 1 0-2 1 1 0 0 1 0 2zm7 0a1 1 0 1 1 0-2 1 1 0 0 1 0 2z" fill="#3DDC84"/>
+            </svg>
+            <div>
+              <div style={{ fontSize: '9px', color: '#8B8FAF', fontWeight: '600' }}>Download for</div>
+              <div style={{ fontSize: '13px', fontWeight: '800', color: '#14123A', lineHeight: 1.2 }}>Android</div>
+            </div>
+          </a>
+
+          {/* iPhone */}
+          <button
+            onClick={() => setShowIOSSteps(s => !s)}
+            style={{
+              flex: 1,
+              background: '#fff',
+              border: 'none',
+              borderRadius: '14px',
+              padding: '12px 10px',
+              display: 'flex', alignItems: 'center', gap: '10px',
+              cursor: 'pointer', fontFamily: 'inherit',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.15)'
+            }}>
+            <svg viewBox="0 0 24 24" width="26" height="26" fill="#14123A">
+              <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+            </svg>
+            <div style={{ textAlign: 'left' }}>
+              <div style={{ fontSize: '9px', color: '#8B8FAF', fontWeight: '600' }}>Add to</div>
+              <div style={{ fontSize: '13px', fontWeight: '800', color: '#14123A', lineHeight: 1.2 }}>iPhone</div>
+            </div>
+          </button>
+        </div>
+
+        {showIOSSteps && (
+          <div style={{
+            marginTop: '10px',
+            background: '#fff',
+            borderRadius: '14px',
+            padding: '14px 16px',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.12)'
+          }}>
+            <div style={{ fontSize: '12px', fontWeight: '800', color: '#14123A', marginBottom: '10px' }}>
+              Add PrimaPlug to your iPhone
+            </div>
+            {[
+              ['1', 'Open this page in Safari', '(Chrome won\'t work)'],
+              ['2', 'Tap the Share button', 'at the bottom of Safari (⬜↑)'],
+              ['3', 'Tap "Add to Home Screen"', 'scroll down to find it'],
+              ['4', 'Tap "Add"', 'it installs like a native app'],
+            ].map(([num, title, sub]) => (
+              <div key={num} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', marginBottom: '8px' }}>
+                <div style={{
+                  width: '22px', height: '22px', borderRadius: '50%', flexShrink: 0,
+                  background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '11px', fontWeight: '800', color: '#fff'
+                }}>{num}</div>
+                <div>
+                  <div style={{ fontSize: '12px', fontWeight: '700', color: '#14123A' }}>{title}</div>
+                  <div style={{ fontSize: '10px', color: '#8B8FAF', marginTop: '1px' }}>{sub}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )

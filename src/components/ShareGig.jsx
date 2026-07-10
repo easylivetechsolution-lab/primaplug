@@ -39,13 +39,25 @@ export default function ShareGig({ gig, onClose }) {
   const estimatedEarning = (gigValue * 0.05).toFixed(2)
   const currency = getCurrency(gig.currency || 'USD')
 
+  const shareNative = async () => {
+    if (!hasCode) return
+    const text = `🔥 Check out this gig on PrimaPlug!\n\n${gig.title}\n💰 ${currency.symbol}${gig.pay_min}–${currency.symbol}${gig.pay_max}\n📍 ${gig.location || 'Remote'}\n\nApply here: ${shareLink}`
+    if (navigator.share) {
+      try { await navigator.share({ title: gig.title, text, url: shareLink }) } catch (_) {}
+    } else {
+      navigator.clipboard.writeText(`${text}`)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }
+
   const shareWhatsApp = () => {
-    const text = `🔥 Check out this gig on PrimaPlug!\n\n*${gig.title}*\n💰 $${gig.pay_min}–$${gig.pay_max}\n📍 ${gig.location || 'Remote'}\n\nApply here: ${shareLink}`
+    const text = `🔥 Check out this gig on PrimaPlug!\n\n*${gig.title}*\n💰 ${currency.symbol}${gig.pay_min}–${currency.symbol}${gig.pay_max}\n📍 ${gig.location || 'Remote'}\n\nApply here: ${shareLink}`
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank')
   }
 
   const shareTwitter = () => {
-    const text = `💼 Found a great gig on PrimaPlug — ${gig.title} paying $${gig.pay_min}–$${gig.pay_max}. Apply now:`
+    const text = `💼 Found a great gig on PrimaPlug — ${gig.title} paying ${currency.symbol}${gig.pay_min}–${currency.symbol}${gig.pay_max}. Apply now:`
     window.open(
       `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(shareLink)}`,
       '_blank'
@@ -161,27 +173,41 @@ export default function ShareGig({ gig, onClose }) {
 
         {/* Share buttons */}
         {hasCode && (
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
             <button
-              onClick={shareWhatsApp}
+              onClick={shareNative}
               style={{
-                flex: 1, background: '#25D366', border: 'none',
-                borderRadius: '12px', padding: '12px',
-                fontSize: '13px', fontWeight: '700', color: '#fff',
+                width: '100%', background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+                border: 'none', borderRadius: '12px', padding: '13px',
+                fontSize: '14px', fontWeight: '700', color: '#fff',
                 cursor: 'pointer', fontFamily: 'inherit',
                 display: 'flex', alignItems: 'center',
-                justifyContent: 'center', gap: '6px'
-              }}>💬 WhatsApp</button>
-            <button
-              onClick={shareTwitter}
-              style={{
-                flex: 1, background: '#14123A', border: 'none',
-                borderRadius: '12px', padding: '12px',
-                fontSize: '13px', fontWeight: '700', color: '#fff',
-                cursor: 'pointer', fontFamily: 'inherit',
-                display: 'flex', alignItems: 'center',
-                justifyContent: 'center', gap: '6px'
-              }}>🐦 Twitter</button>
+                justifyContent: 'center', gap: '8px'
+              }}>
+              🔗 {navigator.share ? 'Share via Apps' : 'Copy Link'}
+            </button>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                onClick={shareWhatsApp}
+                style={{
+                  flex: 1, background: '#25D366', border: 'none',
+                  borderRadius: '12px', padding: '12px',
+                  fontSize: '13px', fontWeight: '700', color: '#fff',
+                  cursor: 'pointer', fontFamily: 'inherit',
+                  display: 'flex', alignItems: 'center',
+                  justifyContent: 'center', gap: '6px'
+                }}>💬 WhatsApp</button>
+              <button
+                onClick={shareTwitter}
+                style={{
+                  flex: 1, background: '#14123A', border: 'none',
+                  borderRadius: '12px', padding: '12px',
+                  fontSize: '13px', fontWeight: '700', color: '#fff',
+                  cursor: 'pointer', fontFamily: 'inherit',
+                  display: 'flex', alignItems: 'center',
+                  justifyContent: 'center', gap: '6px'
+                }}>🐦 Twitter</button>
+            </div>
           </div>
         )}
 

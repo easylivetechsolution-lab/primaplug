@@ -329,9 +329,12 @@ export default function NotificationBell({ onNavigate }) {
 
                       setNotifDetail({ type: notif.type, gig })
                     } else if (notif.type === 'receipt' || notif.type === 'review') {
-                      setLoadingDetail(false)
-                      onNavigate && onNavigate('mygigs')
-                      return
+                      const { data: gig } = await supabase
+                        .from('gigs')
+                        .select('*, users(id, full_name, avatar_url, phone, trust_score, rating, location, bio, gigs_completed)')
+                        .eq('id', notif.gig_id)
+                        .single()
+                      setNotifDetail({ type: notif.type, gig, notif })
                     } else {
                       const { data: gig } = await supabase
                         .from('gigs')
