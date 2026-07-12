@@ -21,7 +21,7 @@ const URGENCY = [
 ]
 
 export default function PostGig({ onClose }) {
-  const { user, profile } = useAuth()
+  const { user, profile, wallets } = useAuth()
   const { currency: defaultCurrency } = useLanguage()
   const locationCurrency = currencyForLocation(profile?.location, defaultCurrency || 'USD')
   const [step, setStep] = useState(1)
@@ -146,11 +146,11 @@ export default function PostGig({ onClose }) {
       return
     }
 
-    // Server-side guard: if gig currency can't use Fincra wallet, force manual
-    const walletCurrency = profile?.wallet_currency || 'USD'
+    // Server-side guard: if gig currency isn't in user's wallets or Fincra, force manual
+    const gigWalletForSubmit = (wallets || []).find(w => w.currency === form.currency)
     if (
       form.payment_method === PAYMENT_METHODS.WALLET &&
-      (!FINCRA_CURRENCIES.includes(form.currency) || form.currency !== walletCurrency)
+      (!FINCRA_CURRENCIES.includes(form.currency) || !gigWalletForSubmit)
     ) {
       update('payment_method', PAYMENT_METHODS.MANUAL)
       form.payment_method = PAYMENT_METHODS.MANUAL
@@ -158,7 +158,7 @@ export default function PostGig({ onClose }) {
 
     const minPay = parseFloat(form.pay_min)
     if (form.payment_method === PAYMENT_METHODS.WALLET) {
-      const walletBalance = Number(profile?.wallet_balance || 0)
+      const walletBalance = Number(gigWalletForSubmit?.balance || 0)
       if (walletBalance < minPay) {
         setError('Fund your wallet to use Pay from Wallet, or switch this gig to manual payment.')
         submittingRef.current = false
@@ -751,8 +751,8 @@ export default function PostGig({ onClose }) {
 
                   {(() => {
                     const gigCurrencyFincraSupported = FINCRA_CURRENCIES.includes(form.currency)
-                    const walletCurrency = profile?.wallet_currency || 'USD'
-                    const walletMatchesGig = form.currency === walletCurrency
+                    const gigWallet = (wallets || []).find(w => w.currency === form.currency)
+                    const walletMatchesGig = !!gigWallet
                     const walletEnabled = gigCurrencyFincraSupported && walletMatchesGig
 
                     return (
@@ -784,8 +784,8 @@ export default function PostGig({ onClose }) {
                           }}>
                             <BrandIcon name="lock" size={28} />
                             <div>
-                              Your wallet is in <strong>{walletCurrency}</strong> but this gig is in <strong>{form.currency}</strong>.
-                              Change the gig currency to <strong>{walletCurrency}</strong>, or use manual payment.
+                              You don't have a <strong>{form.currency}</strong> wallet yet.
+                              Fund a {form.currency} wallet first, or use manual payment.
                             </div>
                           </div>
                         )}
@@ -864,26 +864,26 @@ export default function PostGig({ onClose }) {
                   {form.payment_method === PAYMENT_METHODS.WALLET && (
                     <div style={{
                       marginTop: '10px',
-                      background: Number(profile?.wallet_balance || 0) >= Number(form.pay_min || 0)
+                      background: Number((wallets || []).find(w => w.currency === form.currency)?.balance || 0) >= Number(form.pay_min || 0)
                         ? '#DFFDF4' : '#FFF0E8',
-                      border: `1.5px solid ${Number(profile?.wallet_balance || 0) >= Number(form.pay_min || 0)
+                      border: `1.5px solid ${Number((wallets || []).find(w => w.currency === form.currency)?.balance || 0) >= Number(form.pay_min || 0)
                         ? '#7EECD2' : '#FFBC99'}`,
                       borderRadius: '12px',
                       padding: '12px',
                       fontSize: '12px',
-                      color: Number(profile?.wallet_balance || 0) >= Number(form.pay_min || 0)
+                      color: Number((wallets || []).find(w => w.currency === form.currency)?.balance || 0) >= Number(form.pay_min || 0)
                         ? '#00A878' : '#FF6B2B',
                       lineHeight: '1.6'
                     }}>
                       Wallet balance: {CURRENCIES.find(c => c.code === form.currency)?.symbol || '$'}
-                      {Number(profile?.wallet_balance || 0).toLocaleString()}.
+                      {Number((wallets || []).find(w => w.currency === form.currency)?.balance || 0).toLocaleString()}.
                       {' '}Minimum escrow needed: {CURRENCIES.find(c => c.code === form.currency)?.symbol || '$'}
                       {Number(form.pay_min || 0).toLocaleString()}.
-                      {Number(profile?.wallet_balance || 0) < Number(form.pay_min || 0) && (
+                      {Number((wallets || []).find(w => w.currency === form.currency)?.balance || 0) < Number(form.pay_min || 0) && (
   <button
     type="button"
     onClick={() => {
-      const needed = Number(form.pay_min || 0) - Number(profile?.wallet_balance || 0)
+      const needed = Number(form.pay_min || 0) - Number((wallets || []).find(w => w.currency === form.currency)?.balance || 0)
       setQuickFundAmount(String(Math.ceil(needed)))
       setQuickFundError('')
       setShowQuickFund(true)

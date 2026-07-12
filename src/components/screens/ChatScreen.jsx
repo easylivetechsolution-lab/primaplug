@@ -115,13 +115,12 @@ export default function ChatScreen() {
     }
 
     const handleOpenChatWithUser = async (e) => {
-      const { userId: targetUserId, gigId } = e.detail
+      const { userId: targetUserId } = e.detail
       if (!targetUserId || !user) return
 
       const convo = await getOrCreateConversation({
         currentUser: user,
-        targetUserId,
-        gigId: gigId || null
+        targetUserId
       })
 
       if (convo) {
@@ -142,10 +141,9 @@ export default function ChatScreen() {
     const pendingUserId = sessionStorage.getItem('pendingChatUserId')
     if (pendingUserId && user) {
       sessionStorage.removeItem('pendingChatUserId')
-      const pendingGigId = sessionStorage.getItem('pendingChatGigId') || null
       sessionStorage.removeItem('pendingChatGigId')
       window.dispatchEvent(new CustomEvent('openChatWithUser', {
-        detail: { userId: pendingUserId, gigId: pendingGigId || null }
+        detail: { userId: pendingUserId }
       }))
     }
 
@@ -558,11 +556,26 @@ export default function ChatScreen() {
 
   const totalUnread = conversations.reduce((sum, c) => sum + getUnreadCount(c), 0)
 
-  const sortedConversations = [...conversations].sort((a, b) => {
-    const aPinned = isPinnedByUser(a, user?.id) ? 1 : 0
-    const bPinned = isPinnedByUser(b, user?.id) ? 1 : 0
-    return bPinned - aPinned
-  })
+  // One row per person — deduplicate in case old gig-linked convos exist in DB
+  const dedupedConversations = (() => {
+    const seen = new Set()
+    const byTime = [...conversations].sort((a, b) =>
+      new Date(b.last_message_at || 0) - new Date(a.last_message_at || 0)
+    )
+    const result = []
+    for (const convo of byTime) {
+      const other = getOtherUser(convo)
+      if (!other?.id || seen.has(other.id)) continue
+      seen.add(other.id)
+      result.push(convo)
+    }
+    return result.sort((a, b) => {
+      const ap = isPinnedByUser(a, user?.id) ? 1 : 0
+      const bp = isPinnedByUser(b, user?.id) ? 1 : 0
+      if (ap !== bp) return bp - ap
+      return new Date(b.last_message_at || 0) - new Date(a.last_message_at || 0)
+    })
+  })()
 
   const isMobile = window.innerWidth < 768
 
@@ -646,18 +659,18 @@ export default function ChatScreen() {
               />
             </div>
           ) : (
-            sortedConversations.map(convo => {
+            dedupedConversations.map(convo => {
               const other = getOtherUser(convo)
               const unread = getUnreadCount(convo)
               const isActive = activeConvo?.id === convo.id
               const isPinned = isPinnedByUser(convo, user?.id)
               const isMuted = isMutedByUser(convo, user?.id)
               return (
+                <div key={convo.id}>
                 <div
-                  key={convo.id}
                   onClick={() => setActiveConvo(convo)}
                   style={{
-                    padding: '14px 16px',
+                    padding: '10px 14px',
                     display: 'flex', gap: '12px',
                     alignItems: 'flex-start',
                     cursor: 'pointer',
@@ -721,7 +734,7 @@ export default function ChatScreen() {
                       alignItems: 'center', marginBottom: '3px'
                     }}>
                       <div style={{
-                        fontSize: '14px', fontWeight: unread > 0 ? '700' : '600',
+                        fontSize: '15px', fontWeight: unread > 0 ? '700' : '600',
                         color: '#14123A', overflow: 'hidden',
                         textOverflow: 'ellipsis', whiteSpace: 'nowrap'
                       }}>
@@ -734,17 +747,6 @@ export default function ChatScreen() {
                         {timeAgo(convo.last_message_at)}
                       </div>
                     </div>
-
-                    {convo.gigs && (
-                      <div style={{
-                        fontSize: '10px', color: '#6C47FF',
-                        fontWeight: '600', marginBottom: '2px',
-                        overflow: 'hidden', textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap'
-                      }}>
-                        Re: {convo.gigs.title}
-                      </div>
-                    )}
 
                     <div style={{
                       display: 'flex', justifyContent: 'space-between',
@@ -855,7 +857,8 @@ export default function ChatScreen() {
                     )}
                   </div>
                 </div>
-              )
+              </div>
+            )
             })
           )}
         </div>
@@ -949,33 +952,6 @@ export default function ChatScreen() {
                       )
                     })()}
                   </div>
-
-                  {/* Gig context */}
-                  {activeConvo.gigs && (
-                    <div style={{
-                      background: '#EEE9FF', border: '1.5px solid #B8A5FF',
-                      borderRadius: '10px', padding: '8px 12px',
-                      maxWidth: '160px'
-                    }}>
-                      <div style={{
-                        fontSize: '9px', color: '#6C47FF', fontWeight: '700',
-                        textTransform: 'uppercase', letterSpacing: '0.5px',
-                        marginBottom: '2px'
-                      }}>Re: Gig</div>
-                      <div style={{
-                        fontSize: '11px', fontWeight: '700',
-                        color: '#14123A', overflow: 'hidden',
-                        textOverflow: 'ellipsis', whiteSpace: 'nowrap'
-                      }}>
-                        {activeConvo.gigs.title}
-                      </div>
-                      <div style={{
-                        fontSize: '10px', color: '#00C48C', fontWeight: '700'
-                      }}>
-                        ${activeConvo.gigs.pay_min}–${activeConvo.gigs.pay_max}
-                      </div>
-                    </div>
-                  )}
 
                   {activeConvo.id && (
                     <div style={{ position: 'relative' }} className="conversation-menu">
@@ -1111,7 +1087,7 @@ export default function ChatScreen() {
                             </div>
                           )}
 
-                          <div style={{ maxWidth: '70%', position: 'relative' }}>
+                          <div style={{ maxWidth: '80%', position: 'relative' }}>
                             {/* Message bubble */}
                             <div style={{
                               background: isMe
@@ -1121,7 +1097,7 @@ export default function ChatScreen() {
                               borderRadius: isMe
                                 ? '18px 18px 4px 18px'
                                 : '18px 18px 18px 4px',
-                              fontSize: '14px', lineHeight: '1.5',
+                              fontSize: '16px', lineHeight: '1.5',
                               boxShadow: isMe
                                 ? '0 2px 12px rgba(108,71,255,0.3)'
                                 : '0 2px 8px rgba(0,0,0,0.06)',
@@ -1152,7 +1128,7 @@ export default function ChatScreen() {
                                     opacity: 0.9,
                                     cursor: 'pointer',
                                   }}>
-                                  <div style={{ fontWeight: '700', marginBottom: '2px', fontSize: '11px' }}>
+                                  <div style={{ fontWeight: '700', marginBottom: '2px', fontSize: '13px' }}>
                                     {msg.reply_to_sender_name}
                                   </div>
                                   <div style={{

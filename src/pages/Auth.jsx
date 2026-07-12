@@ -399,7 +399,7 @@ export default function Auth() {
           textAlign: 'center', margin: '0 0 8px',
           textTransform: 'uppercase', letterSpacing: '1px'
         }}>
-          Get the native app
+          Update available — download the latest version
         </p>
 
         <div style={{ display: 'flex', gap: '10px' }}>

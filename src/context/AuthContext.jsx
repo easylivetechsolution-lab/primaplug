@@ -9,23 +9,24 @@ export const useAuth = () => useContext(AuthContext)
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
   const [profile, setProfile] = useState(null)
+  const [wallets, setWallets] = useState([])
   const [loading, setLoading] = useState(true)
 
   const fetchProfile = async (userId) => {
     if (!userId) return
     try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', userId)
-        .maybeSingle()
+      const [{ data: profileData, error }, { data: walletsData }] = await Promise.all([
+        supabase.from('users').select('*').eq('id', userId).maybeSingle(),
+        supabase.from('wallets').select('*').eq('user_id', userId).order('created_at'),
+      ])
 
       if (error) {
         console.log('Profile fetch error:', error)
         return
       }
 
-      setProfile(data)
+      setProfile(profileData)
+      setWallets(walletsData || [])
     } catch (e) {
       console.log('Profile fetch exception:', e)
     } finally {
@@ -52,6 +53,7 @@ export const AuthProvider = ({ children }) => {
           setTimeout(() => initPushNotifications(session.user.id), 3000)
         } else {
           setProfile(null)
+          setWallets([])
           setLoading(false)
         }
       }
@@ -65,7 +67,7 @@ export const AuthProvider = ({ children }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, refreshProfile }}>
+    <AuthContext.Provider value={{ user, profile, wallets, loading, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   )

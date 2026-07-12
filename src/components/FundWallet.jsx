@@ -11,16 +11,12 @@ const SUPPORTED_CURRENCIES = [
   { code: 'USD', label: 'US Dollar', symbol: '$' },
 ]
 
-export default function FundWallet({ onClose }) {
-  const { user, profile, refreshProfile } = useAuth()
+export default function FundWallet({ onClose, initialCurrency }) {
+  const { user, profile } = useAuth()
   const [amount, setAmount] = useState('')
-  const [currency, setCurrency] = useState(profile?.wallet_currency || 'NGN')
+  const [currency, setCurrency] = useState(initialCurrency || 'NGN')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-
-  // Lock currency selection if user already has a wallet balance,
-  // to avoid mixing currencies in one balance field
-  const currencyLocked = (profile?.wallet_balance || 0) > 0
 
   const handleFund = async () => {
     setError('')
@@ -46,14 +42,6 @@ export default function FundWallet({ onClose }) {
       if (fnError) throw fnError
       if (data?.error) throw new Error(data.error)
 
-      if (!currencyLocked) {
-        await supabase
-          .from('users')
-          .update({ wallet_currency: currency })
-          .eq('id', user.id)
-      }
-
-      // Redirect to Fincra's hosted checkout page
       window.location.href = data.checkoutUrl
 
     } catch (e) {
@@ -103,13 +91,12 @@ export default function FundWallet({ onClose }) {
           }}>Currency</label>
           <select
             value={currency}
-            disabled={currencyLocked}
             onChange={(e) => setCurrency(e.target.value)}
             style={{
               width: '100%', padding: '12px',
               borderRadius: '10px', border: '1.5px solid #E2E0FF',
               fontSize: '14px', fontFamily: 'inherit',
-              background: currencyLocked ? '#F5F4FF' : '#fff',
+              background: '#fff',
               color: '#14123A'
             }}>
             {SUPPORTED_CURRENCIES.map(c => (
@@ -118,11 +105,6 @@ export default function FundWallet({ onClose }) {
               </option>
             ))}
           </select>
-          {currencyLocked && (
-            <div style={{ fontSize: '11px', color: '#A09DC8', marginTop: '4px' }}>
-              Your wallet currency is locked to {profile?.wallet_currency} since you already have a balance
-            </div>
-          )}
         </div>
 
         {/* Amount input */}

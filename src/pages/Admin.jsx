@@ -31,6 +31,7 @@ export default function Admin() {
   const [withdrawals, setWithdrawals] = useState([])
   const [reports, setReports] = useState([])
   const [emergencyReports, setEmergencyReports] = useState([])
+  const [boosts, setBoosts] = useState([])
   const [loadingData, setLoadingData] = useState(false)
   const [search, setSearch] = useState('')
 
@@ -111,10 +112,17 @@ export default function Admin() {
       case 'services':
         const { data: servicesData } = await supabase
           .from('services')
-          .select('*, users(full_name, email)')
+          .select('*, users(full_name, email, avatar_url)')
           .order('created_at', { ascending: false })
           .limit(100)
         setServices(servicesData || [])
+        const { data: boostsData } = await supabase
+          .from('wallet_transactions')
+          .select('*, users(full_name, email), services(title)')
+          .eq('type', 'boost')
+          .order('created_at', { ascending: false })
+          .limit(50)
+        setBoosts(boostsData || [])
         break
       case 'disputes':
         const { data: disputesData } = await supabase
@@ -219,7 +227,8 @@ export default function Admin() {
           p_gig_id: gig.id,
           p_poster_id: dispute.poster_id,
           p_worker_id: dispute.worker_id,
-          p_amount: Number(gig.escrow_amount || gig.pay_min || dispute.amount)
+          p_amount: Number(gig.escrow_amount || gig.pay_min || dispute.amount),
+          p_currency: gig.currency || 'NGN'
         })
       } else if (gig?.id) {
         // Create commission debt for worker (manual payment gig)
@@ -296,7 +305,8 @@ export default function Admin() {
         await supabase.rpc('unlock_gig_escrow', {
           p_gig_id: gig.id,
           p_poster_id: dispute.poster_id,
-          p_amount: Number(gig.escrow_amount || gig.pay_min || dispute.amount)
+          p_amount: Number(gig.escrow_amount || gig.pay_min || dispute.amount),
+          p_currency: gig.currency || 'NGN'
         })
       }
 
@@ -813,72 +823,155 @@ export default function Admin() {
           {/* SERVICES TAB */}
           {activeTab === 'services' && (
             <div>
-              <div style={{
-                fontSize: '20px', fontWeight: '800',
-                color: '#14123A', marginBottom: '16px'
-              }}>Services ({services.length})</div>
-              <div style={{
-                display: 'flex', flexDirection: 'column', gap: '8px'
-              }}>
-                {services.map(service => (
-                  <div key={service.id} style={{
-                    background: '#fff', border: '1.5px solid #E2E0FF',
-                    borderRadius: '14px', padding: '14px 16px',
-                    display: 'flex', justifyContent: 'space-between',
-                    alignItems: 'center', gap: '12px'
-                  }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{
-                        fontSize: '14px', fontWeight: '700',
-                        color: '#14123A', marginBottom: '3px'
-                      }}>{service.title}</div>
-                      <div style={{ fontSize: '11px', color: '#8B8FAF' }}>
-                        By {service.users?.full_name || '—'} ·{' '}
-                        From ${service.basic_price} ·{' '}
-                        {service.field || '—'} · {service.type}
+              {/* ── Active Boosts panel ── */}
+              {boosts.length > 0 && (
+                <div style={{ marginBottom: '28px' }}>
+                  <div style={{ fontSize: '16px', fontWeight: '800', color: '#FFB800', marginBottom: '12px' }}>
+                    ⚡ Boost Transactions ({boosts.length})
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {boosts.map(b => {
+                      const isActive = b.services && services.find(s => s.id === b.service_id)?.is_featured
+                      const until = services.find(s => s.id === b.service_id)?.featured_until
+                      const daysLeft = until ? Math.ceil((new Date(until) - Date.now()) / 86400000) : 0
+                      return (
+                        <div key={b.id} style={{
+                          background: '#fff', border: `1.5px solid ${b.status === 'completed' ? '#FFD966' : '#E2E0FF'}`,
+                          borderRadius: '12px', padding: '12px 14px',
+                          display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px',
+                        }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: '13px', fontWeight: '700', color: '#14123A' }}>
+                              {b.services?.title || 'Unknown service'}
+                            </div>
+                            <div style={{ fontSize: '11px', color: '#8B8FAF', marginTop: '2px' }}>
+                              By {b.users?.full_name || '—'} · {b.currency} {Number(b.amount).toLocaleString()} · {b.description}
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
+                            <span style={{
+                              background: b.status === 'completed' ? '#FFF8E0' : '#F5F4FF',
+                              border: `1px solid ${b.status === 'completed' ? '#FFD966' : '#E2E0FF'}`,
+                              borderRadius: '6px', padding: '3px 9px',
+                              fontSize: '10px', fontWeight: '700',
+                              color: b.status === 'completed' ? '#FFB800' : '#8B8FAF',
+                            }}>{b.status}</span>
+                            {daysLeft > 0 && (
+                              <span style={{ fontSize: '11px', color: '#00C48C', fontWeight: '700' }}>{daysLeft}d left</span>
+                            )}
+                            <div style={{ fontSize: '10px', color: '#A09DC8' }}>{timeAgo(b.created_at)}</div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* ── Services list ── */}
+              <div style={{ fontSize: '16px', fontWeight: '800', color: '#14123A', marginBottom: '12px' }}>
+                All Services ({services.length})
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {services.map(service => {
+                  const isFeatured = service.is_featured && service.featured_until && new Date(service.featured_until) > new Date()
+                  const daysLeft   = service.featured_until
+                    ? Math.ceil((new Date(service.featured_until) - Date.now()) / 86400000)
+                    : 0
+                  const isPermanent = service.is_featured && !service.featured_until
+
+                  return (
+                    <div key={service.id} style={{
+                      background: '#fff',
+                      border: `1.5px solid ${isFeatured || isPermanent ? '#FFD966' : '#E2E0FF'}`,
+                      borderRadius: '14px', padding: '14px 16px',
+                      display: 'flex', justifyContent: 'space-between',
+                      alignItems: 'center', gap: '12px',
+                    }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '3px' }}>
+                          <div style={{ fontSize: '14px', fontWeight: '700', color: '#14123A' }}>{service.title}</div>
+                          {(isFeatured || isPermanent) && (
+                            <span style={{
+                              background: 'linear-gradient(135deg, #FFB800, #FF6B2B)',
+                              borderRadius: '5px', padding: '2px 7px',
+                              fontSize: '9px', fontWeight: '800', color: '#fff',
+                            }}>⚡ {isPermanent ? 'Pinned' : `${daysLeft}d left`}</span>
+                          )}
+                          {service.avg_rating > 0 && (
+                            <span style={{ fontSize: '10px', color: '#FFB800' }}>⭐ {Number(service.avg_rating).toFixed(1)} ({service.review_count})</span>
+                          )}
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#8B8FAF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          By {service.users?.full_name || '—'} · From {service.basic_price} · {service.field || '—'} · {service.type}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexShrink: 0 }}>
+                        <span style={{
+                          background: service.is_active ? '#DFFDF4' : '#FFE8EE',
+                          border: `1px solid ${service.is_active ? '#7EECD2' : '#FF99B3'}`,
+                          borderRadius: '6px', padding: '3px 9px',
+                          fontSize: '10px', fontWeight: '700',
+                          color: service.is_active ? '#00C48C' : '#FF3366',
+                        }}>{service.is_active ? 'Active' : 'Inactive'}</span>
+
+                        {/* Feature / Unfeature toggle */}
+                        <button
+                          onClick={async () => {
+                            if (service.is_featured) {
+                              await supabase.from('services')
+                                .update({ is_featured: false, featured_until: null })
+                                .eq('id', service.id)
+                            } else {
+                              await supabase.from('services')
+                                .update({ is_featured: true, featured_until: null })
+                                .eq('id', service.id)
+                            }
+                            fetchTabData('services')
+                          }}
+                          style={{
+                            background: service.is_featured ? '#FFF8E0' : '#F5F4FF',
+                            border: `1px solid ${service.is_featured ? '#FFD966' : '#E2E0FF'}`,
+                            borderRadius: '7px', padding: '5px 9px',
+                            fontSize: '11px', fontWeight: '700',
+                            color: service.is_featured ? '#FFB800' : '#8B8FAF',
+                            cursor: 'pointer', fontFamily: 'inherit',
+                          }}>
+                          {service.is_featured ? '⚡ Unpin' : '⚡ Pin'}
+                        </button>
+
+                        <button
+                          onClick={async () => {
+                            await supabase.from('services')
+                              .update({ is_active: !service.is_active })
+                              .eq('id', service.id)
+                            fetchTabData('services')
+                          }}
+                          style={{
+                            background: '#EEE9FF', border: '1px solid #B8A5FF',
+                            borderRadius: '7px', padding: '5px 9px',
+                            fontSize: '11px', fontWeight: '700',
+                            color: '#6C47FF', cursor: 'pointer', fontFamily: 'inherit',
+                          }}>
+                          {service.is_active ? 'Deactivate' : 'Activate'}
+                        </button>
+
+                        <button
+                          onClick={async () => {
+                            if (!window.confirm('Delete this service?')) return
+                            await supabase.from('services').delete().eq('id', service.id)
+                            fetchTabData('services')
+                          }}
+                          style={{
+                            background: '#FFE8EE', border: '1px solid #FF99B3',
+                            borderRadius: '7px', padding: '5px 9px',
+                            fontSize: '11px', fontWeight: '700',
+                            color: '#FF3366', cursor: 'pointer', fontFamily: 'inherit',
+                          }}>🗑</button>
                       </div>
                     </div>
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                      <span style={{
-                        background: service.is_active ? '#DFFDF4' : '#FFE8EE',
-                        border: `1px solid ${service.is_active ? '#7EECD2' : '#FF99B3'}`,
-                        borderRadius: '6px', padding: '3px 9px',
-                        fontSize: '10px', fontWeight: '700',
-                        color: service.is_active ? '#00C48C' : '#FF3366'
-                      }}>{service.is_active ? 'Active' : 'Inactive'}</span>
-                      <button
-                        onClick={async () => {
-                          await supabase
-                            .from('services')
-                            .update({ is_active: !service.is_active })
-                            .eq('id', service.id)
-                          fetchTabData('services')
-                        }}
-                        style={{
-                          background: '#EEE9FF', border: '1px solid #B8A5FF',
-                          borderRadius: '7px', padding: '5px 9px',
-                          fontSize: '11px', fontWeight: '700',
-                          color: '#6C47FF', cursor: 'pointer',
-                          fontFamily: 'inherit'
-                        }}>
-                        {service.is_active ? 'Deactivate' : 'Activate'}
-                      </button>
-                      <button
-                        onClick={async () => {
-                          if (!window.confirm('Delete this service?')) return
-                          await supabase.from('services').delete().eq('id', service.id)
-                          fetchTabData('services')
-                        }}
-                        style={{
-                          background: '#FFE8EE', border: '1px solid #FF99B3',
-                          borderRadius: '7px', padding: '5px 9px',
-                          fontSize: '11px', fontWeight: '700',
-                          color: '#FF3366', cursor: 'pointer',
-                          fontFamily: 'inherit'
-                        }}>🗑</button>
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
           )}

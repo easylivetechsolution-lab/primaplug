@@ -9,7 +9,7 @@ const MIN_CREDITS = MIN_WITHDRAWAL_CREDITS
 
 export default function WithdrawalScreen() {
   const { credits, fetchCredits } = useCredits()
-  const { user, profile } = useAuth()
+  const { user } = useAuth()
 
   const [banks, setBanks] = useState([])
   const [bankCode, setBankCode] = useState('')
@@ -33,15 +33,9 @@ export default function WithdrawalScreen() {
     loadBanks()
   }, [])
 
-  const CURRENCY_TO_COUNTRY = {
-    NGN: 'NG', GHS: 'GH', KES: 'KE', ZAR: 'ZA',
-    USD: 'US', EUR: 'DE', GBP: 'GB'
-  }
-
   const loadBanks = async () => {
     try {
-      const country = CURRENCY_TO_COUNTRY[profile?.wallet_currency || 'USD'] || 'NG'
-      const data = await listFincraBanks(supabase, country)
+      const data = await listFincraBanks(supabase, 'NG')
       const list = Array.isArray(data?.data) ? data.data : (data?.data?.banks || data?.banks || [])
       setBanks(list)
     } catch (e) {

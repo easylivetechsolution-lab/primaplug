@@ -264,6 +264,7 @@ export default function ProfileScreen({ onLogout }) {
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [showSelfie, setShowSelfie] = useState(false)
   const [withdrawalHistory, setWithdrawalHistory] = useState([])
+  const [profileWallets, setProfileWallets] = useState([])
   const fileRef = useRef()
 
   useEffect(() => { fetchProfile() }, [user])
@@ -285,7 +286,7 @@ export default function ProfileScreen({ onLogout }) {
       .eq('id', user.id)
       .maybeSingle()
 
-    const [{ data: reviews }, { data: receipts }, { data: withdrawals }] = await Promise.all([
+    const [{ data: reviews }, { data: receipts }, { data: withdrawals }, { data: walletsData }] = await Promise.all([
       supabase
         .from('reviews')
         .select('rating')
@@ -302,6 +303,11 @@ export default function ProfileScreen({ onLogout }) {
         .eq('type', 'withdrawal')
         .order('created_at', { ascending: false })
         .limit(30),
+      supabase
+        .from('wallets')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at'),
     ])
 
     const totalEarned = receipts?.reduce((sum, r) => sum + (r.amount || 0), 0) || 0
@@ -311,6 +317,7 @@ export default function ProfileScreen({ onLogout }) {
       totalReviews: reviews?.length || 0,
     })
     setWithdrawalHistory(withdrawals || [])
+    setProfileWallets(walletsData || [])
 
     if (data) {
       setProfile(data)
@@ -719,7 +726,7 @@ export default function ProfileScreen({ onLogout }) {
                       }}>
                       <div style={{ fontSize: '11px', opacity: 0.85, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '6px', fontWeight: '700' }}>Wallet</div>
                       <div style={{ fontSize: '18px', fontWeight: '800', marginBottom: '4px' }}>
-                        {profile?.wallet_currency || 'NGN'} {(profile?.wallet_balance || 0).toLocaleString()}
+                        {profileWallets.length > 0 ? profileWallets.map(w => `${w.currency} ${Number(w.balance || 0).toLocaleString()}`).join(' · ') : '—'}
                       </div>
                       <div style={{ fontSize: '11px', opacity: 0.8 }}>Tap to fund →</div>
                     </div>
@@ -817,7 +824,7 @@ export default function ProfileScreen({ onLogout }) {
                   }}>
                     <div style={{ fontSize: '9px', opacity: 0.8, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Wallet</div>
                     <div style={{ fontSize: '20px', fontWeight: '800', marginBottom: '8px' }}>
-                      {profile?.wallet_currency || 'NGN'} {(profile?.wallet_balance || 0).toLocaleString()}
+                      {profileWallets.length > 0 ? profileWallets.map(w => `${w.currency} ${Number(w.balance || 0).toLocaleString()}`).join(' · ') : '—'}
                     </div>
                     <button onClick={() => window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'wallet' }))} style={{
                       background: 'rgba(255,255,255,0.25)', border: '1px solid rgba(255,255,255,0.4)',
@@ -1220,7 +1227,7 @@ export default function ProfileScreen({ onLogout }) {
 
       {/* Mobile logout — shown only on mobile via JS, not CSS */}
       {isMobile && (
-        <div style={{ marginTop: '24px', paddingBottom: '8px' }}>
+        <div style={{ marginTop: '16px', paddingBottom: '8px' }}>
           <button onClick={onLogout} style={{
             width: '100%', background: '#FFE8EE', border: '1.5px solid #FF99B3',
             borderRadius: '14px', padding: '15px', fontSize: '14px', fontWeight: '700',

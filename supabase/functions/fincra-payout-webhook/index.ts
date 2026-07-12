@@ -113,27 +113,27 @@ serve(async (req) => {
       }
 
       if (fundTx) {
-        const { data: userRow } = await supabase
-          .from('users')
-          .select('wallet_balance, wallet_currency')
-          .eq('id', fundTx.user_id)
-          .single()
+        const currency = fundTx.currency || 'NGN'
+        const creditAmount = Number(fundTx.amount)
 
-        const newBalance = Number(userRow?.wallet_balance || 0) + Number(fundTx.amount)
-        const updatePayload: Record<string, unknown> = { wallet_balance: newBalance }
-        if (!userRow?.wallet_currency && fundTx.currency) {
-          updatePayload.wallet_currency = fundTx.currency
-        }
+        // Atomically credit the multi-currency wallet
+        const { data: newBal, error: creditErr } = await supabase.rpc('_credit_wallet', {
+          p_user_id:  fundTx.user_id,
+          p_currency: currency,
+          p_amount:   creditAmount,
+        })
+        if (creditErr) console.error('_credit_wallet error:', creditErr)
 
-        await supabase.from('users').update(updatePayload).eq('id', fundTx.user_id)
         await supabase.from('wallet_transactions').update({
-          status: 'completed', balance_after: newBalance
+          status: 'completed', balance_after: newBal ?? creditAmount
         }).eq('id', fundTx.id)
+
         await supabase.from('fincra_webhook_events').update({ processed: true }).eq('fincra_reference', customerReference)
+
         await supabase.from('notifications').insert({
           user_id: fundTx.user_id,
           title: '💰 Wallet Funded',
-          message: `Your wallet has been credited with ${fundTx.currency} ${Number(fundTx.amount).toLocaleString()}`,
+          message: `Your ${currency} wallet has been credited with ${currency} ${creditAmount.toLocaleString()}`,
           type: 'wallet',
         })
         console.log('=== WALLET FUNDED SUCCESSFULLY ===')
@@ -147,7 +147,6 @@ serve(async (req) => {
     }
 
     // ── PAYOUTS (payout.successful / payout.failed) ─────────────────────────
-    // Find the matching pending withdrawal transaction
     const { data: txRow } = await supabase
       .from('wallet_transactions')
       .select('*')
@@ -178,7 +177,6 @@ serve(async (req) => {
       console.log('=== PAYOUT CONFIRMED SUCCESSFUL ===')
 
     } else if (event === 'payout.failed') {
-      // REFUND the user since the payout genuinely failed
       const isCreditsWithdrawal = txRow.description?.includes('via credits') ||
         txRow.description?.includes('source: credits')
 
@@ -194,17 +192,13 @@ serve(async (req) => {
           p_gig_id: null
         })
       } else {
-        // Wallet withdrawal — refund wallet_balance on users
-        const { data: userRow } = await supabase
-          .from('users')
-          .select('wallet_balance')
-          .eq('id', txRow.user_id)
-          .single()
-        const refundedBalance = Number(userRow?.wallet_balance || 0) + Number(txRow.amount)
-        await supabase
-          .from('users')
-          .update({ wallet_balance: refundedBalance })
-          .eq('id', txRow.user_id)
+        // Wallet withdrawal — refund via wallets table
+        const currency = txRow.currency || 'NGN'
+        await supabase.rpc('_credit_wallet', {
+          p_user_id:  txRow.user_id,
+          p_currency: currency,
+          p_amount:   Number(txRow.amount),
+        })
       }
 
       await supabase

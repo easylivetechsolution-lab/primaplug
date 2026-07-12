@@ -1,5 +1,5 @@
-import { useEffect, useState, useRef } from 'react'
-import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet'
+import { useEffect, useState, useRef, useMemo } from 'react'
+import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { supabase } from '../../supabase'
@@ -40,6 +40,17 @@ const timeUntil = (d) => {
   const days = Math.floor(h / 24)
   return days === 1 ? '1 day' : `${days} days`
 }
+
+const calcDistance = (lat1, lon1, lat2, lon2) => {
+  const R = 6371
+  const dLat = (lat2 - lat1) * Math.PI / 180
+  const dLon = (lon2 - lon1) * Math.PI / 180
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) ** 2
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
+const formatDist = (km) => km < 1 ? `${Math.round(km * 1000)}m` : `${km.toFixed(1)}km`
 
 const ExpiryBadge = ({ expiresAt }) => {
   if (!expiresAt) return null
@@ -173,6 +184,77 @@ const createUserPin = () => L.divIcon({
   iconAnchor: [20, 20],
 })
 
+// Zoom-aware clustering — groups pins that are too close at the current zoom level
+const ClusterLayer = ({ gigs, onSelect }) => {
+  const map = useMap()
+  const [zoom, setZoom] = useState(map.getZoom())
+  useMapEvents({ zoomend: e => setZoom(e.target.getZoom()) })
+
+  const clusters = useMemo(() => {
+    const precision = Math.max(1, Math.min(4, zoom - 11))
+    const groups = {}
+    gigs.forEach(gig => {
+      const lat = parseFloat(gig.latitude)
+      const lng = parseFloat(gig.longitude)
+      const key = `${lat.toFixed(precision)},${lng.toFixed(precision)}`
+      if (!groups[key]) groups[key] = { gigs: [], sumLat: 0, sumLng: 0 }
+      groups[key].gigs.push(gig)
+      groups[key].sumLat += lat
+      groups[key].sumLng += lng
+    })
+    return Object.values(groups).map(g => ({
+      ...g,
+      lat: g.sumLat / g.gigs.length,
+      lng: g.sumLng / g.gigs.length
+    }))
+  }, [gigs, zoom])
+
+  return clusters.map((cluster, i) => {
+    if (cluster.gigs.length === 1) {
+      const gig = cluster.gigs[0]
+      const isDigital = gig.type === 'digital'
+      const pinColor = isDigital ? '#0EA5E9'
+        : gig.urgency === 'now' ? '#FF3366'
+        : gig.urgency === 'today' ? '#FF6B2B' : '#6C47FF'
+      const pinBg = isDigital ? '#E0F2FE' : '#EEE9FF'
+      const gigIcon = L.divIcon({
+        className: 'custom-gig-pin',
+        html: `
+          <div style="position:relative;display:flex;flex-direction:column;align-items:center;">
+            <div style="width:44px;height:44px;border-radius:50%;border:3px solid ${pinColor};overflow:hidden;background:${pinBg};box-shadow:0 4px 12px rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:${pinColor};">
+              ${gig.poster?.avatar_url ? `<img src="${gig.poster.avatar_url}" style="width:100%;height:100%;object-fit:cover"/>` : gig.poster?.full_name?.charAt(0) || '?'}
+            </div>
+            ${isDigital ? `<div style="position:absolute;top:-4px;right:-4px;background:#0EA5E9;border-radius:6px;padding:1px 4px;font-size:8px;font-weight:800;color:#fff;border:1.5px solid #fff;">WEB</div>` : ''}
+            <div style="background:white;border-radius:8px;padding:3px 7px;font-size:10px;font-weight:700;color:#14123A;box-shadow:0 2px 8px rgba(0,0,0,0.15);margin-top:3px;white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis;font-family:'Plus Jakarta Sans',sans-serif;">
+              ${isDigital ? `Remote · ${gig.title?.substring(0, 14) || 'Digital'}` : gig.street ? gig.street : gig.location ? gig.location.split(',')[0] : gig.title?.substring(0, 20)}
+            </div>
+          </div>
+        `,
+        iconSize: [44, 66], iconAnchor: [22, 66], popupAnchor: [0, -66]
+      })
+      return (
+        <Marker key={gig.id} position={[gig.latitude, gig.longitude]} icon={gigIcon}
+          eventHandlers={{ click: () => onSelect(gig) }} />
+      )
+    }
+
+    const clusterIcon = L.divIcon({
+      className: '',
+      html: `
+        <div style="position:relative;display:flex;align-items:center;justify-content:center;">
+          <div style="position:absolute;width:58px;height:58px;border-radius:50%;background:rgba(108,71,255,0.15);"></div>
+          <div style="width:44px;height:44px;border-radius:50%;background:#6C47FF;border:3px solid #fff;box-shadow:0 4px 16px rgba(108,71,255,0.5);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:#fff;position:relative;z-index:2;">${cluster.gigs.length}</div>
+        </div>
+      `,
+      iconSize: [58, 58], iconAnchor: [29, 29]
+    })
+    return (
+      <Marker key={`cluster-${i}`} position={[cluster.lat, cluster.lng]} icon={clusterIcon}
+        eventHandlers={{ click: () => map.flyTo([cluster.lat, cluster.lng], zoom + 2, { animate: true, duration: 0.5 }) }} />
+    )
+  })
+}
+
 const SetView = ({ coords }) => {
   const map = useMap()
   useEffect(() => {
@@ -186,6 +268,16 @@ const FlyToGig = ({ coords }) => {
   useEffect(() => {
     if (coords) map.flyTo(coords, 17, { animate: true, duration: 1 })
   }, [coords])
+  return null
+}
+
+const MapBoundsTracker = ({ onBoundsChange }) => {
+  const map = useMap()
+  useEffect(() => { onBoundsChange(map.getBounds()) }, [])
+  useMapEvents({
+    moveend: (e) => onBoundsChange(e.target.getBounds()),
+    zoomend: (e) => onBoundsChange(e.target.getBounds()),
+  })
   return null
 }
 
@@ -206,7 +298,12 @@ export default function MapScreen() {
   const [categoryFilter, setCategoryFilter] = useState('All')
   const [sharingGig, setSharingGig] = useState(null)
   const [flyToCoords, setFlyToCoords] = useState(null)
+  const [radiusKm, setRadiusKm] = useState(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [darkMap, setDarkMap] = useState(false)
+  const [showAllGigs, setShowAllGigs] = useState(false)
   const mapRef = useRef(null)
+  const boundsRef = useRef(null)
 
   useEffect(() => {
     const getLocation = async () => {
@@ -286,7 +383,7 @@ export default function MapScreen() {
         event: 'DELETE', schema: 'public', table: 'gigs'
       }, () => fetchGigs())
       .subscribe()
-    const expireInterval = setInterval(fetchGigs, 60000)
+    const expireInterval = setInterval(() => fetchGigs(), 60000)
     return () => {
       supabase.removeChannel(channel)
       clearInterval(expireInterval)
@@ -310,6 +407,10 @@ export default function MapScreen() {
     }
   }
 
+  const handleBoundsChange = (bounds) => {
+    boundsRef.current = bounds
+  }
+
   useEffect(() => {
     const t = setInterval(() => {
       setLiveCount(c => c + (Math.random() > 0.6 ? Math.round(Math.random() * 4 - 2) : 0))
@@ -331,9 +432,23 @@ export default function MapScreen() {
   }, [])
 
   const filteredGigs = gigs.filter(g => {
-    if (categoryFilter === 'All') return true
-    const cat = CATEGORIES.find(c => c.group === categoryFilter)
-    return cat ? cat.fields.includes(g.field) : true
+    if (categoryFilter !== 'All') {
+      const cat = CATEGORIES.find(c => c.group === categoryFilter)
+      if (cat && !cat.fields.includes(g.field)) return false
+    }
+    if (radiusKm) {
+      const dist = calcDistance(userPos[0], userPos[1], g.latitude, g.longitude)
+      if (dist > radiusKm) return false
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase()
+      const hit = g.title?.toLowerCase().includes(q) ||
+        g.description?.toLowerCase().includes(q) ||
+        g.field?.toLowerCase().includes(q) ||
+        g.location?.toLowerCase().includes(q)
+      if (!hit) return false
+    }
+    return true
   })
 
   const nowGigs = filteredGigs.filter(g => g.urgency === 'now')
@@ -356,98 +471,46 @@ export default function MapScreen() {
         >
           <TileLayer
             attribution='&copy; <a href="https://carto.com/">CARTO</a>'
-            url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+            url={darkMap
+              ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+              : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'}
             subdomains="abcd"
             maxZoom={19}
+            key={darkMap ? 'dark' : 'light'}
           />
           <SetView coords={userPos} />
           {flyToCoords && <FlyToGig coords={flyToCoords} />}
+          <MapBoundsTracker onBoundsChange={handleBoundsChange} />
 
           {/* User location marker */}
           <Marker position={userPos} icon={createUserPin()} />
 
-          {/* Gig pins */}
-          {filteredGigs.map(gig => {
-            const isDigital = gig.type === 'digital'
-            const pinColor = isDigital
-              ? '#0EA5E9'
-              : gig.urgency === 'now' ? '#FF3366' : gig.urgency === 'today' ? '#FF6B2B' : '#6C47FF'
-            const pinBg = isDigital ? '#E0F2FE' : '#EEE9FF'
-            const gigIcon = L.divIcon({
-              className: 'custom-gig-pin',
-              html: `
-                <div style="position:relative;display:flex;flex-direction:column;align-items:center;">
-                  <div style="
-                    width:44px;height:44px;border-radius:50%;
-                    border:3px solid ${pinColor};
-                    overflow:hidden;background:${pinBg};
-                    box-shadow:0 4px 12px rgba(0,0,0,0.25);
-                    display:flex;align-items:center;justify-content:center;
-                    font-size:16px;font-weight:800;color:${pinColor};
-                  ">
-                    ${gig.poster?.avatar_url
-                      ? `<img src="${gig.poster.avatar_url}" style="width:100%;height:100%;object-fit:cover"/>`
-                      : gig.poster?.full_name?.charAt(0) || '?'
-                    }
-                  </div>
-                  ${gig.urgency === 'now' && !isDigital ? `
-                    <div style="
-                      position:absolute;top:-3px;right:-3px;
-                      width:12px;height:12px;
-                      background:#FF3366;border-radius:50%;
-                      border:2px solid white;
-                      animation:pinpulse 1s infinite;
-                    "></div>
-                  ` : ''}
-                  ${isDigital ? `
-                    <div style="
-                      position:absolute;top:-4px;right:-4px;
-                      background:#0EA5E9;border-radius:6px;
-                      padding:1px 4px;font-size:8px;font-weight:800;
-                      color:#fff;border:1.5px solid #fff;
-                    ">WEB</div>
-                  ` : ''}
-                  <div style="
-                    background:white;border-radius:8px;
-                    padding:3px 7px;font-size:10px;font-weight:700;
-                    color:#14123A;box-shadow:0 2px 8px rgba(0,0,0,0.15);
-                    margin-top:3px;white-space:nowrap;
-                    max-width:120px;overflow:hidden;text-overflow:ellipsis;
-                    font-family:'Plus Jakarta Sans',sans-serif;
-                  ">
-                    ${isDigital
-                      ? `Remote · ${gig.title?.substring(0, 14) || 'Digital'}`
-                      : gig.street
-                        ? gig.street
-                        : gig.location
-                          ? gig.location.split(',')[0]
-                          : gig.title?.substring(0, 20)}
-                  </div>
-                </div>
-              `,
-              iconSize: [44, 66],
-              iconAnchor: [22, 66],
-              popupAnchor: [0, -66]
-            })
-
-            return (
-              <Marker
-                key={gig.id}
-                position={[gig.latitude, gig.longitude]}
-                icon={gigIcon}
-                eventHandlers={{
-                  click: () => {
-                    setSelectedGig(gig)
-                    setApplied(false)
-                  }
-                }}
-              />
-
-            )
-          })}
+          {/* Clustered gig pins */}
+          <ClusterLayer
+            gigs={filteredGigs}
+            onSelect={gig => { setSelectedGig(gig); setApplied(false) }}
+          />
         </MapContainer>
 
-        {/* Live Stats Overlay — Top Left */}
+        {/* Dark Mode Toggle */}
+        <button
+          onClick={() => setDarkMap(d => !d)}
+          title={darkMap ? 'Switch to light map' : 'Switch to dark map'}
+          style={{
+            position: 'absolute', top: '14px', right: '14px', zIndex: 400,
+            background: darkMap ? 'rgba(108,71,255,0.92)' : 'rgba(255,255,255,0.92)',
+            backdropFilter: 'blur(10px)',
+            border: `1.5px solid ${darkMap ? '#9B59FF' : 'rgba(108,71,255,0.2)'}`,
+            borderRadius: '20px', padding: '5px 12px',
+            fontSize: '11px', fontWeight: '700',
+            color: darkMap ? '#fff' : '#8B8FAF',
+            cursor: 'pointer', fontFamily: 'inherit',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.12)'
+          }}>
+          {darkMap ? '☀️ Light' : '🌙 Dark'}
+        </button>
+
+        {/* Live Stats Overlay */}
         <div style={{
           position: 'absolute', top: '14px', left: '14px',
           display: 'flex', gap: '8px', zIndex: 400
@@ -486,7 +549,7 @@ export default function MapScreen() {
 
         {/* Category Filter Chips */}
         <div style={{
-          position: 'absolute', top: '52px', left: '14px',
+          position: 'absolute', top: '56px', left: '14px',
           right: '14px', zIndex: 10,
           display: 'flex', gap: '7px',
           overflowX: 'auto', scrollbarWidth: 'none',
@@ -526,6 +589,31 @@ export default function MapScreen() {
           ))}
         </div>
 
+        {/* Radius Filter Chips */}
+        <div style={{
+          position: 'absolute', top: '96px', left: '14px',
+          zIndex: 10, display: 'flex', gap: '6px',
+          pointerEvents: 'all'
+        }}>
+          {[null, 5, 10, 25].map(km => (
+            <button
+              key={km ?? 'all'}
+              onClick={() => setRadiusKm(radiusKm === km ? null : km)}
+              style={{
+                background: radiusKm === km
+                  ? 'rgba(0,196,140,0.9)' : 'rgba(13,27,62,0.82)',
+                backdropFilter: 'blur(8px)',
+                border: `1.5px solid ${radiusKm === km ? '#00C48C' : 'rgba(255,255,255,0.15)'}`,
+                borderRadius: '20px', padding: '4px 11px',
+                fontSize: '10px', fontWeight: '700',
+                color: '#fff', cursor: 'pointer',
+                whiteSpace: 'nowrap', fontFamily: 'inherit'
+              }}>
+              {km ? `${km}km` : 'Any distance'}
+            </button>
+          ))}
+        </div>
+
       </div>
 
       {/* Happening Now Strip */}
@@ -543,10 +631,12 @@ export default function MapScreen() {
             fontSize: '11px', fontWeight: '700',
             color: '#A09DC8', letterSpacing: '1px'
           }}>HAPPENING NOW</span>
-          <span style={{
-            fontSize: '11px', color: '#6C47FF',
-            fontWeight: '600', cursor: 'pointer'
-          }}>See all →</span>
+          <span
+            onClick={() => setShowAllGigs(true)}
+            style={{
+              fontSize: '11px', color: '#6C47FF',
+              fontWeight: '600', cursor: 'pointer'
+            }}>See all ({filteredGigs.length}) →</span>
         </div>
 
         {filteredGigs.length === 0 ? (
@@ -610,10 +700,6 @@ export default function MapScreen() {
                       fontSize: '8px', fontWeight: '800',
                       color: '#0EA5E9', letterSpacing: '0.5px'
                     }}>REMOTE</span>
-                  ) : gig.location ? (
-                    <span style={{ display: 'flex', alignItems: 'center' }}>
-                      <BrandIcon name="location" size={16} />
-                    </span>
                   ) : null}
                 </div>
                 <div style={{
@@ -623,6 +709,9 @@ export default function MapScreen() {
                 <div style={{
                   fontSize: '14px', fontWeight: '800', color: '#00C48C'
                 }}>{getCurrencySymbol(gig.currency)}{gig.pay_min}–{getCurrencySymbol(gig.currency)}{gig.pay_max}</div>
+                <div style={{ fontSize: '10px', color: '#A09DC8', marginTop: '4px' }}>
+                  {formatDist(calcDistance(userPos[0], userPos[1], gig.latitude, gig.longitude))} away
+                </div>
               </div>
             ))}
           </div>
@@ -758,22 +847,38 @@ export default function MapScreen() {
                     </div>
 
                     {selectedGig.latitude && selectedGig.longitude && (
-                      <button
-                        onClick={() => {
-                          setFlyToCoords([selectedGig.latitude, selectedGig.longitude])
-                          setSelectedGig(null)
-                        }}
-                        style={{
-                          display: 'flex', alignItems: 'center',
-                          justifyContent: 'center', gap: '8px',
-                          marginTop: '14px', width: '100%',
-                          background: '#fff', border: '1.5px solid #B8A5FF',
-                          borderRadius: '10px', padding: '10px',
-                          fontSize: '13px', fontWeight: '700',
-                          color: '#6C47FF', cursor: 'pointer', fontFamily: 'inherit'
-                        }}>
-                        <BrandIcon name="map" size={22} active /> Show on Map
-                      </button>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '14px' }}>
+                        <button
+                          onClick={() => {
+                            setFlyToCoords([selectedGig.latitude, selectedGig.longitude])
+                            setSelectedGig(null)
+                          }}
+                          style={{
+                            display: 'flex', alignItems: 'center',
+                            justifyContent: 'center', gap: '8px',
+                            width: '100%',
+                            background: '#fff', border: '1.5px solid #B8A5FF',
+                            borderRadius: '10px', padding: '10px',
+                            fontSize: '13px', fontWeight: '700',
+                            color: '#6C47FF', cursor: 'pointer', fontFamily: 'inherit'
+                          }}>
+                          <BrandIcon name="map" size={22} active /> Show on Map
+                        </button>
+                        <a
+                          href={`https://www.google.com/maps/dir/?api=1&destination=${selectedGig.latitude},${selectedGig.longitude}`}
+                          target="_blank" rel="noreferrer"
+                          style={{
+                            display: 'flex', alignItems: 'center',
+                            justifyContent: 'center', gap: '8px',
+                            width: '100%', boxSizing: 'border-box',
+                            background: '#4285F4', border: 'none',
+                            borderRadius: '10px', padding: '10px',
+                            fontSize: '13px', fontWeight: '700',
+                            color: '#fff', textDecoration: 'none'
+                          }}>
+                          🗺️ Get Directions
+                        </a>
+                      </div>
                     )}
                   </div>
                 )}
@@ -926,7 +1031,9 @@ export default function MapScreen() {
                         marginTop: '4px'
                       }}>
                         <BrandIcon name="location" size={14} />
-                        {selectedGig.type === 'digital' ? 'Pinned on map' : 'On map'}
+                        {selectedGig.type === 'digital'
+                          ? 'Pinned on map'
+                          : `${formatDist(calcDistance(userPos[0], userPos[1], selectedGig.latitude, selectedGig.longitude))} away`}
                       </div>
                     )}
                   </div>
@@ -1059,10 +1166,7 @@ export default function MapScreen() {
                     onClick={() => {
                       setSelectedGig(null)
                       window.dispatchEvent(new CustomEvent('openChatWithUser', {
-                        detail: {
-                          userId: selectedGig.poster_id,
-                          gigId: selectedGig.id
-                        }
+                        detail: { userId: selectedGig.poster_id }
                       }))
                     }}
                     style={{
@@ -1161,6 +1265,95 @@ export default function MapScreen() {
           </div>
         </div>
       )}
+
+{showAllGigs && (
+  <div style={{
+    position: 'fixed', inset: 0,
+    background: 'rgba(20,18,58,0.75)',
+    backdropFilter: 'blur(4px)',
+    zIndex: 550,
+    display: 'flex', alignItems: 'flex-end', justifyContent: 'center'
+  }} onClick={() => setShowAllGigs(false)}>
+    <div onClick={e => e.stopPropagation()} style={{
+      background: '#fff',
+      borderRadius: '22px 22px 0 0',
+      width: '100%', maxWidth: '640px',
+      maxHeight: '80vh',
+      display: 'flex', flexDirection: 'column',
+      fontFamily: "'Plus Jakarta Sans', sans-serif",
+      animation: 'slideUp 0.3s cubic-bezier(0.16,1,0.3,1)'
+    }}>
+      <div style={{
+        padding: '16px 20px 12px',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        borderBottom: '1px solid #F5F4FF', flexShrink: 0
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ width: '36px', height: '4px', background: '#E2E0FF', borderRadius: '2px' }} />
+        </div>
+        <div style={{ textAlign: 'center', flex: 1 }}>
+          <div style={{ fontSize: '15px', fontWeight: '800', color: '#14123A' }}>All Nearby Gigs</div>
+          <div style={{ fontSize: '11px', color: '#A09DC8', marginTop: '1px' }}>
+            {filteredGigs.length} gig{filteredGigs.length !== 1 ? 's' : ''} in view
+          </div>
+        </div>
+        <button onClick={() => setShowAllGigs(false)} style={{
+          background: '#F5F4FF', border: '1.5px solid #E2E0FF',
+          borderRadius: '50%', width: '32px', height: '32px',
+          fontSize: '16px', color: '#8B8FAF', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontFamily: 'inherit'
+        }}>×</button>
+      </div>
+      <div style={{ overflowY: 'auto', flex: 1, padding: '12px 16px 24px' }}>
+        {filteredGigs.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '40px 0', color: '#A09DC8', fontSize: '13px' }}>
+            No gigs match your filters
+          </div>
+        ) : filteredGigs.map(gig => (
+          <div key={gig.id}
+            onClick={() => { setSelectedGig(gig); setApplied(false); setShowAllGigs(false) }}
+            style={{
+              background: '#F5F4FF', borderRadius: '14px',
+              padding: '14px', marginBottom: '10px',
+              border: '1.5px solid #E2E0FF', cursor: 'pointer',
+              transition: 'border-color 0.15s'
+            }}
+            onMouseEnter={e => e.currentTarget.style.borderColor = '#B8A5FF'}
+            onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E0FF'}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
+              <div style={{ fontSize: '13px', fontWeight: '700', color: '#14123A', flex: 1, paddingRight: '10px', lineHeight: '1.3' }}>
+                {gig.title}
+              </div>
+              <div style={{ fontSize: '14px', fontWeight: '800', color: '#00C48C', flexShrink: 0 }}>
+                {getCurrencySymbol(gig.currency)}{gig.pay_min}–{gig.pay_max}
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <span style={{
+                background: gig.urgency === 'now' ? '#FFE8EE' : '#FFF0E8',
+                border: `1px solid ${gig.urgency === 'now' ? '#FF99B3' : '#FFBC99'}`,
+                borderRadius: '4px', padding: '2px 7px',
+                fontSize: '9px', fontWeight: '800',
+                color: gig.urgency === 'now' ? '#FF3366' : '#FF6B2B', letterSpacing: '0.8px'
+              }}>{gig.urgency?.toUpperCase()}</span>
+              <span style={{ fontSize: '11px', color: '#A09DC8' }}>
+                {formatDist(calcDistance(userPos[0], userPos[1], gig.latitude, gig.longitude))} away
+              </span>
+              {gig.type === 'digital' && (
+                <span style={{ fontSize: '9px', fontWeight: '800', color: '#0EA5E9', letterSpacing: '0.5px' }}>REMOTE</span>
+              )}
+              {gig.field && (
+                <span style={{ fontSize: '10px', color: '#8B8FAF' }}>{gig.field}</span>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+)}
 
 {viewingProfile && (
   <PublicProfile

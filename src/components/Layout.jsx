@@ -30,7 +30,7 @@ import { useCredits } from '../context/CreditsContext'
 import { useLanguage } from '../context/LanguageContext'
 
 // ── App Download Banner ──────────────────────────────────────────────────────
-const ANDROID_APK_URL = 'https://primaplug.com/app/primaplug.apk' // ← swap this when you host the APK
+const ANDROID_APK_URL = 'https://eiwytpjtrawmocinxpid.supabase.co/storage/v1/object/public/app/primaplug.apk'
 const IOS_APP_URL     = null // ← paste App Store link here when ready
 
 function AppDownloadBanner() {
@@ -237,8 +237,8 @@ export default function Layout() {
 
   useEffect(() => {
     if (loading || !user) return
-    const { complete } = getProfileCompletion(profile)
-    if (!complete) {
+    const { missing } = getProfileCompletion(profile)
+    if (missing.length > 0) {
       const timer = setTimeout(() => setShowProfilePrompt(true), 2000)
       return () => clearTimeout(timer)
     }
@@ -594,9 +594,6 @@ useEffect(() => {
         </div>
         </>
       )}
-
-      {/* APP DOWNLOAD BANNER */}
-      <AppDownloadBanner />
 
       {/* BODY */}
       <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }} className="app-body">

@@ -4,7 +4,13 @@
       "Bash(del \"c:\\\\primeplug\\\\src\\\\components\\\\screens\\\\ServicesScreen.jsx\")",
       "Bash(git restore *)",
       "Bash(npm run *)",
-      "PowerShell(cd C:\\\\prima_app; $env:JAVA_HOME = \"C:\\\\Program Files\\\\Android\\\\Android Studio\\\\jbr\"; C:\\\\flutter\\\\bin\\\\flutter.bat pub get 2>&1 | Select-Object -Last 10)"
+      "PowerShell(cd C:\\\\prima_app; $env:JAVA_HOME = \"C:\\\\Program Files\\\\Android\\\\Android Studio\\\\jbr\"; C:\\\\flutter\\\\bin\\\\flutter.bat pub get 2>&1 | Select-Object -Last 10)",
+      "Bash(cd /c/prima_app && flutter build apk --release --target-platform android-arm64 2>&1)",
+      "Read(//c/prima_app/**)",
+      "Bash(node --input-type=module)",
+      "Bash(npx supabase *)",
+      "Bash(grep -n \"High Priority\\\\|Medium Priority\\\\|Low Priority\\\\|###.*Priority\\\\|## .*Priority\" \"C:\\\\Users\\\\Owner\\\\.claude\\\\projects\\\\c--primeplug\\\\f0442de6-7573-4a58-b59e-6f8231b019f2.jsonl\" | head -20)",
+      "Read(//c/Users/Owner/.claude/projects/c--primeplug/**)"
     ]
   }
 }

@@ -116,18 +116,18 @@ export default function FloatingChat({ onOpenFullChat }) {
     }
 
     const handleOpenChatWithUser = async (e) => {
-      const { userId: targetUserId, gigId } = e.detail
+      const { userId: targetUserId } = e.detail
       if (!targetUserId) return
 
       if (window.innerWidth <= 768) {
         sessionStorage.setItem('pendingChatUserId', targetUserId)
-        sessionStorage.setItem('pendingChatGigId', gigId || '')
+        sessionStorage.removeItem('pendingChatGigId')
         window.dispatchEvent(new CustomEvent('navigateToScreen', { detail: { screen: 'chat' } }))
         return
       }
 
       setOpen(true)
-      const convo = await getOrCreateConversation({ currentUser: user, targetUserId, gigId: gigId || null })
+      const convo = await getOrCreateConversation({ currentUser: user, targetUserId })
       if (convo?.id) {
         setActiveConvo(convo)
         await fetchMessages(convo)
@@ -356,11 +356,6 @@ export default function FloatingChat({ onOpenFullChat }) {
                   ) : (
                     <div style={{ fontSize: '15px', fontWeight: '700', color: '#fff' }}>Messages</div>
                   )}
-                  {activeConvo?.gigs && (
-                    <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.75)' }}>
-                      Re: {activeConvo.gigs.title}
-                    </div>
-                  )}
                 </div>
               </div>
 
@@ -400,7 +395,12 @@ export default function FloatingChat({ onOpenFullChat }) {
                       Apply for a gig to start a conversation
                     </div>
                   </div>
-                ) : conversations.map(convo => {
+                ) : (() => {
+                  const seen = new Set()
+                  return [...conversations]
+                    .sort((a, b) => new Date(b.last_message_at || 0) - new Date(a.last_message_at || 0))
+                    .filter(c => { const o = getOtherUser(c); return o?.id && seen.has(o.id) ? false : seen.add(o?.id) })
+                })().map(convo => {
                   const other = getOtherUser(convo)
                   const unread = getUnread(convo)
                   const isOnline = onlineUsers.has(other?.id)
@@ -449,13 +449,6 @@ export default function FloatingChat({ onOpenFullChat }) {
                             {timeAgo(convo.last_message_at)}
                           </div>
                         </div>
-                        {convo.gigs && (
-                          <div style={{
-                            fontSize: '9px', color: '#6C47FF', fontWeight: '600',
-                            marginBottom: '1px', overflow: 'hidden',
-                            textOverflow: 'ellipsis', whiteSpace: 'nowrap'
-                          }}>Re: {convo.gigs.title}</div>
-                        )}
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <div style={{
                             fontSize: '11px', color: unread > 0 ? '#14123A' : '#A09DC8',

@@ -47,7 +47,7 @@ export const fetchConversations = async (userId, { includeEmpty = false } = {}) 
     .or(`participant_1.eq.${userId},participant_2.eq.${userId}`)
     .order('last_message_at', { ascending: false })
 
-  if (!includeEmpty) query = query.neq('last_message', '')
+  if (!includeEmpty) query = query.neq('last_message', '').not('last_message', 'is', null)
 
   const { data, error } = await query
   if (error) throw error
@@ -66,7 +66,7 @@ export const fetchConversationById = async (convoId, userId) => {
   return visibleToUser(data, userId) ? data : null
 }
 
-export const findConversationWithUser = async ({ currentUserId, targetUserId, gigId = null }) => {
+export const findConversationWithUser = async ({ currentUserId, targetUserId }) => {
   if (!currentUserId || !targetUserId) return null
   const { data, error } = await supabase
     .from('conversations')
@@ -76,36 +76,28 @@ export const findConversationWithUser = async ({ currentUserId, targetUserId, gi
       `and(participant_1.eq.${targetUserId},participant_2.eq.${currentUserId})`
     )
     .order('last_message_at', { ascending: false })
-    .limit(20)
+    .limit(1)
 
   if (error) throw error
   const visible = (data || []).filter(convo => visibleToUser(convo, currentUserId))
-  return visible.find(convo => gigId ? convo.gig_id === gigId : !convo.gig_id) || visible[0] || null
+  return visible[0] || null
 }
 
-export const createDraftConversation = async ({ currentUser, targetUserId, gigId = null }) => {
+export const createDraftConversation = async ({ currentUser, targetUserId }) => {
   const { data: targetUser } = await supabase
     .from('users')
     .select('id, full_name, avatar_url, trust_score')
     .eq('id', targetUserId)
     .single()
 
-  const { data: gig } = gigId
-    ? await supabase
-      .from('gigs')
-      .select('id, title, pay_min, pay_max, status')
-      .eq('id', gigId)
-      .single()
-    : { data: null }
-
   return {
     id: null,
-    gig_id: gigId || null,
+    gig_id: null,
     participant_1: currentUser.id,
     participant_2: targetUserId,
     p1: { id: currentUser.id, full_name: currentUser.email?.split('@')[0] || 'You' },
     p2: targetUser || { id: targetUserId, full_name: 'User' },
-    gigs: gig,
+    gigs: null,
     last_message: '',
     last_message_at: new Date().toISOString(),
     unread_count_1: 0,
@@ -114,11 +106,11 @@ export const createDraftConversation = async ({ currentUser, targetUserId, gigId
   }
 }
 
-export const createConversation = async ({ currentUserId, targetUserId, gigId = null }) => {
+export const createConversation = async ({ currentUserId, targetUserId }) => {
   const { data, error } = await supabase
     .from('conversations')
     .insert({
-      gig_id: gigId || null,
+      gig_id: null,
       participant_1: currentUserId,
       participant_2: targetUserId,
       last_message: '',
@@ -131,21 +123,16 @@ export const createConversation = async ({ currentUserId, targetUserId, gigId = 
   return data
 }
 
-export const getOrCreateConversation = async ({ currentUser, targetUserId, gigId = null, create = false }) => {
+export const getOrCreateConversation = async ({ currentUser, targetUserId, create = false }) => {
   const existing = await findConversationWithUser({
     currentUserId: currentUser.id,
-    targetUserId,
-    gigId
+    targetUserId
   })
   if (existing) return existing
   if (create) {
-    return createConversation({
-      currentUserId: currentUser.id,
-      targetUserId,
-      gigId
-    })
+    return createConversation({ currentUserId: currentUser.id, targetUserId })
   }
-  return createDraftConversation({ currentUser, targetUserId, gigId })
+  return createDraftConversation({ currentUser, targetUserId })
 }
 
 export const fetchMessages = async (convo, userId, { limit = CHAT_MESSAGE_LIMIT } = {}) => {
@@ -194,8 +181,7 @@ export const sendMessage = async ({ user, conversation, content, replyTo = null,
   if (!convo.id) {
     convo = await createConversation({
       currentUserId: user.id,
-      targetUserId: convo.participant_2,
-      gigId: convo.gig_id || null
+      targetUserId: convo.participant_2
     })
   }
 

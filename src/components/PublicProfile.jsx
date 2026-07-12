@@ -103,7 +103,7 @@ export default function PublicProfile({ userId, onClose }) {
       setTimeout(() => {
         onClose()
         window.dispatchEvent(new CustomEvent('openChatWithUser', {
-          detail: { userId, gigId: null }
+          detail: { userId }
         }))
       }, 600)
     } catch (e) {

@@ -73,9 +73,14 @@ const fincraPayload = {
 
     if (!fincraRes.ok || !fincraData.status) {
       console.error('Fincra error:', fincraData)
+      const fincraMessage =
+        fincraData?.message ||
+        fincraData?.error?.message ||
+        (typeof fincraData?.error === 'string' ? fincraData.error : null) ||
+        `Payment provider rejected the request (${selectedCurrency})`
       return new Response(
-        JSON.stringify({ error: 'Fincra request failed', details: fincraData }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: fincraMessage, details: fincraData }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 

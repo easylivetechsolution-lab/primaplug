@@ -847,10 +847,7 @@ export default function FeedScreen() {
                     onClick={() => {
                       setSelectedGig(null)
                       window.dispatchEvent(new CustomEvent('openChatWithUser', {
-                        detail: {
-                          userId: selectedGig.poster_id,
-                          gigId: selectedGig.id
-                        }
+                        detail: { userId: selectedGig.poster_id }
                       }))
                     }}
                     style={{

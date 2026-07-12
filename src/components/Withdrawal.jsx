@@ -3,10 +3,16 @@ import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 import { creditsToDollars, MIN_WITHDRAWAL_CREDITS } from '../utils/payments'
 
+const CURRENCY_TO_COUNTRY = {
+  NGN: 'NG', GHS: 'GH', KES: 'KE', ZAR: 'ZA',
+  USD: 'US', EUR: 'DE', GBP: 'GB'
+}
+
 export default function Withdrawal({ onClose }) {
-  const { user, profile, refreshProfile } = useAuth()
+  const { user, profile, wallets, refreshProfile } = useAuth()
 
   const [source, setSource] = useState('wallet') // 'wallet' or 'credits'
+  const [walletCurrency, setWalletCurrency] = useState(() => wallets?.[0]?.currency || 'NGN')
   const [banks, setBanks] = useState([])
   const [bankCode, setBankCode] = useState('')
   const [accountNumber, setAccountNumber] = useState('')
@@ -18,23 +24,20 @@ export default function Withdrawal({ onClose }) {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
 
-  const walletBalance = Number(profile?.wallet_balance || 0)
+  const selectedWallet = (wallets || []).find(w => w.currency === walletCurrency)
+  const walletBalance = Number(selectedWallet?.balance || 0)
   const creditsBalance = Number(profile?.credit_balance || 0)
   const creditsAsDollars = creditsToDollars(creditsBalance)
 
   useEffect(() => {
-    loadBanks()
-  }, [])
+    loadBanks(walletCurrency)
+  }, [walletCurrency])
 
-  const loadBanks = async () => {
+  const loadBanks = async (currency) => {
     try {
-      const { data, error } = await supabase.functions.invoke('fincra-list-banks', {
-        body: {},
-      })
-      // list-banks uses GET with query param, invoke defaults to POST,
-      // so call it directly via fetch instead
+      const country = CURRENCY_TO_COUNTRY[currency] || 'NG'
       const res = await fetch(
-        `https://eiwytpjtrawmocinxpid.supabase.co/functions/v1/fincra-list-banks?country=NG`,
+        `https://eiwytpjtrawmocinxpid.supabase.co/functions/v1/fincra-list-banks?country=${country}`,
         {
           headers: {
             Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
@@ -114,7 +117,7 @@ export default function Withdrawal({ onClose }) {
           userId: user.id,
           source: source,
           amount: numAmount,
-          currency: source === 'wallet' ? (profile?.wallet_currency || 'NGN') : 'NGN',
+          currency: source === 'wallet' ? walletCurrency : 'NGN',
           accountNumber,
           bankCode,
           accountName: verifiedName,
@@ -185,9 +188,9 @@ export default function Withdrawal({ onClose }) {
             </div>
 
             {/* Source selector */}
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '18px' }}>
+            <div style={{ display: 'flex', gap: '8px', marginBottom: source === 'wallet' && (wallets || []).length > 1 ? '10px' : '18px' }}>
               {[
-                { key: 'wallet', label: 'Wallet', balance: `${profile?.wallet_currency || 'NGN'} ${walletBalance.toLocaleString()}` },
+                { key: 'wallet', label: 'Wallet', balance: `${walletCurrency} ${walletBalance.toLocaleString()}` },
                 { key: 'credits', label: 'Prima Credits', balance: `$${creditsAsDollars.toFixed(2)}` },
               ].map(s => (
                 <button
@@ -208,6 +211,29 @@ export default function Withdrawal({ onClose }) {
                 </button>
               ))}
             </div>
+
+            {/* Wallet currency picker (only when multiple wallets) */}
+            {source === 'wallet' && (wallets || []).length > 1 && (
+              <div style={{ marginBottom: '18px' }}>
+                <label style={{ fontSize: '11px', fontWeight: '700', color: '#8B8FAF', display: 'block', marginBottom: '6px' }}>
+                  Wallet Currency
+                </label>
+                <select
+                  value={walletCurrency}
+                  onChange={e => { setWalletCurrency(e.target.value); setBankCode(''); setVerifiedName('') }}
+                  style={{
+                    width: '100%', padding: '10px 12px',
+                    borderRadius: '10px', border: '1.5px solid #E2E0FF',
+                    fontSize: '14px', fontFamily: 'inherit', color: '#14123A'
+                  }}>
+                  {(wallets || []).map(w => (
+                    <option key={w.currency} value={w.currency}>
+                      {w.currency} — Balance: {Number(w.balance || 0).toLocaleString()}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             {/* Bank selector */}
             <div style={{ marginBottom: '14px' }}>

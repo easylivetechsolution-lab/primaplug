@@ -603,7 +603,7 @@ export default function NotificationBell({ onNavigate }) {
                               requestAnimationFrame(() => {
                                 setTimeout(() => {
                                   window.dispatchEvent(new CustomEvent('openChatWithUser', {
-                                    detail: { userId: targetUserId, gigId: gigId || null }
+                                    detail: { userId: targetUserId }
                                   }))
                                 }, 100)
                               })

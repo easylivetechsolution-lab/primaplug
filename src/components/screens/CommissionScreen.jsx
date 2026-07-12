@@ -11,7 +11,7 @@ import { startFincraWalletFunding, verifyFincraPayment } from '../../utils/fincr
 
 
 export default function CommissionScreen() {
-  const { user, profile, refreshProfile } = useAuth()
+  const { user, profile, wallets, refreshProfile } = useAuth()
   const {
     credits, commissions, pendingCommissions,
     totalOwed, hasUnpaidCommissions,
@@ -37,30 +37,30 @@ export default function CommissionScreen() {
   }, [fetchCommissions])
 
   const handlePayWithWallet = async (commission) => {
-    const walletBalance = profile?.wallet_balance || 0
-    const walletCurrency = profile?.wallet_currency || 'NGN'
     const commissionCurrency = commission.currency || 'NGN'
+    const wallet = (wallets || []).find(w => w.currency === commissionCurrency)
+    const walletBalance = Number(wallet?.balance || 0)
 
-    if (walletCurrency !== commissionCurrency) {
-      showToast(`Your wallet is in ${walletCurrency} but this commission is in ${commissionCurrency}. Please pay via Fincra or Prima Credits.`, 'error')
+    if (!wallet) {
+      showToast(`You don't have a ${commissionCurrency} wallet. Please pay via Fincra or Prima Credits.`, 'error')
       return
     }
 
     if (walletBalance < commission.commission_amount) {
-      showToast(`Insufficient wallet balance. You need ${getCurrency(commissionCurrency).symbol}${commission.commission_amount.toLocaleString()} but have ${getCurrency(walletCurrency).symbol}${walletBalance.toLocaleString()}.`, 'error')
+      showToast(`Insufficient ${commissionCurrency} wallet balance. You need ${getCurrency(commissionCurrency).symbol}${commission.commission_amount.toLocaleString()} but have ${getCurrency(commissionCurrency).symbol}${walletBalance.toLocaleString()}.`, 'error')
       return
     }
 
     setPaying(commission.id)
     try {
-      const newBalance = walletBalance - commission.commission_amount
-
-      const { error: deductError } = await supabase
-        .from('users')
-        .update({ wallet_balance: newBalance })
-        .eq('id', user.id)
+      const { data: newBalance, error: deductError } = await supabase.rpc('_debit_wallet', {
+        p_user_id:  user.id,
+        p_currency: commissionCurrency,
+        p_amount:   commission.commission_amount,
+      })
 
       if (deductError) throw deductError
+      if (newBalance === null) throw new Error('Insufficient balance')
 
       const { error: commissionError } = await supabase
         .from('commissions')
@@ -432,11 +432,10 @@ export default function CommissionScreen() {
                 )}
 
                 {(() => {
-                  const walletCurrency = profile?.wallet_currency || 'NGN'
                   const commissionCurrency = commission.currency || 'NGN'
-                  const walletBalance = profile?.wallet_balance || 0
-                  const sameCurrency = walletCurrency === commissionCurrency
-                  const canPayWithWallet = sameCurrency && walletBalance >= commission.commission_amount
+                  const wallet = (wallets || []).find(w => w.currency === commissionCurrency)
+                  const walletBalance = Number(wallet?.balance || 0)
+                  const canPayWithWallet = !!wallet && walletBalance >= commission.commission_amount
                   return (
                     <button
                       onClick={() => handlePayWithWallet(commission)}

@@ -20,7 +20,7 @@ serve(async (req) => {
 
   try {
     const {
-      userId, source, // source: 'wallet' or 'credits'
+      userId, source, currency: requestedCurrency,
       amount, accountNumber, bankCode,
       accountName, firstName, lastName, email
     } = await req.json()
@@ -37,30 +37,36 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
 
-    // currency and newBalance are resolved below based on source
-    let currency = 'USD'
+    let currency = requestedCurrency || 'NGN'
     let newBalance: number | undefined
 
     if (source === 'wallet') {
-      // Always read wallet_currency from DB — never trust client-supplied value
-      const { data: userRow, error: userFetchError } = await supabase
-        .from('users')
-        .select('wallet_balance, wallet_currency')
-        .eq('id', userId)
-        .single()
-
-      if (userFetchError) throw userFetchError
-
-      currency = userRow.wallet_currency || 'USD'
-
+      // Validate currency is Fincra-supported
       if (!FINCRA_CURRENCIES.includes(currency)) {
         return new Response(
-          JSON.stringify({ error: `Wallet currency ${currency} is not supported for payouts` }),
+          JSON.stringify({ error: `Currency ${currency} is not supported for payouts` }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
       }
 
-      const currentBalance = Number(userRow.wallet_balance || 0)
+      // Read balance from wallets table — never trust client-supplied balance
+      const { data: walletRow, error: walletErr } = await supabase
+        .from('wallets')
+        .select('balance')
+        .eq('user_id', userId)
+        .eq('currency', currency)
+        .maybeSingle()
+
+      if (walletErr) throw walletErr
+
+      if (!walletRow) {
+        return new Response(
+          JSON.stringify({ error: `No ${currency} wallet found` }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      const currentBalance = Number(walletRow.balance || 0)
       if (currentBalance < amount) {
         return new Response(
           JSON.stringify({ error: 'Insufficient balance' }),
@@ -68,11 +74,20 @@ serve(async (req) => {
         )
       }
 
-      newBalance = currentBalance - amount
-      await supabase
-        .from('users')
-        .update({ wallet_balance: newBalance })
-        .eq('id', userId)
+      // Atomically debit the wallet
+      const { data: debitedBal, error: debitErr } = await supabase.rpc('_debit_wallet', {
+        p_user_id:  userId,
+        p_currency: currency,
+        p_amount:   Number(amount),
+      })
+      if (debitErr) throw debitErr
+      if (debitedBal === null) {
+        return new Response(
+          JSON.stringify({ error: 'Insufficient balance (concurrent update)' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+      newBalance = debitedBal as number
     }
 
     const reference = `payout_${source}_${userId}_${Date.now()}`
@@ -132,12 +147,13 @@ serve(async (req) => {
     console.log('Fincra payout response:', JSON.stringify(fincraData))
 
     if (!fincraRes.ok || fincraData.success === false) {
-      // Refund wallet if payout failed to initiate
+      // Refund the wallet if payout failed to initiate
       if (source === 'wallet' && newBalance !== undefined) {
-        await supabase
-          .from('users')
-          .update({ wallet_balance: newBalance + Number(amount) })
-          .eq('id', userId)
+        await supabase.rpc('_credit_wallet', {
+          p_user_id:  userId,
+          p_currency: currency,
+          p_amount:   Number(amount),
+        })
       }
 
       await supabase

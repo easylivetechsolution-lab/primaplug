@@ -3,6 +3,7 @@ import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 import { CURRENCIES, getCurrency } from '../data/currencies'
 import { rewardGigReferral } from '../utils/referral'
+import { updateWorkerLevel } from '../utils/workerLevel'
 import { calculateCommission, calculateWorkerEscrowShare, PAYMENT_METHODS } from '../utils/payments'
 
 export default function ReceiptFlow({ gig, onClose, onComplete }) {
@@ -54,18 +55,6 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
     const timer = setTimeout(fetchReceipt, 0)
     return () => clearTimeout(timer)
   }, [fetchReceipt])
-
-  const updateWorkerLevel = async (workerId) => {
-    const { data: workerData } = await supabase
-      .from('users').select('gigs_completed').eq('id', workerId).single()
-    const count = workerData?.gigs_completed || 0
-    let level = 'new'
-    let level_progress = Math.floor((count / 3) * 100)
-    if (count >= 25) { level = 'elite'; level_progress = 100 }
-    else if (count >= 10) { level = 'pro'; level_progress = Math.floor(((count - 10) / 15) * 100) }
-    else if (count >= 3) { level = 'rising'; level_progress = Math.floor(((count - 3) / 7) * 100) }
-    await supabase.from('users').update({ level, level_progress }).eq('id', workerId)
-  }
 
   const handlePosterSubmit = async () => {
     const walletAmount = Number(gig?.escrow_amount || gig?.pay_min || 0)
@@ -225,16 +214,19 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
           p_gig_id: gig.id,
           p_poster_id: gig.poster_id,
           p_worker_id: gig.worker_id,
-          p_amount: escrowAmount
+          p_amount: escrowAmount,
+          p_currency: gig.currency || 'NGN'
         })
 
         if (releaseError) throw releaseError
 
         const workerShare = calculateWorkerEscrowShare(escrowAmount)
 
-        if (gigAmount > 0) {
-          await rewardGigReferral(gig.id, gigAmount, gig.currency || 'NGN')
+        if (escrowAmount > 0) {
+          await rewardGigReferral(gig.id, escrowAmount, gig.currency || 'NGN', gig.worker_id)
         }
+
+        await supabase.from('gigs').update({ status: 'completed' }).eq('id', gig.id)
 
         await supabase.rpc('increment_gigs_completed', {
           worker_id: gig.worker_id
@@ -296,7 +288,7 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
 
       // Reward gig referral if applicable
       if (gigAmount > 0) {
-        await rewardGigReferral(gig.id, gigAmount, gig.currency || 'NGN')
+        await rewardGigReferral(gig.id, gigAmount, gig.currency || 'NGN', gig.worker_id)
       }
 
       // Update worker gigs completed

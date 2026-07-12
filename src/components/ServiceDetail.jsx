@@ -9,11 +9,18 @@ const PACKAGE_COLORS = {
   premium: { color: '#FFB800', bg: '#FFF8E0', border: '#FFD966' },
 }
 
-export default function ServiceDetail({ service, onClose, onViewProfile }) {
+export default function ServiceDetail({ service, onClose, onViewProfile, savedIds, toggleSave, onBoost }) {
   const { user } = useAuth()
   const [selectedPackage, setSelectedPackage] = useState('basic')
   const [ordering, setOrdering] = useState(false)
   const [ordered, setOrdered] = useState(false)
+
+  // reviews
+  const [reviews,      setReviews]      = useState([])
+  const [myRating,     setMyRating]     = useState(0)
+  const [myComment,    setMyComment]     = useState('')
+  const [submitting,   setSubmitting]   = useState(false)
+  const [reviewsLoaded, setReviewsLoaded] = useState(false)
 
   useEffect(() => {
     window.history.pushState({ modal: 'open' }, '', '')
@@ -21,6 +28,35 @@ export default function ServiceDetail({ service, onClose, onViewProfile }) {
     window.addEventListener('popstate', handleBack)
     return () => window.removeEventListener('popstate', handleBack)
   }, [])
+
+  useEffect(() => {
+    fetchReviews()
+  }, [service.id])
+
+  const fetchReviews = async () => {
+    const { data } = await supabase
+      .from('service_reviews')
+      .select('*, users(full_name, avatar_url, level)')
+      .eq('service_id', service.id)
+      .order('created_at', { ascending: false })
+    if (data) setReviews(data)
+    setReviewsLoaded(true)
+    const mine = data?.find(r => r.reviewer_id === user?.id)
+    if (mine) { setMyRating(mine.rating); setMyComment(mine.comment || '') }
+  }
+
+  const submitReview = async () => {
+    if (!myRating) return showToast('Select a star rating', 'error')
+    setSubmitting(true)
+    const { error } = await supabase.rpc('submit_service_review', {
+      p_service_id: service.id,
+      p_rating:     myRating,
+      p_comment:    myComment.trim() || null,
+    })
+    if (error) showToast(error.message, 'error')
+    else { showToast('Review submitted!', 'success'); fetchReviews() }
+    setSubmitting(false)
+  }
   const [requirements, setRequirements] = useState('')
   const [currentImage, setCurrentImage] = useState(0)
   const [lightbox, setLightbox] = useState(false)
@@ -83,11 +119,6 @@ export default function ServiceDetail({ service, onClose, onViewProfile }) {
         gig_id: null
       })
 
-      // Open chat with worker
-      window.dispatchEvent(new CustomEvent('openChatWithUser', {
-        detail: { userId: service.worker_id, gigId: null }
-      }))
-
       setOrdered(true)
     } catch (e) {
       showToast('Error placing order: ' + e.message, 'error')
@@ -130,9 +161,12 @@ export default function ServiceDetail({ service, onClose, onViewProfile }) {
                 fontSize: '13px', color: '#8B8FAF',
                 lineHeight: '1.6', marginBottom: '20px'
               }}>
-                The worker has been notified. A chat has been opened so you can share your requirements.
+                The worker has been notified. Open chat to share your requirements.
               </div>
-              <button onClick={onClose} style={{
+              <button onClick={() => {
+                window.dispatchEvent(new CustomEvent('openChatWithUser', { detail: { userId: service.worker_id } }))
+                onClose()
+              }} style={{
                 background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
                 border: 'none', borderRadius: '12px',
                 padding: '13px 32px', fontSize: '14px',
@@ -254,11 +288,18 @@ export default function ServiceDetail({ service, onClose, onViewProfile }) {
                 </div>
               </div>
 
-              {/* Title */}
-              <h2 style={{
-                fontSize: '20px', fontWeight: '800',
-                color: '#14123A', lineHeight: '1.3', marginBottom: '8px'
-              }}>{service.title}</h2>
+              {/* Title + save */}
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '8px' }}>
+                <h2 style={{ fontSize: '20px', fontWeight: '800', color: '#14123A', lineHeight: '1.3', flex: 1, margin: 0 }}>
+                  {service.title}
+                </h2>
+                {user && toggleSave && (
+                  <button onClick={e => toggleSave(e, service.id)} style={{
+                    fontSize: '22px', border: 'none', background: 'transparent',
+                    cursor: 'pointer', flexShrink: 0, padding: '2px',
+                  }}>{savedIds?.has(service.id) ? '❤️' : '🤍'}</button>
+                )}
+              </div>
 
               {/* Description */}
               {service.description && (
@@ -367,15 +408,119 @@ export default function ServiceDetail({ service, onClose, onViewProfile }) {
                 </div>
               )}
 
+              {/* Reviews section */}
+              <div style={{ marginTop: '24px', marginBottom: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                  <div style={{ fontSize: '14px', fontWeight: '800', color: '#14123A' }}>
+                    Reviews {service.review_count > 0 && <span style={{ color: '#8B8FAF', fontWeight: '500' }}>({service.review_count})</span>}
+                  </div>
+                  {service.avg_rating > 0 && (
+                    <div style={{ fontSize: '13px', fontWeight: '700', color: '#FFB800' }}>
+                      ⭐ {Number(service.avg_rating).toFixed(1)}
+                    </div>
+                  )}
+                </div>
+
+                {/* Write a review (non-owner only) */}
+                {user && !isOwnService && (
+                  <div style={{ background: '#F8F7FF', border: '1.5px solid #E2E0FF', borderRadius: '14px', padding: '14px', marginBottom: '16px' }}>
+                    <div style={{ fontSize: '12px', fontWeight: '700', color: '#8B8FAF', marginBottom: '8px' }}>
+                      {reviews.find(r => r.reviewer_id === user.id) ? 'Update your review' : 'Leave a review'}
+                    </div>
+                    {/* Star picker */}
+                    <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
+                      {[1,2,3,4,5].map(star => (
+                        <button key={star} onClick={() => setMyRating(star)} style={{
+                          fontSize: '22px', border: 'none', background: 'transparent',
+                          cursor: 'pointer', opacity: star <= myRating ? 1 : 0.3,
+                          transition: 'opacity 0.1s',
+                        }}>⭐</button>
+                      ))}
+                    </div>
+                    <textarea
+                      value={myComment}
+                      onChange={e => setMyComment(e.target.value)}
+                      placeholder="Share your experience (optional)..."
+                      rows={2}
+                      style={{
+                        width: '100%', background: '#fff',
+                        border: '1.5px solid #E2E0FF', borderRadius: '10px',
+                        padding: '10px 12px', fontSize: '12px',
+                        color: '#14123A', fontFamily: 'inherit',
+                        outline: 'none', resize: 'none',
+                        boxSizing: 'border-box', marginBottom: '10px',
+                      }}
+                      onFocus={e => e.target.style.borderColor = '#B8A5FF'}
+                      onBlur={e => e.target.style.borderColor = '#E2E0FF'}
+                    />
+                    <button onClick={submitReview} disabled={submitting || !myRating} style={{
+                      background: (!myRating || submitting) ? '#B8A5FF' : 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+                      border: 'none', borderRadius: '10px', padding: '10px 20px',
+                      fontSize: '12px', fontWeight: '700', color: '#fff',
+                      cursor: (!myRating || submitting) ? 'not-allowed' : 'pointer',
+                      fontFamily: 'inherit',
+                    }}>{submitting ? 'Submitting...' : 'Submit Review'}</button>
+                  </div>
+                )}
+
+                {/* Reviews list */}
+                {reviewsLoaded && reviews.length === 0 ? (
+                  <div style={{ fontSize: '13px', color: '#A09DC8', textAlign: 'center', padding: '16px 0' }}>
+                    No reviews yet. Be the first!
+                  </div>
+                ) : (
+                  reviews.map(rev => (
+                    <div key={rev.id} style={{ borderBottom: '1px solid #F5F4FF', paddingBottom: '12px', marginBottom: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '5px' }}>
+                        <div style={{
+                          width: '28px', height: '28px', borderRadius: '8px',
+                          background: '#EEE9FF', overflow: 'hidden', flexShrink: 0,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: '11px', fontWeight: '800', color: '#6C47FF',
+                        }}>
+                          {rev.users?.avatar_url
+                            ? <img src={rev.users.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            : rev.users?.full_name?.charAt(0) || '?'
+                          }
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: '12px', fontWeight: '700', color: '#14123A' }}>
+                            {rev.users?.full_name || 'Anonymous'}
+                          </div>
+                          <div style={{ fontSize: '11px', color: '#FFB800' }}>{'⭐'.repeat(rev.rating)}</div>
+                        </div>
+                        <div style={{ fontSize: '10px', color: '#C0BDDA' }}>
+                          {new Date(rev.created_at).toLocaleDateString()}
+                        </div>
+                      </div>
+                      {rev.comment && (
+                        <div style={{ fontSize: '12px', color: '#5B5887', lineHeight: '1.6', paddingLeft: '36px' }}>
+                          {rev.comment}
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+
               {/* Action Buttons */}
               {isOwnService ? (
-                <div style={{
-                  background: '#EEE9FF', border: '1.5px solid #B8A5FF',
-                  borderRadius: '12px', padding: '14px',
-                  textAlign: 'center', fontSize: '13px',
-                  color: '#6C47FF', fontWeight: '600'
-                }}>
-                  👤 This is your service
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <div style={{
+                    flex: 1, background: '#EEE9FF', border: '1.5px solid #B8A5FF',
+                    borderRadius: '12px', padding: '14px',
+                    textAlign: 'center', fontSize: '13px',
+                    color: '#6C47FF', fontWeight: '600'
+                  }}>
+                    👤 Your service
+                  </div>
+                  {onBoost && (
+                    <button onClick={onBoost} style={{
+                      flex: 1, background: '#FFF8E0', border: '1.5px solid #FFD966',
+                      borderRadius: '12px', padding: '14px', fontSize: '13px',
+                      fontWeight: '700', color: '#FFB800', cursor: 'pointer', fontFamily: 'inherit',
+                    }}>⚡ Boost</button>
+                  )}
                 </div>
               ) : (
                 <div style={{ display: 'flex', gap: '10px' }}>
@@ -383,7 +528,7 @@ export default function ServiceDetail({ service, onClose, onViewProfile }) {
                     onClick={() => {
                       onClose()
                       window.dispatchEvent(new CustomEvent('openChatWithUser', {
-                        detail: { userId: service.worker_id, gigId: null }
+                        detail: { userId: service.worker_id }
                       }))
                     }}
                     style={{

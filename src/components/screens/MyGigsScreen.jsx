@@ -6,6 +6,7 @@ import { getCurrency } from '../../data/currencies'
 import { showToast } from '../../utils/toast'
 import PublicProfile from '../PublicProfile'
 import { getPendingGigReferralForPayout } from '../../utils/referral'
+import { updateWorkerLevel } from '../../utils/workerLevel'
 import ReceiptFlow from '../ReceiptFlow'
 import ScreenLoader from '../ScreenLoader'
 import LiveTracking from '../LiveTracking'
@@ -194,7 +195,8 @@ export default function MyGigsScreen() {
           .rpc('lock_gig_escrow', {
             p_user_id: gig.poster_id,
             p_gig_id: gig.id,
-            p_amount: escrowAmount
+            p_amount: escrowAmount,
+            p_currency: gig.currency || 'NGN'
           })
 
         if (lockError) throw lockError
@@ -233,7 +235,7 @@ export default function MyGigsScreen() {
 
       // Notify accepted worker
       // Check if this gig has a pending referral, to inform the worker
-const gigReferral = await getPendingGigReferralForPayout(gig.id)
+const gigReferral = await getPendingGigReferralForPayout(gig.id, application.worker_id)
 const referralNote = gigReferral
   ? ' Note: 5% of this gig\'s payment goes to the person who referred you to it.'
   : ''
@@ -307,7 +309,7 @@ const { error: notifError } = await supabase
   const releaseEscrow = async (gig) => {
   try {
     const amount = Number(gig.escrow_amount || gig.pay_min)
-    const referral = await getPendingGigReferralForPayout(gig.id)
+    const referral = await getPendingGigReferralForPayout(gig.id, gig.worker_id)
 
     if (referral) {
       const referrerShare = amount * 0.05
@@ -317,7 +319,8 @@ const { error: notifError } = await supabase
         p_worker_id: gig.worker_id,
         p_amount: amount,
         p_referrer_id: referral.referrer_id,
-        p_referrer_share: referrerShare
+        p_referrer_share: referrerShare,
+        p_currency: gig.currency || 'NGN'
       })
 
       if (error) throw error
@@ -346,7 +349,8 @@ const { error: notifError } = await supabase
         p_gig_id: gig.id,
         p_poster_id: gig.poster_id,
         p_worker_id: gig.worker_id,
-        p_amount: amount
+        p_amount: amount,
+        p_currency: gig.currency || 'NGN'
       })
 
       if (error) throw error
@@ -356,6 +360,9 @@ const { error: notifError } = await supabase
         .from('gigs')
         .update({ status: 'completed' })
         .eq('id', gig.id)
+
+      await supabase.rpc('increment_gigs_completed', { worker_id: gig.worker_id })
+      await updateWorkerLevel(gig.worker_id)
 
       // Notify worker funds released
       await supabase.from('notifications').insert({
@@ -1192,7 +1199,7 @@ function PostedGigCard({
       <button
         onClick={() => window.dispatchEvent(new CustomEvent(
           'openChatWithUser',
-          { detail: { userId: gig.worker_id, gigId: gig.id } }
+          { detail: { userId: gig.worker_id } }
         ))}
         style={{
           flex: 1, background: '#F5F4FF',
@@ -1252,7 +1259,7 @@ function PostedGigCard({
             <button
               onClick={() => window.dispatchEvent(new CustomEvent(
                 'openChatWithUser',
-                { detail: { userId: acceptedWorkerId, gigId: gig.id } }
+                { detail: { userId: acceptedWorkerId } }
               ))}
               style={{
                 width: '100%', background: '#F5F4FF',
@@ -1284,6 +1291,37 @@ function PostedGigCard({
                 justifyContent: 'center', gap: '5px'
               }}>
               <BrandIcon name="edit" size={18} active={false} /> Edit
+            </button>
+            {['open', 'hasapplicants'].includes(status) && (
+              <button
+                onClick={() => onDelete(gig.id)}
+                style={{
+                  background: '#FFE8EE', border: '1.5px solid #FF99B3',
+                  borderRadius: '10px', padding: '10px 14px',
+                  fontSize: '12px', fontWeight: '700',
+                  color: '#FF3366', cursor: 'pointer', fontFamily: 'inherit',
+                  display: 'flex', alignItems: 'center',
+                  justifyContent: 'center', gap: '5px'
+                }}>
+                🗑️
+              </button>
+            )}
+          </div>
+        )}
+        {status === 'expired' && (
+          <div style={{ marginTop: '10px' }}>
+            <button
+              onClick={() => onDelete(gig.id)}
+              style={{
+                width: '100%', background: '#F5F4FF',
+                border: '1.5px solid #E2E0FF',
+                borderRadius: '10px', padding: '10px',
+                fontSize: '12px', fontWeight: '700',
+                color: '#8B8FAF', cursor: 'pointer', fontFamily: 'inherit',
+                display: 'flex', alignItems: 'center',
+                justifyContent: 'center', gap: '5px'
+              }}>
+              🗑️ Delete Gig
             </button>
           </div>
         )}
@@ -1542,7 +1580,7 @@ function WorkingGigCard({
             <button
               onClick={() => window.dispatchEvent(new CustomEvent(
                 'openChatWithUser',
-                { detail: { userId: gig?.poster_id, gigId: gig?.id } }
+                { detail: { userId: gig?.poster_id } }
               ))}
               style={{
                 background: '#F5F4FF', border: '1.5px solid #E2E0FF',
@@ -1572,7 +1610,7 @@ function WorkingGigCard({
               <button
                 onClick={() => window.dispatchEvent(new CustomEvent(
                   'openChatWithUser',
-                  { detail: { userId: gig?.poster_id, gigId: gig?.id } }
+                  { detail: { userId: gig?.poster_id } }
                 ))}
                 style={{
                   flex: 1, background: '#F5F4FF',
@@ -1597,7 +1635,7 @@ function WorkingGigCard({
                     display: 'flex', alignItems: 'center',
                     justifyContent: 'center', gap: '5px'
                   }}>
-                  <BrandIcon name="location" size={18} active /> Directions
+                  <BrandIcon name="location" size={18} active /> Track
                 </button>
               )}
             </div>
@@ -1821,7 +1859,7 @@ function ApplicantsSheet({
                 <button
                   onClick={() => window.dispatchEvent(new CustomEvent(
                     'openChatWithUser',
-                    { detail: { userId: app.worker_id, gigId: gig.id } }
+                    { detail: { userId: app.worker_id } }
                   ))}
                   style={{
                     flex: 1, background: '#fff',

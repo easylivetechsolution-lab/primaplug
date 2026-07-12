@@ -401,7 +401,7 @@ export default function SavedScreen() {
                         onClick={() => {
                           setSelectedGig(null)
                           window.dispatchEvent(new CustomEvent('openChatWithUser', {
-                            detail: { userId: gig.poster_id, gigId: gig.id }
+                            detail: { userId: gig.poster_id }
                           }))
                         }}
                         style={{

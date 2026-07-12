@@ -174,9 +174,23 @@ const getDistance = (lat1, lng1, lat2, lng2) => {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
 }
 
-// Instant straight line — shows immediately
-const getInstantRoute = (fromLat, fromLng, toLat, toLng) => {
-  return [[fromLat, fromLng], [toLat, toLng]]
+const formatEta = (minutes) => {
+  if (minutes < 60) return `${minutes} min`
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  return m === 0 ? `${h}h` : `${h}h ${m}min`
+}
+
+// Find nearest point on stored route and return only the path ahead
+const clipRoute = (route, workerPos, destLat, destLng) => {
+  if (route.length < 2) return [workerPos, [destLat, destLng]]
+  let minDist = Infinity
+  let nearestIdx = 0
+  for (let i = 0; i < route.length; i++) {
+    const d = getDistance(workerPos[0], workerPos[1], route[i][0], route[i][1])
+    if (d < minDist) { minDist = d; nearestIdx = i }
+  }
+  return [workerPos, ...route.slice(nearestIdx + 1)]
 }
 
 // Real route from OSRM in background
@@ -213,6 +227,7 @@ export default function LiveTracking({ gig, role, workerInfo, posterInfo, onClos
   const [watchId, setWatchId] = useState(null)
   const [resolvedPosterInfo, setResolvedPosterInfo] = useState(posterInfo)
   const channelRef = useRef()
+  const fullRouteRef = useRef([]) // complete OSRM route, fetched once
 
   const destLat = parseFloat(gig.latitude)
   const destLng = parseFloat(gig.longitude)
@@ -291,12 +306,25 @@ export default function LiveTracking({ gig, role, workerInfo, posterInfo, onClos
 
   const updateRoute = async () => {
     if (!workerPos || !hasDestination) return
-    const result = await getRoute(workerPos[0], workerPos[1], destLat, destLng)
-    if (result) {
-      setRoute(result.coords)
-      setEta(result.duration)
-    } else if (distance) {
-      setEta(Math.round(distance / 0.5))
+
+    if (fullRouteRef.current.length === 0) {
+      const result = await getRoute(workerPos[0], workerPos[1], destLat, destLng)
+      if (result) {
+        fullRouteRef.current = result.coords
+        setRoute(result.coords)
+        setEta(result.duration)
+      } else if (distance) {
+        setEta(Math.round(distance / 0.5))
+      }
+    } else {
+      // Subsequent updates — clip stored route, no new network call
+      const remaining = clipRoute(fullRouteRef.current, workerPos, destLat, destLng)
+      setRoute(remaining)
+      let remainingKm = 0
+      for (let i = 0; i < remaining.length - 1; i++) {
+        remainingKm += getDistance(remaining[i][0], remaining[i][1], remaining[i+1][0], remaining[i+1][1])
+      }
+      setEta(Math.round(remainingKm / 0.5))
     }
   }
 
@@ -353,6 +381,7 @@ export default function LiveTracking({ gig, role, workerInfo, posterInfo, onClos
     if (watchId) navigator.geolocation.clearWatch(watchId)
     setTracking(false)
     setWatchId(null)
+    fullRouteRef.current = []
 
     await supabase
       .from('worker_locations')
@@ -431,7 +460,7 @@ export default function LiveTracking({ gig, role, workerInfo, posterInfo, onClos
             }}>
               <div style={{
                 fontSize: '16px', fontWeight: '800', color: '#6C47FF'
-              }}>{eta} min</div>
+              }}>{formatEta(eta)}</div>
               <div style={{
                 fontSize: '9px', color: '#A09DC8',
                 fontWeight: '600', textTransform: 'uppercase'
@@ -611,6 +640,41 @@ export default function LiveTracking({ gig, role, workerInfo, posterInfo, onClos
               </button>
             ) : (
               <>
+                {(eta || distance) && (
+                  <div style={{
+                    background: 'linear-gradient(135deg, #14123A, #1E1B4B)',
+                    borderRadius: '14px', padding: '14px 18px',
+                    display: 'flex', alignItems: 'center', gap: '16px'
+                  }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '10px', color: '#C9C6FF', fontWeight: '700', letterSpacing: '1px', marginBottom: '2px' }}>
+                        ETA TO JOB SITE
+                      </div>
+                      <div style={{ fontSize: '28px', fontWeight: '900', color: '#fff', lineHeight: 1 }}>
+                        {eta ? formatEta(eta) : '—'}
+                      </div>
+                      {distance && (
+                        <div style={{ fontSize: '12px', color: '#A09DC8', marginTop: '3px' }}>
+                          {distance < 1
+                            ? `${Math.round(distance * 1000)}m remaining`
+                            : `${distance.toFixed(1)}km remaining`}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{
+                      background: '#DFFDF4', border: '1px solid #7EECD2',
+                      borderRadius: '10px', padding: '6px 10px',
+                      fontSize: '10px', fontWeight: '700', color: '#00C48C',
+                      display: 'flex', alignItems: 'center', gap: '5px'
+                    }}>
+                      <span style={{
+                        width: '7px', height: '7px', borderRadius: '50%',
+                        background: '#00C48C', display: 'inline-block'
+                      }} />
+                      LIVE
+                    </div>
+                  </div>
+                )}
                 <div style={{
                   background: '#DFFDF4', border: '1.5px solid #7EECD2',
                   borderRadius: '12px', padding: '12px 16px',
@@ -621,9 +685,9 @@ export default function LiveTracking({ gig, role, workerInfo, posterInfo, onClos
                     background: '#00C48C', animation: 'blink 1s infinite'
                   }} />
                   <div>
-                    <div style={{
-                      fontSize: '13px', fontWeight: '700', color: '#00C48C'
-                    }}>Live tracking active</div>
+                    <div style={{ fontSize: '13px', fontWeight: '700', color: '#00C48C' }}>
+                      Live tracking active
+                    </div>
                     <div style={{ fontSize: '11px', color: '#8B8FAF' }}>
                       Client can see your location
                     </div>
@@ -707,7 +771,7 @@ export default function LiveTracking({ gig, role, workerInfo, posterInfo, onClos
                   </div>
                   {eta && (
                     <div style={{ fontSize: '11px', color: '#8B8FAF' }}>
-                      Estimated arrival: {eta} minutes
+                      Arrives in about {formatEta(eta)}
                     </div>
                   )}
                 </div>

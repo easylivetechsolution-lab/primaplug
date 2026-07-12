@@ -84,7 +84,7 @@ export const completeReferral = async (userId) => {
       p_user_id: referral.referrer_id,
       p_amount: REFERRAL_REWARDS.referrerCredits,
       p_type: 'referral_reward',
-      p_description: `Referral reward — ${referral.referrer?.full_name || 'Someone'} joined Prima`,
+      p_description: 'Referral reward — your referral joined Prima',
     }))
 
     // Reward new user
@@ -253,16 +253,20 @@ export const trackGigReferral = async (gigId, referredUserId) => {
 
 // Check if a gig has an active, unpaid referral attached to it —
 // used to notify the worker at acceptance time
-export const getPendingGigReferralForPayout = async (gigId) => {
+export const getPendingGigReferralForPayout = async (gigId, workerId) => {
   try {
-    const { data: referral } = await supabase
+    let query = supabase
       .from('gig_referrals')
       .select('*')
       .eq('gig_id', gigId)
       .eq('status', 'pending')
       .eq('reward_given', false)
-      .maybeSingle()
 
+    // Filter by accepted worker so we reward the right referrer when multiple
+    // workers applied via different referral links for the same gig.
+    if (workerId) query = query.eq('referred_id', workerId)
+
+    const { data: referral } = await query.maybeSingle()
     return referral || null
   } catch (e) {
     console.error('getPendingGigReferralForPayout error:', e)
@@ -273,33 +277,29 @@ export const getPendingGigReferralForPayout = async (gigId) => {
 // Pays the referrer 5% of the gig's REAL payment amount as actual
 // currency into their wallet_balance — NOT Prima Credits. Called
 // from ReceiptFlow.jsx for both wallet and manual gig completions.
-export const rewardGigReferral = async (gigId, gigAmount, currency) => {
+export const rewardGigReferral = async (gigId, gigAmount, currency, workerId) => {
   try {
-    const { data: referral } = await supabase
+    let query = supabase
       .from('gig_referrals')
       .select('*, referrer:users!gig_referrals_referrer_id_fkey(full_name)')
       .eq('gig_id', gigId)
       .eq('status', 'pending')
       .eq('reward_given', false)
-      .maybeSingle()
+
+    if (workerId) query = query.eq('referred_id', workerId)
+
+    const { data: referral } = await query.maybeSingle()
 
     if (!referral) return
 
     const referrerShare = gigAmount * 0.05
     if (referrerShare <= 0) return
 
-    const { data: referrerRow } = await supabase
-      .from('users')
-      .select('wallet_balance')
-      .eq('id', referral.referrer_id)
-      .single()
-
-    const newBalance = Number(referrerRow?.wallet_balance || 0) + referrerShare
-
-    await supabase
-      .from('users')
-      .update({ wallet_balance: newBalance })
-      .eq('id', referral.referrer_id)
+    const { data: newBalance } = await supabase.rpc('_credit_wallet', {
+      p_user_id:  referral.referrer_id,
+      p_currency: currency || 'NGN',
+      p_amount:   referrerShare,
+    })
 
     await supabase.from('wallet_transactions').insert({
       user_id: referral.referrer_id,
@@ -307,7 +307,7 @@ export const rewardGigReferral = async (gigId, gigAmount, currency) => {
       type: 'gig_referral_payout',
       amount: referrerShare,
       currency: currency || 'NGN',
-      balance_after: newBalance,
+      balance_after: newBalance ?? referrerShare,
       status: 'completed',
       description: 'Gig referral reward — 5% of gig payment',
     })

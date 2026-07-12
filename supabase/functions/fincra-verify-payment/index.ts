@@ -83,19 +83,52 @@ serve(async (req) => {
       )
     }
 
-    // Payment confirmed successful - credit the wallet now
-    const { data: userRow } = await supabase
-      .from('users')
-      .select('wallet_balance, wallet_currency')
-      .eq('id', txRow.user_id)
-      .single()
-
+    // Payment confirmed successful
     const isCommissionPayment = !!txRow.related_commission_id
+    const isBoostPayment       = txRow.type === 'boost'
     let newBalance: number | undefined
 
-    if (isCommissionPayment) {
-      // Mark the EXACT commission row paid — no ambiguity from
-      // amount-matching, uses the direct foreign key link instead
+    if (isBoostPayment) {
+      // Extract boost metadata stored in the transaction
+      const serviceId = txRow.service_id
+      const days      = Number(txRow.description?.match(/(\d+) days/)?.[1] || 7)
+
+      if (!serviceId) throw new Error('Boost transaction missing service_id')
+
+      // Service role bypasses RLS — update featured_until directly
+      const newUntil = new Date()
+      newUntil.setDate(newUntil.getDate() + days)
+
+      const { data: currentSvc } = await supabase
+        .from('services')
+        .select('featured_until')
+        .eq('id', serviceId)
+        .maybeSingle()
+
+      const existingUntil = currentSvc?.featured_until ? new Date(currentSvc.featured_until) : null
+      const finalUntil    = existingUntil && existingUntil > new Date()
+        ? new Date(existingUntil.getTime() + days * 86400000)
+        : newUntil
+
+      await supabase
+        .from('services')
+        .update({ is_featured: true, featured_until: finalUntil.toISOString() })
+        .eq('id', serviceId)
+
+      await supabase
+        .from('wallet_transactions')
+        .update({ status: 'completed' })
+        .eq('id', txRow.id)
+
+      await supabase.from('notifications').insert({
+        user_id: txRow.user_id,
+        title:   '⚡ Service Boosted!',
+        message: `Your service is now featured for ${days} days.`,
+        type:    'general',
+      })
+
+    } else if (isCommissionPayment) {
+      // Mark the EXACT commission row paid
       const { error: commissionUpdateError, data: updatedCommission } = await supabase
         .from('commissions')
         .update({
@@ -123,18 +156,18 @@ serve(async (req) => {
         type: 'general',
       })
     } else {
-      newBalance = Number(userRow?.wallet_balance || 0) + Number(txRow.amount)
+      const currency = txRow.currency || 'NGN'
+      const creditAmount = Number(txRow.amount)
 
-      // Lock wallet_currency on first deposit if not yet set
-      const updatePayload: Record<string, unknown> = { wallet_balance: newBalance }
-      if (!userRow?.wallet_currency && txRow.currency) {
-        updatePayload.wallet_currency = txRow.currency
-      }
+      // Atomically credit the multi-currency wallet (creates row if first deposit)
+      const { data: walletBal, error: creditErr } = await supabase.rpc('_credit_wallet', {
+        p_user_id:  txRow.user_id,
+        p_currency: currency,
+        p_amount:   creditAmount,
+      })
+      if (creditErr) throw creditErr
 
-      await supabase
-        .from('users')
-        .update(updatePayload)
-        .eq('id', txRow.user_id)
+      newBalance = walletBal as number
 
       await supabase
         .from('wallet_transactions')
@@ -144,7 +177,7 @@ serve(async (req) => {
       await supabase.from('notifications').insert({
         user_id: txRow.user_id,
         title: '💰 Wallet Funded',
-        message: `Your wallet has been credited with ${txRow.currency} ${Number(txRow.amount).toLocaleString()}`,
+        message: `Your ${currency} wallet has been credited with ${currency} ${creditAmount.toLocaleString()}`,
         type: 'wallet',
       })
     }
