@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../supabase'
 import { useAuth } from '../../context/AuthContext'
+import { uploadToR2 } from '../../utils/r2upload'
 import PublicProfile from '../PublicProfile'
 import BrandIcon from '../BrandIcon'
 import { showToast } from '../../utils/toast'
@@ -52,7 +53,8 @@ const isVideoUrl = (content) =>
   /^https?:\/\/.+\.(mp4|mov|avi|webm|mkv|m4v|3gp|ogv)(\?.*)?$/i.test(content)
 
 const isStorageUrl = (content) =>
-  typeof content === 'string' && content.startsWith('https://') && content.includes('supabase.co/storage')
+  typeof content === 'string' && content.startsWith('https://') &&
+  (content.includes('supabase.co/storage') || content.includes('.r2.dev/'))
 
 const getAttachmentFilename = (url) => {
   try {
@@ -229,15 +231,7 @@ export default function ChatScreen() {
     if (file.size > 10 * 1024 * 1024) { showToast('File must be under 10 MB', 'error'); return }
     setUploadingFile(true)
     try {
-      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 80)
-      const path = `${user.id}/${Date.now()}-${safeName}`
-      const { error: upErr } = await supabase.storage
-        .from('chat-attachments')
-        .upload(path, file, { upsert: false })
-      if (upErr) throw upErr
-      const { data: urlData } = supabase.storage.from('chat-attachments').getPublicUrl(path)
-      // Strip any auth tokens that may appear as query params on the storage URL
-      const cleanUrl = urlData.publicUrl.split('?')[0]
+      const cleanUrl = await uploadToR2(file, 'chat-attachments')
       await sendMessage(cleanUrl)
     } catch (err) {
       showToast('Upload failed: ' + err.message, 'error')
@@ -947,7 +941,7 @@ export default function ChatScreen() {
                       const trustPart = other?.trust_score != null ? ` · Trust ${other.trust_score}%` : ''
                       return (
                         <div style={{ fontSize: '11px', color: isOtherOnline ? '#00C48C' : '#A09DC8', fontWeight: '600' }}>
-                          {isOtherOnline ? '🟢 Online' : '⚫ Offline'}{trustPart}
+                          {isOtherOnline ? 'Online' : 'Offline'}{trustPart}
                         </div>
                       )
                     })()}

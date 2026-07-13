@@ -30,7 +30,7 @@ import { useCredits } from '../context/CreditsContext'
 import { useLanguage } from '../context/LanguageContext'
 
 // ── App Download Banner ──────────────────────────────────────────────────────
-const ANDROID_APK_URL = 'https://eiwytpjtrawmocinxpid.supabase.co/storage/v1/object/public/app/primaplug.apk'
+const ANDROID_APK_URL = 'https://pub-bcdbcd3dbd3148c28060148c0929cc03.r2.dev/app/1783907851265-3efc6140-3e61-4e79-b672-3f1a1d54e37a.apk'
 const IOS_APP_URL     = null // ← paste App Store link here when ready
 
 function AppDownloadBanner() {
@@ -155,6 +155,21 @@ export default function Layout() {
   const [showMobileMore, setShowMobileMore] = useState(false)
   const [showProfilePrompt, setShowProfilePrompt] = useState(false)
   const [showPushPrompt, setShowPushPrompt] = useState(false)
+  const appRef = useRef(null)
+
+  useEffect(() => {
+    const vv = window.visualViewport
+    if (!vv) return
+    const update = () => {
+      if (!appRef.current) return
+      appRef.current.style.height = vv.height + 'px'
+      appRef.current.style.top = vv.offsetTop + 'px'
+    }
+    update()
+    vv.addEventListener('resize', update)
+    vv.addEventListener('scroll', update)
+    return () => { vv.removeEventListener('resize', update); vv.removeEventListener('scroll', update) }
+  }, [])
 
   const navigateTo = useCallback((newScreen) => {
     if (!newScreen || newScreen === screen) return
@@ -361,13 +376,12 @@ useEffect(() => {
   }
 
   return (
-    <div style={{
+    <div ref={appRef} style={{
       display: 'flex',
       flexDirection: 'column',
       height: '100dvh',
-      minHeight: '100dvh',
       position: 'fixed',
-      inset: 0,
+      top: 0, left: 0, right: 0,
       overflow: 'hidden',
       background: '#F5F4FF',
       fontFamily: "'Plus Jakarta Sans', sans-serif"

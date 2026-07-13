@@ -26,7 +26,8 @@ const isVideoUrl = (content) =>
   /^https?:\/\/.+\.(mp4|mov|avi|webm|mkv|m4v|3gp|ogv)(\?.*)?$/i.test(content)
 
 const isStorageUrl = (content) =>
-  typeof content === 'string' && content.startsWith('https://') && content.includes('supabase.co/storage')
+  typeof content === 'string' && content.startsWith('https://') &&
+  (content.includes('supabase.co/storage') || content.includes('.r2.dev/'))
 
 const getAttachmentFilename = (url) => {
   try {
@@ -350,7 +351,7 @@ export default function FloatingChat({ onOpenFullChat }) {
                         {getOtherUser(activeConvo)?.full_name || 'Chat'}
                       </div>
                       <div style={{ fontSize: '10px', color: onlineUsers.has(getOtherUser(activeConvo)?.id) ? '#A8FFD8' : 'rgba(255,255,255,0.55)', fontWeight: '600' }}>
-                        {onlineUsers.has(getOtherUser(activeConvo)?.id) ? '● Online' : '● Offline'}
+                        {onlineUsers.has(getOtherUser(activeConvo)?.id) ? 'Online' : 'Offline'}
                       </div>
                     </>
                   ) : (

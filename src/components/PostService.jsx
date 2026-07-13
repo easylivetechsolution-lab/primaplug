@@ -3,6 +3,7 @@ import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 import CategoryPicker from './CategoryPicker'
 import { showToast } from '../utils/toast'
+import { uploadToR2 } from '../utils/r2upload'
 
 const inputStyle = {
   width: '100%',
@@ -343,36 +344,11 @@ export default function PostService({ onClose, onPosted }) {
                           const uploaded = []
                           for (const file of toUpload) {
                             try {
-                              const ext = file.name.split('.').pop().toLowerCase()
-                              const fileName = `service-${user.id}-${Date.now()}-${Math.round(Math.random() * 10000)}.${ext}`
-
-                              console.log('Uploading:', fileName)
-
-                              const { data, error } = await supabase.storage
-                                .from('service-images')
-                                .upload(fileName, file, {
-                                  cacheControl: '3600',
-                                  upsert: false,
-                                  contentType: file.type
-                                })
-
-                              if (error) {
-                                console.error('Upload error:', error)
-                                showToast(`Upload failed: ${error.message}`, 'error')
-                                continue
-                              }
-
-                              console.log('Upload success:', data)
-
-                              const { data: urlData } = supabase.storage
-                                .from('service-images')
-                                .getPublicUrl(fileName)
-
-                              console.log('Public URL:', urlData.publicUrl)
-                              uploaded.push(urlData.publicUrl)
-
+                              const url = await uploadToR2(file, 'service-images')
+                              uploaded.push(url)
                             } catch (err) {
-                              console.error('Unexpected error:', err)
+                              console.error('Upload error:', err)
+                              showToast(`Upload failed: ${err.message}`, 'error')
                             }
                           }
 

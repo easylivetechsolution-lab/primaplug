@@ -792,6 +792,16 @@ export default function NotificationBell({ onNavigate }) {
                       : '✗ Application declined. Worker has been notified.'}
                   </div>
                 )}
+
+                <button
+                  onClick={() => { setNotifDetail(null); setOpen(false); onNavigate && onNavigate('mygigs') }}
+                  style={{
+                    width: '100%', padding: '13px', borderRadius: '14px',
+                    background: 'linear-gradient(135deg,#6C47FF,#9B59FF)',
+                    color: '#fff', fontWeight: '800', fontSize: '14px',
+                    border: 'none', cursor: 'pointer', marginTop: '4px'
+                  }}
+                >View in My Gigs →</button>
               </>
             )}
 
@@ -984,6 +994,47 @@ export default function NotificationBell({ onNavigate }) {
               </div>
             )}
 
+            {/* RECEIPT / REVIEW TYPE */}
+            {(notifDetail.type === 'receipt' || notifDetail.type === 'review') && (
+              <div>
+                <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                  <div style={{ fontSize: '48px', marginBottom: '12px' }}>
+                    {notifDetail.type === 'receipt' ? '🧾' : '⭐'}
+                  </div>
+                  <div style={{
+                    fontSize: '17px', fontWeight: '800',
+                    color: '#14123A', marginBottom: '8px', lineHeight: '1.3'
+                  }}>{notifDetail.notif?.title}</div>
+                  <div style={{ fontSize: '13px', color: '#8B8FAF', lineHeight: '1.6' }}>
+                    {notifDetail.notif?.message}
+                  </div>
+                </div>
+                {notifDetail.gig && (
+                  <div style={{
+                    background: '#F5F4FF', borderRadius: '14px',
+                    padding: '14px', border: '1.5px solid #E2E0FF', marginBottom: '20px'
+                  }}>
+                    <div style={{
+                      fontSize: '10px', color: '#A09DC8', fontWeight: '700',
+                      textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px'
+                    }}>Gig</div>
+                    <div style={{ fontSize: '15px', fontWeight: '700', color: '#14123A' }}>
+                      {notifDetail.gig.title}
+                    </div>
+                  </div>
+                )}
+                <button
+                  onClick={() => { setNotifDetail(null); setOpen(false); onNavigate && onNavigate('mygigs') }}
+                  style={{
+                    width: '100%', padding: '14px', borderRadius: '14px',
+                    background: 'linear-gradient(135deg,#6C47FF,#9B59FF)',
+                    color: '#fff', fontWeight: '800', fontSize: '15px',
+                    border: 'none', cursor: 'pointer'
+                  }}
+                >View Receipt in My Gigs →</button>
+              </div>
+            )}
+
             {/* INFO TYPE — general notifications without gig_id */}
             {notifDetail.type === 'info' && (
               <div style={{ textAlign: 'center', padding: '16px 8px 28px' }}>
@@ -1008,10 +1059,10 @@ export default function NotificationBell({ onNavigate }) {
             {/* GENERAL TYPE — misc notifications with a gig_id */}
             {notifDetail.type === 'general' && (
               notifDetail.gig ? (
-                <div style={{ marginBottom: '16px' }}>
+                <div>
                   <div style={{
                     background: '#F5F4FF', borderRadius: '14px',
-                    padding: '14px', border: '1.5px solid #E2E0FF'
+                    padding: '14px', border: '1.5px solid #E2E0FF', marginBottom: '20px'
                   }}>
                     <div style={{
                       fontSize: '10px', color: '#A09DC8', fontWeight: '700',
@@ -1032,6 +1083,15 @@ export default function NotificationBell({ onNavigate }) {
                       </div>
                     )}
                   </div>
+                  <button
+                    onClick={() => { setNotifDetail(null); setOpen(false); onNavigate && onNavigate('mygigs') }}
+                    style={{
+                      width: '100%', padding: '14px', borderRadius: '14px',
+                      background: 'linear-gradient(135deg,#6C47FF,#9B59FF)',
+                      color: '#fff', fontWeight: '800', fontSize: '15px',
+                      border: 'none', cursor: 'pointer'
+                    }}
+                  >View in My Gigs →</button>
                 </div>
               ) : (
                 <div style={{ textAlign: 'center', padding: '16px 8px 28px' }}>

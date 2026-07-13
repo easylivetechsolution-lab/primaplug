@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
+import { uploadToR2 } from '../utils/r2upload'
 import { CURRENCIES, getCurrency } from '../data/currencies'
 import { rewardGigReferral } from '../utils/referral'
 import { updateWorkerLevel } from '../utils/workerLevel'
@@ -328,17 +329,8 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
   const uploadReceipt = async (file) => {
     setUploading(true)
     try {
-      const ext = file.name.split('.').pop()
-      const name = `receipt-${gig.id}-${user.id}-${Date.now()}.${ext}`
-      const { error } = await supabase.storage
-        .from('receipts')
-        .upload(name, file, { upsert: true })
-      if (!error) {
-        const { data } = supabase.storage
-          .from('receipts')
-          .getPublicUrl(name)
-        setReceiptFile(data.publicUrl)
-      }
+      const url = await uploadToR2(file, 'receipts')
+      setReceiptFile(url)
     } catch (e) {
       console.log('Upload error:', e)
     }

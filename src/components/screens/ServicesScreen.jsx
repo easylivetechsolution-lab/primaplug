@@ -328,52 +328,12 @@ export default function ServicesScreen() {
       {/* ── Scrollable body ─────────────────────────────────────────────────── */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '0 0 100px' }} onClick={() => setShowSort(false)}>
 
-        {/* Category icon grid */}
-        <div style={{ background: '#fff', padding: '16px 20px', borderBottom: '1.5px solid #F0EEFF' }}>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(5, 1fr)',
-            gap: '8px',
-          }}>
-            {/* "All" cell */}
-            <div
-              onClick={() => setCategory(null)}
-              style={{
-                display: 'flex', flexDirection: 'column',
-                alignItems: 'center', gap: '5px',
-                padding: '10px 4px',
-                background: activeCategory === null ? '#EEE9FF' : '#F8F7FF',
-                border: `1.5px solid ${activeCategory === null ? '#6C47FF' : '#E2E0FF'}`,
-                borderRadius: '12px', cursor: 'pointer',
-              }}>
-              <span style={{ fontSize: '22px' }}>✦</span>
-              <span style={{ fontSize: '9px', fontWeight: '700', color: activeCategory === null ? '#6C47FF' : '#8B8FAF', textAlign: 'center', lineHeight: '1.2' }}>All</span>
-            </div>
-            {CAT_GRID.slice(0, 9).map(cat => (
-              <div
-                key={cat.group}
-                onClick={() => setCategory(cat.group)}
-                style={{
-                  display: 'flex', flexDirection: 'column',
-                  alignItems: 'center', gap: '5px',
-                  padding: '10px 4px',
-                  background: activeCategory === cat.group ? cat.bg : '#F8F7FF',
-                  border: `1.5px solid ${activeCategory === cat.group ? cat.color : '#E2E0FF'}`,
-                  borderRadius: '12px', cursor: 'pointer',
-                  transition: 'all 0.15s',
-                }}>
-                <span style={{ fontSize: '22px' }}>{cat.icon}</span>
-                <span style={{
-                  fontSize: '9px', fontWeight: '700',
-                  color: activeCategory === cat.group ? cat.color : '#8B8FAF',
-                  textAlign: 'center', lineHeight: '1.2',
-                }}>
-                  {cat.group.split(' ')[0]}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
+        {/* Category dropdown */}
+        <CategoryDropdown
+          categories={CAT_GRID}
+          activeCategory={activeCategory}
+          onSelect={setCategory}
+        />
 
         {loading ? (
           <div style={{ paddingTop: '60px' }}><ScreenLoader /></div>
@@ -472,6 +432,89 @@ export default function ServicesScreen() {
           onBoosted={() => { setBoostingService(null); fetchFeatured(); resetAndFetch(searchQuery, activeCategory, typeFilter, sort) }}
           user={user}
         />
+      )}
+    </div>
+  )
+}
+
+// ── Category dropdown ─────────────────────────────────────────────────────────
+
+function CategoryDropdown({ categories, activeCategory, onSelect }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const selected = activeCategory ? categories.find(c => c.group === activeCategory) : null
+  const label = selected ? `${selected.icon} ${selected.group}` : '✦ All Categories'
+
+  return (
+    <div ref={ref} style={{ background: '#fff', padding: '10px 20px', borderBottom: '1.5px solid #F0EEFF', position: 'relative', zIndex: 50 }}>
+      <button
+        onClick={() => setOpen(v => !v)}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          background: open ? '#EEE9FF' : '#F8F7FF',
+          border: `1.5px solid ${activeCategory ? '#6C47FF' : '#E2E0FF'}`,
+          borderRadius: '12px', padding: '9px 14px',
+          fontSize: '13px', fontWeight: '600',
+          color: activeCategory ? '#6C47FF' : '#14123A',
+          cursor: 'pointer', fontFamily: 'inherit',
+          transition: 'all 0.15s',
+        }}>
+        <span>{label}</span>
+        <span style={{ fontSize: '11px', color: '#A09DC8', transition: 'transform 0.2s', transform: open ? 'rotate(180deg)' : 'none' }}>▼</span>
+      </button>
+
+      {open && (
+        <div style={{
+          position: 'absolute', top: '100%', left: '20px', right: '20px',
+          background: '#fff', border: '1.5px solid #E2E0FF',
+          borderRadius: '14px', boxShadow: '0 8px 24px rgba(20,18,58,0.12)',
+          overflow: 'hidden', zIndex: 200, marginTop: '2px',
+          maxHeight: '280px', overflowY: 'auto',
+        }}>
+          {/* All option */}
+          <button
+            onClick={() => { onSelect(null); setOpen(false) }}
+            style={{
+              width: '100%', display: 'flex', alignItems: 'center', gap: '10px',
+              padding: '10px 14px', border: 'none', cursor: 'pointer',
+              background: activeCategory === null ? '#EEE9FF' : 'transparent',
+              fontFamily: 'inherit', fontSize: '13px',
+              fontWeight: activeCategory === null ? '700' : '500',
+              color: activeCategory === null ? '#6C47FF' : '#14123A',
+              borderBottom: '1px solid #F5F4FF',
+            }}
+            onMouseEnter={e => { if (activeCategory !== null) e.currentTarget.style.background = '#F8F7FF' }}
+            onMouseLeave={e => { if (activeCategory !== null) e.currentTarget.style.background = 'transparent' }}>
+            <span style={{ fontSize: '18px', width: '26px', textAlign: 'center' }}>✦</span>
+            All Categories
+          </button>
+          {categories.map(cat => (
+            <button
+              key={cat.group}
+              onClick={() => { onSelect(cat.group); setOpen(false) }}
+              style={{
+                width: '100%', display: 'flex', alignItems: 'center', gap: '10px',
+                padding: '10px 14px', border: 'none', cursor: 'pointer',
+                background: activeCategory === cat.group ? cat.bg : 'transparent',
+                fontFamily: 'inherit', fontSize: '13px',
+                fontWeight: activeCategory === cat.group ? '700' : '500',
+                color: activeCategory === cat.group ? cat.color : '#14123A',
+                borderBottom: '1px solid #F5F4FF',
+              }}
+              onMouseEnter={e => { if (activeCategory !== cat.group) e.currentTarget.style.background = '#F8F7FF' }}
+              onMouseLeave={e => { if (activeCategory !== cat.group) e.currentTarget.style.background = 'transparent' }}>
+              <span style={{ fontSize: '18px', width: '26px', textAlign: 'center' }}>{cat.icon}</span>
+              {cat.group}
+            </button>
+          ))}
+        </div>
       )}
     </div>
   )

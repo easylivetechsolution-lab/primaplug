@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../supabase'
 import { useAuth } from '../../context/AuthContext'
+import { uploadToR2 } from '../../utils/r2upload'
 import CategoryPicker from '../CategoryPicker'
 import BrandIcon from '../BrandIcon'
 import ScreenLoader from '../ScreenLoader'
@@ -334,18 +335,16 @@ export default function ProfileScreen({ onLogout }) {
     const fileExt = file.name.split('.').pop()
     const fileName = `${user.id}.${fileExt}`
 
-    const { error: uploadError } = await supabase.storage
-      .from('avatars')
-      .upload(fileName, file, { upsert: true })
-
-    if (uploadError) {
-      showToast('Upload failed: ' + uploadError.message, 'error')
+    let avatarUrl
+    try {
+      avatarUrl = await uploadToR2(file, 'avatars')
+    } catch (err) {
+      showToast('Upload failed: ' + err.message, 'error')
       setUploadingAvatar(false)
       return
     }
 
-    const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(fileName)
-    await supabase.from('users').upsert({ id: user.id, avatar_url: urlData.publicUrl })
+    await supabase.from('users').upsert({ id: user.id, avatar_url: avatarUrl })
     await fetchProfile()
     setUploadingAvatar(false)
   }

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
+import { uploadBlobToR2 } from '../utils/r2upload'
 
 const SELFIE_QUALITY = {
   minBrightness: 70,
@@ -270,25 +271,13 @@ export default function SelfieVerification({ onComplete, onSkip }) {
       const blob = await response.blob()
       const fileName = `selfie-${user.id}-${Date.now()}.jpg`
 
-      // Upload to Supabase Storage
-      const { error: uploadError } = await supabase.storage
-        .from('selfies')
-        .upload(fileName, blob, {
-          contentType: 'image/jpeg',
-          upsert: true
-        })
-
-      if (uploadError) throw uploadError
-
-      const { data: urlData } = supabase.storage
-        .from('selfies')
-        .getPublicUrl(fileName)
+      const selfieUrl = await uploadBlobToR2(blob, fileName, 'image/jpeg', 'selfies')
 
       // Update user profile
       const { error: updateError } = await supabase
         .from('users')
         .update({
-          selfie_url: urlData.publicUrl,
+          selfie_url: selfieUrl,
           selfie_verified: true,
           selfie_verified_at: new Date().toISOString(),
           reverification_required: false

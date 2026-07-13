@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
+import { uploadToR2 } from '../utils/r2upload'
 import CategoryPicker from './CategoryPicker'
 import { CURRENCIES } from '../data/currencies'
 import { showToast } from '../utils/toast'
@@ -75,33 +76,11 @@ export default function EditService({ service, onClose, onUpdated }) {
     const uploaded = []
     for (const file of toUpload) {
       try {
-        const ext = file.name.split('.').pop().toLowerCase()
-        const fileName = `service-${user.id}-${Date.now()}-${Math.round(Math.random() * 10000)}.${ext}`
-
-        console.log('Uploading:', fileName)
-
-        const { data, error } = await supabase.storage
-          .from('service-images')
-          .upload(fileName, file, {
-            cacheControl: '3600',
-            upsert: false,
-            contentType: file.type
-          })
-
-        if (error) {
-          console.error('Upload error:', error)
-          showToast(`Upload failed: ${error.message}`, 'error')
-          continue
-        }
-
-        const { data: urlData } = supabase.storage
-          .from('service-images')
-          .getPublicUrl(fileName)
-
-        uploaded.push(urlData.publicUrl)
-
+        const url = await uploadToR2(file, 'service-images')
+        uploaded.push(url)
       } catch (err) {
-        console.error('Unexpected error:', err)
+        console.error('Upload error:', err)
+        showToast(`Upload failed: ${err.message}`, 'error')
       }
     }
 
