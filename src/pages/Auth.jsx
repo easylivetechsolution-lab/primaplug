@@ -405,7 +405,7 @@ export default function Auth() {
         <div style={{ display: 'flex', gap: '10px' }}>
           {/* Android */}
           <a
-            href="https://pub-bcdbcd3dbd3148c28060148c0929cc03.r2.dev/app/1783907851265-3efc6140-3e61-4e79-b672-3f1a1d54e37a.apk"
+            href="https://pub-bcdbcd3dbd3148c28060148c0929cc03.r2.dev/app/1784490481593-b06704df-f0d0-4929-a1b5-023f5dcbfe3d.apk"
             download="PrimaPlug.apk"
             style={{
               flex: 1, textDecoration: 'none',

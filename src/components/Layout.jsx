@@ -30,7 +30,7 @@ import { useCredits } from '../context/CreditsContext'
 import { useLanguage } from '../context/LanguageContext'
 
 // ── App Download Banner ──────────────────────────────────────────────────────
-const ANDROID_APK_URL = 'https://pub-bcdbcd3dbd3148c28060148c0929cc03.r2.dev/app/1783907851265-3efc6140-3e61-4e79-b672-3f1a1d54e37a.apk'
+const ANDROID_APK_URL = 'https://pub-bcdbcd3dbd3148c28060148c0929cc03.r2.dev/app/1784490481593-b06704df-f0d0-4929-a1b5-023f5dcbfe3d.apk'
 const IOS_APP_URL     = null // ← paste App Store link here when ready
 
 function AppDownloadBanner() {
