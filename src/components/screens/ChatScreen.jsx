@@ -554,7 +554,7 @@ export default function ChatScreen() {
   const dedupedConversations = (() => {
     const seen = new Set()
     const byTime = [...conversations].sort((a, b) =>
-      new Date(b.last_message_at || 0) - new Date(a.last_message_at || 0)
+      parseTimestamp(b.last_message_at || 0) - parseTimestamp(a.last_message_at || 0)
     )
     const result = []
     for (const convo of byTime) {
@@ -567,7 +567,7 @@ export default function ChatScreen() {
       const ap = isPinnedByUser(a, user?.id) ? 1 : 0
       const bp = isPinnedByUser(b, user?.id) ? 1 : 0
       if (ap !== bp) return bp - ap
-      return new Date(b.last_message_at || 0) - new Date(a.last_message_at || 0)
+      return parseTimestamp(b.last_message_at || 0) - parseTimestamp(a.last_message_at || 0)
     })
   })()
 

@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useCredits } from '../../context/CreditsContext'
 import { generateReferralCode, REFERRAL_REWARDS } from '../../utils/referral'
 import { CREDITS_PER_DOLLAR } from '../../utils/payments'
+import { parseTimestamp } from '../../utils/time'
 
 export default function ReferralScreen() {
   const { user, profile, refreshProfile } = useAuth()
@@ -406,7 +407,7 @@ export default function ReferralScreen() {
                   {ref.referred?.full_name || 'Unknown'}
                 </div>
                 <div style={{ fontSize: '10px', color: '#A09DC8' }}>
-                  Joined {new Date(ref.created_at).toLocaleDateString('en-US', {
+                  Joined {parseTimestamp(ref.created_at).toLocaleDateString('en-US', {
                     month: 'short', day: 'numeric'
                   })}
                 </div>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../supabase'
+import { parseTimestamp } from '../../utils/time'
 import PublicProfile from '../PublicProfile'
 import BrandIcon from '../BrandIcon'
 import EmptyState from '../EmptyState'
@@ -26,7 +27,7 @@ const URGENCY = {
 const getCurrencySymbol = (code) => getCurrency(code || 'USD').symbol
 
 const timeAgo = (d) => {
-  const s = Math.floor((Date.now() - new Date(d)) / 1000)
+  const s = Math.floor((Date.now() - parseTimestamp(d)) / 1000)
   if (s < 60) return 'just now'
   const m = Math.floor(s / 60)
   if (m < 60) return `${m}m ago`
@@ -38,7 +39,7 @@ const timeAgo = (d) => {
 }
 
 const timeUntil = (d) => {
-  const diff = new Date(d) - Date.now()
+  const diff = parseTimestamp(d) - Date.now()
   if (diff <= 0) return null
   const m = Math.floor(diff / 60000)
   if (m < 60) return `${m}m`
@@ -52,8 +53,8 @@ const ExpiryBadge = ({ expiresAt, small = false }) => {
   if (!expiresAt) return null
   const remaining = timeUntil(expiresAt)
   if (!remaining) return null
-  const isUrgent = new Date(expiresAt) - Date.now() < 24 * 60 * 60 * 1000
-  const isWarning = new Date(expiresAt) - Date.now() < 3 * 24 * 60 * 60 * 1000
+  const isUrgent = parseTimestamp(expiresAt) - Date.now() < 24 * 60 * 60 * 1000
+  const isWarning = parseTimestamp(expiresAt) - Date.now() < 3 * 24 * 60 * 60 * 1000
   const color = isUrgent ? '#FF3366' : isWarning ? '#FF6B2B' : '#A09DC8'
   const bg = isUrgent ? '#FFE8EE' : isWarning ? '#FFF0E8' : '#F5F4FF'
   const border = isUrgent ? '#FF99B3' : isWarning ? '#FFBC99' : '#E2E0FF'
@@ -158,7 +159,7 @@ export default function FeedScreen() {
       console.log('Feed error:', error.message)
     } else {
       setGigs((data || []).filter(gig =>
-        !gig.expires_at || new Date(gig.expires_at) >= new Date()
+        !gig.expires_at || parseTimestamp(gig.expires_at) >= new Date()
       ))
     }
     setLoading(false)

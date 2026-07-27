@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../supabase'
 import PublicProfile from './PublicProfile'
 import BrandIcon from './BrandIcon'
+import { parseTimestamp } from '../utils/time'
 
 const RECENT_KEY = 'prima_recent_searches'
 
@@ -89,7 +90,7 @@ export default function Search({ onClose }) {
 
       setResults({
         gigs: (gigsResult.data || []).filter(gig =>
-          !gig.expires_at || new Date(gig.expires_at) >= new Date()
+          !gig.expires_at || parseTimestamp(gig.expires_at) >= new Date()
         ),
         users: usersResult.data || [],
       })

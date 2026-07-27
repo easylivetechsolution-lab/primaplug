@@ -8,6 +8,7 @@ import ScreenLoader from '../ScreenLoader'
 import { completeReferral } from '../../utils/referral'
 import { showToast } from '../../utils/toast'
 import { getProfileCompletion } from '../../utils/profileComplete'
+import { parseTimestamp } from '../../utils/time'
 import { useCredits } from '../../context/CreditsContext'
 import { CREDITS_PER_DOLLAR } from '../../utils/payments'
 import SelfieVerification from '../SelfieVerification'
@@ -1057,7 +1058,7 @@ export default function ProfileScreen({ onLogout }) {
                     ['notifications', 'Email', user?.email || '—'],
                     ['phone', 'Phone', profile?.phone || 'Not set'],
                     ['open', 'Response', (profile?.response_time || '1 hour').replace(/^<\s*/, '')],
-                    ['completed', 'Joined', profile?.joined_at ? new Date(profile.joined_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'Recently'],
+                    ['completed', 'Joined', profile?.joined_at ? parseTimestamp(profile.joined_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'Recently'],
                     ['accepted', 'Status', profile?.is_available ? 'Available' : 'Busy'],
                   ].map(([icon, key, val]) => (
                     <div key={key} style={{ background: '#F5F4FF', borderRadius: '10px', padding: '10px 12px' }}>

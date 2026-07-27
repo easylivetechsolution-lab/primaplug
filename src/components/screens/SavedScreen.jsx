@@ -8,6 +8,7 @@ import EmptyState from '../EmptyState'
 import ScreenLoader from '../ScreenLoader'
 import { getCurrency } from '../../data/currencies'
 import ShareGig from '../ShareGig'
+import { parseTimestamp } from '../../utils/time'
 import { getProfileCompletion } from '../../utils/profileComplete'
 import ProfilePrompt from '../ProfilePrompt'
 import { applyToGig } from '../../utils/gigApplications'
@@ -375,7 +376,7 @@ export default function SavedScreen() {
                       display: 'flex', alignItems: 'center', gap: '6px'
                     }}>
                       <BrandIcon name="saved" size={16} />
-                      Saved {new Date(saved.created_at).toLocaleDateString('en-US', {
+                      Saved {parseTimestamp(saved.created_at).toLocaleDateString('en-US', {
                         month: 'short', day: 'numeric'
                       })}
                     </div>

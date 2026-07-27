@@ -1,4 +1,6 @@
 import { supabase } from '../supabase'
+import { parseTimestamp } from './time'
+export { parseTimestamp }
 
 export const CONVERSATION_SELECT = `
   *,
@@ -8,14 +10,6 @@ export const CONVERSATION_SELECT = `
 `
 
 export const CHAT_MESSAGE_LIMIT = 50
-
-export const parseTimestamp = (value) => {
-  if (!value) return new Date()
-  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?$/.test(value)) {
-    return new Date(value + 'Z')
-  }
-  return new Date(value)
-}
 
 export const getOtherUser = (convo, userId) => {
   if (!convo || !userId) return null

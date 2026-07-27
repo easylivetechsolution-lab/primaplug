@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import ReportModal from './ReportModal'
 import BrandIcon from './BrandIcon'
 import VerificationBadge from './VerificationBadge'
+import { parseTimestamp } from '../utils/time'
 
 export default function PublicProfile({ userId, onClose }) {
   const { user: currentUser } = useAuth()
@@ -459,7 +460,7 @@ export default function PublicProfile({ userId, onClose }) {
                               {review.users?.full_name || 'Anonymous'}
                             </div>
                             <div style={{ fontSize: '10px', color: '#A09DC8' }}>
-                              {new Date(review.created_at).toLocaleDateString('en-US', {
+                              {parseTimestamp(review.created_at).toLocaleDateString('en-US', {
                                 month: 'short', day: 'numeric', year: 'numeric'
                               })}
                             </div>

@@ -7,6 +7,7 @@ import EditService from '../EditService'
 import PublicProfile from '../PublicProfile'
 import { CATEGORIES } from '../../data/categories'
 import ScreenLoader from '../ScreenLoader'
+import { parseTimestamp } from '../../utils/time'
 
 const PAGE_SIZE = 20
 
@@ -21,7 +22,7 @@ const CAT_GRID = CATEGORIES.map(c => ({ group: c.group, icon: c.icon, color: c.c
 
 function timeAgo(dateStr) {
   if (!dateStr) return ''
-  const diff = Date.now() - new Date(dateStr).getTime()
+  const diff = Date.now() - parseTimestamp(dateStr).getTime()
   const m = Math.floor(diff / 60000)
   if (m < 1)  return 'just now'
   if (m < 60) return `${m}m ago`
@@ -586,7 +587,7 @@ function ServiceCard({ svc, savedIds, toggleSave, onOpen, onEdit, onBoost, user 
   const isOwn    = svc.worker_id === user?.id
   const price    = lowestPrice(svc)
   const cat      = CATEGORIES.find(c => c.fields?.includes(svc.field)) || CATEGORIES[0]
-  const isFeatured = svc.is_featured && svc.featured_until && new Date(svc.featured_until) > new Date()
+  const isFeatured = svc.is_featured && svc.featured_until && parseTimestamp(svc.featured_until) > new Date()
 
   return (
     <div onClick={onOpen} style={{

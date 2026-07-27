@@ -399,7 +399,7 @@ export default function FloatingChat({ onOpenFullChat }) {
                 ) : (() => {
                   const seen = new Set()
                   return [...conversations]
-                    .sort((a, b) => new Date(b.last_message_at || 0) - new Date(a.last_message_at || 0))
+                    .sort((a, b) => parseTimestamp(b.last_message_at || 0) - parseTimestamp(a.last_message_at || 0))
                     .filter(c => { const o = getOtherUser(c); return o?.id && seen.has(o.id) ? false : seen.add(o?.id) })
                 })().map(convo => {
                   const other = getOtherUser(convo)

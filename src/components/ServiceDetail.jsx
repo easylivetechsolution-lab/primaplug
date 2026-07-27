@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 import { showToast } from '../utils/toast'
+import { parseTimestamp } from '../utils/time'
 
 const PACKAGE_COLORS = {
   basic: { color: '#00C48C', bg: '#DFFDF4', border: '#7EECD2' },
@@ -490,7 +491,7 @@ export default function ServiceDetail({ service, onClose, onViewProfile, savedId
                           <div style={{ fontSize: '11px', color: '#FFB800' }}>{'⭐'.repeat(rev.rating)}</div>
                         </div>
                         <div style={{ fontSize: '10px', color: '#C0BDDA' }}>
-                          {new Date(rev.created_at).toLocaleDateString()}
+                          {parseTimestamp(rev.created_at).toLocaleDateString()}
                         </div>
                       </div>
                       {rev.comment && (

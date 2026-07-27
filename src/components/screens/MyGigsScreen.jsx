@@ -8,6 +8,7 @@ import PublicProfile from '../PublicProfile'
 import { getPendingGigReferralForPayout } from '../../utils/referral'
 import { updateWorkerLevel } from '../../utils/workerLevel'
 import ReceiptFlow from '../ReceiptFlow'
+import { parseTimestamp } from '../../utils/time'
 import ScreenLoader from '../ScreenLoader'
 import LiveTracking from '../LiveTracking'
 import EditGig from '../EditGig'
@@ -24,7 +25,7 @@ const TABS = [
 // ─── HELPERS ─────────────────────────────────────────
 const timeAgo = (date) => {
   if (!date) return ''
-  const s = Math.floor((new Date() - new Date(date)) / 1000)
+  const s = Math.floor((new Date() - parseTimestamp(date)) / 1000)
   if (s < 60) return 'just now'
   if (s < 3600) return `${Math.floor(s / 60)}m ago`
   if (s < 86400) return `${Math.floor(s / 3600)}h ago`
@@ -33,11 +34,11 @@ const timeAgo = (date) => {
 
 const daysSince = (date) => {
   if (!date) return 0
-  return Math.floor((new Date() - new Date(date)) / (1000 * 60 * 60 * 24))
+  return Math.floor((new Date() - parseTimestamp(date)) / (1000 * 60 * 60 * 24))
 }
 
 const timeUntil = (d) => {
-  const diff = new Date(d) - Date.now()
+  const diff = parseTimestamp(d) - Date.now()
   if (diff <= 0) return null
   const m = Math.floor(diff / 60000)
   if (m < 60) return `${m}m`
@@ -51,8 +52,8 @@ const ExpiryBadge = ({ expiresAt }) => {
   if (!expiresAt) return null
   const remaining = timeUntil(expiresAt)
   if (!remaining) return <span style={{ fontSize: '10px', color: '#FF3366', fontWeight: '700' }}>Expired</span>
-  const isUrgent = new Date(expiresAt) - Date.now() < 24 * 60 * 60 * 1000
-  const isWarning = new Date(expiresAt) - Date.now() < 3 * 24 * 60 * 60 * 1000
+  const isUrgent = parseTimestamp(expiresAt) - Date.now() < 24 * 60 * 60 * 1000
+  const isWarning = parseTimestamp(expiresAt) - Date.now() < 3 * 24 * 60 * 60 * 1000
   const color = isUrgent ? '#FF3366' : isWarning ? '#FF6B2B' : '#A09DC8'
   const bg = isUrgent ? '#FFE8EE' : isWarning ? '#FFF0E8' : '#F5F4FF'
   const border = isUrgent ? '#FF99B3' : isWarning ? '#FFBC99' : '#E2E0FF'
@@ -437,7 +438,7 @@ const { error: notifError } = await supabase
     }
 
     // Block if there is an accepted application and the gig is not expired or completed
-    const isExpired = current.expires_at && new Date(current.expires_at) < new Date()
+    const isExpired = current.expires_at && parseTimestamp(current.expires_at) < new Date()
     const isCompleted = current.status === 'completed'
     const hasAccepted = current.applications?.some(a => a.status === 'accepted')
     if (hasAccepted && !isExpired && !isCompleted) {
@@ -479,7 +480,7 @@ const { error: notifError } = await supabase
     if (gig.status === 'in_progress') return 'inprogress'
     if (acceptedApp) return 'inprogress'
     if (pendingApps.length > 0) return 'hasapplicants'
-    if (gig.expires_at && new Date(gig.expires_at) < new Date()) return 'expired'
+    if (gig.expires_at && parseTimestamp(gig.expires_at) < new Date()) return 'expired'
     return 'open'
   }
 

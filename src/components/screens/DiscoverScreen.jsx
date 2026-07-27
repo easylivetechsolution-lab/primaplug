@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext'
 import { CATEGORIES } from '../../data/categories'
 import BrandIcon from '../BrandIcon'
 import ScreenLoader from '../ScreenLoader'
+import { parseTimestamp } from '../../utils/time'
 
 const CATEGORY_ICONS = {
   'Technology & Digital': 'tech',
@@ -58,7 +59,7 @@ export default function DiscoverScreen() {
       .order('created_at', { ascending: false })
     if (data) {
       setAllGigs(data.filter(gig =>
-        !gig.expires_at || new Date(gig.expires_at) >= new Date()
+        !gig.expires_at || parseTimestamp(gig.expires_at) >= new Date()
       ))
     }
   }
@@ -74,7 +75,7 @@ export default function DiscoverScreen() {
       .order('created_at', { ascending: false })
     if (data) {
       setGigs(data.filter(gig =>
-        !gig.expires_at || new Date(gig.expires_at) >= new Date()
+        !gig.expires_at || parseTimestamp(gig.expires_at) >= new Date()
       ))
     }
     setLoading(false)

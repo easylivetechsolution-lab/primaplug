@@ -3,13 +3,14 @@ import { supabase } from '../../supabase'
 import { useAuth } from '../../context/AuthContext'
 import { getCurrency, FINCRA_CURRENCIES } from '../../data/currencies'
 import { startFincraWalletFunding, requestFincraPayout, listFincraBanks, verifyFincraAccount, verifyFincraPayment } from '../../utils/fincra'
+import { parseTimestamp } from '../../utils/time'
 
 const FUND_TYPES = ['fund_in', 'escrow_release_worker', 'gig_referral_payout', 'withdrawal_refund']
 const WITHDRAW_TYPES = ['withdrawal', 'escrow_lock']
 
 const timeAgo = (date) => {
   if (!date) return ''
-  const s = Math.floor((new Date() - new Date(date)) / 1000)
+  const s = Math.floor((new Date() - parseTimestamp(date)) / 1000)
   if (s < 60) return 'just now'
   if (s < 3600) return `${Math.floor(s / 60)}m ago`
   if (s < 86400) return `${Math.floor(s / 3600)}h ago`
@@ -510,7 +511,7 @@ export default function WalletScreen() {
                   ['Status', tx.status],
                   tx.balance_after != null && ['Balance After', `${txCur.symbol}${Number(tx.balance_after).toLocaleString()}`],
                   tx.fincra_reference && ['Reference', tx.fincra_reference],
-                  ['Date', new Date(tx.created_at).toLocaleString()],
+                  ['Date', parseTimestamp(tx.created_at).toLocaleString()],
                 ].filter(Boolean).map(([label, value]) => (
                   <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: '12px' }}>
                     <span style={{ fontSize: '11px', color: '#A09DC8', fontWeight: '600', flexShrink: 0 }}>{label}</span>

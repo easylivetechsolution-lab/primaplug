@@ -7,6 +7,7 @@ import { showToast } from '../../utils/toast'
 import EmptyState from '../EmptyState'
 import { CREDITS_PER_DOLLAR } from '../../utils/payments'
 import { convertToUSD, dollarsToCredits } from '../../utils/payments'
+import { parseTimestamp } from '../../utils/time'
 import { startFincraWalletFunding, verifyFincraPayment } from '../../utils/fincra'
 
 
@@ -153,7 +154,7 @@ export default function CommissionScreen() {
 
   const daysUntilDue = (dueDate) => {
     const days = Math.floor(
-      (new Date(dueDate) - new Date()) / (1000 * 60 * 60 * 24)
+      (parseTimestamp(dueDate) - new Date()) / (1000 * 60 * 60 * 24)
     )
     return days
   }
@@ -495,7 +496,7 @@ export default function CommissionScreen() {
                     {commission.payment_method === 'credits'
                       ? '⭐ Paid with Credits'
                       : '🏦 Bank Transfer'} ·{' '}
-                    {new Date(commission.paid_at).toLocaleDateString('en-US', {
+                    {parseTimestamp(commission.paid_at).toLocaleDateString('en-US', {
                       month: 'short', day: 'numeric'
                     })}
                   </div>
