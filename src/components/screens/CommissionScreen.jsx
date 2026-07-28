@@ -453,11 +453,9 @@ export default function CommissionScreen() {
                       }}>
                       {paying === commission.id
                         ? 'Processing...'
-                        : !sameCurrency
-                          ? `💳 Pay via Wallet (wallet is ${walletCurrency})`
-                          : !canPayWithWallet
-                            ? `💳 Pay via Wallet (need ${getCurrency(commissionCurrency).symbol}${commission.commission_amount.toLocaleString()})`
-                            : `💳 Pay via Wallet (${getCurrency(walletCurrency).symbol}${walletBalance.toLocaleString()} available)`}
+                        : !canPayWithWallet
+                          ? `💳 Pay via Wallet (need ${getCurrency(commissionCurrency).symbol}${commission.commission_amount.toLocaleString()})`
+                          : `💳 Pay via Wallet (${getCurrency(commissionCurrency).symbol}${walletBalance.toLocaleString()} available)`}
                     </button>
                   )
                 })()}
