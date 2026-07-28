@@ -142,8 +142,24 @@ export default function ServiceDetail({ service, onClose, onViewProfile, savedId
         borderRadius: '22px 22px 0 0',
         width: '100%', maxWidth: '640px',
         maxHeight: '92vh', overflowY: 'auto',
+        position: 'relative',
         animation: 'slideUp 0.3s cubic-bezier(0.16,1,0.3,1)'
       }}>
+        <button
+          onClick={onClose}
+          aria-label="Close service details"
+          style={{
+            position: 'absolute', top: '12px', right: '14px',
+            background: '#F5F4FF', border: '1.5px solid #E2E0FF',
+            borderRadius: '50%', width: '36px', height: '36px',
+            color: '#8B8FAF', fontSize: '20px',
+            cursor: 'pointer', zIndex: 5,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontFamily: 'inherit', lineHeight: 1
+          }}>
+          ×
+        </button>
+
         <div style={{
           width: '40px', height: '4px',
           background: '#E2E0FF', borderRadius: '2px',

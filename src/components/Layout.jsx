@@ -344,7 +344,7 @@ useEffect(() => {
     { key: 'mygigs', icon: 'mygigs', label: t('myGigs') },
     { key: 'chat', icon: 'chat', label: t('chat') },
     { key: 'profile', icon: 'profile', label: t('profile') },
-    { key: 'services', emoji: '🛠️', label: t('services') },
+    { key: 'services', icon: 'services', label: t('services') },
   ]
 
   const mobileMoreItems = [
@@ -1047,7 +1047,7 @@ useEffect(() => {
           { key: 'feed', icon: 'feed', label: 'Feed' },
           { key: 'mygigs', icon: 'mygigs', label: 'My Gigs' },
           { key: 'chat', icon: 'chat', label: 'Chat' },
-          { key: 'services', emoji: '🛠️', label: 'Services' },
+          { key: 'services', icon: 'services', label: 'Services' },
           { key: 'profile', icon: 'profile', label: 'Profile' },
         ].map(item => {
           const active = screen === item.key
