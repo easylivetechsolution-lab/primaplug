@@ -14,6 +14,16 @@ const PROVIDERS = {
       subdomains: 'abcd',
     },
   },
+  esri: {
+    light: {
+      url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+      attribution: 'Tiles &copy; Esri, OpenStreetMap contributors',
+    },
+    dark: {
+      url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+      attribution: 'Tiles &copy; Esri, OpenStreetMap contributors',
+    },
+  },
   osm: {
     light: {
       url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
@@ -26,10 +36,17 @@ const PROVIDERS = {
   },
 }
 
-export default function PrimaBasemap({ mode = 'light', provider = 'osm' }) {
+const FALLBACK_ORDER = ['esri', 'osm']
+
+export default function PrimaBasemap({ mode = 'light', provider = 'esri' }) {
   const [activeProvider, setActiveProvider] = useState(provider)
-  const selectedProvider = PROVIDERS[activeProvider] || PROVIDERS.osm
+  const selectedProvider = PROVIDERS[activeProvider] || PROVIDERS.esri
   const selectedMode = selectedProvider[mode] || selectedProvider.light
+  const handleTileError = () => {
+    const currentIndex = FALLBACK_ORDER.indexOf(activeProvider)
+    const nextProvider = FALLBACK_ORDER[currentIndex + 1]
+    if (nextProvider) setActiveProvider(nextProvider)
+  }
 
   return (
     <TileLayer
@@ -39,9 +56,7 @@ export default function PrimaBasemap({ mode = 'light', provider = 'osm' }) {
       subdomains={selectedMode.subdomains}
       maxZoom={19}
       eventHandlers={{
-        tileerror: () => {
-          if (activeProvider !== 'osm') setActiveProvider('osm')
-        },
+        tileerror: handleTileError,
       }}
     />
   )
