@@ -10,6 +10,7 @@ export default function ReferralScreen() {
   const { user, profile, refreshProfile } = useAuth()
   const { credits } = useCredits()
   const [referrals, setReferrals] = useState([])
+  const [gigReferrals, setGigReferrals] = useState([])
   const [leaderboard, setLeaderboard] = useState([])
   const [copied, setCopied] = useState(false)
   const [generatingCode, setGeneratingCode] = useState(false)
@@ -58,7 +59,17 @@ export default function ReferralScreen() {
       }
     }
 
+    const fetchGigReferrals = async () => {
+      const { data } = await supabase
+        .from('gig_referrals')
+        .select('*, referred:users!gig_referrals_referred_id_fkey(full_name, avatar_url), gigs(title, currency)')
+        .eq('referrer_id', user.id)
+        .order('created_at', { ascending: false })
+      if (data) setGigReferrals(data)
+    }
+
     fetchReferrals()
+    fetchGigReferrals()
     fetchLeaderboard()
   }, [user])
 
@@ -75,6 +86,14 @@ export default function ReferralScreen() {
         event: '*',
         schema: 'public',
         table: 'referrals',
+        filter: `referrer_id=eq.${user.id}`
+      }, () => {
+        loadReferralData()
+      })
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'gig_referrals',
         filter: `referrer_id=eq.${user.id}`
       }, () => {
         loadReferralData()
@@ -123,6 +142,8 @@ export default function ReferralScreen() {
 
   const completed = referrals.filter(r => r.status === 'completed').length
   const creditsFromReferrals = completed * REFERRAL_REWARDS.referrerCredits
+  const pendingGigShares = gigReferrals.filter(r => r.status === 'pending' && !r.reward_given).length
+  const paidGigShares = gigReferrals.filter(r => r.status === 'completed' && r.reward_given).length
 
   return (
     <div style={{
@@ -331,6 +352,78 @@ export default function ReferralScreen() {
         </div>
       </div>
 
+      {/* Gig Share Rewards */}
+      <div style={{
+        background: '#fff', border: '1.5px solid #E2E0FF',
+        borderRadius: '16px', padding: '18px',
+        marginBottom: '14px'
+      }}>
+        <div style={{
+          display: 'flex', justifyContent: 'space-between',
+          gap: '14px', alignItems: 'flex-start',
+          marginBottom: '14px'
+        }}>
+          <div>
+            <div style={{
+              fontSize: '11px', fontWeight: '700', color: '#A09DC8',
+              textTransform: 'uppercase', letterSpacing: '1px',
+              marginBottom: '6px'
+            }}>Gig Share Rewards</div>
+            <div style={{
+              fontSize: '13px', color: '#14123A',
+              fontWeight: '600', lineHeight: 1.45
+            }}>
+              Share a gig. If your referred worker applies, gets accepted, and completes the work, you earn 5% of that gig payment.
+            </div>
+          </div>
+          <div style={{
+            background: '#DFFDF4',
+            border: '1px solid #7EECD2',
+            color: '#008E66',
+            borderRadius: '999px',
+            padding: '7px 10px',
+            fontSize: '11px',
+            fontWeight: '800',
+            whiteSpace: 'nowrap'
+          }}>
+            5% share
+          </div>
+        </div>
+
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: '10px'
+        }}>
+          {[
+            { label: 'Pending Work', value: pendingGigShares, color: '#FFB800', bg: '#FFF8E0', border: '#FFD966' },
+            { label: 'Paid Shares', value: paidGigShares, color: '#00C48C', bg: '#DFFDF4', border: '#7EECD2' },
+          ].map(({ label, value, color, bg, border }) => (
+            <div key={label} style={{
+              background: bg,
+              border: `1px solid ${border}`,
+              borderRadius: '12px',
+              padding: '12px',
+              textAlign: 'center'
+            }}>
+              <div style={{
+                color,
+                fontSize: '20px',
+                fontWeight: '800',
+                marginBottom: '3px'
+              }}>{value}</div>
+              <div style={{
+                fontSize: '9px',
+                color: '#6F7190',
+                fontWeight: '700',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px'
+              }}>{label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* How it works */}
       <div style={{
         background: '#fff', border: '1.5px solid #E2E0FF',
@@ -423,6 +516,78 @@ export default function ReferralScreen() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* My Gig Shares */}
+      {gigReferrals.length > 0 && (
+        <div style={{
+          background: '#fff', border: '1.5px solid #E2E0FF',
+          borderRadius: '16px', padding: '18px',
+          marginBottom: '14px'
+        }}>
+          <div style={{
+            fontSize: '11px', fontWeight: '700', color: '#A09DC8',
+            textTransform: 'uppercase', letterSpacing: '1px',
+            marginBottom: '14px'
+          }}>My Gig Shares ({gigReferrals.length})</div>
+          {gigReferrals.map((ref, i) => {
+            const currency = ref.reward_currency || ref.gigs?.currency || 'NGN'
+            const rewardAmount = Number(ref.reward_amount || 0)
+            const isPaid = ref.status === 'completed' && ref.reward_given
+
+            return (
+              <div key={ref.id} style={{
+                display: 'flex', gap: '10px', alignItems: 'center',
+                padding: '10px 0',
+                borderBottom: i < gigReferrals.length - 1
+                  ? '1px solid #F5F4FF' : 'none'
+              }}>
+                <div style={{
+                  width: '36px', height: '36px', borderRadius: '10px',
+                  background: isPaid ? '#DFFDF4' : '#FFF8E0',
+                  border: `1px solid ${isPaid ? '#7EECD2' : '#FFD966'}`,
+                  display: 'flex',
+                  alignItems: 'center', justifyContent: 'center',
+                  fontSize: '14px', fontWeight: '800',
+                  color: isPaid ? '#00A876' : '#FFB800',
+                  overflow: 'hidden', flexShrink: 0
+                }}>
+                  {ref.referred?.avatar_url ? (
+                    <img src={ref.referred.avatar_url} alt=""
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : ref.referred?.full_name?.charAt(0) || '?'}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    fontSize: '13px', fontWeight: '700',
+                    color: '#14123A', marginBottom: '2px',
+                    overflow: 'hidden', textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    {ref.gigs?.title || 'Shared gig'}
+                  </div>
+                  <div style={{ fontSize: '10px', color: '#A09DC8' }}>
+                    {ref.referred?.full_name || 'Worker'} · {parseTimestamp(ref.created_at).toLocaleDateString('en-US', {
+                      month: 'short', day: 'numeric'
+                    })}
+                  </div>
+                </div>
+                <div style={{
+                  background: isPaid ? '#DFFDF4' : '#FFF8E0',
+                  border: `1px solid ${isPaid ? '#7EECD2' : '#FFD966'}`,
+                  borderRadius: '8px',
+                  padding: '5px 9px',
+                  fontSize: '10px',
+                  fontWeight: '800',
+                  color: isPaid ? '#00A876' : '#FFB800',
+                  whiteSpace: 'nowrap'
+                }}>
+                  {isPaid ? `${currency} ${rewardAmount.toLocaleString()} paid` : 'Pending completion'}
+                </div>
+              </div>
+            )
+          })}
         </div>
       )}
 

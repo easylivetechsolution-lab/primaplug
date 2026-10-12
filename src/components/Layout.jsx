@@ -20,7 +20,6 @@ import Search from './Search'
 import ChatScreen from './screens/ChatScreen'
 import FloatingChat from './FloatingChat'
 import BrandIcon from './BrandIcon'
-import ServicesScreen from "./screens/ServicesScreen";
 import ReferralScreen from './screens/ReferralScreen'
 import CommissionScreen from './screens/CommissionScreen'
 import WithdrawalScreen from './screens/WithdrawalScreen'
@@ -31,6 +30,7 @@ import { useLanguage } from '../context/LanguageContext'
 
 // ── App Download Banner ──────────────────────────────────────────────────────
 const ANDROID_APK_URL = 'https://pub-bcdbcd3dbd3148c28060148c0929cc03.r2.dev/app/PrimaPlug-latest.apk'
+const normalizeDashboardScreen = (screen) => screen === 'services' ? 'map' : screen
 const IOS_APP_URL     = null // ← paste App Store link here when ready
 
 function AppDownloadBanner() {
@@ -149,7 +149,7 @@ export default function Layout() {
   const { hasUnpaidCommissions } = useCredits()
   const { t } = useLanguage()
   const navigate = useNavigate()
-  const [screen, setScreen] = useState(() => window.history.state?.screen || 'map')
+  const [screen, setScreen] = useState(() => normalizeDashboardScreen(window.history.state?.screen || 'map'))
   const [showPost, setShowPost] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
   const [showMobileMore, setShowMobileMore] = useState(false)
@@ -172,6 +172,7 @@ export default function Layout() {
   }, [])
 
   const navigateTo = useCallback((newScreen) => {
+    newScreen = normalizeDashboardScreen(newScreen)
     if (!newScreen || newScreen === screen) return
     setScreen(newScreen)
     window.history.pushState({ screen: newScreen }, '', '')
@@ -273,7 +274,7 @@ export default function Layout() {
 
   // Mark the current dashboard history entry without adding an extra Back step.
   useEffect(() => {
-    const currentScreen = window.history.state?.screen || 'map'
+    const currentScreen = normalizeDashboardScreen(window.history.state?.screen || 'map')
     window.history.replaceState(
       { ...(window.history.state || {}), screen: currentScreen },
       '',
@@ -326,7 +327,7 @@ useEffect(() => {
     const handlePopState = (event) => {
       const previousScreen = event.state?.screen
       if (previousScreen) {
-        setScreen(previousScreen)
+        setScreen(normalizeDashboardScreen(previousScreen))
       }
     }
     window.addEventListener('popstate', handlePopState)
@@ -344,7 +345,6 @@ useEffect(() => {
     { key: 'mygigs', icon: 'mygigs', label: t('myGigs') },
     { key: 'chat', icon: 'chat', label: t('chat') },
     { key: 'profile', icon: 'profile', label: t('profile') },
-    { key: 'services', icon: 'services', label: t('services') },
   ]
 
   const mobileMoreItems = [
@@ -368,7 +368,6 @@ useEffect(() => {
     stats: <StatsScreen />,
     settings: <SettingsScreen onLogout={handleLogout} />,
     // chat is always mounted below (persistent wrapper)
-    services: <ServicesScreen />,
     referral: <ReferralScreen />,
     wallet: <WalletScreen />,
     commission: <CommissionScreen />,
@@ -1047,7 +1046,6 @@ useEffect(() => {
           { key: 'feed', icon: 'feed', label: 'Feed' },
           { key: 'mygigs', icon: 'mygigs', label: 'My Gigs' },
           { key: 'chat', icon: 'chat', label: 'Chat' },
-          { key: 'services', icon: 'services', label: 'Services' },
           { key: 'profile', icon: 'profile', label: 'Profile' },
         ].map(item => {
           const active = screen === item.key

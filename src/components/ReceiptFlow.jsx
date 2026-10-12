@@ -3,7 +3,7 @@ import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 import { uploadToR2 } from '../utils/r2upload'
 import { CURRENCIES, getCurrency } from '../data/currencies'
-import { rewardGigReferral } from '../utils/referral'
+import { getPendingGigReferralForPayout, rewardGigReferral } from '../utils/referral'
 import { updateWorkerLevel } from '../utils/workerLevel'
 import { calculateCommission, calculateWorkerEscrowShare, PAYMENT_METHODS } from '../utils/payments'
 
@@ -211,21 +211,54 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
 
       if (isWalletGig) {
         const escrowAmount = Number(gig.escrow_amount || gigAmount)
-        const { error: releaseError } = await supabase.rpc('release_gig_escrow', {
-          p_gig_id: gig.id,
-          p_poster_id: gig.poster_id,
-          p_worker_id: gig.worker_id,
-          p_amount: escrowAmount,
-          p_currency: gig.currency || 'NGN'
-        })
+        const referral = await getPendingGigReferralForPayout(gig.id, gig.worker_id)
 
-        if (releaseError) throw releaseError
+        if (referral) {
+          const referrerShare = escrowAmount * 0.05
+          const { error: releaseError } = await supabase.rpc('release_gig_escrow_with_referral', {
+            p_gig_id: gig.id,
+            p_poster_id: gig.poster_id,
+            p_worker_id: gig.worker_id,
+            p_amount: escrowAmount,
+            p_referrer_id: referral.referrer_id,
+            p_referrer_share: referrerShare,
+            p_currency: gig.currency || 'NGN'
+          })
+
+          if (releaseError) throw releaseError
+
+          await supabase
+            .from('gig_referrals')
+            .update({
+              status: 'completed',
+              reward_given: true,
+              gig_amount: escrowAmount,
+              reward_amount: referrerShare,
+              reward_currency: gig.currency || 'NGN',
+              completed_at: new Date().toISOString()
+            })
+            .eq('id', referral.id)
+
+          await supabase.from('notifications').insert({
+            user_id: referral.referrer_id,
+            title: 'Gig Referral Reward!',
+            message: `You earned ${gig.currency || 'NGN'} ${referrerShare.toLocaleString()} (5% of the gig payment) for referring this gig!`,
+            type: 'wallet',
+            gig_id: gig.id
+          })
+        } else {
+          const { error: releaseError } = await supabase.rpc('release_gig_escrow', {
+            p_gig_id: gig.id,
+            p_poster_id: gig.poster_id,
+            p_worker_id: gig.worker_id,
+            p_amount: escrowAmount,
+            p_currency: gig.currency || 'NGN'
+          })
+
+          if (releaseError) throw releaseError
+        }
 
         const workerShare = calculateWorkerEscrowShare(escrowAmount)
-
-        if (escrowAmount > 0) {
-          await rewardGigReferral(gig.id, escrowAmount, gig.currency || 'NGN', gig.worker_id)
-        }
 
         await supabase.from('gigs').update({ status: 'completed' }).eq('id', gig.id)
 
