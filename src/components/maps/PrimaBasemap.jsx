@@ -56,7 +56,7 @@ const PROVIDERS = {
   },
 }
 
-const FALLBACK_ORDER = ['mapbox', 'carto', 'esri', 'osm'].filter(key => PROVIDERS[key]?.enabled)
+const FALLBACK_ORDER = ['mapbox', 'esri', 'osm'].filter(key => PROVIDERS[key]?.enabled)
 const DEFAULT_PROVIDER = FALLBACK_ORDER[0] || 'osm'
 
 export default function PrimaBasemap({ mode = 'light', provider = DEFAULT_PROVIDER }) {
