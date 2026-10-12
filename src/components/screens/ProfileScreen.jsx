@@ -643,7 +643,7 @@ export default function ProfileScreen({ onLogout }) {
                 initial={profile?.full_name?.charAt(0)?.toUpperCase()}
                 onAvatarClick={() => fileRef.current.click()}
                 uploading={uploadingAvatar}
-                ringColor={currentLevel.color}
+                ringColor="#00C48C"
               />
               <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatarUpload} />
 
