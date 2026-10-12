@@ -26,9 +26,9 @@ const PROVIDERS = {
   },
 }
 
-export default function PrimaBasemap({ mode = 'light', provider = 'carto' }) {
+export default function PrimaBasemap({ mode = 'light', provider = 'osm' }) {
   const [activeProvider, setActiveProvider] = useState(provider)
-  const selectedProvider = PROVIDERS[activeProvider] || PROVIDERS.carto
+  const selectedProvider = PROVIDERS[activeProvider] || PROVIDERS.osm
   const selectedMode = selectedProvider[mode] || selectedProvider.light
 
   return (
