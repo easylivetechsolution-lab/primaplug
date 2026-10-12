@@ -624,7 +624,7 @@ export default function NotificationBell({ onNavigate }) {
                           💬 Message {app.users?.full_name?.split(' ')[0]}
                         </button>
 
-                        {app.status === 'pending' && (
+                        {app.status === 'pending' && notifDetail.gig?.poster_id === user?.id && (
                           <div style={{ display: 'flex', gap: '8px' }}>
                             <button
                               onClick={async () => {

@@ -1,5 +1,5 @@
-import { useEffect, useState, useRef, useMemo } from 'react'
-import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet'
+import { useEffect, useState, useRef, useMemo, useCallback } from 'react'
+import { MapContainer, Marker, useMap, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { supabase } from '../../supabase'
@@ -16,6 +16,7 @@ import { getProfileCompletion } from '../../utils/profileComplete'
 import ProfilePrompt from '../ProfilePrompt'
 import BrandIcon from '../BrandIcon'
 import { applyToGig } from '../../utils/gigApplications'
+import PrimaBasemap from '../maps/PrimaBasemap'
 
 const getCurrencySymbol = (code) => getCurrency(code || 'USD').symbol
 
@@ -155,38 +156,20 @@ const createProfilePin = (avatarUrl, initial, color, urgency) => {
 
 // User location pin
 const createUserPin = () => L.divIcon({
-  className: '',
+  className: 'prima-user-location',
   html: `
-    <div style="position:relative;display:flex;align-items:center;justify-content:center;">
-      <div style="
-        position:absolute;
-        width:40px;height:40px;
-        border-radius:50%;
-        background:rgba(108,71,255,0.2);
-        animation:userpulse 2s ease-out infinite;
-      "></div>
-      <div style="
-        width:16px;height:16px;
-        border-radius:50%;
-        background:#6C47FF;
-        border:3px solid #fff;
-        box-shadow:0 0 16px rgba(108,71,255,0.8);
-        position:relative;z-index:2;
-      "></div>
+    <div class="prima-user-pin">
+      <div class="prima-user-accuracy"></div>
+      <div class="prima-user-pulse"></div>
+      <div class="prima-user-core"></div>
     </div>
-    <style>
-      @keyframes userpulse {
-        0% { transform:scale(1);opacity:0.6; }
-        100% { transform:scale(2.5);opacity:0; }
-      }
-    </style>
   `,
-  iconSize: [40, 40],
-  iconAnchor: [20, 20],
+  iconSize: [46, 46],
+  iconAnchor: [23, 23],
 })
 
 // Zoom-aware clustering — groups pins that are too close at the current zoom level
-const ClusterLayer = ({ gigs, onSelect }) => {
+const ClusterLayer = ({ gigs, onSelect, selectedGigId }) => {
   const map = useMap()
   const [zoom, setZoom] = useState(map.getZoom())
   useMapEvents({ zoomend: e => setZoom(e.target.getZoom()) })
@@ -218,15 +201,18 @@ const ClusterLayer = ({ gigs, onSelect }) => {
         : gig.urgency === 'now' ? '#FF3366'
         : gig.urgency === 'today' ? '#FF6B2B' : '#6C47FF'
       const pinBg = isDigital ? '#E0F2FE' : '#EEE9FF'
+      const isUrgent = gig.urgency === 'now' || gig.urgency === 'today'
+      const isSelected = selectedGigId === gig.id
       const gigIcon = L.divIcon({
         className: 'custom-gig-pin',
         html: `
-          <div style="position:relative;display:flex;flex-direction:column;align-items:center;">
-            <div style="width:44px;height:44px;border-radius:50%;border:3px solid ${pinColor};overflow:hidden;background:${pinBg};box-shadow:0 4px 12px rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:${pinColor};">
+          <div class="prima-gig-pin ${isSelected ? 'is-selected' : ''}" style="--pin-color:${pinColor};">
+            ${isUrgent || isSelected ? '<div class="prima-gig-pulse"></div>' : ''}
+            <div class="prima-gig-avatar" style="border-color:${pinColor};background:${pinBg};color:${pinColor};">
               ${gig.poster?.avatar_url ? `<img src="${gig.poster.avatar_url}" style="width:100%;height:100%;object-fit:cover"/>` : gig.poster?.full_name?.charAt(0) || '?'}
             </div>
             ${isDigital ? `<div style="position:absolute;top:-4px;right:-4px;background:#0EA5E9;border-radius:6px;padding:1px 4px;font-size:8px;font-weight:800;color:#fff;border:1.5px solid #fff;">WEB</div>` : ''}
-            <div style="background:white;border-radius:8px;padding:3px 7px;font-size:10px;font-weight:700;color:#14123A;box-shadow:0 2px 8px rgba(0,0,0,0.15);margin-top:3px;white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis;font-family:'Plus Jakarta Sans',sans-serif;">
+            <div class="prima-gig-label">
               ${isDigital ? `Remote · ${gig.title?.substring(0, 14) || 'Digital'}` : gig.street ? gig.street : gig.location ? gig.location.split(',')[0] : gig.title?.substring(0, 20)}
             </div>
           </div>
@@ -235,22 +221,24 @@ const ClusterLayer = ({ gigs, onSelect }) => {
       })
       return (
         <Marker key={gig.id} position={[gig.latitude, gig.longitude]} icon={gigIcon}
+          zIndexOffset={isSelected ? 1200 : isUrgent ? 800 : 400}
           eventHandlers={{ click: () => onSelect(gig) }} />
       )
     }
 
     const clusterIcon = L.divIcon({
-      className: '',
+      className: 'prima-cluster-marker',
       html: `
-        <div style="position:relative;display:flex;align-items:center;justify-content:center;">
-          <div style="position:absolute;width:58px;height:58px;border-radius:50%;background:rgba(108,71,255,0.15);"></div>
-          <div style="width:44px;height:44px;border-radius:50%;background:#6C47FF;border:3px solid #fff;box-shadow:0 4px 16px rgba(108,71,255,0.5);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:#fff;position:relative;z-index:2;">${cluster.gigs.length}</div>
+        <div class="prima-cluster-pin">
+          <div class="prima-cluster-halo"></div>
+          <div class="prima-cluster-core">${cluster.gigs.length}</div>
         </div>
       `,
       iconSize: [58, 58], iconAnchor: [29, 29]
     })
     return (
       <Marker key={`cluster-${i}`} position={[cluster.lat, cluster.lng]} icon={clusterIcon}
+        zIndexOffset={300}
         eventHandlers={{ click: () => map.flyTo([cluster.lat, cluster.lng], zoom + 2, { animate: true, duration: 0.5 }) }} />
     )
   })
@@ -267,8 +255,16 @@ const SetView = ({ coords }) => {
 const FlyToGig = ({ coords }) => {
   const map = useMap()
   useEffect(() => {
-    if (coords) map.flyTo(coords, 17, { animate: true, duration: 1 })
-  }, [coords])
+    if (coords) map.flyTo(coords, 17, { animate: true, duration: 1.1, easeLinearity: 0.22 })
+  }, [coords, map])
+  return null
+}
+
+const MapReady = ({ onReady }) => {
+  const map = useMap()
+  useEffect(() => {
+    map.whenReady(onReady)
+  }, [map, onReady])
   return null
 }
 
@@ -288,7 +284,6 @@ export default function MapScreen() {
   const [gigs, setGigs] = useState([])
   const [userPos, setUserPos] = useState([6.5244, 3.3792])
   const [liveCount, setLiveCount] = useState(312)
-  const [nowCount, setNowCount] = useState(17)
   const [selectedGig, setSelectedGig] = useState(null)
   const [reportingGig, setReportingGig] = useState(null)
   const [viewingProfile, setViewingProfile] = useState(null)
@@ -303,8 +298,11 @@ export default function MapScreen() {
   const [searchQuery, setSearchQuery] = useState('')
   const [darkMap, setDarkMap] = useState(false)
   const [showAllGigs, setShowAllGigs] = useState(false)
+  const [mapReady, setMapReady] = useState(false)
   const mapRef = useRef(null)
   const boundsRef = useRef(null)
+  const categoryScrollRef = useRef(null)
+  const categoryDragRef = useRef({ active: false, startX: 0, scrollLeft: 0 })
 
   useEffect(() => {
     const getLocation = async () => {
@@ -412,10 +410,69 @@ export default function MapScreen() {
     boundsRef.current = bounds
   }
 
+  const openGig = useCallback((gig, showSheet = true) => {
+    if (!gig) return
+    if (showSheet) {
+      setSelectedGig(gig)
+      setApplied(false)
+    }
+    if (gig.latitude && gig.longitude) {
+      setFlyToCoords([Number(gig.latitude), Number(gig.longitude)])
+    }
+  }, [])
+
+  const zoomMap = (delta) => {
+    const map = mapRef.current
+    if (!map) return
+    map.flyTo(map.getCenter(), map.getZoom() + delta, {
+      animate: true,
+      duration: 0.35,
+    })
+  }
+
+  const recenterOnUser = () => {
+    const map = mapRef.current
+    if (!map || !userPos) return
+    map.flyTo(userPos, Math.max(map.getZoom(), 15), {
+      animate: true,
+      duration: 0.75,
+    })
+  }
+
+  const startCategoryDrag = (e) => {
+    const row = categoryScrollRef.current
+    if (!row) return
+    categoryDragRef.current = {
+      active: true,
+      startX: e.clientX,
+      scrollLeft: row.scrollLeft,
+    }
+    row.setPointerCapture?.(e.pointerId)
+  }
+
+  const moveCategoryDrag = (e) => {
+    const row = categoryScrollRef.current
+    const drag = categoryDragRef.current
+    if (!row || !drag.active) return
+    row.scrollLeft = drag.scrollLeft - (e.clientX - drag.startX)
+  }
+
+  const stopCategoryDrag = (e) => {
+    categoryDragRef.current.active = false
+    categoryScrollRef.current?.releasePointerCapture?.(e.pointerId)
+  }
+
+  const wheelCategoryRow = (e) => {
+    const row = categoryScrollRef.current
+    if (!row) return
+    if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+      row.scrollLeft += e.deltaY
+    }
+  }
+
   useEffect(() => {
     const t = setInterval(() => {
       setLiveCount(c => c + (Math.random() > 0.6 ? Math.round(Math.random() * 4 - 2) : 0))
-      setNowCount(c => Math.max(8, c + (Math.random() > 0.75 ? Math.round(Math.random() * 3 - 1) : 0)))
     }, 1800)
     return () => clearInterval(t)
   }, [])
@@ -424,13 +481,11 @@ export default function MapScreen() {
     const handleOpenGigOnMap = (e) => {
       const gig = e.detail
       if (!gig?.latitude || !gig?.longitude) return
-      setSelectedGig(gig)
-      setApplied(false)
-      setFlyToCoords([gig.latitude, gig.longitude])
+      openGig(gig)
     }
     window.addEventListener('openGigOnMap', handleOpenGigOnMap)
     return () => window.removeEventListener('openGigOnMap', handleOpenGigOnMap)
-  }, [])
+  }, [openGig])
 
   const filteredGigs = gigs.filter(g => {
     if (categoryFilter !== 'All') {
@@ -466,39 +521,43 @@ export default function MapScreen() {
           center={[6.5244, 3.3792]}
           zoom={15}
           maxZoom={19}
-          style={{ height: '100%', width: '100%' }}
+          style={{ height: '100%', width: '100%', zIndex: 0 }}
           zoomControl={false}
           ref={mapRef}
         >
-          <TileLayer
-            attribution='&copy; <a href="https://carto.com/">CARTO</a>'
-            url={darkMap
-              ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-              : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'}
-            subdomains="abcd"
-            maxZoom={19}
-            key={darkMap ? 'dark' : 'light'}
-          />
+          <PrimaBasemap mode={darkMap ? 'dark' : 'light'} />
+          <MapReady onReady={() => setMapReady(true)} />
           <SetView coords={userPos} />
           {flyToCoords && <FlyToGig coords={flyToCoords} />}
           <MapBoundsTracker onBoundsChange={handleBoundsChange} />
 
           {/* User location marker */}
-          <Marker position={userPos} icon={createUserPin()} />
+          <Marker position={userPos} icon={createUserPin()} zIndexOffset={1000} />
 
           {/* Clustered gig pins */}
           <ClusterLayer
             gigs={filteredGigs}
-            onSelect={gig => { setSelectedGig(gig); setApplied(false) }}
+            selectedGigId={selectedGig?.id}
+            onSelect={openGig}
           />
         </MapContainer>
+
+        {!mapReady && (
+          <div className="prima-map-skeleton">
+            <div className="prima-map-skeleton-panel">
+              <div className="prima-shimmer prima-shimmer-wide" />
+              <div className="prima-shimmer" />
+              <div className="prima-shimmer prima-shimmer-short" />
+            </div>
+          </div>
+        )}
 
         {/* Dark Mode Toggle */}
         <button
           onClick={() => setDarkMap(d => !d)}
           title={darkMap ? 'Switch to light map' : 'Switch to dark map'}
           style={{
-            position: 'absolute', top: '14px', right: '14px', zIndex: 400,
+            position: 'absolute', top: '14px', right: '14px', zIndex: 40,
             background: darkMap ? 'rgba(108,71,255,0.92)' : 'rgba(255,255,255,0.92)',
             backdropFilter: 'blur(10px)',
             border: `1.5px solid ${darkMap ? '#9B59FF' : 'rgba(108,71,255,0.2)'}`,
@@ -514,7 +573,7 @@ export default function MapScreen() {
         {/* Live Stats Overlay */}
         <div style={{
           position: 'absolute', top: '14px', left: '14px',
-          display: 'flex', gap: '8px', zIndex: 400
+          display: 'flex', gap: '8px', zIndex: 40
         }}>
           <div style={{
             background: 'rgba(13,27,62,0.88)',
@@ -525,22 +584,8 @@ export default function MapScreen() {
           }}>
             <div style={{
               width: '7px', height: '7px', borderRadius: '50%',
-              background: '#FF3366', animation: 'blink 0.9s infinite'
-            }} />
-            <span style={{
-              fontSize: '11px', fontWeight: '700', color: '#fff'
-            }}>{nowCount} NOW</span>
-          </div>
-          <div style={{
-            background: 'rgba(13,27,62,0.88)',
-            backdropFilter: 'blur(8px)',
-            borderRadius: '20px', padding: '6px 13px',
-            display: 'flex', alignItems: 'center', gap: '6px',
-            border: '1px solid rgba(255,255,255,0.1)'
-          }}>
-            <div style={{
-              width: '7px', height: '7px', borderRadius: '50%',
-              background: '#00C48C'
+              background: '#FF3366',
+              animation: 'blink 0.9s infinite'
             }} />
             <span style={{
               fontSize: '11px', fontWeight: '700', color: '#fff'
@@ -549,24 +594,40 @@ export default function MapScreen() {
         </div>
 
         {/* Category Filter Chips */}
-        <div style={{
+        <div
+          ref={categoryScrollRef}
+          onPointerDown={startCategoryDrag}
+          onPointerMove={moveCategoryDrag}
+          onPointerUp={stopCategoryDrag}
+          onPointerCancel={stopCategoryDrag}
+          onPointerLeave={stopCategoryDrag}
+          onWheel={wheelCategoryRow}
+          style={{
           position: 'absolute', top: '56px', left: '14px',
-          right: '14px', zIndex: 10,
-          display: 'flex', gap: '7px',
+          right: '14px', zIndex: 40,
+          display: 'flex', gap: '10px',
           overflowX: 'auto', scrollbarWidth: 'none',
-          pointerEvents: 'all'
+          pointerEvents: 'all',
+          padding: '2px 2px 8px',
+          cursor: 'grab',
+          touchAction: 'pan-x'
         }}>
           <button
             onClick={() => setCategoryFilter('All')}
             style={{
-              background: categoryFilter === 'All'
-                ? 'rgba(108,71,255,0.95)' : 'rgba(13,27,62,0.82)',
-              backdropFilter: 'blur(8px)',
-              border: `1.5px solid ${categoryFilter === 'All' ? '#9B59FF' : 'rgba(255,255,255,0.15)'}`,
-              borderRadius: '20px', padding: '5px 13px',
-              fontSize: '11px', fontWeight: '700',
-              color: '#fff', cursor: 'pointer',
-              whiteSpace: 'nowrap', fontFamily: 'inherit'
+              background: '#fff',
+              border: `1px solid ${categoryFilter === 'All' ? '#14123A' : 'rgba(20,18,58,0.12)'}`,
+              borderRadius: '999px', padding: '8px 15px',
+              fontSize: '14px', fontWeight: '700',
+              color: '#202124', cursor: 'pointer',
+              whiteSpace: 'nowrap', fontFamily: 'inherit',
+              boxShadow: categoryFilter === 'All'
+                ? '0 3px 10px rgba(20,18,58,0.24)'
+                : '0 2px 7px rgba(20,18,58,0.2)',
+              display: 'inline-flex', alignItems: 'center', gap: '7px',
+              lineHeight: 1,
+              transform: categoryFilter === 'All' ? 'translateY(-1px)' : 'none',
+              transition: 'transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease'
             }}>✦ All</button>
           {CATEGORIES.map(cat => (
             <button
@@ -575,17 +636,22 @@ export default function MapScreen() {
                 categoryFilter === cat.group ? 'All' : cat.group
               )}
               style={{
-                background: categoryFilter === cat.group
-                  ? cat.color + 'CC' : 'rgba(13,27,62,0.82)',
-                backdropFilter: 'blur(8px)',
-                border: `1.5px solid ${categoryFilter === cat.group ? cat.color : 'rgba(255,255,255,0.15)'}`,
-                borderRadius: '20px', padding: '5px 13px',
-                fontSize: '11px', fontWeight: '700',
-                color: '#fff', cursor: 'pointer',
+                background: '#fff',
+                border: `1px solid ${categoryFilter === cat.group ? '#14123A' : 'rgba(20,18,58,0.12)'}`,
+                borderRadius: '999px', padding: '8px 15px',
+                fontSize: '14px', fontWeight: '700',
+                color: '#202124', cursor: 'pointer',
                 whiteSpace: 'nowrap', fontFamily: 'inherit',
-                transition: 'all 0.15s'
+                boxShadow: categoryFilter === cat.group
+                  ? '0 3px 10px rgba(20,18,58,0.24)'
+                  : '0 2px 7px rgba(20,18,58,0.2)',
+                display: 'inline-flex', alignItems: 'center', gap: '7px',
+                lineHeight: 1,
+                transform: categoryFilter === cat.group ? 'translateY(-1px)' : 'none',
+                transition: 'transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease'
               }}>
-              {cat.icon} {cat.group}
+              <span style={{ fontSize: '16px', lineHeight: 1 }}>{cat.icon}</span>
+              {cat.group}
             </button>
           ))}
         </div>
@@ -593,7 +659,7 @@ export default function MapScreen() {
         {/* Radius Filter Chips */}
         <div style={{
           position: 'absolute', top: '96px', left: '14px',
-          zIndex: 10, display: 'flex', gap: '6px',
+          zIndex: 40, display: 'flex', gap: '6px',
           pointerEvents: 'all'
         }}>
           {[null, 5, 10, 25].map(km => (
@@ -615,6 +681,56 @@ export default function MapScreen() {
           ))}
         </div>
 
+        {/* Map Controls */}
+        <div style={{
+          position: 'absolute', right: '14px', bottom: '18px',
+          zIndex: 40, display: 'flex', flexDirection: 'column', gap: '12px'
+        }}>
+          <div style={{
+            width: '42px',
+            borderRadius: '14px',
+            background: 'rgba(255,255,255,0.96)',
+            border: '1.5px solid #E2E0FF',
+            boxShadow: '0 8px 22px rgba(20,18,58,0.16)',
+            overflow: 'hidden'
+          }}>
+            <button
+              onClick={() => zoomMap(1)}
+              title="Zoom in"
+              style={{
+                width: '42px', height: '40px',
+                background: 'transparent', border: 'none',
+                color: '#14123A', fontSize: '22px', fontWeight: 800,
+                cursor: 'pointer', fontFamily: 'inherit', lineHeight: 1
+              }}>+</button>
+            <div style={{
+              height: '1px',
+              background: 'rgba(20,18,58,0.14)',
+              margin: '0 8px'
+            }} />
+            <button
+              onClick={() => zoomMap(-1)}
+              title="Zoom out"
+              style={{
+                width: '42px', height: '40px',
+                background: 'transparent', border: 'none',
+                color: '#14123A', fontSize: '24px', fontWeight: 800,
+                cursor: 'pointer', fontFamily: 'inherit', lineHeight: 1
+              }}>-</button>
+          </div>
+          <button
+            onClick={recenterOnUser}
+            title="Recenter"
+            style={{
+              width: '40px', height: '40px', borderRadius: '14px',
+              background: 'rgba(66,133,244,0.96)',
+              border: '1.5px solid rgba(255,255,255,0.72)',
+              boxShadow: '0 8px 22px rgba(66,133,244,0.28)',
+              color: '#fff', fontSize: '16px', fontWeight: 800,
+              cursor: 'pointer', fontFamily: 'inherit', lineHeight: 1
+            }}>◎</button>
+        </div>
+
       </div>
 
       {/* Happening Now Strip */}
@@ -624,7 +740,7 @@ export default function MapScreen() {
         flexShrink: 0
       }}>
         <div style={{
-          padding: '12px 16px 8px',
+          padding: '8px 16px 5px',
           display: 'flex', justifyContent: 'space-between',
           alignItems: 'center'
         }}>
@@ -653,25 +769,30 @@ export default function MapScreen() {
         ) : (
           <div style={{
             display: 'flex', gap: '12px',
-            overflowX: 'auto', padding: '0 16px 16px',
+            overflowX: 'auto', padding: '0 16px 10px',
             scrollbarWidth: 'none'
           }}>
             {filteredGigs.slice(0, 8).map(gig => (
               <div key={gig.id}
-                onClick={() => { setSelectedGig(gig); setApplied(false) }}
+                onClick={() => openGig(gig)}
+                className={selectedGig?.id === gig.id ? 'prima-now-card is-active' : 'prima-now-card'}
                 style={{
-                  background: '#F5F4FF',
-                  borderRadius: '14px', padding: '12px 14px',
-                  minWidth: '190px', border: '1.5px solid #E2E0FF',
+                  background: selectedGig?.id === gig.id ? '#EEE9FF' : '#F5F4FF',
+                  borderRadius: '12px', padding: '9px 12px',
+                  minWidth: '174px',
+                  border: `1.5px solid ${selectedGig?.id === gig.id ? '#6C47FF' : '#E2E0FF'}`,
                   cursor: 'pointer', flexShrink: 0,
-                  transition: 'all 0.15s'
+                  transition: 'transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease',
+                  boxShadow: selectedGig?.id === gig.id
+                    ? '0 8px 24px rgba(108,71,255,0.18)'
+                    : '0 4px 14px rgba(20,18,58,0.06)'
                 }}
                 onMouseEnter={e => {
                   e.currentTarget.style.borderColor = '#B8A5FF'
                   e.currentTarget.style.transform = 'translateY(-2px)'
                 }}
                 onMouseLeave={e => {
-                  e.currentTarget.style.borderColor = '#E2E0FF'
+                  e.currentTarget.style.borderColor = selectedGig?.id === gig.id ? '#6C47FF' : '#E2E0FF'
                   e.currentTarget.style.transform = 'translateY(0)'
                 }}>
                 <div style={{
@@ -721,7 +842,7 @@ export default function MapScreen() {
 
       {/* GIG DETAIL SHEET */}
       {selectedGig && (
-        <div style={{
+        <div className="prima-sheet-backdrop" style={{
           position: 'fixed', inset: 0,
           background: 'rgba(20,18,58,0.75)',
           backdropFilter: 'blur(4px)',
@@ -732,7 +853,7 @@ export default function MapScreen() {
           setSelectedGig(null)
           setApplied(false)
         }}>
-          <div onClick={e => e.stopPropagation()} style={{
+          <div className="prima-bottom-sheet" onClick={e => e.stopPropagation()} style={{
             background: '#fff',
             borderRadius: '22px 22px 0 0',
             padding: '24px', width: '100%',
@@ -1161,6 +1282,21 @@ export default function MapScreen() {
 </button>
 
                 {/* Action buttons */}
+                {selectedGig.poster_id === user?.id ? (
+                  <div style={{
+                    marginTop: '12px',
+                    background: '#F5F4FF',
+                    border: '1.5px solid #E2E0FF',
+                    borderRadius: '12px',
+                    padding: '13px',
+                    fontSize: '13px',
+                    fontWeight: '700',
+                    color: '#8B8FAF',
+                    textAlign: 'center'
+                  }}>
+                    Your gig
+                  </div>
+                ) : (
                 <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
                   {/* Message button */}
                   <button
@@ -1224,7 +1360,10 @@ export default function MapScreen() {
 
                         if (result.blocked) {
                           showToast(result.message, 'error')
-                          window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'commission' }))
+                          const lower = result.message?.toLowerCase() || ''
+                          if (lower.includes('commission') || lower.includes('restricted')) {
+                            window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'commission' }))
+                          }
                           setApplying(false)
                           return
                         }
@@ -1260,6 +1399,7 @@ export default function MapScreen() {
                       : <><BrandIcon name="send" size={20} /> Apply Now</>}
                   </button>
                 </div>
+                )}
               </>
             )}
 
@@ -1313,7 +1453,7 @@ export default function MapScreen() {
           </div>
         ) : filteredGigs.map(gig => (
           <div key={gig.id}
-            onClick={() => { setSelectedGig(gig); setApplied(false); setShowAllGigs(false) }}
+            onClick={() => { openGig(gig); setShowAllGigs(false) }}
             style={{
               background: '#F5F4FF', borderRadius: '14px',
               padding: '14px', marginBottom: '10px',
@@ -1420,6 +1560,60 @@ export default function MapScreen() {
           from { opacity: 0; transform: translateY(24px); }
           to { opacity: 1; transform: translateY(0); }
         }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes shimmer {
+          0% { transform: translateX(-120%); }
+          100% { transform: translateX(120%); }
+        }
+        .prima-map-skeleton {
+          position: absolute;
+          inset: 0;
+          z-index: 8;
+          pointer-events: none;
+          background: linear-gradient(135deg, rgba(245,244,255,0.92), rgba(255,255,255,0.58));
+          display: flex;
+          align-items: flex-start;
+          justify-content: center;
+          padding-top: 112px;
+        }
+        .prima-map-skeleton-panel {
+          width: min(82%, 420px);
+          border-radius: 18px;
+          background: rgba(255,255,255,0.72);
+          border: 1px solid rgba(226,224,255,0.9);
+          box-shadow: 0 12px 36px rgba(20,18,58,0.12);
+          padding: 16px;
+          overflow: hidden;
+        }
+        .prima-shimmer {
+          height: 12px;
+          border-radius: 999px;
+          background: #E2E0FF;
+          margin-top: 10px;
+          position: relative;
+          overflow: hidden;
+        }
+        .prima-shimmer:first-child {
+          margin-top: 0;
+        }
+        .prima-shimmer::after {
+          content: "";
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.78), transparent);
+          animation: shimmer 1.15s linear infinite;
+        }
+        .prima-shimmer-wide { width: 100%; }
+        .prima-shimmer-short { width: 58%; }
+        .prima-sheet-backdrop {
+          animation: fadeIn 180ms ease-out;
+        }
+        .prima-bottom-sheet {
+          box-shadow: 0 -18px 50px rgba(20,18,58,0.22);
+        }
         .leaflet-popup-content-wrapper {
           border-radius: 14px !important;
           box-shadow: 0 8px 32px rgba(108,71,255,0.15) !important;
@@ -1430,23 +1624,178 @@ export default function MapScreen() {
         }
         .leaflet-container {
           font-family: 'Plus Jakarta Sans', sans-serif !important;
+          z-index: 0 !important;
         }
-        /* Force Leaflet below all modals */
-        .leaflet-pane,
-        .leaflet-tile,
-        .leaflet-marker-icon,
-        .leaflet-marker-shadow,
-        .leaflet-tile-pane,
-        .leaflet-overlay-pane,
-        .leaflet-shadow-pane,
-        .leaflet-marker-pane,
-        .leaflet-tooltip-pane,
-        .leaflet-popup-pane {
-          z-index: 1 !important;
+        .prima-user-pin,
+        .prima-gig-pin,
+        .prima-cluster-pin {
+          position: relative;
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
+        .prima-user-pin {
+          width: 46px;
+          height: 46px;
+        }
+        .prima-user-accuracy {
+          position: absolute;
+          width: 42px;
+          height: 42px;
+          border-radius: 50%;
+          background: rgba(66, 133, 244, 0.16);
+          border: 1px solid rgba(66, 133, 244, 0.22);
+        }
+        .prima-user-pulse {
+          position: absolute;
+          width: 20px;
+          height: 20px;
+          border-radius: 50%;
+          background: rgba(66, 133, 244, 0.25);
+          animation: primaUserPulse 2s ease-out infinite;
+        }
+        .prima-user-core {
+          position: relative;
+          z-index: 2;
+          width: 16px;
+          height: 16px;
+          border-radius: 50%;
+          background: #4285F4;
+          border: 3px solid #fff;
+          box-shadow: 0 2px 10px rgba(36, 101, 210, 0.45);
+        }
+        .prima-gig-pin {
+          flex-direction: column;
+          animation: primaPinDrop 260ms ease-out both, primaPinFloat 3.2s ease-in-out 260ms infinite;
+          transform-origin: center bottom;
+          transition: filter 0.18s ease;
+        }
+        .custom-gig-pin:hover .prima-gig-pin,
+        .prima-gig-pin.is-selected {
+          filter: drop-shadow(0 8px 14px rgba(108,71,255,0.25));
+        }
+        .prima-gig-avatar {
+          width: 44px;
+          height: 44px;
+          border-radius: 50%;
+          border: 3px solid;
+          overflow: hidden;
+          box-shadow: 0 5px 14px rgba(20, 18, 58, 0.24);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 16px;
+          font-weight: 800;
+          position: relative;
+          z-index: 2;
+          transition: transform 0.18s ease, box-shadow 0.18s ease;
+        }
+        .custom-gig-pin:hover .prima-gig-avatar {
+          transform: scale(1.05);
+        }
+        .prima-gig-pin.is-selected .prima-gig-avatar {
+          transform: scale(1.08);
+          box-shadow: 0 8px 22px rgba(108,71,255,0.32);
+        }
+        .prima-gig-pin.is-selected .prima-gig-label {
+          color: #6C47FF;
+        }
+        .prima-gig-pin.is-selected .prima-gig-pulse {
+          animation-duration: 1.25s;
+        }
+        .prima-gig-pulse {
+          position: absolute;
+          top: -4px;
+          width: 52px;
+          height: 52px;
+          border-radius: 50%;
+          background: color-mix(in srgb, var(--pin-color) 22%, transparent);
+          animation: primaGigPulse 1.8s ease-out infinite;
+        }
+        .prima-gig-label {
+          background: rgba(255, 255, 255, 0.96);
+          border-radius: 8px;
+          padding: 3px 7px;
+          font-size: 10px;
+          font-weight: 700;
+          color: #14123A;
+          box-shadow: 0 2px 8px rgba(20, 18, 58, 0.14);
+          margin-top: 3px;
+          white-space: nowrap;
+          max-width: 120px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        .prima-cluster-pin {
+          width: 58px;
+          height: 58px;
+          animation: primaPinDrop 260ms ease-out both;
+        }
+        .prima-cluster-halo {
+          position: absolute;
+          width: 58px;
+          height: 58px;
+          border-radius: 50%;
+          background: rgba(108, 71, 255, 0.15);
+          animation: primaClusterPulse 2.2s ease-out infinite;
+        }
+        .prima-cluster-core {
+          width: 44px;
+          height: 44px;
+          border-radius: 50%;
+          background: #6C47FF;
+          border: 3px solid #fff;
+          box-shadow: 0 5px 16px rgba(108, 71, 255, 0.45);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 15px;
+          font-weight: 800;
+          color: #fff;
+          position: relative;
+          z-index: 2;
+          transition: transform 0.18s ease;
+        }
+        .prima-cluster-marker:hover .prima-cluster-core {
+          transform: scale(1.08);
+        }
+        .prima-now-card.is-active {
+          animation: primaActiveCard 1.9s ease-in-out infinite;
+        }
+        @keyframes primaUserPulse {
+          0% { transform: scale(0.9); opacity: 0.75; }
+          100% { transform: scale(2.35); opacity: 0; }
+        }
+        @keyframes primaGigPulse {
+          0% { transform: scale(0.75); opacity: 0.65; }
+          100% { transform: scale(1.75); opacity: 0; }
+        }
+        @keyframes primaClusterPulse {
+          0% { transform: scale(0.8); opacity: 0.75; }
+          100% { transform: scale(1.35); opacity: 0; }
+        }
+        @keyframes primaPinDrop {
+          0% { transform: translateY(-10px) scale(0.86); opacity: 0; }
+          100% { transform: translateY(0) scale(1); opacity: 1; }
+        }
+        @keyframes primaPinFloat {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-2px); }
+        }
+        @keyframes primaActiveCard {
+          0%, 100% { box-shadow: 0 8px 24px rgba(108,71,255,0.18); }
+          50% { box-shadow: 0 10px 30px rgba(108,71,255,0.28); }
+        }
+        .leaflet-tile-pane { z-index: 1 !important; }
+        .leaflet-overlay-pane { z-index: 2 !important; }
+        .leaflet-shadow-pane { z-index: 3 !important; }
+        .leaflet-marker-pane { z-index: 4 !important; }
+        .leaflet-tooltip-pane { z-index: 5 !important; }
+        .leaflet-popup-pane { z-index: 6 !important; }
         .leaflet-top,
         .leaflet-bottom {
-          z-index: 2 !important;
+          z-index: 7 !important;
         }
       `}</style>
     </div>

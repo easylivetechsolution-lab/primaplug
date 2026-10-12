@@ -18,8 +18,8 @@ import { PAYMENT_METHODS } from '../../utils/payments'
 
 // ─── CONSTANTS ───────────────────────────────────────
 const TABS = [
-  { key: 'myposts', icon: 'mygigs', label: 'My Posts' },
-  { key: 'myjobs', icon: 'applied', label: 'My Jobs' },
+  { key: 'myposts', icon: 'mygigs', label: 'Posted by Me', sub: 'Manage applicants and payments' },
+  { key: 'myjobs', icon: 'applied', label: 'My Work', sub: 'Track applications and jobs' },
 ]
 
 // ─── HELPERS ─────────────────────────────────────────
@@ -220,14 +220,25 @@ export default function MyGigsScreen() {
 
       if (acceptError) throw acceptError
 
+      const { data: acceptedApps } = await supabase
+        .from('applications')
+        .select('id')
+        .eq('gig_id', gig.id)
+        .eq('status', 'accepted')
+
+      const filled = acceptedApps?.length || 1
+      const slots = Number(gig.slots || 1)
+      const slotsFull = slots <= 1 || filled >= slots
+
       // Update gig with worker_id (also lock escrow_amount for wallet gigs)
       const { error: gigError } = await supabase
         .from('gigs')
         .update({
-          status: 'in_progress',
+          status: slotsFull ? 'in_progress' : 'open',
           worker_id: application.worker_id,
           worker_name: application.users?.full_name,
           accepted_at: new Date().toISOString(),
+          slots_filled: filled,
           ...(isWalletGig ? { escrow_amount: Number(gig.pay_min) } : {})
         })
         .eq('id', gig.id)
@@ -272,12 +283,12 @@ const { error: notifError } = await supabase
         console.log('Push error:', e)
       }
 
-      // Decline all other pending applications
+      // Decline other pending applications only when the gig has no more slots.
       const otherPendingApps = gig.applications?.filter(
         a => a.id !== application.id && a.status === 'pending'
       ) || []
 
-      if (otherPendingApps.length > 0) {
+      if (slotsFull && otherPendingApps.length > 0) {
         await supabase
           .from('applications')
           .update({ status: 'declined' })
@@ -513,6 +524,12 @@ const { error: notifError } = await supabase
   const workingInProgressCount = workingGigs.filter(a =>
     getWorkingGigStatus(a) === 'inprogress'
   ).length
+  const activeTabActionCount = tab === 'myposts' ? postedActionCount : workingActionCount
+  const activeTabTotal = tab === 'myposts' ? postedGigs.length : workingGigs.length
+  const activeTabInProgress = tab === 'myposts' ? postedInProgressCount : workingInProgressCount
+  const activeTabDescription = tab === 'myposts'
+    ? 'Work you created, applicants to review, and payment completion.'
+    : 'Applications, accepted jobs, receipts, and completed work.'
 
   // ─── STYLES ────────────────────────────────────────
 
@@ -530,41 +547,45 @@ const { error: notifError } = await supabase
       {/* Header */}
       <div style={{
         background: 'linear-gradient(180deg, #FFFFFF 0%, #F8F7FF 100%)',
-        padding: '10px 20px 0',
+        padding: '8px 16px 0',
         borderBottom: '1.5px solid #E2E0FF', flexShrink: 0,
         boxShadow: '0 10px 30px rgba(20,18,58,0.06)'
       }}>
         <div style={{
           display: 'flex', justifyContent: 'space-between',
-          alignItems: 'flex-start', gap: '14px', marginBottom: '10px'
+          alignItems: 'center', gap: '12px', marginBottom: '6px'
         }}>
           <div>
             <div style={{
-              fontSize: '24px', fontWeight: '900', color: '#14123A',
+              fontSize: '20px', fontWeight: '900', color: '#14123A',
               lineHeight: 1.05
             }}>My Gigs</div>
             <div style={{
-              fontSize: '13px', color: '#6F7394',
-              fontWeight: '650', marginTop: '5px'
+              fontSize: '12px', color: '#6F7394',
+              fontWeight: '650', marginTop: '3px',
+              lineHeight: 1.2
             }}>
-              Manage your posted work and active jobs
+              {activeTabDescription}
             </div>
           </div>
           <div style={{
-            background: '#14123A', color: '#fff',
-            borderRadius: '14px', padding: '10px 12px',
-            minWidth: '74px', textAlign: 'center',
-            boxShadow: '0 10px 22px rgba(20,18,58,0.16)'
+            background: activeTabActionCount > 0 ? '#FF3366' : '#14123A',
+            color: '#fff',
+            borderRadius: '13px', padding: '8px 11px',
+            minWidth: '64px', textAlign: 'center',
+            boxShadow: activeTabActionCount > 0
+              ? '0 10px 22px rgba(255,51,102,0.18)'
+              : '0 10px 22px rgba(20,18,58,0.16)'
           }}>
-            <div style={{ fontSize: '22px', fontWeight: '900', lineHeight: 1 }}>
-              {postedGigs.length + workingGigs.length}
+            <div style={{ fontSize: '20px', fontWeight: '900', lineHeight: 1 }}>
+              {activeTabActionCount}
             </div>
             <div style={{
               fontSize: '10px', fontWeight: '800',
-              color: '#C9C6FF', textTransform: 'uppercase',
-              letterSpacing: '0.6px', marginTop: '4px'
+              color: '#fff', opacity: 0.82, textTransform: 'uppercase',
+              letterSpacing: '0.5px', marginTop: '3px'
             }}>
-              Total
+              To Do
             </div>
           </div>
         </div>
@@ -572,15 +593,11 @@ const { error: notifError } = await supabase
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-          gap: '8px', marginBottom: '8px'
+          gap: '8px', marginBottom: '6px'
         }}>
-          <HeaderStat label="Posted" value={postedGigs.length} color="#6C47FF" />
-          <HeaderStat label="Working" value={workingGigs.length} color="#00A878" />
-          <HeaderStat
-            label="Active"
-            value={postedInProgressCount + workingInProgressCount}
-            color="#FF6B2B"
-          />
+          <HeaderStat label={tab === 'myposts' ? 'Posted' : 'Applied'} value={activeTabTotal} color="#6C47FF" />
+          <HeaderStat label="In Progress" value={activeTabInProgress} color="#FF6B2B" />
+          <HeaderStat label="Needs Action" value={activeTabActionCount} color="#FF3366" />
         </div>
 
         {/* Smart Action Banner */}
@@ -589,8 +606,8 @@ const { error: notifError } = await supabase
             onClick={() => setShowActions(s => !s)}
             style={{
               background: '#FFE8EE', border: '1.5px solid #FF99B3',
-              borderRadius: '12px', padding: '10px 14px',
-              marginBottom: '12px', cursor: 'pointer',
+              borderRadius: '12px', padding: '7px 12px',
+              marginBottom: '8px', cursor: 'pointer',
               display: 'flex', justifyContent: 'space-between',
               alignItems: 'center'
             }}>
@@ -600,18 +617,18 @@ const { error: notifError } = await supabase
               <div style={{
                 width: '22px', height: '22px', borderRadius: '50%',
                 background: '#FF3366', color: '#fff',
-                fontSize: '11px', fontWeight: '800',
+                fontSize: '10px', fontWeight: '800',
                 display: 'flex', alignItems: 'center',
                 justifyContent: 'center', flexShrink: 0
               }}>{totalActionCount}</div>
               <div style={{
-                fontSize: '13px', fontWeight: '700', color: '#FF3366'
+                fontSize: '12px', fontWeight: '800', color: '#FF3366'
               }}>
                 {totalActionCount} thing{totalActionCount > 1 ? 's' : ''} need your attention
               </div>
             </div>
             <span style={{
-              fontSize: '12px', color: '#FF3366',
+              fontSize: '11px', color: '#FF3366',
               fontWeight: '600'
             }}>{showActions ? '▲' : '▼'}</span>
           </div>
@@ -684,7 +701,12 @@ const { error: notifError } = await supabase
         )}
 
         {/* Tabs */}
-        <div style={{ display: 'flex', gap: '0' }}>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+          gap: '8px',
+          paddingBottom: '6px'
+        }}>
           {TABS.map(t => {
             const active = tab === t.key
             const badge = t.key === 'myposts'
@@ -697,22 +719,37 @@ const { error: notifError } = await supabase
                 key={t.key}
                 onClick={() => setTab(t.key)}
                 style={{
-                  flex: 1, background: 'transparent', border: 'none',
-                  borderBottom: `2.5px solid ${active ? '#6C47FF' : 'transparent'}`,
-                  padding: '8px 4px', cursor: 'pointer',
+                  background: active ? '#EEE9FF' : '#fff',
+                  border: `1.5px solid ${active ? '#B8A5FF' : '#E2E0FF'}`,
+                  borderRadius: '13px',
+                  padding: '7px 10px', cursor: 'pointer',
                   fontFamily: 'inherit', position: 'relative',
                   transition: 'all 0.15s',
-                  display: 'flex', flexDirection: 'column',
-                  alignItems: 'center', gap: '3px'
+                  display: 'flex', alignItems: 'center', gap: '9px',
+                  textAlign: 'left',
+                  boxShadow: active ? '0 8px 18px rgba(108,71,255,0.12)' : 'none'
                 }}>
-                <BrandIcon name={t.icon} size={26} active={active} />
-                <span style={{
-                  fontSize: '11px', fontWeight: active ? '700' : '500',
-                  color: active ? '#6C47FF' : '#8B8FAF'
-                }}>{t.label}</span>
+                <BrandIcon name={t.icon} size={23} active={active} />
+                <span style={{ minWidth: 0 }}>
+                  <span style={{
+                    display: 'block',
+                    fontSize: '12px', fontWeight: active ? '900' : '800',
+                    color: active ? '#6C47FF' : '#14123A',
+                    lineHeight: 1.1
+                  }}>{t.label}</span>
+                  <span style={{
+                    display: 'block',
+                    fontSize: '9px', fontWeight: '700',
+                    color: '#8B8FAF',
+                    marginTop: '2px',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis'
+                  }}>{t.sub}</span>
+                </span>
                 {badge > 0 && (
                   <span style={{
-                    position: 'absolute', top: '4px', right: '12px',
+                    position: 'absolute', top: '6px', right: '8px',
                     background: '#FF3366', color: '#fff',
                     borderRadius: '50%', width: '16px', height: '16px',
                     fontSize: '9px', fontWeight: '800',
@@ -728,7 +765,7 @@ const { error: notifError } = await supabase
 
       {/* Content */}
       <div style={{
-        flex: 1, overflowY: 'auto', padding: '0 16px 100px'
+        flex: 1, overflowY: 'auto', padding: '4px 14px 100px'
       }}>
         {loading ? (
           <ScreenLoader />
@@ -1915,29 +1952,52 @@ function HeaderStat({ label, value, color }) {
   return (
     <div style={{
       background: '#fff', border: '1.5px solid #E2E0FF',
-      borderRadius: '14px', padding: '10px 8px',
+      borderRadius: '13px', padding: '7px 9px',
       boxShadow: '0 8px 18px rgba(20,18,58,0.05)'
     }}>
       <div style={{
-        fontSize: '20px', fontWeight: '900',
-        color, lineHeight: 1, marginBottom: '4px'
+        fontSize: '18px', fontWeight: '900',
+        color, lineHeight: 1, marginBottom: '3px'
       }}>{value}</div>
       <div style={{
-        fontSize: '10px', color: '#6F7394',
+        fontSize: '9px', color: '#6F7394',
         fontWeight: '850', textTransform: 'uppercase',
-        letterSpacing: '0.7px'
+        letterSpacing: '0.5px',
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis'
       }}>{label}</div>
     </div>
   )
 }
 
 function GigCarousel({ title, count, color, children }) {
+  const helper = title === 'Needs Action' || title === 'Action Required'
+    ? 'Handle these first'
+    : title === 'In Progress'
+      ? 'Currently active'
+      : title === 'Open'
+        ? 'Visible to workers'
+        : title === 'Pending'
+          ? 'Waiting for response'
+          : title === 'Expired'
+            ? 'No longer active'
+            : 'History'
+
   return (
-    <section style={{ marginTop: '10px' }}>
+    <section style={{
+      marginTop: '14px',
+      background: '#fff',
+      border: '1.5px solid #E2E0FF',
+      borderRadius: '18px',
+      padding: '12px 0 10px',
+      boxShadow: '0 10px 26px rgba(20,18,58,0.055)'
+    }}>
       <div style={{
         display: 'flex', alignItems: 'center',
         justifyContent: 'space-between', gap: '12px',
-        marginBottom: '10px'
+        marginBottom: '10px',
+        padding: '0 14px'
       }}>
         <div style={{
           display: 'flex', alignItems: 'center',
@@ -1949,11 +2009,21 @@ function GigCarousel({ title, count, color, children }) {
             boxShadow: `0 0 0 4px ${color}22`,
             flexShrink: 0
           }} />
-          <h2 style={{
-            margin: 0, fontSize: '15px',
-            fontWeight: '900', color: '#14123A',
-            lineHeight: 1.15
-          }}>{title}</h2>
+          <div style={{ minWidth: 0 }}>
+            <h2 style={{
+              margin: 0, fontSize: '15px',
+              fontWeight: '900', color: '#14123A',
+              lineHeight: 1.15
+            }}>{title}</h2>
+            <div style={{
+              fontSize: '11px',
+              color: '#8B8FAF',
+              fontWeight: '750',
+              marginTop: '3px'
+            }}>
+              {helper}
+            </div>
+          </div>
         </div>
         <span style={{
           background: '#fff', border: `1.5px solid ${color}44`,
@@ -1969,7 +2039,7 @@ function GigCarousel({ title, count, color, children }) {
         overflowX: 'auto', overflowY: 'hidden',
         scrollSnapType: 'x proximity',
         WebkitOverflowScrolling: 'touch',
-        padding: '2px 4px 8px 0'
+        padding: '2px 14px 8px'
       }}>
         {children}
       </div>

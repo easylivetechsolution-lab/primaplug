@@ -94,7 +94,10 @@ export default function SavedScreen() {
 
       if (result.blocked) {
         showToast(result.message, 'error')
-        window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'commission' }))
+        const lower = result.message?.toLowerCase() || ''
+        if (lower.includes('commission') || lower.includes('restricted')) {
+          window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'commission' }))
+        }
         setApplying(false)
         return
       }
@@ -154,6 +157,7 @@ export default function SavedScreen() {
             const gig = saved.gigs
             const color = URGENCY_COLORS[gig.urgency] || '#6C47FF'
             const isApplied = applied === gig.id
+            const isOwnGig = gig.poster_id === user?.id
 
             return (
               <div key={saved.id} style={{
@@ -400,45 +404,52 @@ export default function SavedScreen() {
                       <div style={{ display: 'flex', gap: '8px' }}>
                       <button
                         onClick={() => {
+                          if (isOwnGig) return
                           setSelectedGig(null)
                           window.dispatchEvent(new CustomEvent('openChatWithUser', {
                             detail: { userId: gig.poster_id }
                           }))
                         }}
+                        disabled={isOwnGig}
                         style={{
                           flex: 1, background: '#F5F4FF',
-                          border: '1.5px solid #B8A5FF',
+                          border: `1.5px solid ${isOwnGig ? '#E2E0FF' : '#B8A5FF'}`,
                           borderRadius: '10px', padding: '11px',
                           fontSize: '12px', fontWeight: '700',
-                          color: '#6C47FF', cursor: 'pointer',
+                          color: isOwnGig ? '#A09DC8' : '#6C47FF',
+                          cursor: isOwnGig ? 'default' : 'pointer',
                           fontFamily: 'inherit',
                           display: 'flex', alignItems: 'center',
                           justifyContent: 'center', gap: '6px'
                         }}>
                         <BrandIcon name="chat" size={20} active />
-                        Message
+                        {isOwnGig ? 'Your gig' : 'Message'}
                       </button>
                       <button
                         onClick={() => handleApply(gig)}
-                        disabled={applying || isApplied}
+                        disabled={applying || isApplied || isOwnGig}
                         style={{
                           flex: 2,
-                          background: isApplied
+                          background: isOwnGig
+                            ? '#F5F4FF'
+                            : isApplied
                             ? '#DFFDF4'
                             : applying
                               ? '#B8A5FF'
                               : 'linear-gradient(135deg, #6C47FF, #9B59FF)',
-                          border: isApplied ? '1.5px solid #7EECD2' : 'none',
+                          border: isOwnGig ? '1.5px solid #E2E0FF' : isApplied ? '1.5px solid #7EECD2' : 'none',
                           borderRadius: '10px', padding: '11px',
                           fontSize: '13px', fontWeight: '700',
-                          color: isApplied ? '#00C48C' : '#fff',
-                          cursor: applying || isApplied ? 'default' : 'pointer',
+                          color: isOwnGig ? '#A09DC8' : isApplied ? '#00C48C' : '#fff',
+                          cursor: applying || isApplied || isOwnGig ? 'default' : 'pointer',
                           fontFamily: 'inherit',
                           display: 'flex', alignItems: 'center',
                           justifyContent: 'center', gap: '6px',
-                          boxShadow: isApplied || applying ? 'none' : '0 4px 16px rgba(108,71,255,0.35)'
+                          boxShadow: isApplied || applying || isOwnGig ? 'none' : '0 4px 16px rgba(108,71,255,0.35)'
                         }}>
-                        {isApplied ? (
+                        {isOwnGig ? (
+                          'Your gig'
+                        ) : isApplied ? (
                           <><BrandIcon name="accepted" size={18} /> Applied!</>
                         ) : applying ? (
                           '⏳ Applying...'

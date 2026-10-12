@@ -11,11 +11,9 @@ import { getCurrency } from '../../data/currencies'
 import { getProfileCompletion } from '../../utils/profileComplete'
 import ProfilePrompt from '../ProfilePrompt'
 import { useAuth } from '../../context/AuthContext'
-import { sendPushToUser } from '../../utils/pushNotifications'
-import { trackGigReferral } from '../../utils/referral'
 import ShareGig from '../ShareGig'
 import ReportModal from '../ReportModal'
-import { findApplicationBlocker } from '../../utils/gigApplications'
+import { applyToGig } from '../../utils/gigApplications'
 
 const URGENCY = {
   now: { label: 'NOW', color: '#FF3366', bg: '#FFE8EE', border: '#FF99B3' },
@@ -205,6 +203,61 @@ export default function FeedScreen() {
     if (fieldFilter !== 'All' && g.field !== fieldFilter) return false
     return true
   })
+
+  const handleApplySelectedGig = async () => {
+    if (applying) return
+    setApplying(true)
+    try {
+      if (!user?.id) {
+        showToast('Please log in to apply', 'error')
+        return
+      }
+
+      const { data: userProfile } = await supabase
+        .from('users')
+        .select('selfie_verified')
+        .eq('id', user.id)
+        .single()
+
+      if (!userProfile?.selfie_verified) {
+        showToast('Please complete selfie verification in your profile before applying for gigs.', 'error')
+        window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'profile' }))
+        return
+      }
+
+      const { complete } = getProfileCompletion(profile)
+      if (!complete) {
+        setShowProfilePrompt(true)
+        return
+      }
+
+      const result = await applyToGig({
+        gig: selectedGig,
+        workerId: user.id
+      })
+
+      if (result.blocked) {
+        showToast(result.message, 'error')
+        const lower = result.message?.toLowerCase() || ''
+        if (lower.includes('commission') || lower.includes('restricted')) {
+          window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'commission' }))
+        }
+        return
+      }
+
+      if (result.alreadyApplied) {
+        showToast('You already applied for this gig!')
+        return
+      }
+
+      setApplied(true)
+    } catch (e) {
+      console.log('Apply error:', e)
+      showToast('Error applying: ' + e.message, 'error')
+    } finally {
+      setApplying(false)
+    }
+  }
 
   const chipStyle = (active, color = '#6C47FF', bg = '#EEE9FF', border = '#B8A5FF') => ({
     background: active ? bg : 'transparent',
@@ -943,117 +996,7 @@ export default function FeedScreen() {
                     }}>Your gig</div>
                   ) : (
                   <button
-                    onClick={async () => {
-  if (applying) return
-  setApplying(true)
-  const { data: userProfile } = await supabase
-    .from('users')
-    .select('selfie_verified')
-    .eq('id', user.id)
-    .single()
-  if (!userProfile?.selfie_verified) {
-    showToast('Please complete selfie verification in your profile before applying for gigs.', 'error')
-    window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'profile' }))
-    setApplying(false)
-    return
-  }
-  const { complete } = getProfileCompletion(profile)
-  if (!complete) {
-    setShowProfilePrompt(true)
-    setApplying(false)
-    return
-  }
-  setApplying(true)
-  try {
-    const { data: { session } } = await supabase.auth.getSession()
-    const userId = session?.user?.id
-    if (!userId) {
-      showToast('Please log in to apply', 'error')
-      setApplying(false)
-      return
-    }
-    const blocker = await findApplicationBlocker(userId)
-    if (blocker) {
-      showToast(blocker, 'error')
-      window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'commission' }))
-      setApplying(false)
-      return
-    }
-    // Check account status
-    const { data: userStatus } = await supabase
-      .from('users')
-      .select('account_status')
-      .eq('id', userId)
-      .single()
-    if (userStatus?.account_status === 'restricted') {
-      showToast('Your account is restricted due to unpaid platform commission. Please pay to restore full access.', 'error')
-      setApplying(false)
-      return
-    }
-    // Check if already applied
-    const { data: existingApps } = await supabase
-      .from('applications')
-      .select('id')
-      .eq('gig_id', selectedGig.id)
-      .eq('worker_id', userId)
-      .limit(1)
-    if (existingApps?.length > 0) {
-      showToast('You already applied for this gig!')
-      setApplying(false)
-      return
-    }
-    // Save application
-    const { error } = await supabase
-      .from('applications')
-      .insert({
-        gig_id: selectedGig.id,
-        worker_id: userId,
-        status: 'pending'
-      })
-    if (error) {
-      showToast('Error applying: ' + error.message, 'error')
-      setApplying(false)
-      return
-    }
-    // Notify the gig poster
-    await supabase.from('notifications').insert({
-      user_id: selectedGig.poster_id,
-      title: 'New Application!',
-      message: `Someone applied for your gig "${selectedGig.title}"`,
-      type: 'application',
-      gig_id: selectedGig.id
-    })
-    await sendPushToUser(
-      selectedGig.poster_id,
-      '⚡ New Application!',
-      `Someone applied for your gig "${selectedGig.title}"`,
-      { type: 'application', gigId: selectedGig.id }
-    )
-    // Create conversation between applicant and poster
-    const { data: existingConvo } = await supabase
-      .from('conversations')
-      .select('id')
-      .eq('gig_id', selectedGig.id)
-      .eq('participant_1', selectedGig.poster_id)
-      .eq('participant_2', userId)
-      .maybeSingle()
-
-    if (!existingConvo) {
-      await supabase.from('conversations').insert({
-        gig_id: selectedGig.id,
-        participant_1: selectedGig.poster_id,
-        participant_2: userId,
-        last_message: 'Application sent',
-        last_message_at: new Date().toISOString()
-      })
-    }
-    setApplied(true)
-    await trackGigReferral(selectedGig.id, userId)
-  } catch (e) {
-    console.log('Apply error:', e)
-  }
-  setApplying(false)
-}}
+                    onClick={handleApplySelectedGig}
                     disabled={applying}
                     style={{
                       flex: 2,

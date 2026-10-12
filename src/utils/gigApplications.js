@@ -76,6 +76,18 @@ export const ensureGigConversation = async ({ gigId, posterId, workerId }) => {
 }
 
 export const applyToGig = async ({ gig, workerId, notifyPush = true }) => {
+  if (!gig?.id) return { blocked: true, message: 'This gig is no longer available.' }
+  if (!workerId) return { blocked: true, message: 'Please log in to apply.' }
+  if (gig.poster_id === workerId) {
+    return { blocked: true, message: 'You cannot apply to your own gig.' }
+  }
+  if (gig.deleted_at || gig.status !== 'open') {
+    return { blocked: true, message: 'This gig is no longer open for applications.' }
+  }
+  if (gig.expires_at && new Date(gig.expires_at) <= new Date()) {
+    return { blocked: true, message: 'This gig has expired.' }
+  }
+
   const existing = await findExistingApplication(gig.id, workerId)
   if (existing) return { alreadyApplied: true, application: existing }
 

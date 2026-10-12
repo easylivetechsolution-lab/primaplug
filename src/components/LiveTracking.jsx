@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet'
+import { MapContainer, Marker, Popup, Polyline, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { supabase } from '../supabase'
 import { showToast } from '../utils/toast'
 import { useAuth } from '../context/AuthContext'
+import PrimaBasemap from './maps/PrimaBasemap'
 
 // Worker moving pin
 const createWorkerPin = (avatarUrl, initial) => L.divIcon({
@@ -447,16 +448,20 @@ export default function LiveTracking({ gig, role, workerInfo, posterInfo, onClos
 
       {/* Stats Bar */}
       {(eta || distance) && (
-        <div style={{
-          background: '#fff',
-          padding: '10px 20px',
+        <div className="prima-eta-panel" style={{
+          background: 'linear-gradient(135deg, #FFFFFF, #F8F7FF)',
+          padding: '12px 20px',
           display: 'flex', gap: '12px',
-          borderBottom: '1px solid #F5F4FF', flexShrink: 0
+          borderBottom: '1px solid #E2E0FF', flexShrink: 0,
+          boxShadow: '0 8px 22px rgba(20,18,58,0.08)',
+          position: 'relative', zIndex: 3
         }}>
           {eta && (
             <div style={{
-              background: '#EEE9FF', borderRadius: '10px',
-              padding: '8px 14px', textAlign: 'center'
+              background: '#EEE9FF', borderRadius: '12px',
+              padding: '9px 15px', textAlign: 'center',
+              border: '1px solid #D7CFFF',
+              boxShadow: '0 6px 16px rgba(108,71,255,0.12)'
             }}>
               <div style={{
                 fontSize: '16px', fontWeight: '800', color: '#6C47FF'
@@ -469,8 +474,10 @@ export default function LiveTracking({ gig, role, workerInfo, posterInfo, onClos
           )}
           {distance && (
             <div style={{
-              background: '#F5F4FF', borderRadius: '10px',
-              padding: '8px 14px', textAlign: 'center'
+              background: '#fff', borderRadius: '12px',
+              padding: '9px 15px', textAlign: 'center',
+              border: '1px solid #E2E0FF',
+              boxShadow: '0 6px 16px rgba(20,18,58,0.06)'
             }}>
               <div style={{
                 fontSize: '16px', fontWeight: '800', color: '#14123A'
@@ -515,12 +522,7 @@ export default function LiveTracking({ gig, role, workerInfo, posterInfo, onClos
           doubleClickZoom={true}
           dragging={true}
         >
-          <TileLayer
-            attribution='&copy; <a href="https://carto.com/">CARTO</a>'
-            url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-            subdomains="abcd"
-            maxZoom={19}
-          />
+          <PrimaBasemap mode="light" />
 
           {allPositions.length >= 2 && <FitBounds positions={allPositions} />}
 
@@ -577,6 +579,8 @@ export default function LiveTracking({ gig, role, workerInfo, posterInfo, onClos
                 color="#6C47FF"
                 weight={5}
                 opacity={0.9}
+                dashArray="12 12"
+                className="prima-route-flow"
                 lineCap="round"
                 lineJoin="round"
               />
@@ -804,6 +808,12 @@ export default function LiveTracking({ gig, role, workerInfo, posterInfo, onClos
         }
         .leaflet-container {
           touch-action: pan-x pan-y pinch-zoom !important;
+        }
+        .prima-route-flow {
+          animation: primaRouteFlow 1s linear infinite;
+        }
+        @keyframes primaRouteFlow {
+          to { stroke-dashoffset: -24; }
         }
         .leaflet-pane,
         .leaflet-tile,

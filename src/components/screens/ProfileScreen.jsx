@@ -119,20 +119,18 @@ const LocationSearch = ({ value, onSelect, inputStyle }) => {
 }
 
 // ─────────────────────────────────────────────
-// ANIMATED TRUST RING — the one signature motion piece
+// ANIMATED AVATAR RING - the one signature motion piece
 // ─────────────────────────────────────────────
-const TrustRing = ({ score = 100, size = 96, avatarUrl, initial, onAvatarClick, uploading }) => {
+const AvatarRing = ({ size = 96, avatarUrl, initial, onAvatarClick, uploading, ringColor = '#00C48C' }) => {
   const [animatedScore, setAnimatedScore] = useState(0)
   const radius = (size - 8) / 2
   const circumference = 2 * Math.PI * radius
   const offset = circumference - (animatedScore / 100) * circumference
 
   useEffect(() => {
-    const t = setTimeout(() => setAnimatedScore(score), 150)
+    const t = setTimeout(() => setAnimatedScore(100), 150)
     return () => clearTimeout(t)
-  }, [score])
-
-  const ringColor = score >= 80 ? '#00C48C' : score >= 50 ? '#FFB800' : '#FF6B2B'
+  }, [])
 
   return (
     <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
@@ -413,7 +411,6 @@ export default function ProfileScreen({ onLogout }) {
   if (loading) return <ScreenLoader />
 
   const { score: completionScore } = getProfileCompletion(profile || {})
-  const trustScore = profile?.trust_score ?? 0
   const gigsCompleted = profile?.gigs_completed || 0
   const nextLevelTarget = Math.max(10, Math.ceil((gigsCompleted + 1) / 10) * 10)
 
@@ -430,7 +427,6 @@ export default function ProfileScreen({ onLogout }) {
   const progressMetrics = [
     { label: 'Total Earned', value: `$${totalEarned.toLocaleString()}`, current: totalEarned, max: nextEarnedTarget, color: 'linear-gradient(90deg,#00C48C,#06D6D6)' },
     { label: 'Gigs Completed', value: gigsCompleted, current: gigsCompleted, max: nextLevelTarget, color: 'linear-gradient(90deg,#6C47FF,#0EA5E9)' },
-    { label: 'Trust Score', value: `${trustScore}%`, current: trustScore, max: 100, color: trustScore >= 80 ? 'linear-gradient(90deg,#00C48C,#00A878)' : 'linear-gradient(90deg,#FF6B2B,#FF4DCF)' },
     { label: 'Reviews', value: `${reviewsCount}/${nextReviewTarget}`, current: reviewsCount, max: nextReviewTarget, color: 'linear-gradient(90deg,#FF4DCF,#9B59FF)' },
   ]
 
@@ -642,12 +638,12 @@ export default function ProfileScreen({ onLogout }) {
             </button>
 
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', marginBottom: '16px' }}>
-              <TrustRing
-                score={trustScore}
+              <AvatarRing
                 avatarUrl={profile?.avatar_url}
                 initial={profile?.full_name?.charAt(0)?.toUpperCase()}
                 onAvatarClick={() => fileRef.current.click()}
                 uploading={uploadingAvatar}
+                ringColor={currentLevel.color}
               />
               <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatarUpload} />
 
@@ -660,17 +656,11 @@ export default function ProfileScreen({ onLogout }) {
                   <BrandIcon name="location" size={18} /> {profile.location}
                 </div>
               )}
-              <div style={{ display: 'flex', gap: '6px', marginTop: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
-                {profile?.is_verified && <VerificationBadge onDark />}
-                <span style={{
-                  background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.3)',
-                  borderRadius: '8px', padding: '3px 9px', fontSize: '10px', fontWeight: '800'
-                }}>{trustScore}% Trust</span>
-                <span style={{
-                  background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.3)',
-                  borderRadius: '8px', padding: '3px 9px', fontSize: '10px', fontWeight: '800'
-                }}>{currentLevel.icon} {currentLevel.label}</span>
-              </div>
+              {profile?.is_verified && (
+                <div style={{ display: 'flex', gap: '6px', marginTop: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                  <VerificationBadge onDark />
+                </div>
+              )}
             </div>
 
             {profile?.bio && (
@@ -941,7 +931,8 @@ export default function ProfileScreen({ onLogout }) {
 
           {/* METRICS STRIP — hidden on mobile */}
           {!isMobile && <div style={{
-            display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px'
+            display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px',
+            order: 1
           }}>
             <StatCard icon={<ProfileToneIcon name="rating" tone="linear-gradient(135deg, #FFB800, #FF6B2B)" size={30} />} label="Rating" value={reviewsCount > 0 ? `${Number(profile?.rating || 0).toFixed(1)}` : '0.0'} color="#FFB800" bg="#FFF8E0" />
             <StatCard icon={<ProfileToneIcon name="completed" tone="linear-gradient(135deg, #00C48C, #00A878)" size={30} />} label="Gigs Done" value={gigsCompleted} sub={`${nextLevelTarget - gigsCompleted} to next level`} color="#00C48C" bg="#DFFDF4" />
@@ -953,7 +944,8 @@ export default function ProfileScreen({ onLogout }) {
           {!isMobile && <div style={{
             background: currentLevel.bg, border: `1.5px solid ${currentLevel.border}`,
             borderRadius: '20px', padding: '22px 20px',
-            display: 'flex', gap: '20px', alignItems: 'stretch'
+            display: 'flex', gap: '20px', alignItems: 'stretch',
+            order: 4
           }}>
             {/* Left half — current level badge */}
             <div style={{
@@ -1010,7 +1002,8 @@ export default function ProfileScreen({ onLogout }) {
           <div style={{
             background: '#fff', border: '1.5px solid #E2E0FF',
             borderRadius: '16px', padding: '14px 16px',
-            maxWidth: isMobile ? '100%' : '50%'
+            maxWidth: isMobile ? '100%' : '50%',
+            order: 5
           }}>
             <div style={{ fontSize: '11px', fontWeight: '800', color: '#14123A', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.6px' }}>Progress</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -1029,7 +1022,8 @@ export default function ProfileScreen({ onLogout }) {
           {/* TABS */}
           <div style={{
             display: 'flex', gap: '4px', background: '#fff', borderRadius: '14px',
-            padding: '4px', border: '1.5px solid #E2E0FF', overflowX: 'auto'
+            padding: '4px', border: '1.5px solid #E2E0FF', overflowX: 'auto',
+            order: 2
           }}>
             {['about', 'skills', 'experience', 'activity', 'links'].map(tab => (
               <button key={tab} onClick={() => setActiveTab(tab)} style={{
@@ -1042,7 +1036,7 @@ export default function ProfileScreen({ onLogout }) {
           </div>
 
           {/* TAB CONTENT */}
-          <div style={{ background: '#fff', border: '1.5px solid #E2E0FF', borderRadius: '16px', padding: '20px' }}>
+          <div style={{ background: '#fff', border: '1.5px solid #E2E0FF', borderRadius: '16px', padding: '20px', order: 3 }}>
 
             {activeTab === 'about' && (
               <div>
@@ -1061,11 +1055,11 @@ export default function ProfileScreen({ onLogout }) {
                     ['completed', 'Joined', profile?.joined_at ? parseTimestamp(profile.joined_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'Recently'],
                     ['accepted', 'Status', profile?.is_available ? 'Available' : 'Busy'],
                   ].map(([icon, key, val]) => (
-                    <div key={key} style={{ background: '#F5F4FF', borderRadius: '10px', padding: '10px 12px' }}>
+                    <div key={key} style={{ background: '#F5F4FF', borderRadius: '10px', padding: '10px 12px', minWidth: 0 }}>
                       <div style={{ fontSize: '10px', color: '#A09DC8', marginBottom: '5px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <BrandIcon name={icon} size={22} active={false} />{key}
                       </div>
-                      <div style={{ fontSize: '13px', fontWeight: '600', color: '#14123A' }}>{val}</div>
+                      <div style={{ fontSize: '13px', fontWeight: '600', color: '#14123A', minWidth: 0, overflowWrap: 'anywhere', wordBreak: 'break-word', lineHeight: 1.35 }}>{val}</div>
                     </div>
                   ))}
                 </div>
@@ -1178,7 +1172,8 @@ export default function ProfileScreen({ onLogout }) {
           {!profile?.is_verified && (
             <div style={{
               background: 'linear-gradient(135deg, #FFF8E0, #FFF0E8)', border: '1.5px solid #FFBC99',
-              borderRadius: '16px', padding: '16px', display: 'flex', gap: '12px', alignItems: 'center'
+              borderRadius: '16px', padding: '16px', display: 'flex', gap: '12px', alignItems: 'center',
+              order: 6
             }}>
               <BrandIcon name="level" size={42} />
               <div style={{ flex: 1 }}>
@@ -1194,14 +1189,14 @@ export default function ProfileScreen({ onLogout }) {
           )}
 
           {/* COMING SOON SECTION */}
-          <div>
+          <div style={{ order: 7 }}>
             <div style={{ fontSize: '11px', fontWeight: '700', color: '#A09DC8', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '10px' }}>
               Coming to Prima
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '10px' }}>
               <ComingSoonCard
                 icon="level" title="Verified ID + Payment Badge"
-                desc="A stronger trust signal showing ID and payment method are both verified."
+                desc="A clearer verification badge showing ID and payment method are both verified."
                 gradient="linear-gradient(135deg, #6C47FF, #9B59FF)"
               />
               <ComingSoonCard
