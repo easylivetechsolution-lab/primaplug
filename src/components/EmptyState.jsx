@@ -13,22 +13,22 @@ export default function EmptyState({
 }) {
   const tones = {
     default: {
-      bg: '#fff',
-      iconBg: 'linear-gradient(135deg, #EEE9FF 0%, #F8F5FF 100%)',
-      border: '#E2E0FF',
-      accent: '#B8A5FF'
+      bg: 'var(--color-surface)',
+      iconBg: 'linear-gradient(135deg, var(--color-brand-soft) 0%, var(--color-brand-pale) 100%)',
+      border: 'var(--color-border)',
+      accent: 'var(--color-brand-border-strong)'
     },
     money: {
-      bg: '#fff',
-      iconBg: 'linear-gradient(135deg, #DFFDF4 0%, #EEE9FF 100%)',
-      border: '#E2E0FF',
-      accent: '#7EECD2'
+      bg: 'var(--color-surface)',
+      iconBg: 'linear-gradient(135deg, var(--color-success-soft) 0%, var(--color-brand-soft) 100%)',
+      border: 'var(--color-border)',
+      accent: 'var(--color-success-border)'
     },
     warm: {
-      bg: '#fff',
-      iconBg: 'linear-gradient(135deg, #FFF0E8 0%, #EEE9FF 100%)',
-      border: '#E2E0FF',
-      accent: '#FFBC99'
+      bg: 'var(--color-surface)',
+      iconBg: 'linear-gradient(135deg, var(--color-warning-soft) 0%, var(--color-brand-soft) 100%)',
+      border: 'var(--color-border)',
+      accent: 'var(--color-warning-border)'
     }
   }
   const colors = tones[tone] || tones.default
@@ -60,7 +60,7 @@ export default function EmptyState({
       <div style={{
         fontSize: compact ? '15px' : '16px',
         fontWeight: '800',
-        color: '#14123A',
+        color: 'var(--color-text)',
         marginBottom: '7px'
       }}>
         {title}
@@ -69,7 +69,7 @@ export default function EmptyState({
       {message && (
         <div style={{
           fontSize: '13px',
-          color: '#8B8FAF',
+          color: 'var(--color-text-muted)',
           lineHeight: '1.6',
           maxWidth: '310px',
           margin: actionLabel ? '0 auto 18px' : '0 auto'
@@ -83,13 +83,13 @@ export default function EmptyState({
           <button
             onClick={onAction}
             style={{
-              background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+              background: 'var(--color-brand-gradient)',
               border: 'none',
               borderRadius: '12px',
               padding: '12px 24px',
               fontSize: '13px',
               fontWeight: '800',
-              color: '#fff',
+              color: 'var(--color-surface)',
               cursor: 'pointer',
               fontFamily: 'inherit',
               boxShadow: '0 5px 18px rgba(108,71,255,0.32)'
@@ -102,12 +102,12 @@ export default function EmptyState({
               onClick={onSecondary}
               style={{
                 background: 'transparent',
-                border: '1.5px solid #E2E0FF',
+                border: '1.5px solid var(--color-border)',
                 borderRadius: '12px',
                 padding: '10px 20px',
                 fontSize: '13px',
                 fontWeight: '600',
-                color: '#8B8FAF',
+                color: 'var(--color-text-muted)',
                 cursor: 'pointer',
                 fontFamily: 'inherit'
               }}

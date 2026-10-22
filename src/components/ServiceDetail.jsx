@@ -5,12 +5,12 @@ import { showToast } from '../utils/toast'
 import { parseTimestamp } from '../utils/time'
 
 const PACKAGE_COLORS = {
-  basic: { color: '#00C48C', bg: '#DFFDF4', border: '#7EECD2' },
-  standard: { color: '#6C47FF', bg: '#EEE9FF', border: '#B8A5FF' },
-  premium: { color: '#FFB800', bg: '#FFF8E0', border: '#FFD966' },
+  basic: { color: 'var(--color-success)', bg: 'var(--color-success-soft)', border: 'var(--color-success-border)' },
+  standard: { color: 'var(--color-brand)', bg: 'var(--color-brand-soft)', border: 'var(--color-brand-border-strong)' },
+  premium: { color: 'var(--color-warning-gold)', bg: 'var(--color-warning-gold-soft)', border: 'var(--color-warning-gold-border)' },
 }
 
-export default function ServiceDetail({ service, onClose, onViewProfile, savedIds, toggleSave, onBoost }) {
+export default function ServiceDetail({ service, onClose, onViewProfile, savedIds, toggleSave, onBoost, onReport }) {
   const { user } = useAuth()
   const [selectedPackage, setSelectedPackage] = useState('basic')
   const [ordering, setOrdering] = useState(false)
@@ -138,21 +138,21 @@ export default function ServiceDetail({ service, onClose, onViewProfile, savedId
       fontFamily: "'Plus Jakarta Sans', sans-serif"
     }} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} style={{
-        background: '#fff',
+        background: 'var(--color-surface)',
         borderRadius: '22px 22px 0 0',
         width: '100%', maxWidth: '640px',
         maxHeight: '92vh', overflowY: 'auto',
         position: 'relative',
         animation: 'slideUp 0.3s cubic-bezier(0.16,1,0.3,1)'
       }}>
-        <button
+        <button 
           onClick={onClose}
           aria-label="Close service details"
           style={{
             position: 'absolute', top: '12px', right: '14px',
-            background: '#F5F4FF', border: '1.5px solid #E2E0FF',
+            background: 'var(--color-page)', border: '1.5px solid var(--color-border)',
             borderRadius: '50%', width: '36px', height: '36px',
-            color: '#8B8FAF', fontSize: '20px',
+            color: 'var(--color-text-muted)', fontSize: '20px',
             cursor: 'pointer', zIndex: 5,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontFamily: 'inherit', lineHeight: 1
@@ -162,7 +162,7 @@ export default function ServiceDetail({ service, onClose, onViewProfile, savedId
 
         <div style={{
           width: '40px', height: '4px',
-          background: '#E2E0FF', borderRadius: '2px',
+          background: 'var(--color-border)', borderRadius: '2px',
           margin: '12px auto 0'
         }} />
 
@@ -172,10 +172,10 @@ export default function ServiceDetail({ service, onClose, onViewProfile, savedId
               <div style={{ fontSize: '56px', marginBottom: '16px' }}>🎉</div>
               <div style={{
                 fontSize: '22px', fontWeight: '800',
-                color: '#6C47FF', marginBottom: '8px'
+                color: 'var(--color-brand)', marginBottom: '8px'
               }}>Order Placed!</div>
               <div style={{
-                fontSize: '13px', color: '#8B8FAF',
+                fontSize: '13px', color: 'var(--color-text-muted)',
                 lineHeight: '1.6', marginBottom: '20px'
               }}>
                 The worker has been notified. Open chat to share your requirements.
@@ -184,10 +184,10 @@ export default function ServiceDetail({ service, onClose, onViewProfile, savedId
                 window.dispatchEvent(new CustomEvent('openChatWithUser', { detail: { userId: service.worker_id } }))
                 onClose()
               }} style={{
-                background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+                background: 'var(--color-brand-gradient)',
                 border: 'none', borderRadius: '12px',
                 padding: '13px 32px', fontSize: '14px',
-                fontWeight: '700', color: '#fff',
+                fontWeight: '700', color: 'var(--color-surface)',
                 cursor: 'pointer', fontFamily: 'inherit'
               }}>Go to Chat →</button>
             </div>
@@ -201,7 +201,7 @@ export default function ServiceDetail({ service, onClose, onViewProfile, savedId
                     position: 'relative', width: '100%',
                     paddingTop: '56.25%', borderRadius: '14px',
                     overflow: 'hidden', cursor: 'pointer',
-                    background: '#F5F4FF'
+                    background: 'var(--color-page)'
                   }} onClick={() => setLightbox(true)}>
                     <img
                       src={service.images[currentImage]}
@@ -217,7 +217,7 @@ export default function ServiceDetail({ service, onClose, onViewProfile, savedId
                       position: 'absolute', bottom: '10px', right: '10px',
                       background: 'rgba(20,18,58,0.7)', backdropFilter: 'blur(4px)',
                       borderRadius: '8px', padding: '3px 9px',
-                      fontSize: '11px', fontWeight: '700', color: '#fff'
+                      fontSize: '12px', fontWeight: '700', color: 'var(--color-surface)'
                     }}>
                       {currentImage + 1}/{service.images.length}
                     </div>
@@ -229,7 +229,7 @@ export default function ServiceDetail({ service, onClose, onViewProfile, savedId
                             position: 'absolute', left: '8px', top: '50%',
                             transform: 'translateY(-50%)', background: 'rgba(20,18,58,0.6)',
                             border: 'none', borderRadius: '50%', width: '32px', height: '32px',
-                            color: '#fff', fontSize: '14px', cursor: 'pointer',
+                            color: 'var(--color-surface)', fontSize: '14px', cursor: 'pointer',
                             display: 'flex', alignItems: 'center', justifyContent: 'center'
                           }}>‹</button>
                         <button onClick={(e) => { e.stopPropagation(); setCurrentImage(i => (i + 1) % service.images.length) }}
@@ -237,7 +237,7 @@ export default function ServiceDetail({ service, onClose, onViewProfile, savedId
                             position: 'absolute', right: '8px', top: '50%',
                             transform: 'translateY(-50%)', background: 'rgba(20,18,58,0.6)',
                             border: 'none', borderRadius: '50%', width: '32px', height: '32px',
-                            color: '#fff', fontSize: '14px', cursor: 'pointer',
+                            color: 'var(--color-surface)', fontSize: '14px', cursor: 'pointer',
                             display: 'flex', alignItems: 'center', justifyContent: 'center'
                           }}>›</button>
                       </>
@@ -256,7 +256,7 @@ export default function ServiceDetail({ service, onClose, onViewProfile, savedId
                           style={{
                             width: '52px', height: '52px', borderRadius: '8px',
                             overflow: 'hidden', flexShrink: 0, cursor: 'pointer',
-                            border: `2px solid ${currentImage === i ? '#6C47FF' : '#E2E0FF'}`,
+                            border: `2px solid ${currentImage === i ? 'var(--color-brand)' : 'var(--color-border)'}`,
                             opacity: currentImage === i ? 1 : 0.65,
                             transition: 'all 0.15s'
                           }}>
@@ -278,11 +278,11 @@ export default function ServiceDetail({ service, onClose, onViewProfile, savedId
                   onClick={() => onViewProfile(service.users?.id)}
                   style={{
                     width: '48px', height: '48px', borderRadius: '13px',
-                    background: '#EEE9FF', display: 'flex',
+                    background: 'var(--color-brand-soft)', display: 'flex',
                     alignItems: 'center', justifyContent: 'center',
-                    fontSize: '18px', fontWeight: '800', color: '#6C47FF',
+                    fontSize: '18px', fontWeight: '800', color: 'var(--color-brand)',
                     overflow: 'hidden', flexShrink: 0,
-                    cursor: 'pointer', border: '2px solid #B8A5FF'
+                    cursor: 'pointer', border: '2px solid var(--color-brand-border-strong)'
                   }}>
                   {service.users?.avatar_url ? (
                     <img src={service.users.avatar_url} alt=""
@@ -294,11 +294,11 @@ export default function ServiceDetail({ service, onClose, onViewProfile, savedId
                     onClick={() => onViewProfile(service.users?.id)}
                     style={{
                       fontSize: '14px', fontWeight: '700',
-                      color: '#6C47FF', cursor: 'pointer', marginBottom: '2px'
+                      color: 'var(--color-brand)', cursor: 'pointer', marginBottom: '2px'
                     }}>
                     {service.users?.full_name || 'Unknown'} →
                   </div>
-                  <div style={{ fontSize: '11px', color: '#8B8FAF' }}>
+                  <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
                     ⭐ {service.users?.rating || 5.0} ·{' '}
                     Trust {service.users?.trust_score || 100}%
                   </div>
@@ -307,7 +307,7 @@ export default function ServiceDetail({ service, onClose, onViewProfile, savedId
 
               {/* Title + save */}
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '8px' }}>
-                <h2 style={{ fontSize: '20px', fontWeight: '800', color: '#14123A', lineHeight: '1.3', flex: 1, margin: 0 }}>
+                <h2 style={{ fontSize: '20px', fontWeight: '800', color: 'var(--color-text)', lineHeight: '1.3', flex: 1, margin: 0 }}>
                   {service.title}
                 </h2>
                 {user && toggleSave && (
@@ -318,10 +318,18 @@ export default function ServiceDetail({ service, onClose, onViewProfile, savedId
                 )}
               </div>
 
+              {user && !isOwnService && onReport && (
+                <button type="button" onClick={() => onReport(service)} style={{
+                  minHeight: '36px', padding: '0 10px', marginBottom: '10px', borderRadius: '10px',
+                  border: '1px solid var(--color-danger-border)', background: 'var(--color-danger-soft)',
+                  color: 'var(--color-danger)', font: 'inherit', fontSize: '12px', fontWeight: '700', cursor: 'pointer'
+                }}>Report this service</button>
+              )}
+
               {/* Description */}
               {service.description && (
                 <div style={{
-                  fontSize: '13px', color: '#5B5887',
+                  fontSize: '13px', color: 'var(--color-text-muted)',
                   lineHeight: '1.7', marginBottom: '20px'
                 }}>{service.description}</div>
               )}
@@ -329,7 +337,7 @@ export default function ServiceDetail({ service, onClose, onViewProfile, savedId
               {/* Package Selector */}
               <div style={{ marginBottom: '16px' }}>
                 <div style={{
-                  fontSize: '11px', fontWeight: '700', color: '#A09DC8',
+                  fontSize: '12px', fontWeight: '700', color: 'var(--color-text-subtle)',
                   textTransform: 'uppercase', letterSpacing: '0.8px',
                   marginBottom: '10px'
                 }}>Choose Package</div>
@@ -342,22 +350,22 @@ export default function ServiceDetail({ service, onClose, onViewProfile, savedId
                         key={pkg.key}
                         onClick={() => setSelectedPackage(pkg.key)}
                         style={{
-                          flex: 1, background: isActive ? c.bg : '#F5F4FF',
-                          border: `1.5px solid ${isActive ? c.border : '#E2E0FF'}`,
+                          flex: 1, background: isActive ? c.bg : 'var(--color-page)',
+                          border: `1.5px solid ${isActive ? c.border : 'var(--color-border)'}`,
                           borderRadius: '12px', padding: '12px 8px',
                           cursor: 'pointer', fontFamily: 'inherit',
                           transition: 'all 0.15s', textAlign: 'center'
                         }}>
                         <div style={{
                           fontSize: '16px', fontWeight: '800',
-                          color: isActive ? c.color : '#14123A', marginBottom: '2px'
+                          color: isActive ? c.color : 'var(--color-text)', marginBottom: '2px'
                         }}>${pkg.price}</div>
                         <div style={{
-                          fontSize: '10px', fontWeight: '700',
-                          color: isActive ? c.color : '#8B8FAF'
+                          fontSize: '12px', fontWeight: '700',
+                          color: isActive ? c.color : 'var(--color-text-muted)'
                         }}>{pkg.name}</div>
                         <div style={{
-                          fontSize: '9px', color: '#A09DC8', marginTop: '2px'
+                          fontSize: '12px', color: 'var(--color-text-subtle)', marginTop: '2px'
                         }}>{pkg.delivery}d delivery</div>
                       </button>
                     )
@@ -386,13 +394,13 @@ export default function ServiceDetail({ service, onClose, onViewProfile, savedId
                   </div>
                   {activePackage.desc && (
                     <div style={{
-                      fontSize: '12px', color: '#5B5887',
+                      fontSize: '12px', color: 'var(--color-text-muted)',
                       lineHeight: '1.6', marginBottom: '8px'
                     }}>{activePackage.desc}</div>
                   )}
                   <div style={{
                     display: 'flex', gap: '12px',
-                    fontSize: '11px', color: '#8B8FAF'
+                    fontSize: '12px', color: 'var(--color-text-muted)'
                   }}>
                     <span>🕐 {activePackage.delivery} day{activePackage.delivery !== 1 ? 's' : ''} delivery</span>
                   </div>
@@ -403,7 +411,7 @@ export default function ServiceDetail({ service, onClose, onViewProfile, savedId
               {!isOwnService && (
                 <div style={{ marginBottom: '16px' }}>
                   <label style={{
-                    fontSize: '11px', fontWeight: '700', color: '#8B8FAF',
+                    fontSize: '12px', fontWeight: '700', color: 'var(--color-text-muted)',
                     textTransform: 'uppercase', letterSpacing: '0.8px',
                     display: 'block', marginBottom: '7px'
                   }}>Share Requirements (optional)</label>
@@ -412,15 +420,15 @@ export default function ServiceDetail({ service, onClose, onViewProfile, savedId
                     onChange={e => setRequirements(e.target.value)}
                     placeholder="Describe what you need, share any references, links or details..."
                     style={{
-                      width: '100%', background: '#F5F4FF',
-                      border: '1.5px solid #E2E0FF', borderRadius: '10px',
+                      width: '100%', background: 'var(--color-page)',
+                      border: '1.5px solid var(--color-border)', borderRadius: '10px',
                       padding: '12px 14px', fontSize: '13px',
-                      color: '#14123A', fontFamily: 'inherit',
+                      color: 'var(--color-text)', fontFamily: 'inherit',
                       outline: 'none', resize: 'vertical',
                       minHeight: '80px', boxSizing: 'border-box'
                     }}
-                    onFocus={e => e.target.style.borderColor = '#B8A5FF'}
-                    onBlur={e => e.target.style.borderColor = '#E2E0FF'}
+                    onFocus={e => e.target.style.borderColor = 'var(--color-brand-border-strong)'}
+                    onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
                   />
                 </div>
               )}
@@ -428,11 +436,11 @@ export default function ServiceDetail({ service, onClose, onViewProfile, savedId
               {/* Reviews section */}
               <div style={{ marginTop: '24px', marginBottom: '16px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                  <div style={{ fontSize: '14px', fontWeight: '800', color: '#14123A' }}>
-                    Reviews {service.review_count > 0 && <span style={{ color: '#8B8FAF', fontWeight: '500' }}>({service.review_count})</span>}
+                  <div style={{ fontSize: '14px', fontWeight: '800', color: 'var(--color-text)' }}>
+                    Reviews {service.review_count > 0 && <span style={{ color: 'var(--color-text-muted)', fontWeight: '500' }}>({service.review_count})</span>}
                   </div>
                   {service.avg_rating > 0 && (
-                    <div style={{ fontSize: '13px', fontWeight: '700', color: '#FFB800' }}>
+                    <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--color-warning-gold)' }}>
                       ⭐ {Number(service.avg_rating).toFixed(1)}
                     </div>
                   )}
@@ -440,8 +448,8 @@ export default function ServiceDetail({ service, onClose, onViewProfile, savedId
 
                 {/* Write a review (non-owner only) */}
                 {user && !isOwnService && (
-                  <div style={{ background: '#F8F7FF', border: '1.5px solid #E2E0FF', borderRadius: '14px', padding: '14px', marginBottom: '16px' }}>
-                    <div style={{ fontSize: '12px', fontWeight: '700', color: '#8B8FAF', marginBottom: '8px' }}>
+                  <div style={{ background: 'var(--color-surface-tint)', border: '1.5px solid var(--color-border)', borderRadius: '14px', padding: '14px', marginBottom: '16px' }}>
+                    <div style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '8px' }}>
                       {reviews.find(r => r.reviewer_id === user.id) ? 'Update your review' : 'Leave a review'}
                     </div>
                     {/* Star picker */}
@@ -460,20 +468,20 @@ export default function ServiceDetail({ service, onClose, onViewProfile, savedId
                       placeholder="Share your experience (optional)..."
                       rows={2}
                       style={{
-                        width: '100%', background: '#fff',
-                        border: '1.5px solid #E2E0FF', borderRadius: '10px',
+                        width: '100%', background: 'var(--color-surface)',
+                        border: '1.5px solid var(--color-border)', borderRadius: '10px',
                         padding: '10px 12px', fontSize: '12px',
-                        color: '#14123A', fontFamily: 'inherit',
+                        color: 'var(--color-text)', fontFamily: 'inherit',
                         outline: 'none', resize: 'none',
                         boxSizing: 'border-box', marginBottom: '10px',
                       }}
-                      onFocus={e => e.target.style.borderColor = '#B8A5FF'}
-                      onBlur={e => e.target.style.borderColor = '#E2E0FF'}
+                      onFocus={e => e.target.style.borderColor = 'var(--color-brand-border-strong)'}
+                      onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
                     />
                     <button onClick={submitReview} disabled={submitting || !myRating} style={{
-                      background: (!myRating || submitting) ? '#B8A5FF' : 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+                      background: (!myRating || submitting) ? 'var(--color-brand-border-strong)' : 'var(--color-brand-gradient)',
                       border: 'none', borderRadius: '10px', padding: '10px 20px',
-                      fontSize: '12px', fontWeight: '700', color: '#fff',
+                      fontSize: '12px', fontWeight: '700', color: 'var(--color-surface)',
                       cursor: (!myRating || submitting) ? 'not-allowed' : 'pointer',
                       fontFamily: 'inherit',
                     }}>{submitting ? 'Submitting...' : 'Submit Review'}</button>
@@ -482,18 +490,18 @@ export default function ServiceDetail({ service, onClose, onViewProfile, savedId
 
                 {/* Reviews list */}
                 {reviewsLoaded && reviews.length === 0 ? (
-                  <div style={{ fontSize: '13px', color: '#A09DC8', textAlign: 'center', padding: '16px 0' }}>
+                  <div style={{ fontSize: '13px', color: 'var(--color-text-subtle)', textAlign: 'center', padding: '16px 0' }}>
                     No reviews yet. Be the first!
                   </div>
                 ) : (
                   reviews.map(rev => (
-                    <div key={rev.id} style={{ borderBottom: '1px solid #F5F4FF', paddingBottom: '12px', marginBottom: '12px' }}>
+                    <div key={rev.id} style={{ borderBottom: '1px solid var(--color-page)', paddingBottom: '12px', marginBottom: '12px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '5px' }}>
                         <div style={{
                           width: '28px', height: '28px', borderRadius: '8px',
-                          background: '#EEE9FF', overflow: 'hidden', flexShrink: 0,
+                          background: 'var(--color-brand-soft)', overflow: 'hidden', flexShrink: 0,
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: '11px', fontWeight: '800', color: '#6C47FF',
+                          fontSize: '12px', fontWeight: '800', color: 'var(--color-brand)',
                         }}>
                           {rev.users?.avatar_url
                             ? <img src={rev.users.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -501,17 +509,17 @@ export default function ServiceDetail({ service, onClose, onViewProfile, savedId
                           }
                         </div>
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: '12px', fontWeight: '700', color: '#14123A' }}>
+                          <div style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-text)' }}>
                             {rev.users?.full_name || 'Anonymous'}
                           </div>
-                          <div style={{ fontSize: '11px', color: '#FFB800' }}>{'⭐'.repeat(rev.rating)}</div>
+                          <div style={{ fontSize: '12px', color: 'var(--color-warning-gold)' }}>{'⭐'.repeat(rev.rating)}</div>
                         </div>
-                        <div style={{ fontSize: '10px', color: '#C0BDDA' }}>
+                        <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)' }}>
                           {parseTimestamp(rev.created_at).toLocaleDateString()}
                         </div>
                       </div>
                       {rev.comment && (
-                        <div style={{ fontSize: '12px', color: '#5B5887', lineHeight: '1.6', paddingLeft: '36px' }}>
+                        <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', lineHeight: '1.6', paddingLeft: '36px' }}>
                           {rev.comment}
                         </div>
                       )}
@@ -524,18 +532,18 @@ export default function ServiceDetail({ service, onClose, onViewProfile, savedId
               {isOwnService ? (
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <div style={{
-                    flex: 1, background: '#EEE9FF', border: '1.5px solid #B8A5FF',
+                    flex: 1, background: 'var(--color-brand-soft)', border: '1.5px solid var(--color-brand-border-strong)',
                     borderRadius: '12px', padding: '14px',
                     textAlign: 'center', fontSize: '13px',
-                    color: '#6C47FF', fontWeight: '600'
+                    color: 'var(--color-brand)', fontWeight: '600'
                   }}>
                     👤 Your service
                   </div>
                   {onBoost && (
                     <button onClick={onBoost} style={{
-                      flex: 1, background: '#FFF8E0', border: '1.5px solid #FFD966',
+                      flex: 1, background: 'var(--color-warning-gold-soft)', border: '1.5px solid var(--color-warning-gold-border)',
                       borderRadius: '12px', padding: '14px', fontSize: '13px',
-                      fontWeight: '700', color: '#FFB800', cursor: 'pointer', fontFamily: 'inherit',
+                      fontWeight: '700', color: 'var(--color-warning-gold)', cursor: 'pointer', fontFamily: 'inherit',
                     }}>⚡ Boost</button>
                   )}
                 </div>
@@ -549,11 +557,11 @@ export default function ServiceDetail({ service, onClose, onViewProfile, savedId
                       }))
                     }}
                     style={{
-                      flex: 1, background: '#F5F4FF',
-                      border: '1.5px solid #B8A5FF',
+                      flex: 1, background: 'var(--color-page)',
+                      border: '1.5px solid var(--color-brand-border-strong)',
                       borderRadius: '12px', padding: '14px',
                       fontSize: '13px', fontWeight: '700',
-                      color: '#6C47FF', cursor: 'pointer',
+                      color: 'var(--color-brand)', cursor: 'pointer',
                       fontFamily: 'inherit',
                       display: 'flex', alignItems: 'center',
                       justifyContent: 'center', gap: '6px'
@@ -566,10 +574,10 @@ export default function ServiceDetail({ service, onClose, onViewProfile, savedId
                     style={{
                       flex: 2,
                       background: ordering
-                        ? '#B8A5FF'
-                        : 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+                        ? 'var(--color-brand-border-strong)'
+                        : 'var(--color-brand-gradient)',
                       border: 'none', borderRadius: '12px', padding: '14px',
-                      fontSize: '14px', fontWeight: '700', color: '#fff',
+                      fontSize: '14px', fontWeight: '700', color: 'var(--color-surface)',
                       cursor: ordering ? 'not-allowed' : 'pointer',
                       fontFamily: 'inherit',
                       boxShadow: ordering ? 'none' : '0 4px 20px rgba(108,71,255,0.35)'
@@ -604,13 +612,13 @@ export default function ServiceDetail({ service, onClose, onViewProfile, savedId
             display: 'flex', alignItems: 'center',
             justifyContent: 'center', flexDirection: 'column'
           }}>
-          <button
+          <button 
             onClick={() => setLightbox(false)}
             style={{
               position: 'absolute', top: '16px', right: '16px',
               background: 'rgba(255,255,255,0.1)', border: 'none',
               borderRadius: '50%', width: '40px', height: '40px',
-              color: '#fff', fontSize: '20px', cursor: 'pointer',
+              color: 'var(--color-surface)', fontSize: '20px', cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center'
             }}>×</button>
 
@@ -633,7 +641,7 @@ export default function ServiceDetail({ service, onClose, onViewProfile, savedId
                     position: 'absolute', left: '-48px', top: '50%',
                     transform: 'translateY(-50%)', background: 'rgba(255,255,255,0.12)',
                     border: 'none', borderRadius: '50%', width: '40px', height: '40px',
-                    color: '#fff', fontSize: '20px', cursor: 'pointer',
+                    color: 'var(--color-surface)', fontSize: '20px', cursor: 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'center'
                   }}>‹</button>
                 <button onClick={() => setCurrentImage(i => (i + 1) % service.images.length)}
@@ -641,32 +649,13 @@ export default function ServiceDetail({ service, onClose, onViewProfile, savedId
                     position: 'absolute', right: '-48px', top: '50%',
                     transform: 'translateY(-50%)', background: 'rgba(255,255,255,0.12)',
                     border: 'none', borderRadius: '50%', width: '40px', height: '40px',
-                    color: '#fff', fontSize: '20px', cursor: 'pointer',
+                    color: 'var(--color-surface)', fontSize: '20px', cursor: 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'center'
                   }}>›</button>
               </>
             )}
           </div>
 
-          {/* Dot nav */}
-          {service.images.length > 1 && (
-            <div style={{
-              display: 'flex', gap: '8px', marginTop: '20px'
-            }}>
-              {service.images.map((_, i) => (
-                <div
-                  key={i}
-                  onClick={e => { e.stopPropagation(); setCurrentImage(i) }}
-                  style={{
-                    width: currentImage === i ? '24px' : '8px',
-                    height: '8px', borderRadius: '4px',
-                    background: currentImage === i ? '#6C47FF' : 'rgba(255,255,255,0.3)',
-                    cursor: 'pointer', transition: 'all 0.2s'
-                  }}
-                />
-              ))}
-            </div>
-          )}
         </div>
       )}
     </div>

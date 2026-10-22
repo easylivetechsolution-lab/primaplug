@@ -13,6 +13,7 @@ import {
   getOrCreateConversation,
   getOtherUser as getChatOtherUser,
   getUnreadCount,
+  isMutedByUser,
   markConversationRead,
   parseTimestamp,
   sendMessage as sendChatMessage,
@@ -56,7 +57,6 @@ export default function FloatingChat({ onOpenFullChat }) {
   const [totalUnread, setTotalUnread] = useState(0)
   const [loadingMsgs, setLoadingMsgs] = useState(false)
   const [viewingProfile, setViewingProfile] = useState(null)
-  const [pulse, setPulse] = useState(false)
   const [onlineUsers, setOnlineUsers] = useState(new Set())
   const [replyingTo, setReplyingTo] = useState(null)
   const [reactingTo, setReactingTo] = useState(null)
@@ -68,6 +68,11 @@ export default function FloatingChat({ onOpenFullChat }) {
   const channelRef = useRef()
   const convoChannelRef = useRef()
   const presenceChannelRef = useRef()
+  const conversationsRef = useRef(conversations)
+  const activeConvoRef = useRef(activeConvo)
+
+  useEffect(() => { conversationsRef.current = conversations }, [conversations])
+  useEffect(() => { activeConvoRef.current = activeConvo }, [activeConvo])
 
   useEffect(() => {
     if (!user) return
@@ -181,9 +186,13 @@ export default function FloatingChat({ onOpenFullChat }) {
 
   async function fetchConversations() {
     if (!user) return
-    const data = await fetchChatConversations(user.id, { includeEmpty: true })
-    setConversations(data)
-    setTotalUnread(data.reduce((sum, c) => sum + getUnread(c), 0))
+    try {
+      const data = await fetchChatConversations(user.id, { includeEmpty: true })
+      setConversations(data)
+      setTotalUnread(data.reduce((sum, c) => sum + getUnread(c), 0))
+    } catch (error) {
+      showToast('Could not load messages: ' + error.message, 'error')
+    }
   }
 
   function subscribeToNewMessages() {
@@ -192,13 +201,18 @@ export default function FloatingChat({ onOpenFullChat }) {
       .channel('floating-chat-' + user.id)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, async (payload) => {
         if (payload.new.sender_id === user.id) return
-        playMessage()
-        setPulse(true)
-        setTimeout(() => setPulse(false), 2000)
+        const convo = conversationsRef.current.find(item => item.id === payload.new.conversation_id)
+        if (!convo || !isMutedByUser(convo, user.id)) {
+          playMessage()
+        }
         fetchConversations()
-        if (activeConvo?.id === payload.new.conversation_id) {
+        const currentConvo = activeConvoRef.current
+        if (currentConvo?.id === payload.new.conversation_id) {
           setMessages(prev => prev.find(m => m.id === payload.new.id) ? prev : [...prev, payload.new])
-          await markAsRead(activeConvo)
+          await markAsRead(currentConvo)
+          setMessages(prev => prev.map(message => message.conversation_id === currentConvo.id && message.sender_id !== user.id
+            ? { ...message, read: true, read_at: new Date().toISOString() }
+            : message))
         }
       })
       .subscribe()
@@ -209,10 +223,16 @@ export default function FloatingChat({ onOpenFullChat }) {
     convoChannelRef.current = supabase
       .channel('float-convo-' + convoId)
       .on('postgres_changes', {
-        event: 'INSERT', schema: 'public', table: 'messages',
+        event: '*', schema: 'public', table: 'messages',
         filter: `conversation_id=eq.${convoId}`
       }, (payload) => {
-        setMessages(prev => prev.find(m => m.id === payload.new.id) ? prev : [...prev, payload.new])
+        if (payload.eventType === 'INSERT') {
+          setMessages(prev => prev.find(m => m.id === payload.new.id) ? prev : [...prev, payload.new])
+        } else if (payload.eventType === 'UPDATE') {
+          setMessages(prev => prev.map(message => message.id === payload.new.id ? payload.new : message))
+        } else if (payload.eventType === 'DELETE') {
+          setMessages(prev => prev.filter(message => message.id !== payload.old.id))
+        }
       })
       .subscribe()
   }
@@ -222,6 +242,9 @@ export default function FloatingChat({ onOpenFullChat }) {
     try {
       const data = await fetchChatMessages(convo, user.id)
       setMessages(data)
+    } catch (error) {
+      setMessages([])
+      showToast('Could not load this conversation: ' + error.message, 'error')
     } finally {
       setLoadingMsgs(false)
     }
@@ -313,9 +336,9 @@ export default function FloatingChat({ onOpenFullChat }) {
         {open && (
           <div style={{
             width: '360px', height: '540px',
-            background: '#fff', borderRadius: '20px',
+            background: 'var(--color-surface)', borderRadius: '20px',
             boxShadow: '0 20px 60px rgba(108,71,255,0.2)',
-            border: '1.5px solid #E2E0FF',
+            border: '1.5px solid var(--color-border)',
             display: 'flex', flexDirection: 'column',
             overflow: 'hidden',
             animation: 'chatPop 0.25s cubic-bezier(0.16,1,0.3,1)',
@@ -326,7 +349,7 @@ export default function FloatingChat({ onOpenFullChat }) {
             {/* Header */}
             <div style={{
               padding: '14px 16px',
-              background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+              background: 'var(--color-brand-gradient)',
               display: 'flex', justifyContent: 'space-between',
               alignItems: 'center', flexShrink: 0
             }}>
@@ -337,7 +360,7 @@ export default function FloatingChat({ onOpenFullChat }) {
                     style={{
                       background: 'rgba(255,255,255,0.2)', border: 'none',
                       borderRadius: '8px', width: '28px', height: '28px',
-                      color: '#fff', fontSize: '14px', cursor: 'pointer',
+                      color: 'var(--color-surface)', fontSize: '14px', cursor: 'pointer',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       fontFamily: 'inherit'
                     }}>←</button>
@@ -347,15 +370,15 @@ export default function FloatingChat({ onOpenFullChat }) {
                     <>
                       <div
                         onClick={() => setViewingProfile(getOtherUser(activeConvo)?.id)}
-                        style={{ fontSize: '14px', fontWeight: '700', color: '#fff', cursor: 'pointer' }}>
+                        style={{ fontSize: '14px', fontWeight: '700', color: 'var(--color-surface)', cursor: 'pointer' }}>
                         {getOtherUser(activeConvo)?.full_name || 'Chat'}
                       </div>
-                      <div style={{ fontSize: '10px', color: onlineUsers.has(getOtherUser(activeConvo)?.id) ? '#A8FFD8' : 'rgba(255,255,255,0.55)', fontWeight: '600' }}>
+                      <div style={{ fontSize: '12px', color: onlineUsers.has(getOtherUser(activeConvo)?.id) ? '#A8FFD8' : 'rgba(255,255,255,0.55)', fontWeight: '600' }}>
                         {onlineUsers.has(getOtherUser(activeConvo)?.id) ? 'Online' : 'Offline'}
                       </div>
                     </>
                   ) : (
-                    <div style={{ fontSize: '15px', fontWeight: '700', color: '#fff' }}>Messages</div>
+                    <div style={{ fontSize: '15px', fontWeight: '700', color: 'var(--color-surface)' }}>Messages</div>
                   )}
                 </div>
               </div>
@@ -366,15 +389,15 @@ export default function FloatingChat({ onOpenFullChat }) {
                   title="Open full chat"
                   style={{
                     background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '8px',
-                    width: '28px', height: '28px', color: '#fff', fontSize: '14px',
+                    width: '28px', height: '28px', color: 'var(--color-surface)', fontSize: '14px',
                     cursor: 'pointer', display: 'flex', alignItems: 'center',
                     justifyContent: 'center', fontFamily: 'inherit'
                   }}>⤢</button>
-                <button
+                <button 
                   onClick={() => setOpen(false)}
                   style={{
                     background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '8px',
-                    width: '28px', height: '28px', color: '#fff', fontSize: '16px',
+                    width: '28px', height: '28px', color: 'var(--color-surface)', fontSize: '16px',
                     cursor: 'pointer', display: 'flex', alignItems: 'center',
                     justifyContent: 'center', fontFamily: 'inherit'
                   }}>×</button>
@@ -389,10 +412,10 @@ export default function FloatingChat({ onOpenFullChat }) {
                     <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '10px' }}>
                       <BrandIcon name="chat" size={56} />
                     </div>
-                    <div style={{ fontSize: '14px', fontWeight: '600', color: '#14123A', marginBottom: '4px' }}>
+                    <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--color-text)', marginBottom: '4px' }}>
                       No messages yet
                     </div>
-                    <div style={{ fontSize: '12px', color: '#A09DC8', lineHeight: '1.5' }}>
+                    <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)', lineHeight: '1.5' }}>
                       Apply for a gig to start a conversation
                     </div>
                   </div>
@@ -412,17 +435,17 @@ export default function FloatingChat({ onOpenFullChat }) {
                       style={{
                         padding: '12px 14px', display: 'flex', gap: '10px',
                         alignItems: 'center', cursor: 'pointer',
-                        borderBottom: '1px solid #F5F4FF', transition: 'background 0.1s'
+                        borderBottom: '1px solid var(--color-page)', transition: 'background 0.1s'
                       }}
-                      onMouseEnter={e => e.currentTarget.style.background = '#F8F7FF'}
-                      onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--color-surface-tint)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'var(--color-surface)'}
                     >
                       <div style={{ position: 'relative', flexShrink: 0 }}>
                         <div style={{
                           width: '42px', height: '42px', borderRadius: '12px',
-                          background: '#EEE9FF', display: 'flex', alignItems: 'center',
+                          background: 'var(--color-brand-soft)', display: 'flex', alignItems: 'center',
                           justifyContent: 'center', fontSize: '16px', fontWeight: '800',
-                          color: '#6C47FF', overflow: 'hidden'
+                          color: 'var(--color-brand)', overflow: 'hidden'
                         }}>
                           {other?.avatar_url
                             ? <img src={other.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -431,7 +454,7 @@ export default function FloatingChat({ onOpenFullChat }) {
                         <div style={{
                           position: 'absolute', bottom: '-1px', right: '-1px',
                           width: '10px', height: '10px', borderRadius: '50%',
-                          background: isOnline ? '#00C48C' : '#CBD5E1',
+                          background: isOnline ? 'var(--color-success)' : 'var(--color-neutral-indicator)',
                           border: '2px solid #fff', transition: 'background 0.3s'
                         }} />
                       </div>
@@ -443,16 +466,16 @@ export default function FloatingChat({ onOpenFullChat }) {
                         }}>
                           <div style={{
                             fontSize: '13px', fontWeight: unread > 0 ? '700' : '600',
-                            color: '#14123A', overflow: 'hidden',
+                            color: 'var(--color-text)', overflow: 'hidden',
                             textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1
                           }}>{other?.full_name || 'Unknown'}</div>
-                          <div style={{ fontSize: '10px', color: '#A09DC8', flexShrink: 0, marginLeft: '6px' }}>
+                          <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)', flexShrink: 0, marginLeft: '6px' }}>
                             {timeAgo(convo.last_message_at)}
                           </div>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <div style={{
-                            fontSize: '11px', color: unread > 0 ? '#14123A' : '#A09DC8',
+                            fontSize: '12px', color: unread > 0 ? 'var(--color-text)' : 'var(--color-text-subtle)',
                             fontWeight: unread > 0 ? '600' : '400',
                             overflow: 'hidden', textOverflow: 'ellipsis',
                             whiteSpace: 'nowrap', flex: 1
@@ -461,10 +484,10 @@ export default function FloatingChat({ onOpenFullChat }) {
                           </div>
                           {unread > 0 && (
                             <div style={{
-                              background: '#6C47FF', color: '#fff', borderRadius: '50%',
+                              background: 'var(--color-brand)', color: 'var(--color-surface)', borderRadius: '50%',
                               width: '18px', height: '18px', display: 'flex',
                               alignItems: 'center', justifyContent: 'center',
-                              fontSize: '9px', fontWeight: '800', flexShrink: 0, marginLeft: '4px'
+                              fontSize: '12px', fontWeight: '800', flexShrink: 0, marginLeft: '4px'
                             }}>{unread > 9 ? '9+' : unread}</div>
                           )}
                         </div>
@@ -482,19 +505,19 @@ export default function FloatingChat({ onOpenFullChat }) {
                 <div style={{
                   flex: 1, overflowY: 'auto', padding: '10px 12px',
                   display: 'flex', flexDirection: 'column', gap: '2px',
-                  background: '#F8F7FF'
+                  background: 'var(--color-surface-tint)'
                 }}>
                   {loadingMsgs ? (
-                    <div style={{ textAlign: 'center', padding: '20px', color: '#A09DC8', fontSize: '13px' }}>
+                    <div style={{ textAlign: 'center', padding: '20px', color: 'var(--color-text-subtle)', fontSize: '13px' }}>
                       Loading...
                     </div>
                   ) : messages.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '24px 16px' }}>
                       <div style={{ fontSize: '28px', marginBottom: '8px' }}>👋</div>
-                      <div style={{ fontSize: '13px', fontWeight: '600', color: '#14123A', marginBottom: '3px' }}>
+                      <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--color-text)', marginBottom: '3px' }}>
                         Say hello!
                       </div>
-                      <div style={{ fontSize: '11px', color: '#A09DC8' }}>Start the conversation</div>
+                      <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)' }}>Start the conversation</div>
                     </div>
                   ) : messages.map((msg, i) => {
                     const isMe = msg.sender_id === user.id
@@ -514,7 +537,7 @@ export default function FloatingChat({ onOpenFullChat }) {
                         {showDate && (
                           <div style={{
                             textAlign: 'center', margin: '10px 0 4px',
-                            fontSize: '10px', color: '#A09DC8', fontWeight: '600'
+                            fontSize: '12px', color: 'var(--color-text-subtle)', fontWeight: '600'
                           }}>
                             {parseTimestamp(msg.created_at).toLocaleDateString('en-US', {
                               weekday: 'short', month: 'short', day: 'numeric'
@@ -536,9 +559,9 @@ export default function FloatingChat({ onOpenFullChat }) {
                           {!isMe && (
                             <div style={{
                               width: '24px', height: '24px', borderRadius: '7px',
-                              background: '#EEE9FF', display: 'flex', alignItems: 'center',
-                              justifyContent: 'center', fontSize: '10px', fontWeight: '800',
-                              color: '#6C47FF', overflow: 'hidden', flexShrink: 0,
+                              background: 'var(--color-brand-soft)', display: 'flex', alignItems: 'center',
+                              justifyContent: 'center', fontSize: '12px', fontWeight: '800',
+                              color: 'var(--color-brand)', overflow: 'hidden', flexShrink: 0,
                               opacity: isGrouped ? 0 : 1
                             }}>
                               {getOtherUser(activeConvo)?.avatar_url
@@ -550,13 +573,13 @@ export default function FloatingChat({ onOpenFullChat }) {
                           <div style={{ maxWidth: '75%', position: 'relative' }}>
                             {/* Message bubble */}
                             <div style={{
-                              background: isMe ? 'linear-gradient(135deg, #6C47FF, #9B59FF)' : '#fff',
-                              color: isMe ? '#fff' : '#14123A',
+                              background: isMe ? 'var(--color-brand-gradient)' : 'var(--color-surface)',
+                              color: isMe ? 'var(--color-surface)' : 'var(--color-text)',
                               borderRadius: isMe ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
                               padding: (isImageUrl(msg.content) || isVideoUrl(msg.content)) ? '4px' : '8px 12px',
                               fontSize: '13px', lineHeight: '1.5',
                               boxShadow: isMe ? '0 2px 10px rgba(108,71,255,0.3)' : '0 2px 6px rgba(0,0,0,0.06)',
-                              border: isMe ? 'none' : '1px solid #E2E0FF',
+                              border: isMe ? 'none' : '1px solid var(--color-border)',
                               wordBreak: 'break-word', overflow: 'hidden'
                             }}>
                               {/* Reply context */}
@@ -567,13 +590,13 @@ export default function FloatingChat({ onOpenFullChat }) {
                                     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
                                   }}
                                   style={{
-                                    background: isMe ? 'rgba(255,255,255,0.15)' : '#F5F4FF',
-                                    borderLeft: `3px solid ${isMe ? 'rgba(255,255,255,0.6)' : '#6C47FF'}`,
+                                    background: isMe ? 'rgba(255,255,255,0.15)' : 'var(--color-page)',
+                                    borderLeft: `3px solid ${isMe ? 'rgba(255,255,255,0.6)' : 'var(--color-brand)'}`,
                                     borderRadius: '6px', padding: '5px 8px',
-                                    marginBottom: '6px', fontSize: '11px',
+                                    marginBottom: '6px', fontSize: '12px',
                                     opacity: 0.9, cursor: 'pointer'
                                   }}>
-                                  <div style={{ fontWeight: '700', marginBottom: '1px', fontSize: '10px' }}>
+                                  <div style={{ fontWeight: '700', marginBottom: '1px', fontSize: '12px' }}>
                                     {msg.reply_to_sender_name}
                                   </div>
                                   <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '180px' }}>
@@ -599,7 +622,7 @@ export default function FloatingChat({ onOpenFullChat }) {
                                   href={msg.content} target="_blank" rel="noopener noreferrer"
                                   style={{
                                     display: 'flex', alignItems: 'center', gap: '8px',
-                                    color: isMe ? '#fff' : '#6C47FF', textDecoration: 'none', padding: '4px 2px'
+                                    color: isMe ? 'var(--color-surface)' : 'var(--color-brand)', textDecoration: 'none', padding: '4px 2px'
                                   }}>
                                   <span style={{ fontSize: '20px', flexShrink: 0 }}>📎</span>
                                   <span style={{ textDecoration: 'underline', wordBreak: 'break-all', fontSize: '12px' }}>
@@ -620,14 +643,14 @@ export default function FloatingChat({ onOpenFullChat }) {
                                     key={emoji}
                                     onClick={() => handleReaction(msg, emoji)}
                                     style={{
-                                      background: users.includes(user.id) ? '#EEE9FF' : '#F5F4FF',
-                                      border: `1px solid ${users.includes(user.id) ? '#B8A5FF' : '#E2E0FF'}`,
+                                      background: users.includes(user.id) ? 'var(--color-brand-soft)' : 'var(--color-page)',
+                                      border: `1px solid ${users.includes(user.id) ? 'var(--color-brand-border-strong)' : 'var(--color-border)'}`,
                                       borderRadius: '10px', padding: '2px 6px',
-                                      fontSize: '11px', cursor: 'pointer',
+                                      fontSize: '12px', cursor: 'pointer',
                                       display: 'flex', alignItems: 'center', gap: '2px',
-                                      fontFamily: 'inherit', color: '#14123A'
+                                      fontFamily: 'inherit', color: 'var(--color-text)'
                                     }}>
-                                    {emoji} <span style={{ fontSize: '10px', fontWeight: '600' }}>{users.length}</span>
+                                    {emoji} <span style={{ fontSize: '12px', fontWeight: '600' }}>{users.length}</span>
                                   </button>
                                 ))}
                               </div>
@@ -638,7 +661,7 @@ export default function FloatingChat({ onOpenFullChat }) {
                               <div style={{
                                 position: 'absolute', bottom: '110%',
                                 [isMe ? 'right' : 'left']: 0,
-                                background: '#fff', border: '1.5px solid #E2E0FF',
+                                background: 'var(--color-surface)', border: '1.5px solid var(--color-border)',
                                 borderRadius: '24px', padding: '5px 8px',
                                 boxShadow: '0 8px 24px rgba(108,71,255,0.18)',
                                 display: 'flex', gap: '3px', zIndex: 10002
@@ -673,8 +696,8 @@ export default function FloatingChat({ onOpenFullChat }) {
                                   }}
                                   style={{
                                     width: '24px', height: '24px', borderRadius: '50%',
-                                    border: '1px solid #E2E0FF', background: '#fff',
-                                    color: '#6C47FF', cursor: 'pointer', fontSize: '14px',
+                                    border: '1px solid var(--color-border)', background: 'var(--color-surface)',
+                                    color: 'var(--color-brand)', cursor: 'pointer', fontSize: '14px',
                                     display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0
                                   }}>⋯</button>
                                 {msgMenu === msg.id && (
@@ -683,7 +706,7 @@ export default function FloatingChat({ onOpenFullChat }) {
                                     style={{
                                       position: 'absolute', top: '28px',
                                       [isMe ? 'left' : 'right']: 0,
-                                      background: '#fff', border: '1.5px solid #E2E0FF',
+                                      background: 'var(--color-surface)', border: '1.5px solid var(--color-border)',
                                       borderRadius: '12px', boxShadow: '0 8px 24px rgba(108,71,255,0.15)',
                                       zIndex: 10002, minWidth: '120px', overflow: 'hidden'
                                     }}>
@@ -705,11 +728,11 @@ export default function FloatingChat({ onOpenFullChat }) {
                                     ].map(item => (
                                       <button key={item.label} onClick={item.action} style={{
                                         width: '100%', textAlign: 'left', padding: '9px 12px',
-                                        border: 'none', background: 'transparent', color: '#14123A',
+                                        border: 'none', background: 'transparent', color: 'var(--color-text)',
                                         fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit',
-                                        borderBottom: '1px solid #F5F4FF'
+                                        borderBottom: '1px solid var(--color-page)'
                                       }}
-                                        onMouseEnter={e => e.currentTarget.style.background = '#F8F7FF'}
+                                        onMouseEnter={e => e.currentTarget.style.background = 'var(--color-surface-tint)'}
                                         onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                                         {item.label}
                                       </button>
@@ -722,14 +745,14 @@ export default function FloatingChat({ onOpenFullChat }) {
                             {/* Time + read receipt */}
                             {showTime && (
                               <div style={{
-                                fontSize: '9px', color: '#A09DC8', marginTop: '2px',
+                                fontSize: '12px', color: 'var(--color-text-subtle)', marginTop: '2px',
                                 display: 'flex',
                                 justifyContent: isMe ? 'flex-end' : 'flex-start',
                                 alignItems: 'center', gap: '3px'
                               }}>
                                 {formatTime(msg.created_at)}
                                 {isMe && (
-                                  <span style={{ color: msg.read ? '#6C47FF' : '#A09DC8', fontSize: '10px' }}>
+                                  <span style={{ color: msg.read ? 'var(--color-brand)' : 'var(--color-text-subtle)', fontSize: '12px' }}>
                                     {msg.read ? '✓✓' : '✓'}
                                   </span>
                                 )}
@@ -746,29 +769,29 @@ export default function FloatingChat({ onOpenFullChat }) {
                 {/* Reply toolbar */}
                 {replyingTo && (
                   <div style={{
-                    padding: '6px 12px', background: '#F5F4FF',
-                    borderTop: '1px solid #E2E0FF',
+                    padding: '6px 12px', background: 'var(--color-page)',
+                    borderTop: '1px solid var(--color-border)',
                     display: 'flex', alignItems: 'center', gap: '8px'
                   }}>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: '10px', color: '#6C47FF', fontWeight: '700', marginBottom: '1px' }}>
+                      <div style={{ fontSize: '12px', color: 'var(--color-brand)', fontWeight: '700', marginBottom: '1px' }}>
                         Replying to {replyingTo.senderName}
                       </div>
-                      <div style={{ fontSize: '11px', color: '#A09DC8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {replyingTo.content}
                       </div>
                     </div>
-                    <button onClick={() => setReplyingTo(null)} style={{
+                    <button  onClick={() => setReplyingTo(null)} style={{
                       background: 'none', border: 'none', fontSize: '16px',
-                      cursor: 'pointer', color: '#A09DC8', padding: '2px', lineHeight: 1
+                      cursor: 'pointer', color: 'var(--color-text-subtle)', padding: '2px', lineHeight: 1
                     }}>✕</button>
                   </div>
                 )}
 
                 {/* Input */}
                 <div style={{
-                  padding: '10px 12px', background: '#fff',
-                  borderTop: '1.5px solid #E2E0FF',
+                  padding: '10px 12px', background: 'var(--color-surface)',
+                  borderTop: '1.5px solid var(--color-border)',
                   display: 'flex', gap: '8px', alignItems: 'flex-end'
                 }}>
                   <input
@@ -780,20 +803,20 @@ export default function FloatingChat({ onOpenFullChat }) {
                     }}
                     placeholder="Message..."
                     style={{
-                      flex: 1, background: '#F5F4FF',
-                      border: '1.5px solid #E2E0FF', borderRadius: '12px',
-                      padding: '9px 13px', fontSize: '13px', color: '#14123A',
+                      flex: 1, background: 'var(--color-page)',
+                      border: '1.5px solid var(--color-border)', borderRadius: '12px',
+                      padding: '9px 13px', fontSize: '13px', color: 'var(--color-text)',
                       fontFamily: 'inherit', outline: 'none', transition: 'border-color 0.15s'
                     }}
-                    onFocus={e => e.target.style.borderColor = '#B8A5FF'}
-                    onBlur={e => e.target.style.borderColor = '#E2E0FF'}
+                    onFocus={e => e.target.style.borderColor = 'var(--color-brand-border-strong)'}
+                    onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
                   />
                   <button
                     onClick={sendMessage}
                     disabled={!newMessage.trim() || sending}
                     style={{
                       width: '38px', height: '38px', borderRadius: '11px',
-                      background: newMessage.trim() ? 'linear-gradient(135deg, #6C47FF, #9B59FF)' : '#E2E0FF',
+                      background: newMessage.trim() ? 'var(--color-brand-gradient)' : 'var(--color-border)',
                       border: 'none', display: 'flex', alignItems: 'center',
                       justifyContent: 'center', fontSize: '16px',
                       cursor: newMessage.trim() ? 'pointer' : 'default',
@@ -813,12 +836,12 @@ export default function FloatingChat({ onOpenFullChat }) {
           onClick={() => setOpen(o => !o)}
           style={{
             width: '56px', height: '56px', borderRadius: '50%',
-            background: open ? '#fff' : 'linear-gradient(135deg, #6C47FF, #9B59FF)',
-            border: open ? '1.5px solid #E2E0FF' : 'none',
+            background: open ? 'var(--color-surface)' : 'var(--color-brand-gradient)',
+            border: open ? '1.5px solid var(--color-border)' : 'none',
             boxShadow: open ? '0 4px 20px rgba(108,71,255,0.2)' : '0 4px 24px rgba(108,71,255,0.5)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             cursor: 'pointer', fontSize: '22px', transition: 'all 0.2s',
-            animation: pulse ? 'chatBounce 0.5s ease' : 'none', position: 'relative'
+            position: 'relative'
           }}>
           <span style={{ transition: 'transform 0.2s' }}>
             {open ? '×' : <BrandIcon name="chat" size={38} />}
@@ -826,10 +849,10 @@ export default function FloatingChat({ onOpenFullChat }) {
           {!open && totalUnread > 0 && (
             <div style={{
               position: 'absolute', top: '-2px', right: '-2px',
-              background: '#FF3366', color: '#fff', borderRadius: '50%',
+              background: 'var(--color-danger)', color: 'var(--color-surface)', borderRadius: '50%',
               width: totalUnread > 9 ? '22px' : '18px', height: '18px',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '9px', fontWeight: '800', border: '2px solid #fff',
+              fontSize: '12px', fontWeight: '800', border: '2px solid #fff',
               animation: 'badgePop 0.3s ease'
             }}>
               {totalUnread > 9 ? '9+' : totalUnread}
@@ -859,13 +882,13 @@ export default function FloatingChat({ onOpenFullChat }) {
             onClick={e => e.stopPropagation()}
             style={{ maxWidth: '95vw', maxHeight: '90vh', borderRadius: '12px', objectFit: 'contain' }}
           />
-          <button
+          <button 
             onClick={() => setLightboxImg(null)}
             style={{
               position: 'absolute', top: '16px', right: '16px',
               width: '36px', height: '36px', borderRadius: '50%',
               background: 'rgba(255,255,255,0.15)', border: 'none',
-              color: '#fff', fontSize: '20px', cursor: 'pointer',
+              color: 'var(--color-surface)', fontSize: '20px', cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center'
             }}>×</button>
           <a
@@ -874,7 +897,7 @@ export default function FloatingChat({ onOpenFullChat }) {
               position: 'absolute', bottom: '24px',
               background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)',
               borderRadius: '20px', padding: '8px 20px',
-              color: '#fff', fontSize: '13px', fontWeight: '600', textDecoration: 'none'
+              color: 'var(--color-surface)', fontSize: '13px', fontWeight: '600', textDecoration: 'none'
             }}>⬇ Download</a>
         </div>
       )}
@@ -883,10 +906,6 @@ export default function FloatingChat({ onOpenFullChat }) {
         @keyframes chatPop {
           from { opacity: 0; transform: scale(0.9) translateY(10px); }
           to { opacity: 1; transform: scale(1) translateY(0); }
-        }
-        @keyframes chatBounce {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.2); }
         }
         @keyframes badgePop {
           from { transform: scale(0); }

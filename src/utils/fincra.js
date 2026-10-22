@@ -1,4 +1,4 @@
-﻿export const startFincraWalletFunding = async (supabase, payload) => {
+export const startFincraWalletFunding = async (supabase, payload) => {
   const { data, error } = await supabase.functions.invoke('fincra-fund-wallet', {
     body: {
       userId: payload.user_id,

@@ -104,10 +104,10 @@ export default function ReviewModal({ gig, revieweeId, revieweeName, reviewType,
       fontFamily: "'Plus Jakarta Sans', sans-serif"
     }} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} style={{
-        background: '#fff', borderRadius: '24px',
+        background: 'var(--color-surface)', borderRadius: '24px',
         padding: '28px', width: '100%', maxWidth: '460px',
         boxShadow: '0 20px 60px rgba(108,71,255,0.25)',
-        border: '1.5px solid #E2E0FF',
+        border: '1.5px solid var(--color-border)',
         animation: 'slideUp 0.3s cubic-bezier(0.16,1,0.3,1)'
       }}>
 
@@ -116,9 +116,9 @@ export default function ReviewModal({ gig, revieweeId, revieweeName, reviewType,
             <div style={{ fontSize: '52px', marginBottom: '12px' }}>⭐</div>
             <div style={{
               fontSize: '20px', fontWeight: '800',
-              color: '#6C47FF', marginBottom: '8px'
+              color: 'var(--color-brand)', marginBottom: '8px'
             }}>Review Submitted!</div>
-            <div style={{ fontSize: '13px', color: '#8B8FAF' }}>
+            <div style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>
               Thank you for helping build trust on Prima.
             </div>
           </div>
@@ -131,18 +131,18 @@ export default function ReviewModal({ gig, revieweeId, revieweeName, reviewType,
             }}>
               <div>
                 <div style={{
-                  fontSize: '10px', color: '#6C47FF',
+                  fontSize: '12px', color: 'var(--color-brand)',
                   fontWeight: '700', letterSpacing: '1.5px',
                   textTransform: 'uppercase', marginBottom: '3px'
                 }}>Leave a Review</div>
                 <div style={{
-                  fontSize: '18px', fontWeight: '800', color: '#14123A'
+                  fontSize: '18px', fontWeight: '800', color: 'var(--color-text)'
                 }}>Rate {revieweeName}</div>
               </div>
-              <button onClick={onClose} style={{
-                background: '#F5F4FF', border: '1.5px solid #E2E0FF',
+              <button  onClick={onClose} style={{
+                background: 'var(--color-page)', border: '1.5px solid var(--color-border)',
                 borderRadius: '8px', width: '32px', height: '32px',
-                fontSize: '16px', color: '#8B8FAF', cursor: 'pointer',
+                fontSize: '16px', color: 'var(--color-text-muted)', cursor: 'pointer',
                 display: 'flex', alignItems: 'center',
                 justifyContent: 'center', fontFamily: 'inherit'
               }}>×</button>
@@ -150,11 +150,11 @@ export default function ReviewModal({ gig, revieweeId, revieweeName, reviewType,
 
             {/* Gig reference */}
             <div style={{
-              background: '#F5F4FF', borderRadius: '10px',
+              background: 'var(--color-page)', borderRadius: '10px',
               padding: '10px 14px', marginBottom: '20px',
-              fontSize: '12px', color: '#8B8FAF'
+              fontSize: '12px', color: 'var(--color-text-muted)'
             }}>
-              For: <span style={{ color: '#14123A', fontWeight: '600' }}>
+              For: <span style={{ color: 'var(--color-text)', fontWeight: '600' }}>
                 {gig.title}
               </span>
             </div>
@@ -162,7 +162,7 @@ export default function ReviewModal({ gig, revieweeId, revieweeName, reviewType,
             {/* Star Rating */}
             <div style={{ marginBottom: '20px' }}>
               <div style={{
-                fontSize: '11px', fontWeight: '700', color: '#A09DC8',
+                fontSize: '12px', fontWeight: '700', color: 'var(--color-text-subtle)',
                 textTransform: 'uppercase', letterSpacing: '0.8px',
                 marginBottom: '12px'
               }}>Overall Rating</div>
@@ -186,7 +186,7 @@ export default function ReviewModal({ gig, revieweeId, revieweeName, reviewType,
                 <div style={{
                   textAlign: 'center', marginTop: '8px',
                   fontSize: '13px', fontWeight: '700',
-                  color: rating >= 4 ? '#00C48C' : rating >= 3 ? '#FF6B2B' : '#FF3366'
+                  color: rating >= 4 ? 'var(--color-success)' : rating >= 3 ? 'var(--color-warning)' : 'var(--color-danger)'
                 }}>
                   {rating === 5 ? 'Excellent!' : rating === 4 ? 'Very Good' : rating === 3 ? 'Good' : rating === 2 ? 'Fair' : 'Poor'}
                 </div>
@@ -196,18 +196,18 @@ export default function ReviewModal({ gig, revieweeId, revieweeName, reviewType,
             {/* Tags */}
             <div style={{ marginBottom: '20px' }}>
               <div style={{
-                fontSize: '11px', fontWeight: '700', color: '#A09DC8',
+                fontSize: '12px', fontWeight: '700', color: 'var(--color-text-subtle)',
                 textTransform: 'uppercase', letterSpacing: '0.8px',
                 marginBottom: '10px'
               }}>What stood out?</div>
               <div style={{ display: 'flex', gap: '7px', flexWrap: 'wrap' }}>
                 {tags.map(tag => (
                   <button key={tag} onClick={() => toggleTag(tag)} style={{
-                    background: selectedTags.includes(tag) ? '#EEE9FF' : '#F5F4FF',
-                    border: `1.5px solid ${selectedTags.includes(tag) ? '#B8A5FF' : '#E2E0FF'}`,
+                    background: selectedTags.includes(tag) ? 'var(--color-brand-soft)' : 'var(--color-page)',
+                    border: `1.5px solid ${selectedTags.includes(tag) ? 'var(--color-brand-border-strong)' : 'var(--color-border)'}`,
                     borderRadius: '20px', padding: '6px 13px',
                     fontSize: '12px', fontWeight: '600',
-                    color: selectedTags.includes(tag) ? '#6C47FF' : '#8B8FAF',
+                    color: selectedTags.includes(tag) ? 'var(--color-brand)' : 'var(--color-text-muted)',
                     cursor: 'pointer', fontFamily: 'inherit',
                     transition: 'all 0.15s'
                   }}>{tag}</button>
@@ -218,7 +218,7 @@ export default function ReviewModal({ gig, revieweeId, revieweeName, reviewType,
             {/* Written Review */}
             <div style={{ marginBottom: '24px' }}>
               <div style={{
-                fontSize: '11px', fontWeight: '700', color: '#A09DC8',
+                fontSize: '12px', fontWeight: '700', color: 'var(--color-text-subtle)',
                 textTransform: 'uppercase', letterSpacing: '0.8px',
                 marginBottom: '8px'
               }}>Written Feedback (optional)</div>
@@ -227,15 +227,15 @@ export default function ReviewModal({ gig, revieweeId, revieweeName, reviewType,
                 onChange={e => setComment(e.target.value)}
                 placeholder="Share your experience working with this person..."
                 style={{
-                  width: '100%', background: '#F5F4FF',
-                  border: '1.5px solid #E2E0FF', borderRadius: '10px',
+                  width: '100%', background: 'var(--color-page)',
+                  border: '1.5px solid var(--color-border)', borderRadius: '10px',
                   padding: '12px 14px', fontSize: '13px',
-                  color: '#14123A', fontFamily: 'inherit',
+                  color: 'var(--color-text)', fontFamily: 'inherit',
                   outline: 'none', resize: 'vertical',
                   minHeight: '80px', boxSizing: 'border-box'
                 }}
-                onFocus={e => e.target.style.borderColor = '#B8A5FF'}
-                onBlur={e => e.target.style.borderColor = '#E2E0FF'}
+                onFocus={e => e.target.style.borderColor = 'var(--color-brand-border-strong)'}
+                onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
               />
             </div>
 
@@ -246,12 +246,12 @@ export default function ReviewModal({ gig, revieweeId, revieweeName, reviewType,
               style={{
                 width: '100%',
                 background: submitting || rating === 0
-                  ? '#E2E0FF'
-                  : 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+                  ? 'var(--color-border)'
+                  : 'var(--color-brand-gradient)',
                 border: 'none', borderRadius: '12px',
                 padding: '14px', fontSize: '14px',
                 fontWeight: '700',
-                color: submitting || rating === 0 ? '#A09DC8' : '#fff',
+                color: submitting || rating === 0 ? 'var(--color-text-subtle)' : 'var(--color-surface)',
                 cursor: submitting || rating === 0 ? 'not-allowed' : 'pointer',
                 boxShadow: rating > 0 ? '0 4px 20px rgba(108,71,255,0.35)' : 'none',
                 fontFamily: 'inherit', transition: 'all 0.2s'

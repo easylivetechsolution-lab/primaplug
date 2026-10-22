@@ -58,6 +58,7 @@ self.addEventListener('notificationclick', (event) => {
     wallet: 'wallet',
     receipt: 'mygigs',
     review: 'mygigs',
+    commission: 'commission',
     application: 'mygigs',
     accepted: 'feed',
     rejected: 'feed',
@@ -69,11 +70,24 @@ self.addEventListener('notificationclick', (event) => {
       for (const client of clientList) {
         if ('focus' in client) {
           client.focus()
-          client.postMessage({ type: 'PUSH_NAVIGATE', screen: targetScreen })
+          client.postMessage({
+            type: 'PUSH_NAVIGATE',
+            screen: targetScreen,
+            gigId: notifData.gigId || notifData.gig_id || null,
+            conversationId: notifData.conversationId || notifData.conversation_id || null,
+          })
           return
         }
       }
-      return clients.openWindow('https://primaplug.com/dashboard')
+      const targetUrl = new URL('/dashboard', self.location.origin)
+      targetUrl.searchParams.set('screen', targetScreen)
+      if (notifData.gigId || notifData.gig_id) {
+        targetUrl.searchParams.set('gigId', notifData.gigId || notifData.gig_id)
+      }
+      if (notifData.conversationId || notifData.conversation_id) {
+        targetUrl.searchParams.set('conversationId', notifData.conversationId || notifData.conversation_id)
+      }
+      return clients.openWindow(targetUrl.href)
     })
   )
 })

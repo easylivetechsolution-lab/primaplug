@@ -4,8 +4,8 @@ export default function ScreenLoader() {
       <div style={{ position: 'relative', width: '72px', height: '72px' }}>
         <div style={{
           position: 'absolute', inset: 0,
-          border: '3px solid #E2E0FF',
-          borderTop: '3px solid #6C47FF',
+          border: '3px solid var(--color-border)',
+          borderTop: '3px solid var(--color-brand)',
           borderRadius: '50%',
           animation: 'primaspin 0.8s linear infinite',
           boxSizing: 'border-box',

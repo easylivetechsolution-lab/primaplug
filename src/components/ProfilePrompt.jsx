@@ -14,10 +14,10 @@ export default function ProfilePrompt({ profile, onClose, onGoToProfile }) {
       fontFamily: "'Plus Jakarta Sans', sans-serif"
     }} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} style={{
-        background: '#fff', borderRadius: '24px',
+        background: 'var(--color-surface)', borderRadius: '24px',
         padding: '28px', width: '100%', maxWidth: '420px',
         boxShadow: '0 20px 60px rgba(108,71,255,0.25)',
-        border: '1.5px solid #E2E0FF',
+        border: '1.5px solid var(--color-border)',
         animation: 'slideUp 0.3s cubic-bezier(0.16,1,0.3,1)'
       }}>
         {/* Header */}
@@ -25,10 +25,10 @@ export default function ProfilePrompt({ profile, onClose, onGoToProfile }) {
           <div style={{ fontSize: '48px', marginBottom: '12px' }}>👤</div>
           <div style={{
             fontSize: '20px', fontWeight: '800',
-            color: '#14123A', marginBottom: '8px'
+            color: 'var(--color-text)', marginBottom: '8px'
           }}>Complete Your Profile First</div>
           <div style={{
-            fontSize: '13px', color: '#8B8FAF',
+            fontSize: '13px', color: 'var(--color-text-muted)',
             lineHeight: '1.6'
           }}>
             People need to know who they're working with.
@@ -43,28 +43,28 @@ export default function ProfilePrompt({ profile, onClose, onGoToProfile }) {
             alignItems: 'center', marginBottom: '8px'
           }}>
             <span style={{
-              fontSize: '12px', fontWeight: '700', color: '#14123A'
+              fontSize: '12px', fontWeight: '700', color: 'var(--color-text)'
             }}>Profile Strength</span>
             <span style={{
               fontSize: '13px', fontWeight: '800',
-              color: score >= 80 ? '#00C48C' : '#6C47FF'
+              color: score >= 80 ? 'var(--color-success)' : 'var(--color-brand)'
             }}>{score}%</span>
           </div>
           <div style={{
-            height: '8px', background: '#F5F4FF',
+            height: '8px', background: 'var(--color-page)',
             borderRadius: '4px', overflow: 'hidden'
           }}>
             <div style={{
               height: '100%', borderRadius: '4px',
               width: `${score}%`,
               background: score >= 80
-                ? 'linear-gradient(90deg, #00C48C, #00E5A8)'
-                : 'linear-gradient(90deg, #6C47FF, #9B59FF)',
+                ? 'linear-gradient(90deg, var(--color-success), #00E5A8)'
+                : 'linear-gradient(90deg, var(--color-brand), var(--color-brand-mid))',
               transition: 'width 0.8s ease'
             }} />
           </div>
           <div style={{
-            fontSize: '11px', color: '#A09DC8',
+            fontSize: '12px', color: 'var(--color-text-subtle)',
             marginTop: '5px'
           }}>{done} of {total} completed</div>
         </div>
@@ -72,12 +72,12 @@ export default function ProfilePrompt({ profile, onClose, onGoToProfile }) {
         {/* Missing Items */}
         {missing.length > 0 && (
           <div style={{
-            background: '#F5F4FF', borderRadius: '14px',
+            background: 'var(--color-page)', borderRadius: '14px',
             padding: '14px', marginBottom: '20px'
           }}>
             <div style={{
-              fontSize: '11px', fontWeight: '700',
-              color: '#A09DC8', textTransform: 'uppercase',
+              fontSize: '12px', fontWeight: '700',
+              color: 'var(--color-text-subtle)', textTransform: 'uppercase',
               letterSpacing: '0.8px', marginBottom: '10px'
             }}>Still needed</div>
             <div style={{
@@ -89,17 +89,17 @@ export default function ProfilePrompt({ profile, onClose, onGoToProfile }) {
                 }}>
                   <div style={{
                     width: '18px', height: '18px', borderRadius: '50%',
-                    border: '2px solid #E2E0FF', background: '#fff',
+                    border: '2px solid var(--color-border)', background: 'var(--color-surface)',
                     flexShrink: 0, display: 'flex',
                     alignItems: 'center', justifyContent: 'center'
                   }}>
                     <div style={{
                       width: '8px', height: '8px',
-                      borderRadius: '50%', background: '#E2E0FF'
+                      borderRadius: '50%', background: 'var(--color-border)'
                     }} />
                   </div>
                   <span style={{
-                    fontSize: '13px', color: '#5B5887', fontWeight: '500'
+                    fontSize: '13px', color: 'var(--color-text-muted)', fontWeight: '500'
                   }}>{item.label}</span>
                 </div>
               ))}
@@ -112,9 +112,9 @@ export default function ProfilePrompt({ profile, onClose, onGoToProfile }) {
           onClick={onGoToProfile}
           style={{
             width: '100%',
-            background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+            background: 'var(--color-brand-gradient)',
             border: 'none', borderRadius: '12px', padding: '14px',
-            fontSize: '14px', fontWeight: '700', color: '#fff',
+            fontSize: '14px', fontWeight: '700', color: 'var(--color-surface)',
             cursor: 'pointer', fontFamily: 'inherit',
             boxShadow: '0 4px 20px rgba(108,71,255,0.35)',
             marginBottom: '10px'
@@ -127,7 +127,7 @@ export default function ProfilePrompt({ profile, onClose, onGoToProfile }) {
             width: '100%', background: 'transparent',
             border: 'none', padding: '10px',
             fontSize: '13px', fontWeight: '600',
-            color: '#A09DC8', cursor: 'pointer',
+            color: 'var(--color-text-subtle)', cursor: 'pointer',
             fontFamily: 'inherit'
           }}>Maybe later</button>
 

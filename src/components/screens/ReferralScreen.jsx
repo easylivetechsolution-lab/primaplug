@@ -154,18 +154,18 @@ export default function ReferralScreen() {
       <div style={{ marginBottom: '24px' }}>
         <div style={{
           fontSize: '22px', fontWeight: '800',
-          color: '#14123A', marginBottom: '4px'
+          color: 'var(--color-text)', marginBottom: '4px'
         }}>Refer & Earn</div>
-        <div style={{ fontSize: '13px', color: '#8B8FAF' }}>
+        <div style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>
           Invite people to Prima and earn trust score + Prima Credits
         </div>
       </div>
 
       {/* Rewards Banner */}
       <div style={{
-        background: 'linear-gradient(135deg, #6C47FF 0%, #9B59FF 50%, #FF4DCF 100%)',
+        background: 'linear-gradient(135deg, var(--color-brand) 0%, var(--color-brand-mid) 50%, var(--color-brand-highlight) 100%)',
         borderRadius: '20px', padding: '20px',
-        color: '#fff', marginBottom: '20px'
+        color: 'var(--color-surface)', marginBottom: '20px'
       }}>
         <div style={{
           fontSize: '12px', opacity: 0.8,
@@ -183,8 +183,8 @@ export default function ReferralScreen() {
             <div style={{
               fontSize: '28px', fontWeight: '800', marginBottom: '3px'
             }}>+{REFERRAL_REWARDS.referrerTrust}</div>
-            <div style={{ fontSize: '11px', opacity: 0.8 }}>Trust Score</div>
-            <div style={{ fontSize: '10px', opacity: 0.6, marginTop: '2px' }}>
+            <div style={{ fontSize: '12px', opacity: 0.8 }}>Trust Score</div>
+            <div style={{ fontSize: '12px', opacity: 0.6, marginTop: '2px' }}>
               You get
             </div>
           </div>
@@ -195,8 +195,8 @@ export default function ReferralScreen() {
             <div style={{
               fontSize: '28px', fontWeight: '800', marginBottom: '3px'
             }}>{REFERRAL_REWARDS.referrerCredits}</div>
-            <div style={{ fontSize: '11px', opacity: 0.8 }}>Prima Credits</div>
-            <div style={{ fontSize: '10px', opacity: 0.6, marginTop: '2px' }}>
+            <div style={{ fontSize: '12px', opacity: 0.8 }}>Prima Credits</div>
+            <div style={{ fontSize: '12px', opacity: 0.6, marginTop: '2px' }}>
               You get
             </div>
           </div>
@@ -204,7 +204,7 @@ export default function ReferralScreen() {
         <div style={{
           background: 'rgba(255,255,255,0.1)',
           borderRadius: '10px', padding: '10px 14px',
-          fontSize: '11px', opacity: 0.9, lineHeight: '1.5'
+          fontSize: '12px', opacity: 0.9, lineHeight: '1.5'
         }}>
           🎁 Your friend gets +{REFERRAL_REWARDS.referredTrust} trust score and {REFERRAL_REWARDS.referredCredits} Prima Credits when they complete their profile
         </div>
@@ -216,12 +216,12 @@ export default function ReferralScreen() {
         gap: '10px', marginBottom: '20px'
       }}>
         {[
-          { label: 'Total Referred', value: referrals.length, color: '#6C47FF', icon: '👥' },
-          { label: 'Completed', value: completed, color: '#00C48C', icon: '✅' },
-          { label: 'Credits Earned', value: creditsFromReferrals, color: '#FFB800', icon: '⭐' },
+          { label: 'Total Referred', value: referrals.length, color: 'var(--color-brand)', icon: '👥' },
+          { label: 'Completed', value: completed, color: 'var(--color-success)', icon: '✅' },
+          { label: 'Credits Earned', value: creditsFromReferrals, color: 'var(--color-warning-gold)', icon: '⭐' },
         ].map(({ label, value, color, icon }) => (
           <div key={label} style={{
-            background: '#fff', border: '1.5px solid #E2E0FF',
+            background: 'var(--color-surface)', border: '1.5px solid var(--color-border)',
             borderRadius: '14px', padding: '14px', textAlign: 'center'
           }}>
             <div style={{ fontSize: '20px', marginBottom: '4px' }}>{icon}</div>
@@ -230,7 +230,7 @@ export default function ReferralScreen() {
               color, marginBottom: '3px'
             }}>{value}</div>
             <div style={{
-              fontSize: '9px', color: '#A09DC8',
+              fontSize: '12px', color: 'var(--color-text-subtle)',
               fontWeight: '600', textTransform: 'uppercase',
               letterSpacing: '0.5px'
             }}>{label}</div>
@@ -240,25 +240,25 @@ export default function ReferralScreen() {
 
       {/* Referral Link */}
       <div style={{
-        background: '#fff', border: '1.5px solid #E2E0FF',
+        background: 'var(--color-surface)', border: '1.5px solid var(--color-border)',
         borderRadius: '16px', padding: '18px',
         marginBottom: '14px'
       }}>
         <div style={{
-          fontSize: '11px', fontWeight: '700', color: '#A09DC8',
+          fontSize: '12px', fontWeight: '700', color: 'var(--color-text-subtle)',
           textTransform: 'uppercase', letterSpacing: '1px',
           marginBottom: '12px'
         }}>Your Referral Link</div>
 
         {/* Link display */}
         <div style={{
-          background: '#F5F4FF', borderRadius: '12px',
+          background: 'var(--color-page)', borderRadius: '12px',
           padding: '12px 14px', marginBottom: '12px',
           display: 'flex', justifyContent: 'space-between',
           alignItems: 'center', gap: '10px'
         }}>
           <div style={{
-            fontSize: '12px', color: '#6C47FF',
+            fontSize: '12px', color: 'var(--color-brand)',
             fontWeight: '600', overflow: 'hidden',
             textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             flex: 1
@@ -267,11 +267,11 @@ export default function ReferralScreen() {
             onClick={copyLink}
             disabled={!referralCode}
             style={{
-              background: copied ? '#DFFDF4' : '#EEE9FF',
-              border: `1.5px solid ${copied ? '#7EECD2' : '#B8A5FF'}`,
+              background: copied ? 'var(--color-success-soft)' : 'var(--color-brand-soft)',
+              border: `1.5px solid ${copied ? 'var(--color-success-border)' : 'var(--color-brand-border-strong)'}`,
               borderRadius: '8px', padding: '6px 12px',
               fontSize: '12px', fontWeight: '700',
-              color: copied ? '#00C48C' : '#6C47FF',
+              color: copied ? 'var(--color-success)' : 'var(--color-brand)',
               cursor: referralCode ? 'pointer' : 'not-allowed', fontFamily: 'inherit',
               opacity: referralCode ? 1 : 0.65,
               whiteSpace: 'nowrap', transition: 'all 0.2s',
@@ -287,16 +287,16 @@ export default function ReferralScreen() {
           marginBottom: '14px'
         }}>
           <div style={{
-            background: '#EEE9FF', border: '1.5px solid #B8A5FF',
+            background: 'var(--color-brand-soft)', border: '1.5px solid var(--color-brand-border-strong)',
             borderRadius: '10px', padding: '8px 16px',
             fontSize: '16px', fontWeight: '800',
-            color: '#6C47FF', letterSpacing: '2px',
+            color: 'var(--color-brand)', letterSpacing: '2px',
             flex: 1, textAlign: 'center'
           }}>
             {referralCode ? referralCode.toUpperCase() : generatingCode ? 'CREATING...' : 'PENDING'}
           </div>
           <div style={{
-            fontSize: '11px', color: '#A09DC8', flex: 1,
+            fontSize: '12px', color: 'var(--color-text-subtle)', flex: 1,
             lineHeight: '1.4'
           }}>
             Your unique referral code
@@ -311,7 +311,7 @@ export default function ReferralScreen() {
             style={{
               flex: 1, background: '#25D366',
               border: 'none', borderRadius: '12px', padding: '12px',
-              fontSize: '13px', fontWeight: '700', color: '#fff',
+              fontSize: '13px', fontWeight: '700', color: 'var(--color-surface)',
               cursor: referralCode ? 'pointer' : 'not-allowed', fontFamily: 'inherit',
               opacity: referralCode ? 1 : 0.65,
               display: 'flex', alignItems: 'center',
@@ -323,9 +323,9 @@ export default function ReferralScreen() {
             onClick={shareTwitter}
             disabled={!referralCode}
             style={{
-              flex: 1, background: '#14123A',
+              flex: 1, background: 'var(--color-text)',
               border: 'none', borderRadius: '12px', padding: '12px',
-              fontSize: '13px', fontWeight: '700', color: '#fff',
+              fontSize: '13px', fontWeight: '700', color: 'var(--color-surface)',
               cursor: referralCode ? 'pointer' : 'not-allowed', fontFamily: 'inherit',
               opacity: referralCode ? 1 : 0.65,
               display: 'flex', alignItems: 'center',
@@ -337,11 +337,11 @@ export default function ReferralScreen() {
             onClick={copyLink}
             disabled={!referralCode}
             style={{
-              flex: 1, background: '#F5F4FF',
-              border: '1.5px solid #E2E0FF',
+              flex: 1, background: 'var(--color-page)',
+              border: '1.5px solid var(--color-border)',
               borderRadius: '12px', padding: '12px',
               fontSize: '13px', fontWeight: '700',
-              color: '#8B8FAF', cursor: referralCode ? 'pointer' : 'not-allowed',
+              color: 'var(--color-text-muted)', cursor: referralCode ? 'pointer' : 'not-allowed',
               opacity: referralCode ? 1 : 0.65,
               fontFamily: 'inherit',
               display: 'flex', alignItems: 'center',
@@ -354,7 +354,7 @@ export default function ReferralScreen() {
 
       {/* Gig Share Rewards */}
       <div style={{
-        background: '#fff', border: '1.5px solid #E2E0FF',
+        background: 'var(--color-surface)', border: '1.5px solid var(--color-border)',
         borderRadius: '16px', padding: '18px',
         marginBottom: '14px'
       }}>
@@ -365,24 +365,24 @@ export default function ReferralScreen() {
         }}>
           <div>
             <div style={{
-              fontSize: '11px', fontWeight: '700', color: '#A09DC8',
+              fontSize: '12px', fontWeight: '700', color: 'var(--color-text-subtle)',
               textTransform: 'uppercase', letterSpacing: '1px',
               marginBottom: '6px'
             }}>Gig Share Rewards</div>
             <div style={{
-              fontSize: '13px', color: '#14123A',
+              fontSize: '13px', color: 'var(--color-text)',
               fontWeight: '600', lineHeight: 1.45
             }}>
               Share a gig. If your referred worker applies, gets accepted, and completes the work, you earn 5% of that gig payment.
             </div>
           </div>
           <div style={{
-            background: '#DFFDF4',
-            border: '1px solid #7EECD2',
-            color: '#008E66',
+            background: 'var(--color-success-soft)',
+            border: '1px solid var(--color-success-border)',
+            color: 'var(--color-success)',
             borderRadius: '999px',
             padding: '7px 10px',
-            fontSize: '11px',
+            fontSize: '12px',
             fontWeight: '800',
             whiteSpace: 'nowrap'
           }}>
@@ -396,8 +396,8 @@ export default function ReferralScreen() {
           gap: '10px'
         }}>
           {[
-            { label: 'Pending Work', value: pendingGigShares, color: '#FFB800', bg: '#FFF8E0', border: '#FFD966' },
-            { label: 'Paid Shares', value: paidGigShares, color: '#00C48C', bg: '#DFFDF4', border: '#7EECD2' },
+            { label: 'Pending Work', value: pendingGigShares, color: 'var(--color-warning-gold)', bg: 'var(--color-warning-gold-soft)', border: 'var(--color-warning-gold-border)' },
+            { label: 'Paid Shares', value: paidGigShares, color: 'var(--color-success)', bg: 'var(--color-success-soft)', border: 'var(--color-success-border)' },
           ].map(({ label, value, color, bg, border }) => (
             <div key={label} style={{
               background: bg,
@@ -413,7 +413,7 @@ export default function ReferralScreen() {
                 marginBottom: '3px'
               }}>{value}</div>
               <div style={{
-                fontSize: '9px',
+                fontSize: '12px',
                 color: '#6F7190',
                 fontWeight: '700',
                 textTransform: 'uppercase',
@@ -426,12 +426,12 @@ export default function ReferralScreen() {
 
       {/* How it works */}
       <div style={{
-        background: '#fff', border: '1.5px solid #E2E0FF',
+        background: 'var(--color-surface)', border: '1.5px solid var(--color-border)',
         borderRadius: '16px', padding: '18px',
         marginBottom: '14px'
       }}>
         <div style={{
-          fontSize: '11px', fontWeight: '700', color: '#A09DC8',
+          fontSize: '12px', fontWeight: '700', color: 'var(--color-text-subtle)',
           textTransform: 'uppercase', letterSpacing: '1px',
           marginBottom: '14px'
         }}>How It Works</div>
@@ -444,17 +444,17 @@ export default function ReferralScreen() {
           <div key={step} style={{
             display: 'flex', gap: '12px', alignItems: 'center',
             padding: '10px 0',
-            borderBottom: step !== '4' ? '1px solid #F5F4FF' : 'none'
+            borderBottom: step !== '4' ? '1px solid var(--color-page)' : 'none'
           }}>
             <div style={{
               width: '32px', height: '32px', borderRadius: '50%',
-              background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+              background: 'var(--color-brand-gradient)',
               display: 'flex', alignItems: 'center',
               justifyContent: 'center', fontSize: '13px',
-              fontWeight: '800', color: '#fff', flexShrink: 0
+              fontWeight: '800', color: 'var(--color-surface)', flexShrink: 0
             }}>{step}</div>
             <span style={{ fontSize: '14px' }}>{icon}</span>
-            <div style={{ fontSize: '13px', color: '#14123A', fontWeight: '500' }}>
+            <div style={{ fontSize: '13px', color: 'var(--color-text)', fontWeight: '500' }}>
               {text}
             </div>
           </div>
@@ -464,12 +464,12 @@ export default function ReferralScreen() {
       {/* My Referrals */}
       {referrals.length > 0 && (
         <div style={{
-          background: '#fff', border: '1.5px solid #E2E0FF',
+          background: 'var(--color-surface)', border: '1.5px solid var(--color-border)',
           borderRadius: '16px', padding: '18px',
           marginBottom: '14px'
         }}>
           <div style={{
-            fontSize: '11px', fontWeight: '700', color: '#A09DC8',
+            fontSize: '12px', fontWeight: '700', color: 'var(--color-text-subtle)',
             textTransform: 'uppercase', letterSpacing: '1px',
             marginBottom: '14px'
           }}>My Referrals ({referrals.length})</div>
@@ -478,14 +478,14 @@ export default function ReferralScreen() {
               display: 'flex', gap: '10px', alignItems: 'center',
               padding: '10px 0',
               borderBottom: i < referrals.length - 1
-                ? '1px solid #F5F4FF' : 'none'
+                ? '1px solid var(--color-page)' : 'none'
             }}>
               <div style={{
                 width: '36px', height: '36px', borderRadius: '10px',
-                background: '#EEE9FF', display: 'flex',
+                background: 'var(--color-brand-soft)', display: 'flex',
                 alignItems: 'center', justifyContent: 'center',
                 fontSize: '14px', fontWeight: '800',
-                color: '#6C47FF', overflow: 'hidden', flexShrink: 0
+                color: 'var(--color-brand)', overflow: 'hidden', flexShrink: 0
               }}>
                 {ref.referred?.avatar_url ? (
                   <img src={ref.referred.avatar_url} alt=""
@@ -495,22 +495,22 @@ export default function ReferralScreen() {
               <div style={{ flex: 1 }}>
                 <div style={{
                   fontSize: '13px', fontWeight: '600',
-                  color: '#14123A', marginBottom: '2px'
+                  color: 'var(--color-text)', marginBottom: '2px'
                 }}>
                   {ref.referred?.full_name || 'Unknown'}
                 </div>
-                <div style={{ fontSize: '10px', color: '#A09DC8' }}>
+                <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)' }}>
                   Joined {parseTimestamp(ref.created_at).toLocaleDateString('en-US', {
                     month: 'short', day: 'numeric'
                   })}
                 </div>
               </div>
               <div style={{
-                background: ref.status === 'completed' ? '#DFFDF4' : '#FFF8E0',
-                border: `1px solid ${ref.status === 'completed' ? '#7EECD2' : '#FFD966'}`,
+                background: ref.status === 'completed' ? 'var(--color-success-soft)' : 'var(--color-warning-gold-soft)',
+                border: `1px solid ${ref.status === 'completed' ? 'var(--color-success-border)' : 'var(--color-warning-gold-border)'}`,
                 borderRadius: '6px', padding: '3px 9px',
-                fontSize: '10px', fontWeight: '700',
-                color: ref.status === 'completed' ? '#00C48C' : '#FFB800'
+                fontSize: '12px', fontWeight: '700',
+                color: ref.status === 'completed' ? 'var(--color-success)' : 'var(--color-warning-gold)'
               }}>
                 {ref.status === 'completed' ? `✓ +${REFERRAL_REWARDS.referrerCredits} credits` : '⏳ Pending'}
               </div>
@@ -522,12 +522,12 @@ export default function ReferralScreen() {
       {/* My Gig Shares */}
       {gigReferrals.length > 0 && (
         <div style={{
-          background: '#fff', border: '1.5px solid #E2E0FF',
+          background: 'var(--color-surface)', border: '1.5px solid var(--color-border)',
           borderRadius: '16px', padding: '18px',
           marginBottom: '14px'
         }}>
           <div style={{
-            fontSize: '11px', fontWeight: '700', color: '#A09DC8',
+            fontSize: '12px', fontWeight: '700', color: 'var(--color-text-subtle)',
             textTransform: 'uppercase', letterSpacing: '1px',
             marginBottom: '14px'
           }}>My Gig Shares ({gigReferrals.length})</div>
@@ -541,16 +541,16 @@ export default function ReferralScreen() {
                 display: 'flex', gap: '10px', alignItems: 'center',
                 padding: '10px 0',
                 borderBottom: i < gigReferrals.length - 1
-                  ? '1px solid #F5F4FF' : 'none'
+                  ? '1px solid var(--color-page)' : 'none'
               }}>
                 <div style={{
                   width: '36px', height: '36px', borderRadius: '10px',
-                  background: isPaid ? '#DFFDF4' : '#FFF8E0',
-                  border: `1px solid ${isPaid ? '#7EECD2' : '#FFD966'}`,
+                  background: isPaid ? 'var(--color-success-soft)' : 'var(--color-warning-gold-soft)',
+                  border: `1px solid ${isPaid ? 'var(--color-success-border)' : 'var(--color-warning-gold-border)'}`,
                   display: 'flex',
                   alignItems: 'center', justifyContent: 'center',
                   fontSize: '14px', fontWeight: '800',
-                  color: isPaid ? '#00A876' : '#FFB800',
+                  color: isPaid ? '#00A876' : 'var(--color-warning-gold)',
                   overflow: 'hidden', flexShrink: 0
                 }}>
                   {ref.referred?.avatar_url ? (
@@ -561,26 +561,26 @@ export default function ReferralScreen() {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{
                     fontSize: '13px', fontWeight: '700',
-                    color: '#14123A', marginBottom: '2px',
+                    color: 'var(--color-text)', marginBottom: '2px',
                     overflow: 'hidden', textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap'
                   }}>
                     {ref.gigs?.title || 'Shared gig'}
                   </div>
-                  <div style={{ fontSize: '10px', color: '#A09DC8' }}>
+                  <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)' }}>
                     {ref.referred?.full_name || 'Worker'} · {parseTimestamp(ref.created_at).toLocaleDateString('en-US', {
                       month: 'short', day: 'numeric'
                     })}
                   </div>
                 </div>
                 <div style={{
-                  background: isPaid ? '#DFFDF4' : '#FFF8E0',
-                  border: `1px solid ${isPaid ? '#7EECD2' : '#FFD966'}`,
+                  background: isPaid ? 'var(--color-success-soft)' : 'var(--color-warning-gold-soft)',
+                  border: `1px solid ${isPaid ? 'var(--color-success-border)' : 'var(--color-warning-gold-border)'}`,
                   borderRadius: '8px',
                   padding: '5px 9px',
-                  fontSize: '10px',
+                  fontSize: '12px',
                   fontWeight: '800',
-                  color: isPaid ? '#00A876' : '#FFB800',
+                  color: isPaid ? '#00A876' : 'var(--color-warning-gold)',
                   whiteSpace: 'nowrap'
                 }}>
                   {isPaid ? `${currency} ${rewardAmount.toLocaleString()} paid` : 'Pending completion'}
@@ -593,8 +593,8 @@ export default function ReferralScreen() {
 
       {/* Withdraw Credits */}
       <div style={{
-        background: 'linear-gradient(135deg, #DFFDF4, #E8FFF5)',
-        border: '1.5px solid #7EECD2',
+        background: 'linear-gradient(135deg, var(--color-success-soft), #E8FFF5)',
+        border: '1.5px solid var(--color-success-border)',
         borderRadius: '16px', padding: '18px',
         marginBottom: '14px'
       }}>
@@ -604,15 +604,15 @@ export default function ReferralScreen() {
         }}>
           <div>
             <div style={{
-              fontSize: '14px', fontWeight: '700', color: '#14123A',
+              fontSize: '14px', fontWeight: '700', color: 'var(--color-text)',
               marginBottom: '2px'
             }}>💸 Withdraw Your Credits</div>
-            <div style={{ fontSize: '12px', color: '#8B8FAF' }}>
+            <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
               Convert credits to cash · {CREDITS_PER_DOLLAR} credits = $1
             </div>
           </div>
           <div style={{
-            background: '#00C48C', color: '#fff',
+            background: 'var(--color-success)', color: 'var(--color-surface)',
             borderRadius: '10px', padding: '6px 12px',
             fontSize: '16px', fontWeight: '800'
           }}>
@@ -623,10 +623,10 @@ export default function ReferralScreen() {
           onClick={() => window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'withdrawal' }))}
           style={{
             width: '100%',
-            background: 'linear-gradient(135deg, #00C48C, #00A876)',
+            background: 'linear-gradient(135deg, var(--color-success), #00A876)',
             border: 'none', borderRadius: '12px',
             padding: '12px', fontSize: '14px',
-            fontWeight: '700', color: '#fff',
+            fontWeight: '700', color: 'var(--color-surface)',
             cursor: 'pointer', fontFamily: 'inherit',
             boxShadow: '0 4px 16px rgba(0,196,140,0.3)'
           }}>
@@ -637,11 +637,11 @@ export default function ReferralScreen() {
       {/* Leaderboard */}
       {leaderboard.length > 0 && (
         <div style={{
-          background: '#fff', border: '1.5px solid #E2E0FF',
+          background: 'var(--color-surface)', border: '1.5px solid var(--color-border)',
           borderRadius: '16px', padding: '18px'
         }}>
           <div style={{
-            fontSize: '11px', fontWeight: '700', color: '#A09DC8',
+            fontSize: '12px', fontWeight: '700', color: 'var(--color-text-subtle)',
             textTransform: 'uppercase', letterSpacing: '1px',
             marginBottom: '14px'
           }}>🏆 Top Referrers</div>
@@ -652,25 +652,25 @@ export default function ReferralScreen() {
               <div key={item.id} style={{
                 display: 'flex', gap: '10px', alignItems: 'center',
                 borderBottom: i < leaderboard.length - 1
-                  ? '1px solid #F5F4FF' : 'none',
-                background: isMe ? '#F8F7FF' : 'transparent',
+                  ? '1px solid var(--color-page)' : 'none',
+                background: isMe ? 'var(--color-surface-tint)' : 'transparent',
                 borderRadius: isMe ? '10px' : '0',
                 padding: isMe ? '10px' : '10px 0',
                 margin: isMe ? '0 -4px' : '0'
               }}>
                 <div style={{
                   fontSize: i < 3 ? '20px' : '14px',
-                  fontWeight: '700', color: '#A09DC8',
+                  fontWeight: '700', color: 'var(--color-text-subtle)',
                   width: '28px', textAlign: 'center', flexShrink: 0
                 }}>
                   {i < 3 ? medals[i] : `#${i + 1}`}
                 </div>
                 <div style={{
                   width: '34px', height: '34px', borderRadius: '9px',
-                  background: '#EEE9FF', display: 'flex',
+                  background: 'var(--color-brand-soft)', display: 'flex',
                   alignItems: 'center', justifyContent: 'center',
                   fontSize: '13px', fontWeight: '800',
-                  color: '#6C47FF', overflow: 'hidden', flexShrink: 0
+                  color: 'var(--color-brand)', overflow: 'hidden', flexShrink: 0
                 }}>
                   {item.user?.avatar_url ? (
                     <img src={item.user.avatar_url} alt=""
@@ -680,27 +680,27 @@ export default function ReferralScreen() {
                 <div style={{ flex: 1 }}>
                   <div style={{
                     fontSize: '13px', fontWeight: isMe ? '700' : '500',
-                    color: isMe ? '#6C47FF' : '#14123A'
+                    color: isMe ? 'var(--color-brand)' : 'var(--color-text)'
                   }}>
                     {item.user?.full_name || 'Unknown'}
                     {isMe && ' (You)'}
                   </div>
-                  <div style={{ fontSize: '10px', color: '#A09DC8' }}>
+                  <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)' }}>
                     Trust {item.user?.trust_score || 100}%
                   </div>
                 </div>
                 <div style={{
-                  background: i === 0 ? '#FFF8E0' : '#F5F4FF',
-                  border: `1px solid ${i === 0 ? '#FFD966' : '#E2E0FF'}`,
+                  background: i === 0 ? 'var(--color-warning-gold-soft)' : 'var(--color-page)',
+                  border: `1px solid ${i === 0 ? 'var(--color-warning-gold-border)' : 'var(--color-border)'}`,
                   borderRadius: '8px', padding: '5px 10px',
                   textAlign: 'center', flexShrink: 0
                 }}>
                   <div style={{
                     fontSize: '14px', fontWeight: '800',
-                    color: i === 0 ? '#FFB800' : '#6C47FF'
+                    color: i === 0 ? 'var(--color-warning-gold)' : 'var(--color-brand)'
                   }}>{item.count}</div>
                   <div style={{
-                    fontSize: '8px', color: '#A09DC8',
+                    fontSize: '12px', color: 'var(--color-text-subtle)',
                     textTransform: 'uppercase', letterSpacing: '0.3px'
                   }}>referrals</div>
                 </div>

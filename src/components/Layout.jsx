@@ -56,17 +56,17 @@ function AppDownloadBanner() {
 
   return (
     <div style={{
-      background: 'linear-gradient(135deg, #14123A 0%, #1E1B4B 100%)',
+      background: 'linear-gradient(135deg, var(--color-text) 0%, var(--color-brand-deep) 100%)',
       padding: '10px 16px',
       display: 'flex', alignItems: 'center', gap: '10px',
       flexShrink: 0, zIndex: 9400, position: 'relative'
     }}>
       <span style={{ fontSize: '22px', flexShrink: 0 }}>📱</span>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: '12px', fontWeight: '700', color: '#fff', marginBottom: '2px' }}>
+        <div style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-surface)', marginBottom: '2px' }}>
           Get the PrimaPlug App
         </div>
-        <div style={{ fontSize: '10px', color: '#A09DC8', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           Faster experience — real-time notifications & live tracking
         </div>
       </div>
@@ -76,9 +76,9 @@ function AppDownloadBanner() {
             href={ANDROID_APK_URL}
             download
             style={{
-              background: '#6C47FF', color: '#fff',
+              background: 'var(--color-brand)', color: 'var(--color-surface)',
               padding: '6px 12px', borderRadius: '8px',
-              fontSize: '11px', fontWeight: '700',
+              fontSize: '13px', fontWeight: '700',
               textDecoration: 'none', whiteSpace: 'nowrap',
               display: 'flex', alignItems: 'center', gap: '4px'
             }}>
@@ -91,9 +91,9 @@ function AppDownloadBanner() {
             style={{
               background: 'rgba(255,255,255,0.12)',
               border: '1px solid rgba(255,255,255,0.25)',
-              color: '#fff',
+              color: 'var(--color-surface)',
               padding: '6px 12px', borderRadius: '8px',
-              fontSize: '11px', fontWeight: '700',
+              fontSize: '13px', fontWeight: '700',
               whiteSpace: 'nowrap', cursor: 'pointer',
               display: 'flex', alignItems: 'center', gap: '4px',
               position: 'relative', fontFamily: 'inherit'
@@ -104,14 +104,14 @@ function AppDownloadBanner() {
                 onClick={e => e.stopPropagation()}
                 style={{
                   position: 'absolute', bottom: 'calc(100% + 8px)', right: 0,
-                  background: '#fff', borderRadius: '12px',
-                  border: '1.5px solid #E2E0FF',
+                  background: 'var(--color-surface)', borderRadius: '12px',
+                  border: '1.5px solid var(--color-border)',
                   boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
                   padding: '12px 14px', minWidth: '220px',
-                  textAlign: 'left', color: '#14123A', zIndex: 9999,
+                  textAlign: 'left', color: 'var(--color-text)', zIndex: 9999,
                   fontWeight: '400'
                 }}>
-                <div style={{ fontSize: '12px', fontWeight: '700', marginBottom: '8px', color: '#14123A' }}>
+                <div style={{ fontSize: '12px', fontWeight: '700', marginBottom: '8px', color: 'var(--color-text)' }}>
                   Add PrimaPlug to iPhone
                 </div>
                 {[
@@ -120,11 +120,11 @@ function AppDownloadBanner() {
                   '3. Scroll down → "Add to Home Screen"',
                   '4. Tap "Add" to confirm',
                 ].map((step, i) => (
-                  <div key={i} style={{ fontSize: '11px', color: '#4B5563', marginBottom: '5px', lineHeight: '1.4' }}>
+                  <div key={i} style={{ fontSize: '13px', color: 'var(--color-text-muted)', marginBottom: '5px', lineHeight: '1.4' }}>
                     {step}
                   </div>
                 ))}
-                <div style={{ fontSize: '10px', color: '#A09DC8', marginTop: '8px', borderTop: '1px solid #F5F4FF', paddingTop: '6px' }}>
+                <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)', marginTop: '8px', borderTop: '1px solid var(--color-page)', paddingTop: '6px' }}>
                   Must use Safari — Chrome on iOS won't work
                 </div>
               </div>
@@ -132,10 +132,10 @@ function AppDownloadBanner() {
           </button>
         )}
       </div>
-      <button
+      <button 
         onClick={dismiss}
         style={{
-          background: 'none', border: 'none', color: '#8B8FAF',
+          background: 'none', border: 'none', color: 'var(--color-text-muted)',
           fontSize: '18px', cursor: 'pointer', padding: '0 2px',
           lineHeight: 1, flexShrink: 0
         }}>×</button>
@@ -149,7 +149,10 @@ export default function Layout() {
   const { hasUnpaidCommissions } = useCredits()
   const { t } = useLanguage()
   const navigate = useNavigate()
-  const [screen, setScreen] = useState(() => normalizeDashboardScreen(window.history.state?.screen || 'map'))
+  const [screen, setScreen] = useState(() => {
+    const requestedScreen = new URLSearchParams(window.location.search).get('screen')
+    return normalizeDashboardScreen(window.history.state?.screen || requestedScreen || 'map')
+  })
   const [showPost, setShowPost] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
   const [showMobileMore, setShowMobileMore] = useState(false)
@@ -199,6 +202,24 @@ export default function Layout() {
     const handler = (event) => {
       if (event.data?.type !== 'PUSH_NAVIGATE') return
       navigateTo(event.data.screen || 'feed')
+      if (event.data.gigId && ['feed'].includes(event.data.screen || 'feed')) {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            window.dispatchEvent(new CustomEvent('openGigDetail', {
+              detail: event.data.gigId
+            }))
+          })
+        })
+      }
+      if (event.data.conversationId) {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            window.dispatchEvent(new CustomEvent('openChat', {
+              detail: { convoId: event.data.conversationId }
+            }))
+          })
+        })
+      }
     }
     navigator.serviceWorker.addEventListener('message', handler)
     return () => navigator.serviceWorker.removeEventListener('message', handler)
@@ -274,12 +295,41 @@ export default function Layout() {
 
   // Mark the current dashboard history entry without adding an extra Back step.
   useEffect(() => {
-    const currentScreen = normalizeDashboardScreen(window.history.state?.screen || 'map')
+    const currentScreen = normalizeDashboardScreen(window.history.state?.screen || screen)
     window.history.replaceState(
       { ...(window.history.state || {}), screen: currentScreen },
       '',
-      ''
+      `${window.location.pathname}${window.location.search}`
     )
+  }, [])
+
+  // Restore the specific destination when a push opens a fresh app window.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const gigId = params.get('gigId')
+    const conversationId = params.get('conversationId')
+    if (!gigId && !conversationId) return
+
+    params.delete('gigId')
+    params.delete('conversationId')
+    params.delete('screen')
+    const query = params.toString()
+    window.history.replaceState(
+      { ...(window.history.state || {}), screen },
+      '',
+      `${window.location.pathname}${query ? `?${query}` : ''}`
+    )
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (gigId && screen === 'feed') {
+          window.dispatchEvent(new CustomEvent('openGigDetail', { detail: gigId }))
+        }
+        if (conversationId && screen === 'chat') {
+          window.dispatchEvent(new CustomEvent('openChat', { detail: { convoId: conversationId } }))
+        }
+      })
+    })
   }, [])
 
 const walletReturnHandled = useRef(false)
@@ -352,7 +402,7 @@ useEffect(() => {
     { key: 'referral', icon: 'refer', label: 'Refer & Earn', action: () => navigateTo('referral') },
     { key: 'wallet', icon: 'wallet', label: 'Wallet', action: () => navigateTo('wallet') },
     { key: 'commission', icon: 'owed', label: 'Commission', action: () => navigateTo('commission') },
-    { key: 'withdrawal', icon: 'withdraw', label: 'Withdraw Credits', action: () => navigateTo('withdrawal') },
+    { key: 'withdrawal', icon: 'withdraw', label: 'Credits', action: () => navigateTo('withdrawal') },
     { key: 'saved', icon: 'saved', label: 'Saved Gigs', action: () => navigateTo('saved') },
     { key: 'stats', icon: 'stats', label: 'My Stats', action: () => navigateTo('stats') },
     { key: 'settings', icon: 'settings', label: 'Settings', action: () => navigateTo('settings') },
@@ -375,22 +425,22 @@ useEffect(() => {
   }
 
   return (
-    <div ref={appRef} style={{
+    <div ref={appRef} className="prima-app-shell" style={{
       display: 'flex',
       flexDirection: 'column',
       height: '100dvh',
       position: 'fixed',
       top: 0, left: 0, right: 0,
       overflow: 'hidden',
-      background: '#F5F4FF',
+      background: 'var(--color-page)',
       fontFamily: "'Plus Jakarta Sans', sans-serif"
     }}>
 
       {/* TOP BAR */}
       <div style={{
         height: '64px',
-        background: '#fff',
-        borderBottom: '1.5px solid #E2E0FF',
+        background: 'var(--color-surface)',
+        borderBottom: '1.5px solid var(--color-border)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -414,23 +464,23 @@ useEffect(() => {
             }}
           />
           <div>
-            <div className="app-logo-text" style={{ fontSize: '20px', fontWeight: '800', color: '#14123A', letterSpacing: '-0.5px' }}>PrimaPlug</div>
-            <div className="brand-subtitle" style={{ fontSize: '9px', color: '#A09DC8', letterSpacing: '1.5px', textTransform: 'uppercase' }}>Real-Time Workforce Network</div>
+            <div className="app-logo-text" style={{ fontSize: '20px', fontWeight: '800', color: 'var(--color-text)', letterSpacing: '-0.5px' }}>PrimaPlug</div>
+            <div className="brand-subtitle" style={{ fontSize: '12px', color: 'var(--color-text-subtle)', letterSpacing: '1.5px', textTransform: 'uppercase' }}>Real-Time Workforce Network</div>
           </div>
         </div>
 
         {/* Desktop Nav */}
         <div style={{ display: 'flex', gap: '4px' }} className="desktop-nav">
           {navItems.map(item => (
-            <button key={item.key} onClick={() => { navigateTo(item.key); setShowMobileMore(false) }}
+            <button key={item.key} className="app-nav-button" onClick={() => { navigateTo(item.key); setShowMobileMore(false) }}
               style={{
-                background: screen === item.key ? '#EEE9FF' : 'transparent',
-                border: `1.5px solid ${screen === item.key ? '#B8A5FF' : 'transparent'}`,
+                background: screen === item.key ? 'var(--color-brand-soft)' : 'transparent',
+                border: `1.5px solid ${screen === item.key ? 'var(--color-brand-border-strong)' : 'transparent'}`,
                 borderRadius: '10px',
                 padding: '7px 14px',
                 fontSize: '13px',
                 fontWeight: screen === item.key ? '700' : '500',
-                color: screen === item.key ? '#6C47FF' : '#8B8FAF',
+                color: screen === item.key ? 'var(--color-brand)' : 'var(--color-text-muted)',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
@@ -448,7 +498,7 @@ useEffect(() => {
                 <span style={{
                   position: 'absolute', top: '6px', right: '6px',
                   width: '7px', height: '7px', borderRadius: '50%',
-                  background: '#FF3366', border: '1.5px solid #fff'
+                  background: 'var(--color-danger-accent)', border: '1.5px solid #fff'
                 }} />
               )}
             </button>
@@ -462,8 +512,8 @@ useEffect(() => {
             onClick={() => setShowSearch(true)}
             className="mobile-search-btn"
             style={{
-              background: '#F5F4FF',
-              border: '1.5px solid #E2E0FF',
+              background: 'var(--color-page)',
+              border: '1.5px solid var(--color-border)',
               borderRadius: '10px',
               width: '40px', height: '40px',
               display: 'none',
@@ -479,13 +529,13 @@ useEffect(() => {
             onClick={() => setShowSearch(true)}
             className="desktop-action"
             style={{
-              background: '#F5F4FF',
-              border: '1.5px solid #E2E0FF',
+              background: 'var(--color-page)',
+              border: '1.5px solid var(--color-border)',
               borderRadius: '10px',
               padding: '8px 14px',
               fontSize: '13px',
               fontWeight: '600',
-              color: '#8B8FAF',
+              color: 'var(--color-text-muted)',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
@@ -494,27 +544,27 @@ useEffect(() => {
               transition: 'all 0.15s'
             }}
             onMouseEnter={e => {
-              e.currentTarget.style.borderColor = '#B8A5FF'
-              e.currentTarget.style.color = '#6C47FF'
+              e.currentTarget.style.borderColor = 'var(--color-brand-border-strong)'
+              e.currentTarget.style.color = 'var(--color-brand)'
             }}
             onMouseLeave={e => {
-              e.currentTarget.style.borderColor = '#E2E0FF'
-              e.currentTarget.style.color = '#8B8FAF'
+              e.currentTarget.style.borderColor = 'var(--color-border)'
+              e.currentTarget.style.color = 'var(--color-text-muted)'
             }}>
             <BrandIcon name="search" size={30} />
             <span className="search-label">Search</span>
             <span style={{
-              background: '#E2E0FF', borderRadius: '5px',
-              padding: '1px 6px', fontSize: '10px',
-              color: '#A09DC8', fontWeight: '700'
+              background: 'var(--color-border)', borderRadius: '5px',
+              padding: '1px 6px', fontSize: '12px',
+              color: 'var(--color-text-subtle)', fontWeight: '700'
             }}>⌘K</span>
           </button>
           <button
             onClick={() => setShowMobileMore(m => !m)}
             className="mobile-more-trigger"
             style={{
-              background: showMobileMore ? '#EEE9FF' : '#F5F4FF',
-              border: `1.5px solid ${showMobileMore ? '#B8A5FF' : '#E2E0FF'}`,
+              background: showMobileMore ? 'var(--color-brand-soft)' : 'var(--color-page)',
+              border: `1.5px solid ${showMobileMore ? 'var(--color-brand-border-strong)' : 'var(--color-border)'}`,
               borderRadius: '12px',
               width: '44px',
               height: '44px',
@@ -527,9 +577,9 @@ useEffect(() => {
             aria-label="More dashboard actions"
           >
             <svg width="20" height="14" viewBox="0 0 20 14" fill="none">
-              <rect x="0" y="0" width="20" height="2.2" rx="1.1" fill={showMobileMore ? '#6C47FF' : '#8B8FAF'} />
-              <rect x="0" y="5.9" width="20" height="2.2" rx="1.1" fill={showMobileMore ? '#6C47FF' : '#8B8FAF'} />
-              <rect x="0" y="11.8" width="20" height="2.2" rx="1.1" fill={showMobileMore ? '#6C47FF' : '#8B8FAF'} />
+              <rect x="0" y="0" width="20" height="2.2" rx="1.1" fill={showMobileMore ? 'var(--color-brand)' : 'var(--color-text-muted)'} />
+              <rect x="0" y="5.9" width="20" height="2.2" rx="1.1" fill={showMobileMore ? 'var(--color-brand)' : 'var(--color-text-muted)'} />
+              <rect x="0" y="11.8" width="20" height="2.2" rx="1.1" fill={showMobileMore ? 'var(--color-brand)' : 'var(--color-text-muted)'} />
             </svg>
           </button>
         </div>
@@ -556,8 +606,8 @@ useEffect(() => {
               top: '62px',
               right: '12px',
               width: '220px',
-              background: '#fff',
-              border: '1.5px solid #E2E0FF',
+              background: 'var(--color-surface)',
+              border: '1.5px solid var(--color-border)',
               borderRadius: '16px',
               boxShadow: '0 16px 44px rgba(108,71,255,0.18)',
               zIndex: 9600,
@@ -573,9 +623,9 @@ useEffect(() => {
               }}
               style={{
                 width: '100%',
-                background: screen === item.key ? '#F8F7FF' : '#fff',
+                background: screen === item.key ? 'var(--color-surface-tint)' : 'var(--color-surface)',
                 border: 'none',
-                borderBottom: '1px solid #F5F4FF',
+                borderBottom: '1px solid var(--color-page)',
                 padding: '12px 14px',
                 display: 'flex',
                 alignItems: 'center',
@@ -588,7 +638,7 @@ useEffect(() => {
                   {item.emoji ? (
                 <span style={{
                   width: 38, height: 38, borderRadius: '10px',
-                  background: screen === item.key ? '#EEE9FF' : '#F5F4FF',
+                  background: screen === item.key ? 'var(--color-brand-soft)' : 'var(--color-page)',
                   display: 'flex', alignItems: 'center',
                   justifyContent: 'center', fontSize: '20px', flexShrink: 0
                 }}>{item.emoji}</span>
@@ -598,7 +648,7 @@ useEffect(() => {
               <span style={{
                 fontSize: '13px',
                 fontWeight: '700',
-                color: screen === item.key ? '#6C47FF' : '#14123A'
+                color: screen === item.key ? 'var(--color-brand)' : 'var(--color-text)'
               }}>
                 {item.label}
               </span>
@@ -614,8 +664,8 @@ useEffect(() => {
         {/* SIDEBAR - desktop only */}
         <div style={{
           width: '72px',
-          background: '#fff',
-          borderRight: '1.5px solid #E2E0FF',
+          background: 'var(--color-surface)',
+          borderRight: '1.5px solid var(--color-border)',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -639,15 +689,15 @@ useEffect(() => {
               transition: 'all 0.15s', fontFamily: 'inherit'
             }}
             onMouseEnter={e => {
-              e.currentTarget.style.background = '#EEE9FF'
-              e.currentTarget.style.borderColor = '#B8A5FF'
+              e.currentTarget.style.background = 'var(--color-brand-soft)'
+              e.currentTarget.style.borderColor = 'var(--color-brand-border-strong)'
             }}
             onMouseLeave={e => {
               e.currentTarget.style.background = 'transparent'
               e.currentTarget.style.borderColor = 'transparent'
             }}>
             <BrandIcon name="search" size={36} />
-            <span style={{ fontSize: '9px', fontWeight: '600', color: '#A09DC8' }}>Search</span>
+            <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--color-text-subtle)' }}>Search</span>
           </button>
 
           {/* Saved Gigs */}
@@ -657,16 +707,16 @@ useEffect(() => {
             style={{
               width: '56px', height: '58px',
               borderRadius: '12px',
-              background: screen === 'saved' ? '#EEE9FF' : 'transparent',
-              border: `1.5px solid ${screen === 'saved' ? '#B8A5FF' : 'transparent'}`,
+              background: screen === 'saved' ? 'var(--color-brand-soft)' : 'transparent',
+              border: `1.5px solid ${screen === 'saved' ? 'var(--color-brand-border-strong)' : 'transparent'}`,
               display: 'flex', flexDirection: 'column',
               alignItems: 'center', justifyContent: 'center',
               gap: '3px', cursor: 'pointer',
               transition: 'all 0.15s', fontFamily: 'inherit'
             }}
             onMouseEnter={e => {
-              e.currentTarget.style.background = '#EEE9FF'
-              e.currentTarget.style.borderColor = '#B8A5FF'
+              e.currentTarget.style.background = 'var(--color-brand-soft)'
+              e.currentTarget.style.borderColor = 'var(--color-brand-border-strong)'
             }}
             onMouseLeave={e => {
               if (screen !== 'saved') {
@@ -675,7 +725,7 @@ useEffect(() => {
               }
             }}>
             <BrandIcon name="saved" size={36} active={screen === 'saved'} />
-            <span style={{ fontSize: '9px', fontWeight: '600', color: screen === 'saved' ? '#6C47FF' : '#A09DC8' }}>Saved</span>
+            <span style={{ fontSize: '12px', fontWeight: '600', color: screen === 'saved' ? 'var(--color-brand)' : 'var(--color-text-subtle)' }}>Saved</span>
           </button>
 
           {/* My Stats */}
@@ -685,16 +735,16 @@ useEffect(() => {
             style={{
               width: '56px', height: '58px',
               borderRadius: '12px',
-              background: screen === 'stats' ? '#EEE9FF' : 'transparent',
-              border: `1.5px solid ${screen === 'stats' ? '#B8A5FF' : 'transparent'}`,
+              background: screen === 'stats' ? 'var(--color-brand-soft)' : 'transparent',
+              border: `1.5px solid ${screen === 'stats' ? 'var(--color-brand-border-strong)' : 'transparent'}`,
               display: 'flex', flexDirection: 'column',
               alignItems: 'center', justifyContent: 'center',
               gap: '3px', cursor: 'pointer',
               transition: 'all 0.15s', fontFamily: 'inherit'
             }}
             onMouseEnter={e => {
-              e.currentTarget.style.background = '#EEE9FF'
-              e.currentTarget.style.borderColor = '#B8A5FF'
+              e.currentTarget.style.background = 'var(--color-brand-soft)'
+              e.currentTarget.style.borderColor = 'var(--color-brand-border-strong)'
             }}
             onMouseLeave={e => {
               if (screen !== 'stats') {
@@ -703,7 +753,7 @@ useEffect(() => {
               }
             }}>
             <BrandIcon name="stats" size={36} active={screen === 'stats'} />
-            <span style={{ fontSize: '9px', fontWeight: '600', color: screen === 'stats' ? '#6C47FF' : '#A09DC8' }}>Stats</span>
+            <span style={{ fontSize: '12px', fontWeight: '600', color: screen === 'stats' ? 'var(--color-brand)' : 'var(--color-text-subtle)' }}>Stats</span>
           </button>
 
           {/* Referral */}
@@ -713,16 +763,16 @@ useEffect(() => {
             style={{
               width: '56px', height: '58px',
               borderRadius: '12px',
-              background: screen === 'referral' ? '#EEE9FF' : 'transparent',
-              border: `1.5px solid ${screen === 'referral' ? '#B8A5FF' : 'transparent'}`,
+              background: screen === 'referral' ? 'var(--color-brand-soft)' : 'transparent',
+              border: `1.5px solid ${screen === 'referral' ? 'var(--color-brand-border-strong)' : 'transparent'}`,
               display: 'flex', flexDirection: 'column',
               alignItems: 'center', justifyContent: 'center',
               gap: '3px', cursor: 'pointer',
               transition: 'all 0.15s', fontFamily: 'inherit'
             }}
             onMouseEnter={e => {
-              e.currentTarget.style.background = '#EEE9FF'
-              e.currentTarget.style.borderColor = '#B8A5FF'
+              e.currentTarget.style.background = 'var(--color-brand-soft)'
+              e.currentTarget.style.borderColor = 'var(--color-brand-border-strong)'
             }}
             onMouseLeave={e => {
               if (screen !== 'referral') {
@@ -732,8 +782,8 @@ useEffect(() => {
             }}>
             <BrandIcon name="refer" size={36} active={screen === 'referral'} />
             <span style={{
-              fontSize: '9px', fontWeight: '600',
-              color: screen === 'referral' ? '#6C47FF' : '#A09DC8'
+              fontSize: '12px', fontWeight: '600',
+              color: screen === 'referral' ? 'var(--color-brand)' : 'var(--color-text-subtle)'
             }}>Refer</span>
           </button>
 
@@ -744,16 +794,16 @@ useEffect(() => {
             style={{
               width: '56px', height: '58px',
               borderRadius: '12px',
-              background: screen === 'wallet' ? '#EEE9FF' : 'transparent',
-              border: `1.5px solid ${screen === 'wallet' ? '#B8A5FF' : 'transparent'}`,
+              background: screen === 'wallet' ? 'var(--color-brand-soft)' : 'transparent',
+              border: `1.5px solid ${screen === 'wallet' ? 'var(--color-brand-border-strong)' : 'transparent'}`,
               display: 'flex', flexDirection: 'column',
               alignItems: 'center', justifyContent: 'center',
               gap: '3px', cursor: 'pointer',
               transition: 'all 0.15s', fontFamily: 'inherit'
             }}
             onMouseEnter={e => {
-              e.currentTarget.style.background = '#EEE9FF'
-              e.currentTarget.style.borderColor = '#B8A5FF'
+              e.currentTarget.style.background = 'var(--color-brand-soft)'
+              e.currentTarget.style.borderColor = 'var(--color-brand-border-strong)'
             }}
             onMouseLeave={e => {
               if (screen !== 'wallet') {
@@ -763,28 +813,28 @@ useEffect(() => {
             }}>
             <BrandIcon name="wallet" size={36} active={screen === 'wallet'} />
             <span style={{
-              fontSize: '9px', fontWeight: '600',
-              color: screen === 'wallet' ? '#6C47FF' : '#A09DC8'
+              fontSize: '12px', fontWeight: '600',
+              color: screen === 'wallet' ? 'var(--color-brand)' : 'var(--color-text-subtle)'
             }}>Wallet</span>
           </button>
 
           {/* Withdraw Credits */}
           <button
             onClick={() => navigateTo('withdrawal')}
-            title="Withdraw Credits"
+            title="Credits"
             style={{
               width: '56px', height: '58px',
               borderRadius: '12px',
-              background: screen === 'withdrawal' ? '#EEE9FF' : 'transparent',
-              border: `1.5px solid ${screen === 'withdrawal' ? '#B8A5FF' : 'transparent'}`,
+              background: screen === 'withdrawal' ? 'var(--color-brand-soft)' : 'transparent',
+              border: `1.5px solid ${screen === 'withdrawal' ? 'var(--color-brand-border-strong)' : 'transparent'}`,
               display: 'flex', flexDirection: 'column',
               alignItems: 'center', justifyContent: 'center',
               gap: '3px', cursor: 'pointer',
               transition: 'all 0.15s', fontFamily: 'inherit'
             }}
             onMouseEnter={e => {
-              e.currentTarget.style.background = '#EEE9FF'
-              e.currentTarget.style.borderColor = '#B8A5FF'
+              e.currentTarget.style.background = 'var(--color-brand-soft)'
+              e.currentTarget.style.borderColor = 'var(--color-brand-border-strong)'
             }}
             onMouseLeave={e => {
               if (screen !== 'withdrawal') {
@@ -794,9 +844,9 @@ useEffect(() => {
             }}>
             <BrandIcon name="withdraw" size={36} active={screen === 'withdrawal'} />
             <span style={{
-              fontSize: '9px', fontWeight: '600',
-              color: screen === 'withdrawal' ? '#6C47FF' : '#A09DC8'
-            }}>Withdraw</span>
+              fontSize: '12px', fontWeight: '600',
+              color: screen === 'withdrawal' ? 'var(--color-brand)' : 'var(--color-text-subtle)'
+            }}>Credits</span>
           </button>
 
           {/* Commission / Owed */}
@@ -806,8 +856,8 @@ useEffect(() => {
             style={{
               width: '56px', height: '58px',
               borderRadius: '12px',
-              background: screen === 'commission' ? '#EEE9FF' : 'transparent',
-              border: `1.5px solid ${screen === 'commission' ? '#B8A5FF' : 'transparent'}`,
+              background: screen === 'commission' ? 'var(--color-brand-soft)' : 'transparent',
+              border: `1.5px solid ${screen === 'commission' ? 'var(--color-brand-border-strong)' : 'transparent'}`,
               display: 'flex', flexDirection: 'column',
               alignItems: 'center', justifyContent: 'center',
               gap: '3px', cursor: 'pointer',
@@ -815,8 +865,8 @@ useEffect(() => {
               position: 'relative'
             }}
             onMouseEnter={e => {
-              e.currentTarget.style.background = '#EEE9FF'
-              e.currentTarget.style.borderColor = '#B8A5FF'
+              e.currentTarget.style.background = 'var(--color-brand-soft)'
+              e.currentTarget.style.borderColor = 'var(--color-brand-border-strong)'
             }}
             onMouseLeave={e => {
               if (screen !== 'commission') {
@@ -826,14 +876,14 @@ useEffect(() => {
             }}>
             <BrandIcon name="owed" size={36} active={screen === 'commission'} />
             <span style={{
-              fontSize: '9px', fontWeight: '600',
-              color: screen === 'commission' ? '#6C47FF' : '#A09DC8'
+              fontSize: '12px', fontWeight: '600',
+              color: screen === 'commission' ? 'var(--color-brand)' : 'var(--color-text-subtle)'
             }}>Owed</span>
             {hasUnpaidCommissions && (
               <span style={{
                 position: 'absolute', top: '4px', right: '6px',
                 width: '7px', height: '7px', borderRadius: '50%',
-                background: '#FF3366', border: '1.5px solid #fff'
+                background: 'var(--color-danger-accent)', border: '1.5px solid #fff'
               }} />
             )}
           </button>
@@ -841,7 +891,7 @@ useEffect(() => {
           {/* Divider */}
           <div style={{
             width: '32px', height: '1px',
-            background: '#E2E0FF', margin: '6px 0'
+            background: 'var(--color-border)', margin: '6px 0'
           }} />
 
           {/* Settings */}
@@ -851,16 +901,16 @@ useEffect(() => {
             style={{
               width: '56px', height: '58px',
               borderRadius: '12px',
-              background: screen === 'settings' ? '#EEE9FF' : 'transparent',
-              border: `1.5px solid ${screen === 'settings' ? '#B8A5FF' : 'transparent'}`,
+              background: screen === 'settings' ? 'var(--color-brand-soft)' : 'transparent',
+              border: `1.5px solid ${screen === 'settings' ? 'var(--color-brand-border-strong)' : 'transparent'}`,
               display: 'flex', flexDirection: 'column',
               alignItems: 'center', justifyContent: 'center',
               gap: '3px', cursor: 'pointer',
               transition: 'all 0.15s', fontFamily: 'inherit'
             }}
             onMouseEnter={e => {
-              e.currentTarget.style.background = '#EEE9FF'
-              e.currentTarget.style.borderColor = '#B8A5FF'
+              e.currentTarget.style.background = 'var(--color-brand-soft)'
+              e.currentTarget.style.borderColor = 'var(--color-brand-border-strong)'
             }}
             onMouseLeave={e => {
               if (screen !== 'settings') {
@@ -869,7 +919,7 @@ useEffect(() => {
               }
             }}>
             <BrandIcon name="settings" size={36} active={screen === 'settings'} />
-            <span style={{ fontSize: '9px', fontWeight: '600', color: screen === 'settings' ? '#6C47FF' : '#A09DC8' }}>Settings</span>
+            <span style={{ fontSize: '12px', fontWeight: '600', color: screen === 'settings' ? 'var(--color-brand)' : 'var(--color-text-subtle)' }}>Settings</span>
           </button>
 
           {/* Spacer */}
@@ -883,8 +933,8 @@ useEffect(() => {
               style={{
                 width: '48px', height: '48px',
                 borderRadius: '12px',
-                background: '#FFE8EE',
-                border: '1.5px solid #FF99B3',
+                background: 'var(--color-danger-soft)',
+                border: '1.5px solid var(--color-danger-border)',
                 display: 'flex', flexDirection: 'column',
                 alignItems: 'center', justifyContent: 'center',
                 gap: '3px', cursor: 'pointer',
@@ -892,8 +942,8 @@ useEffect(() => {
               }}>
               <span style={{ fontSize: '18px' }}>⚙️</span>
               <span style={{
-                fontSize: '8px', fontWeight: '700',
-                color: '#FF3366'
+                fontSize: '12px', fontWeight: '700',
+                color: 'var(--color-danger)'
               }}>Admin</span>
             </button>
           )}
@@ -905,8 +955,8 @@ useEffect(() => {
             style={{
               width: '48px', height: '48px',
               borderRadius: '12px',
-              background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
-              border: 'none', color: '#fff',
+              background: 'var(--color-brand-gradient)',
+              border: 'none', color: 'var(--color-surface)',
               fontSize: '24px', fontWeight: '300',
               display: 'flex', alignItems: 'center',
               justifyContent: 'center',
@@ -935,8 +985,8 @@ useEffect(() => {
             if (!profile || complete) return null
             return (
               <div style={{
-                background: 'linear-gradient(135deg, #EEE9FF, #F8F5FF)',
-                border: '1.5px solid #B8A5FF',
+                background: 'linear-gradient(135deg, var(--color-brand-soft), var(--color-brand-pale))',
+                border: '1.5px solid var(--color-brand-border-strong)',
                 borderRadius: '14px',
                 padding: '12px 16px',
                 margin: '12px 16px 0',
@@ -947,7 +997,7 @@ useEffect(() => {
                 <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flex: 1 }}>
                   <div style={{
                     width: '34px', height: '34px', borderRadius: '10px',
-                    background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+                    background: 'var(--color-brand-gradient)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     flexShrink: 0
                   }}>
@@ -956,26 +1006,26 @@ useEffect(() => {
                   <div style={{ flex: 1 }}>
                     <div style={{
                       fontSize: '12px', fontWeight: '700',
-                      color: '#14123A', marginBottom: '4px'
+                      color: 'var(--color-text)', marginBottom: '4px'
                     }}>
                       Complete your profile — {score}% done
                     </div>
                     <div style={{
-                      height: '4px', background: '#E2E0FF',
+                      height: '4px', background: 'var(--color-border)',
                       borderRadius: '2px', overflow: 'hidden'
                     }}>
                       <div style={{
                         height: '100%', borderRadius: '2px',
                         width: `${score}%`,
-                        background: 'linear-gradient(90deg, #6C47FF, #9B59FF)'
+                        background: 'linear-gradient(90deg, var(--color-brand), var(--color-brand-mid))'
                       }} />
                     </div>
                   </div>
                 </div>
                 <div style={{
-                  background: '#6C47FF', color: '#fff',
+                  background: 'var(--color-brand)', color: 'var(--color-surface)',
                   borderRadius: '8px', padding: '6px 12px',
-                  fontSize: '11px', fontWeight: '700',
+                  fontSize: '13px', fontWeight: '700',
                   whiteSpace: 'nowrap', flexShrink: 0
                 }}>Finish →</div>
               </div>
@@ -984,11 +1034,11 @@ useEffect(() => {
 
           {pendingGigReferral && (
   <div style={{
-    background: 'linear-gradient(135deg, #6C47FF, #FF4DCF)',
+    background: 'linear-gradient(135deg, var(--color-brand), var(--color-brand-highlight))',
     borderRadius: '14px', padding: '14px 16px',
     margin: '12px 16px 0', display: 'flex',
     justifyContent: 'space-between', alignItems: 'center',
-    gap: '12px', cursor: 'pointer', color: '#fff'
+    gap: '12px', cursor: 'pointer', color: 'var(--color-surface)'
   }} onClick={() => {
     window.dispatchEvent(new CustomEvent('openGigDetail', { detail: pendingGigReferral.gigId }))
     setPendingGigReferral(null)
@@ -997,13 +1047,13 @@ useEffect(() => {
       <div style={{ fontSize: '13px', fontWeight: '700', marginBottom: '2px' }}>
         🎁 You were invited to a gig!
       </div>
-      <div style={{ fontSize: '11px', opacity: 0.85 }}>
+      <div style={{ fontSize: '13px', opacity: 0.85 }}>
         Tap to view it and apply
       </div>
     </div>
     <div style={{
       background: 'rgba(255,255,255,0.25)', borderRadius: '8px',
-      padding: '6px 12px', fontSize: '11px', fontWeight: '700',
+      padding: '6px 12px', fontSize: '13px', fontWeight: '700',
       whiteSpace: 'nowrap'
     }}>View →</div>
   </div>
@@ -1033,8 +1083,8 @@ useEffect(() => {
       {/* MOBILE BOTTOM NAV */}
       <div style={{
         display: 'none',
-        background: '#fff',
-        borderTop: '1.5px solid #E2E0FF',
+        background: 'var(--color-surface)',
+        borderTop: '1.5px solid var(--color-border)',
         padding: '6px 4px 16px',
         justifyContent: 'space-around',
         alignItems: 'center',
@@ -1063,7 +1113,7 @@ useEffect(() => {
               }}>
               <div style={{
                 width: '52px', height: '44px', borderRadius: '12px',
-                background: active ? '#EEE9FF' : 'transparent',
+                background: active ? 'var(--color-brand-soft)' : 'transparent',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 transition: 'background 0.15s', position: 'relative'
               }}>
@@ -1075,13 +1125,13 @@ useEffect(() => {
                   <span style={{
                     position: 'absolute', top: '4px', right: '6px',
                     width: '7px', height: '7px', borderRadius: '50%',
-                    background: '#FF3366', border: '1.5px solid #fff'
+                    background: 'var(--color-danger-accent)', border: '1.5px solid #fff'
                   }} />
                 )}
               </div>
               <span style={{
-                fontSize: '10px', fontWeight: active ? '700' : '500',
-                color: active ? '#6C47FF' : '#A09DC8', lineHeight: '1'
+                fontSize: '12px', fontWeight: active ? '700' : '500',
+                color: active ? 'var(--color-brand)' : 'var(--color-text-subtle)', lineHeight: '1'
               }}>{item.label}</span>
             </button>
           )
@@ -1098,7 +1148,7 @@ useEffect(() => {
             zIndex: 60,
             width: '52px', height: '52px',
             borderRadius: '50%',
-            background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+            background: 'var(--color-brand-gradient)',
             border: 'none',
             cursor: 'pointer',
             boxShadow: '0 4px 20px rgba(108,71,255,0.5)',
@@ -1133,7 +1183,7 @@ useEffect(() => {
           }
           .brand-subtitle {
             display: block !important;
-            font-size: 8px !important;
+            font-size: 12px !important;
             letter-spacing: 1.2px !important;
           }
           .mobile-search-btn { display: flex !important; }
@@ -1192,10 +1242,10 @@ useEffect(() => {
         <div style={{
           position: 'fixed', bottom: '90px', left: '50%',
           transform: 'translateX(-50%)',
-          background: '#fff', borderRadius: '16px',
+          background: 'var(--color-surface)', borderRadius: '16px',
           padding: '16px 20px', width: '320px',
           boxShadow: '0 8px 32px rgba(108,71,255,0.2)',
-          border: '1.5px solid #E2E0FF',
+          border: '1.5px solid var(--color-border)',
           zIndex: 8500,
           fontFamily: "'Plus Jakarta Sans', sans-serif",
           animation: 'slideUp 0.3s ease'
@@ -1203,17 +1253,17 @@ useEffect(() => {
           <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
             <div style={{
               width: '40px', height: '40px', borderRadius: '12px',
-              background: '#EEE9FF', display: 'flex',
+              background: 'var(--color-brand-soft)', display: 'flex',
               alignItems: 'center', justifyContent: 'center',
               fontSize: '20px', flexShrink: 0
             }}>🔔</div>
             <div style={{ flex: 1 }}>
               <div style={{
                 fontSize: '13px', fontWeight: '700',
-                color: '#14123A', marginBottom: '3px'
+                color: 'var(--color-text)', marginBottom: '3px'
               }}>Stay in the loop</div>
               <div style={{
-                fontSize: '11px', color: '#8B8FAF',
+                fontSize: '13px', color: 'var(--color-text-muted)',
                 lineHeight: '1.5', marginBottom: '10px'
               }}>
                 Get notified about applications, messages and gig updates even when the app is closed.
@@ -1226,19 +1276,19 @@ useEffect(() => {
                   }}
                   style={{
                     flex: 2,
-                    background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+                    background: 'var(--color-brand-gradient)',
                     border: 'none', borderRadius: '8px', padding: '8px',
-                    fontSize: '12px', fontWeight: '700', color: '#fff',
+                    fontSize: '12px', fontWeight: '700', color: 'var(--color-surface)',
                     cursor: 'pointer', fontFamily: 'inherit'
                   }}>Enable Notifications</button>
                 <button
                   onClick={() => setShowPushPrompt(false)}
                   style={{
-                    flex: 1, background: '#F5F4FF',
-                    border: '1.5px solid #E2E0FF',
+                    flex: 1, background: 'var(--color-page)',
+                    border: '1.5px solid var(--color-border)',
                     borderRadius: '8px', padding: '8px',
                     fontSize: '12px', fontWeight: '600',
-                    color: '#8B8FAF', cursor: 'pointer',
+                    color: 'var(--color-text-muted)', cursor: 'pointer',
                     fontFamily: 'inherit'
                   }}>Not now</button>
               </div>

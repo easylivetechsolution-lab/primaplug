@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { CATEGORIES } from '../data/categories'
+import CategoryIcon from './CategoryIcon'
 
 export default function CategoryPicker({ selected, onSelect, customSkill, onCustomSkill }) {
   const [openGroup, setOpenGroup] = useState(null)
@@ -23,15 +24,15 @@ export default function CategoryPicker({ selected, onSelect, customSkill, onCust
           value={search}
           onChange={e => setSearch(e.target.value)}
           style={{
-            width: '100%', background: '#F5F4FF',
-            border: '1.5px solid #E2E0FF', borderRadius: '10px',
+            width: '100%', background: 'var(--color-page)',
+            border: '1.5px solid var(--color-border)', borderRadius: '10px',
             padding: '11px 14px 11px 38px',
-            fontSize: '13px', color: '#14123A',
+            fontSize: '13px', color: 'var(--color-text)',
             fontFamily: 'inherit', outline: 'none',
             boxSizing: 'border-box', transition: 'border-color 0.15s'
           }}
-          onFocus={e => e.target.style.borderColor = '#B8A5FF'}
-          onBlur={e => e.target.style.borderColor = '#E2E0FF'}
+          onFocus={e => e.target.style.borderColor = 'var(--color-brand-border-strong)'}
+          onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
         />
         <span style={{
           position: 'absolute', left: '12px',
@@ -44,7 +45,7 @@ export default function CategoryPicker({ selected, onSelect, customSkill, onCust
             style={{
               position: 'absolute', right: '12px',
               top: '50%', transform: 'translateY(-50%)',
-              fontSize: '16px', color: '#A09DC8', cursor: 'pointer'
+              fontSize: '16px', color: 'var(--color-text-subtle)', cursor: 'pointer'
             }}>×</span>
         )}
       </div>
@@ -52,24 +53,24 @@ export default function CategoryPicker({ selected, onSelect, customSkill, onCust
       {/* Selected display */}
       {selected && (
         <div style={{
-          background: '#EEE9FF', border: '1.5px solid #B8A5FF',
+          background: 'var(--color-brand-soft)', border: '1.5px solid var(--color-brand-border-strong)',
           borderRadius: '10px', padding: '10px 14px',
           marginBottom: '12px', display: 'flex',
           justifyContent: 'space-between', alignItems: 'center'
         }}>
           <div>
-            <div style={{ fontSize: '10px', color: '#A09DC8', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '2px' }}>
+            <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '2px' }}>
               Selected
             </div>
-            <div style={{ fontSize: '13px', fontWeight: '700', color: '#6C47FF' }}>
+            <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--color-brand)' }}>
               ✓ {selected}
             </div>
           </div>
-          <button
+          <button 
             onClick={() => { onSelect(''); onCustomSkill && onCustomSkill('') }}
             style={{
               background: 'none', border: 'none',
-              fontSize: '16px', color: '#A09DC8',
+              fontSize: '16px', color: 'var(--color-text-subtle)',
               cursor: 'pointer', fontFamily: 'inherit'
             }}>×</button>
         </div>
@@ -80,14 +81,14 @@ export default function CategoryPicker({ selected, onSelect, customSkill, onCust
         maxHeight: '280px',
         overflowY: 'auto',
         overflowX: 'hidden',
-        border: '1.5px solid #E2E0FF',
+        border: '1.5px solid var(--color-border)',
         borderRadius: '12px',
         scrollbarWidth: 'thin',
-        scrollbarColor: '#B8A5FF #F5F4FF'
+        scrollbarColor: 'var(--color-brand-border-strong) var(--color-page)'
       }}>
         {filtered.map((cat, ci) => (
           <div key={cat.group} style={{
-            borderBottom: ci < filtered.length - 1 ? '1px solid #F5F4FF' : 'none'
+            borderBottom: ci < filtered.length - 1 ? '1px solid var(--color-page)' : 'none'
           }}>
             {/* Group header */}
             <div
@@ -96,26 +97,26 @@ export default function CategoryPicker({ selected, onSelect, customSkill, onCust
                 padding: '12px 14px',
                 display: 'flex', justifyContent: 'space-between',
                 alignItems: 'center', cursor: 'pointer',
-                background: openGroup === cat.group ? cat.bg : '#fff',
+                background: openGroup === cat.group ? cat.bg : 'var(--color-surface)',
                 transition: 'background 0.15s'
               }}
               onMouseEnter={e => e.currentTarget.style.background = cat.bg}
-              onMouseLeave={e => e.currentTarget.style.background = openGroup === cat.group ? cat.bg : '#fff'}
+              onMouseLeave={e => e.currentTarget.style.background = openGroup === cat.group ? cat.bg : 'var(--color-surface)'}
             >
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                <span style={{ fontSize: '18px' }}>{cat.icon}</span>
+                <CategoryIcon category={cat.group} color="var(--color-text-muted)" />
                 <span style={{
                   fontSize: '13px', fontWeight: '700',
-                  color: openGroup === cat.group ? cat.color : '#14123A'
+                  color: openGroup === cat.group ? cat.color : 'var(--color-text)'
                 }}>{cat.group}</span>
                 <span style={{
                   background: cat.bg, border: `1px solid ${cat.border}`,
                   borderRadius: '20px', padding: '1px 7px',
-                  fontSize: '10px', fontWeight: '600', color: cat.color
+                  fontSize: '12px', fontWeight: '600', color: cat.color
                 }}>{cat.fields.length}</span>
               </div>
               <span style={{
-                fontSize: '12px', color: '#A09DC8',
+                fontSize: '12px', color: 'var(--color-text-subtle)',
                 transition: 'transform 0.2s',
                 transform: openGroup === cat.group ? 'rotate(180deg)' : 'rotate(0)'
               }}>▼</span>
@@ -123,7 +124,7 @@ export default function CategoryPicker({ selected, onSelect, customSkill, onCust
 
             {/* Fields list */}
             {(openGroup === cat.group || search.length > 1) && (
-              <div style={{ background: '#FAFAFF' }}>
+              <div style={{ background: 'var(--color-surface-soft)' }}>
                 {cat.fields.map(field => (
                   <div
                     key={field}
@@ -135,10 +136,10 @@ export default function CategoryPicker({ selected, onSelect, customSkill, onCust
                     style={{
                       padding: '10px 14px 10px 44px',
                       cursor: 'pointer', fontSize: '13px',
-                      color: selected === field ? cat.color : '#5B5887',
+                      color: selected === field ? cat.color : 'var(--color-text-muted)',
                       fontWeight: selected === field ? '700' : '400',
                       background: selected === field ? cat.bg : 'transparent',
-                      borderTop: '1px solid #F5F4FF',
+                      borderTop: '1px solid var(--color-page)',
                       display: 'flex', justifyContent: 'space-between',
                       alignItems: 'center', transition: 'background 0.1s'
                     }}
@@ -165,7 +166,7 @@ export default function CategoryPicker({ selected, onSelect, customSkill, onCust
       {selected && onCustomSkill && (
         <div style={{ marginTop: '12px' }}>
           <label style={{
-            fontSize: '10px', fontWeight: '700', color: '#8B8FAF',
+            fontSize: '12px', fontWeight: '700', color: 'var(--color-text-muted)',
             textTransform: 'uppercase', letterSpacing: '0.8px',
             display: 'block', marginBottom: '6px'
           }}>
@@ -176,18 +177,18 @@ export default function CategoryPicker({ selected, onSelect, customSkill, onCust
             value={customSkill || ''}
             onChange={e => onCustomSkill(e.target.value)}
             style={{
-              width: '100%', background: '#F5F4FF',
-              border: '1.5px solid #E2E0FF', borderRadius: '10px',
+              width: '100%', background: 'var(--color-page)',
+              border: '1.5px solid var(--color-border)', borderRadius: '10px',
               padding: '11px 14px', fontSize: '13px',
-              color: '#14123A', fontFamily: 'inherit',
+              color: 'var(--color-text)', fontFamily: 'inherit',
               outline: 'none', boxSizing: 'border-box',
               transition: 'border-color 0.15s'
             }}
-            onFocus={e => e.target.style.borderColor = '#B8A5FF'}
-            onBlur={e => e.target.style.borderColor = '#E2E0FF'}
+            onFocus={e => e.target.style.borderColor = 'var(--color-brand-border-strong)'}
+            onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
           />
           <div style={{
-            fontSize: '10px', color: '#A09DC8', marginTop: '5px'
+            fontSize: '12px', color: 'var(--color-text-subtle)', marginTop: '5px'
           }}>
             💡 This helps people find exactly what you offer
           </div>

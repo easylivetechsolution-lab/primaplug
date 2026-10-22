@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext'
 import { getCurrency, FINCRA_CURRENCIES } from '../../data/currencies'
 import { startFincraWalletFunding, requestFincraPayout, listFincraBanks, verifyFincraAccount, verifyFincraPayment } from '../../utils/fincra'
 import { parseTimestamp } from '../../utils/time'
+import { showToast } from '../../utils/toast'
 
 const FUND_TYPES = ['fund_in', 'escrow_release_worker', 'gig_referral_payout', 'withdrawal_refund']
 const WITHDRAW_TYPES = ['withdrawal', 'escrow_lock']
@@ -18,17 +19,38 @@ const timeAgo = (date) => {
 }
 
 const STATUS_STYLE = {
-  completed: { color: '#00A878', bg: '#DFFDF4', label: 'Completed' },
-  pending:   { color: '#FF6B2B', bg: '#FFF0E8', label: 'Pending' },
-  failed:    { color: '#FF3366', bg: '#FFE8EE', label: 'Failed' },
+  completed: { color: 'var(--color-success)', bg: 'var(--color-success-soft)', label: 'Completed' },
+  pending:   { color: 'var(--color-warning)', bg: 'var(--color-warning-soft)', label: 'Pending' },
+  failed:    { color: 'var(--color-danger)', bg: 'var(--color-danger-soft)', label: 'Failed' },
+}
+
+const reportIssueLink = (tx) => {
+  const subject = `Wallet transaction issue — ${tx.id}`
+  const body = [
+    'Hello Prima Payments Support,',
+    '',
+    'I need help with this wallet transaction.',
+    `Transaction ID: ${tx.id}`,
+    `Provider reference: ${tx.fincra_reference || 'Not available'}`,
+    `Type: ${tx.type}`,
+    `Amount: ${tx.amount} ${tx.currency || ''}`,
+    `Status: ${tx.status || 'Unknown'}`,
+    `Date: ${parseTimestamp(tx.created_at).toLocaleString()}`,
+    '',
+    'What went wrong?',
+  ].join('\n')
+  return `mailto:payments@primaplug.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
 }
 
 export default function WalletScreen() {
   const { user, profile, wallets, refreshProfile } = useAuth()
 
   const [transactions, setTransactions]   = useState([])
+  const [hasMoreTransactions, setHasMoreTransactions] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [expandedTx, setExpandedTx]       = useState(null)
   const [historyTab, setHistoryTab]       = useState('fund')
+  const [showStatementPreview, setShowStatementPreview] = useState(false)
 
   // Which wallet the user is acting on (currency string)
   const [activeCurrency, setActiveCurrency] = useState(null)
@@ -62,6 +84,7 @@ export default function WalletScreen() {
       .order('created_at', { ascending: false })
       .limit(60)
     setTransactions(data || [])
+    setHasMoreTransactions((data || []).length === 60)
   }, [user])
 
   const autoVerifyPending = useCallback(async () => {
@@ -128,6 +151,73 @@ export default function WalletScreen() {
   const fundHistory     = transactions.filter(tx => FUND_TYPES.includes(tx.type))
   const withdrawHistory = transactions.filter(tx => WITHDRAW_TYPES.includes(tx.type))
   const activeHistory   = historyTab === 'fund' ? fundHistory : withdrawHistory
+
+  const loadMoreTransactions = async () => {
+    if (!user || loadingMore || !hasMoreTransactions) return
+    setLoadingMore(true)
+    const from = transactions.length
+    const { data, error } = await supabase
+      .from('wallet_transactions')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .range(from, from + 59)
+    if (error) {
+      showToast('Could not load older wallet history.', 'error')
+    } else {
+      const olderTransactions = data || []
+      setTransactions(current => [...current, ...olderTransactions])
+      setHasMoreTransactions(olderTransactions.length === 60)
+    }
+    setLoadingMore(false)
+  }
+
+  const copyHistory = async () => {
+    if (!activeHistory.length) return
+    const csvCell = value => `"${String(value ?? '').replace(/"/g, '""')}"`
+    const rows = [
+      ['Transaction ID', 'Date', 'Type', 'Description', 'Amount', 'Currency', 'Status', 'Provider Reference'],
+      ...activeHistory.map(tx => [
+        tx.id,
+        parseTimestamp(tx.created_at).toLocaleString(),
+        tx.type,
+        tx.description || tx.type.replace(/_/g, ' '),
+        Number(tx.amount || 0),
+        tx.currency || '',
+        tx.status || '',
+        tx.fincra_reference || '',
+      ]),
+    ]
+    try {
+      await navigator.clipboard.writeText(rows.map(row => row.map(csvCell).join('\t')).join('\n'))
+      showToast(`${activeHistory.length} transactions copied.`, 'success')
+    } catch (_) {
+      showToast('Could not copy history. Check clipboard permissions.', 'error')
+    }
+  }
+
+  const copyTransaction = async (tx) => {
+    const currency = getCurrency(tx.currency || 'NGN')
+    const details = [
+      ['Transaction ID', tx.id],
+      ['Type', tx.type.replace(/_/g, ' ')],
+      ['Description', tx.description || '—'],
+      ['Amount', `${WITHDRAW_TYPES.includes(tx.type) ? '-' : '+'}${currency.symbol}${Number(tx.amount || 0).toLocaleString()} ${tx.currency || ''}`],
+      ['Status', tx.status || 'Unknown'],
+      ['Provider reference', tx.fincra_reference || 'Not available'],
+      ['Date', parseTimestamp(tx.created_at).toLocaleString()],
+    ]
+    try {
+      await navigator.clipboard.writeText(details.map(([label, value]) => `${label}: ${value}`).join('\n'))
+      showToast('Transaction details copied.', 'success')
+    } catch (_) {
+      showToast('Could not copy transaction. Check clipboard permissions.', 'error')
+    }
+  }
+
+  const printHistoryAsPdf = () => {
+    if (activeHistory.length) setShowStatementPreview(true)
+  }
 
   const CURRENCY_TO_COUNTRY = {
     NGN: 'NG', GHS: 'GH', KES: 'KE', ZAR: 'ZA',
@@ -236,12 +326,12 @@ export default function WalletScreen() {
 
   const inputStyle = {
     width: '100%',
-    background: '#F5F4FF',
-    border: '1.5px solid #E2E0FF',
+    background: 'var(--color-page)',
+    border: '1.5px solid var(--color-border)',
     borderRadius: '12px',
     padding: '13px 14px',
     fontSize: '14px',
-    color: '#14123A',
+    color: 'var(--color-text)',
     fontFamily: 'inherit',
     outline: 'none',
     boxSizing: 'border-box'
@@ -259,16 +349,16 @@ export default function WalletScreen() {
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '12px 16px',
-          background: '#fff', borderBottom: '1px solid #E2E0FF'
+          background: 'var(--color-surface)', borderBottom: '1px solid var(--color-border)'
         }}>
           <div>
-            <div style={{ fontSize: '15px', fontWeight: '800', color: '#14123A' }}>Fund Wallet</div>
-            <div style={{ fontSize: '10px', color: '#8B8FAF', fontWeight: '500' }}>🔒 Secured by Fincra</div>
+            <div style={{ fontSize: '15px', fontWeight: '800', color: 'var(--color-text)' }}>Fund Wallet</div>
+            <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', fontWeight: '500' }}>🔒 Secured by Fincra</div>
           </div>
-          <button onClick={closeCheckout} style={{
-            background: '#F5F4FF', border: '1.5px solid #E2E0FF',
+          <button  onClick={closeCheckout} style={{
+            background: 'var(--color-page)', border: '1.5px solid var(--color-border)',
             borderRadius: '10px', width: '36px', height: '36px',
-            fontSize: '18px', color: '#8B8FAF', cursor: 'pointer',
+            fontSize: '18px', color: 'var(--color-text-muted)', cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center'
           }}>×</button>
         </div>
@@ -285,18 +375,14 @@ export default function WalletScreen() {
       </div>
     )}
 
-    <div style={{
-      padding: '24px 20px 100px',
-      fontFamily: "'Plus Jakarta Sans', sans-serif",
-      maxWidth: '680px'
-    }}>
+    <div className="wallet-page">
 
       {/* HEADER */}
       <div style={{ marginBottom: '20px' }}>
-        <div style={{ fontSize: '22px', fontWeight: '800', color: '#14123A', marginBottom: '4px' }}>
+        <div style={{ fontSize: '22px', fontWeight: '800', color: 'var(--color-text)', marginBottom: '4px' }}>
           Wallet
         </div>
-        <div style={{ fontSize: '13px', color: '#8B8FAF' }}>
+        <div style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>
           Fund gigs, hold escrow, and receive worker payouts
         </div>
       </div>
@@ -304,8 +390,8 @@ export default function WalletScreen() {
       {/* WALLET CARDS */}
       {wallets.length === 0 ? (
         <div style={{
-          background: 'linear-gradient(135deg, #6C47FF 0%, #9B59FF 50%, #FF4DCF 100%)',
-          borderRadius: '24px', padding: '28px 24px', color: '#fff',
+          background: 'linear-gradient(135deg, var(--color-brand) 0%, var(--color-brand-mid) 50%, var(--color-brand-highlight) 100%)',
+          borderRadius: '24px', padding: '28px 24px', color: 'var(--color-surface)',
           marginBottom: '16px', textAlign: 'center'
         }}>
           <div style={{ fontSize: '36px', marginBottom: '12px' }}>💰</div>
@@ -314,8 +400,8 @@ export default function WalletScreen() {
             Add money to get started — choose any supported currency
           </div>
           <button onClick={() => openFund()} style={{
-            background: '#fff', border: 'none', borderRadius: '12px',
-            padding: '13px 28px', color: '#6C47FF', fontSize: '14px',
+            background: 'var(--color-surface)', border: 'none', borderRadius: '12px',
+            padding: '13px 28px', color: 'var(--color-brand)', fontSize: '14px',
             fontWeight: '800', cursor: 'pointer', fontFamily: 'inherit'
           }}>
             💰 Fund Your First Wallet
@@ -323,18 +409,23 @@ export default function WalletScreen() {
         </div>
       ) : (
         <>
-          {wallets.map(wallet => {
+          <div className="wallet-cards-grid" style={{
+            gridTemplateColumns: wallets.length > 1
+              ? 'repeat(auto-fit, minmax(min(100%, 360px), 1fr))'
+              : 'minmax(0, 680px)',
+            justifyContent: wallets.length > 1 ? 'stretch' : 'center'
+          }}>{wallets.map(wallet => {
             const cur = getCurrency(wallet.currency)
             const bal = Number(wallet.balance || 0)
             const held = Number(wallet.held_balance || 0)
             return (
               <div key={wallet.currency} style={{
-                background: 'linear-gradient(135deg, #6C47FF 0%, #9B59FF 50%, #FF4DCF 100%)',
-                borderRadius: '24px', padding: '24px', color: '#fff',
-                marginBottom: '12px', position: 'relative', overflow: 'hidden'
+                background: 'linear-gradient(135deg, var(--color-brand) 0%, var(--color-brand-mid) 50%, var(--color-brand-highlight) 100%)',
+                borderRadius: '24px', padding: '24px', color: 'var(--color-surface)',
+                marginBottom: 0, position: 'relative', overflow: 'hidden'
               }}>
                 <div style={{
-                  fontSize: '10px', opacity: 0.8, textTransform: 'uppercase',
+                  fontSize: '12px', opacity: 0.8, textTransform: 'uppercase',
                   letterSpacing: '1.5px', marginBottom: '6px', fontWeight: '700'
                 }}>
                   {wallet.currency} Wallet
@@ -355,15 +446,15 @@ export default function WalletScreen() {
                     padding: '8px 12px', display: 'flex', justifyContent: 'space-between',
                     alignItems: 'center', marginBottom: '14px'
                   }}>
-                    <span style={{ fontSize: '11px', opacity: 0.85 }}>🔒 Held in escrow</span>
+                    <span style={{ fontSize: '12px', opacity: 0.85 }}>🔒 Held in escrow</span>
                     <strong style={{ fontSize: '12px' }}>{cur.symbol}{held.toLocaleString()}</strong>
                   </div>
                 )}
 
                 <div style={{ display: 'flex', gap: '10px' }}>
                   <button onClick={() => openFund(wallet)} style={{
-                    flex: 1, background: '#fff', border: 'none', borderRadius: '12px',
-                    padding: '11px', color: '#6C47FF', fontSize: '12px', fontWeight: '800',
+                    flex: 1, background: 'var(--color-surface)', border: 'none', borderRadius: '12px',
+                    padding: '11px', color: 'var(--color-brand)', fontSize: '12px', fontWeight: '800',
                     cursor: 'pointer', fontFamily: 'inherit',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px'
                   }}>
@@ -372,7 +463,7 @@ export default function WalletScreen() {
                   <button onClick={() => openWithdraw(wallet)} style={{
                     flex: 1, background: 'rgba(255,255,255,0.18)',
                     border: '1.5px solid rgba(255,255,255,0.4)',
-                    borderRadius: '12px', padding: '11px', color: '#fff',
+                    borderRadius: '12px', padding: '11px', color: 'var(--color-surface)',
                     fontSize: '12px', fontWeight: '800', cursor: 'pointer',
                     fontFamily: 'inherit',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px'
@@ -382,13 +473,13 @@ export default function WalletScreen() {
                 </div>
               </div>
             )
-          })}
+          })}</div>
 
           {/* Add another currency */}
           <button onClick={() => openFund()} style={{
-            width: '100%', background: '#F5F4FF',
-            border: '1.5px dashed #B8A5FF', borderRadius: '16px',
-            padding: '14px', color: '#6C47FF', fontSize: '13px', fontWeight: '700',
+            width: '100%', background: 'var(--color-page)',
+            border: '1.5px dashed var(--color-brand-border-strong)', borderRadius: '16px',
+            padding: '14px', color: 'var(--color-brand)', fontSize: '13px', fontWeight: '700',
             cursor: 'pointer', fontFamily: 'inherit', marginBottom: '20px'
           }}>
             + Add another currency wallet
@@ -399,8 +490,8 @@ export default function WalletScreen() {
       {/* HISTORY TABS */}
       <div style={{
         display: 'flex', gap: '4px',
-        background: '#fff', borderRadius: '14px',
-        padding: '4px', border: '1.5px solid #E2E0FF',
+        background: 'var(--color-surface)', borderRadius: '14px',
+        padding: '4px', border: '1.5px solid var(--color-border)',
         marginBottom: '12px'
       }}>
         {[
@@ -411,39 +502,63 @@ export default function WalletScreen() {
             key={tab.key}
             onClick={() => setHistoryTab(tab.key)}
             style={{
-              flex: 1, background: historyTab === tab.key ? '#6C47FF' : 'transparent',
+              flex: 1, background: historyTab === tab.key ? 'var(--color-brand)' : 'transparent',
               border: 'none', borderRadius: '10px', padding: '10px 6px',
               fontSize: '12px', fontWeight: historyTab === tab.key ? '700' : '500',
-              color: historyTab === tab.key ? '#fff' : '#8B8FAF',
+              color: historyTab === tab.key ? 'var(--color-surface)' : 'var(--color-text-muted)',
               cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s'
             }}>
             {tab.label}
             {tab.count > 0 && (
               <span style={{
                 marginLeft: '6px',
-                background: historyTab === tab.key ? 'rgba(255,255,255,0.25)' : '#EEE9FF',
-                color: historyTab === tab.key ? '#fff' : '#6C47FF',
+                background: historyTab === tab.key ? 'rgba(255,255,255,0.25)' : 'var(--color-brand-soft)',
+                color: historyTab === tab.key ? 'var(--color-surface)' : 'var(--color-brand)',
                 borderRadius: '10px', padding: '1px 7px',
-                fontSize: '10px', fontWeight: '800'
+                fontSize: '12px', fontWeight: '800'
               }}>{tab.count}</span>
             )}
           </button>
         ))}
       </div>
 
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        gap: '10px', flexWrap: 'wrap', margin: '0 2px 12px'
+      }}>
+        <span style={{ fontSize: '12px', color: 'var(--color-text-subtle)' }}>
+          {activeHistory.length} {historyTab === 'fund' ? 'funding' : 'withdrawal'} transaction{activeHistory.length === 1 ? '' : 's'}
+          {hasMoreTransactions && ' · Load older transactions before exporting to include them'}
+        </span>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button onClick={copyHistory} disabled={!activeHistory.length} style={{
+            background: 'var(--color-surface)', border: '1px solid var(--color-border)',
+            borderRadius: '9px', padding: '8px 12px', color: 'var(--color-text)',
+            fontSize: '12px', fontWeight: '700', cursor: activeHistory.length ? 'pointer' : 'not-allowed',
+            opacity: activeHistory.length ? 1 : 0.55, fontFamily: 'inherit'
+          }}>Copy history</button>
+          <button onClick={printHistoryAsPdf} disabled={!activeHistory.length} style={{
+            background: 'var(--color-brand)', border: '1px solid var(--color-brand)',
+            borderRadius: '9px', padding: '8px 12px', color: 'var(--color-surface)',
+            fontSize: '12px', fontWeight: '700', cursor: activeHistory.length ? 'pointer' : 'not-allowed',
+            opacity: activeHistory.length ? 1 : 0.55, fontFamily: 'inherit'
+          }}>Print / Save PDF</button>
+        </div>
+      </div>
+
       {/* HISTORY LIST */}
       {activeHistory.length === 0 ? (
         <div style={{
-          background: '#fff', border: '1.5px solid #E2E0FF',
+          background: 'var(--color-surface)', border: '1.5px solid var(--color-border)',
           borderRadius: '18px', padding: '36px 20px', textAlign: 'center'
         }}>
           <div style={{ fontSize: '32px', marginBottom: '10px' }}>
             {historyTab === 'fund' ? '💰' : '💸'}
           </div>
-          <div style={{ fontSize: '14px', fontWeight: '700', color: '#14123A', marginBottom: '4px' }}>
+          <div style={{ fontSize: '14px', fontWeight: '700', color: 'var(--color-text)', marginBottom: '4px' }}>
             {historyTab === 'fund' ? 'No funding yet' : 'No withdrawals yet'}
           </div>
-          <div style={{ fontSize: '12px', color: '#A09DC8' }}>
+          <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)' }}>
             {historyTab === 'fund'
               ? 'Money you add to your wallet will show up here'
               : 'Money you send to your bank will show up here'}
@@ -459,7 +574,7 @@ export default function WalletScreen() {
             key={tx.id}
             onClick={() => setExpandedTx(isExpanded ? null : tx.id)}
             style={{
-              background: '#fff', border: `1.5px solid ${isExpanded ? '#B8A5FF' : '#E2E0FF'}`,
+              background: 'var(--color-surface)', border: `1.5px solid ${isExpanded ? 'var(--color-brand-border-strong)' : 'var(--color-border)'}`,
               borderRadius: '16px', padding: '14px 16px',
               marginBottom: '10px', cursor: 'pointer', transition: 'all 0.15s'
             }}>
@@ -467,21 +582,21 @@ export default function WalletScreen() {
               <div style={{ display: 'flex', gap: '12px', alignItems: 'center', minWidth: 0 }}>
                 <div style={{
                   width: '38px', height: '38px', borderRadius: '11px',
-                  background: isOutflow ? '#FFF0E8' : '#DFFDF4',
+                  background: isOutflow ? 'var(--color-warning-soft)' : 'var(--color-success-soft)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: '16px', flexShrink: 0
                 }}>{isOutflow ? '↑' : '↓'}</div>
                 <div style={{ minWidth: 0 }}>
                   <div style={{
-                    fontSize: '13px', fontWeight: '700', color: '#14123A', marginBottom: '3px',
+                    fontSize: '13px', fontWeight: '700', color: 'var(--color-text)', marginBottom: '3px',
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
                   }}>
                     {tx.description || tx.type.replace(/_/g, ' ')}
                   </div>
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    <span style={{ fontSize: '11px', color: '#A09DC8' }}>{timeAgo(tx.created_at)}</span>
+                    <span style={{ fontSize: '12px', color: 'var(--color-text-subtle)' }}>{timeAgo(tx.created_at)}</span>
                     <span style={{
-                      fontSize: '9px', fontWeight: '800', color: st.color, background: st.bg,
+                      fontSize: '12px', fontWeight: '800', color: st.color, background: st.bg,
                       borderRadius: '6px', padding: '2px 7px',
                       textTransform: 'uppercase', letterSpacing: '0.4px'
                     }}>{st.label}</span>
@@ -491,38 +606,68 @@ export default function WalletScreen() {
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
                 <div style={{
                   fontSize: '14px', fontWeight: '800', flexShrink: 0,
-                  color: isOutflow ? '#FF6B2B' : '#00A878'
+                  color: isOutflow ? 'var(--color-warning)' : 'var(--color-success)'
                 }}>
                   {isOutflow ? '-' : '+'}{txCur.symbol}{Number(tx.amount || 0).toLocaleString()}
                 </div>
-                <span style={{ fontSize: '11px', color: '#A09DC8' }}>{isExpanded ? '▲' : '▼'}</span>
+                <span style={{ fontSize: '12px', color: 'var(--color-text-subtle)' }}>{isExpanded ? '▲' : '▼'}</span>
               </div>
             </div>
 
             {isExpanded && (
               <div style={{
                 marginTop: '12px', paddingTop: '12px',
-                borderTop: '1px solid #E2E0FF',
+                borderTop: '1px solid var(--color-border)',
                 display: 'flex', flexDirection: 'column', gap: '8px'
               }}>
                 {[
+                  ['Transaction ID', tx.id],
                   ['Type', tx.type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())],
                   ['Amount', `${txCur.symbol}${Number(tx.amount || 0).toLocaleString()} ${tx.currency || ''}`],
                   ['Status', tx.status],
                   tx.balance_after != null && ['Balance After', `${txCur.symbol}${Number(tx.balance_after).toLocaleString()}`],
-                  tx.fincra_reference && ['Reference', tx.fincra_reference],
+                  tx.fincra_reference && ['Provider Reference', tx.fincra_reference],
                   ['Date', parseTimestamp(tx.created_at).toLocaleString()],
                 ].filter(Boolean).map(([label, value]) => (
                   <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: '12px' }}>
-                    <span style={{ fontSize: '11px', color: '#A09DC8', fontWeight: '600', flexShrink: 0 }}>{label}</span>
-                    <span style={{ fontSize: '11px', color: '#14123A', fontWeight: '600', textAlign: 'right', wordBreak: 'break-all' }}>{value}</span>
+                    <span style={{ fontSize: '12px', color: 'var(--color-text-subtle)', fontWeight: '600', flexShrink: 0 }}>{label}</span>
+                    <span style={{ fontSize: '12px', color: 'var(--color-text)', fontWeight: '600', textAlign: 'right', wordBreak: 'break-all' }}>{value}</span>
                   </div>
                 ))}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', flexWrap: 'wrap', marginTop: '4px' }}>
+                  <button
+                    onClick={e => { e.stopPropagation(); copyTransaction(tx) }}
+                    style={{
+                      background: 'var(--color-surface)', border: '1px solid var(--color-border)',
+                      borderRadius: '8px', padding: '7px 10px', color: 'var(--color-text)',
+                      fontSize: '12px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit'
+                    }}>Copy transaction</button>
+                  <a
+                    href={reportIssueLink(tx)}
+                    onClick={e => e.stopPropagation()}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center',
+                      background: 'var(--color-danger-soft)', border: '1px solid var(--color-danger-border)',
+                      borderRadius: '8px', padding: '7px 10px', color: 'var(--color-danger)',
+                      fontSize: '12px', fontWeight: '700', textDecoration: 'none'
+                    }}>Report an issue</a>
+                </div>
               </div>
             )}
           </div>
         )
       })}
+
+      {hasMoreTransactions && (
+        <button onClick={loadMoreTransactions} disabled={loadingMore} style={{
+          display: 'block', margin: '4px auto 20px', background: 'var(--color-surface)',
+          border: '1px solid var(--color-border)', borderRadius: '10px', padding: '10px 16px',
+          color: 'var(--color-brand)', fontSize: '13px', fontWeight: '700',
+          cursor: loadingMore ? 'wait' : 'pointer', fontFamily: 'inherit'
+        }}>
+          {loadingMore ? 'Loading…' : 'Load older transactions'}
+        </button>
+      )}
 
       {/* FUND MODAL */}
       {showFund && (
@@ -532,18 +677,18 @@ export default function WalletScreen() {
           display: 'flex', alignItems: 'flex-end', justifyContent: 'center'
         }} onClick={() => setShowFund(false)}>
           <div onClick={e => e.stopPropagation()} style={{
-            background: '#fff', borderRadius: '22px 22px 0 0',
+            background: 'var(--color-surface)', borderRadius: '22px 22px 0 0',
             width: '100%', maxWidth: '540px', padding: '20px', paddingBottom: '32px'
           }}>
-            <div style={{ width: '40px', height: '4px', background: '#E2E0FF', borderRadius: '2px', margin: '0 auto 18px' }} />
-            <div style={{ fontSize: '18px', fontWeight: '800', color: '#14123A', marginBottom: '4px' }}>
+            <div style={{ width: '40px', height: '4px', background: 'var(--color-border)', borderRadius: '2px', margin: '0 auto 18px' }} />
+            <div style={{ fontSize: '18px', fontWeight: '800', color: 'var(--color-text)', marginBottom: '4px' }}>
               Fund Wallet
             </div>
-            <div style={{ fontSize: '13px', color: '#8B8FAF', marginBottom: '18px' }}>
+            <div style={{ fontSize: '13px', color: 'var(--color-text-muted)', marginBottom: '18px' }}>
               Add money to pay workers instantly
             </div>
 
-            <label style={{ fontSize: '11px', fontWeight: '700', color: '#8B8FAF', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
+            <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-text-muted)', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
               Currency
             </label>
             <select
@@ -555,7 +700,7 @@ export default function WalletScreen() {
               ))}
             </select>
 
-            <label style={{ fontSize: '11px', fontWeight: '700', color: '#8B8FAF', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
+            <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-text-muted)', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
               Amount
             </label>
             <input
@@ -567,23 +712,23 @@ export default function WalletScreen() {
 
             {fundError && (
               <div style={{
-                background: '#FFE8EE', border: '1.5px solid #FF99B3',
+                background: 'var(--color-danger-soft)', border: '1.5px solid var(--color-danger-border)',
                 borderRadius: '10px', padding: '10px 12px',
-                fontSize: '12px', color: '#FF3366', fontWeight: '600', marginBottom: '14px'
+                fontSize: '12px', color: 'var(--color-danger)', fontWeight: '600', marginBottom: '14px'
               }}>{fundError}</div>
             )}
 
             <button onClick={fundWallet} disabled={fundLoading} style={{
               width: '100%',
-              background: fundLoading ? '#B8A5FF' : 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+              background: fundLoading ? 'var(--color-brand-border-strong)' : 'var(--color-brand-gradient)',
               border: 'none', borderRadius: '12px', padding: '14px',
-              fontSize: '14px', fontWeight: '700', color: '#fff',
+              fontSize: '14px', fontWeight: '700', color: 'var(--color-surface)',
               cursor: fundLoading ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
               boxShadow: fundLoading ? 'none' : '0 4px 16px rgba(108,71,255,0.35)'
             }}>
               {fundLoading ? 'Redirecting to Fincra...' : 'Continue to Payment →'}
             </button>
-            <div style={{ fontSize: '11px', color: '#A09DC8', textAlign: 'center', marginTop: '12px' }}>
+            <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)', textAlign: 'center', marginTop: '12px' }}>
               🔒 Secured by Fincra
             </div>
           </div>
@@ -598,21 +743,21 @@ export default function WalletScreen() {
           display: 'flex', alignItems: 'flex-end', justifyContent: 'center'
         }} onClick={() => setShowWithdraw(false)}>
           <div onClick={e => e.stopPropagation()} style={{
-            background: '#fff', borderRadius: '22px 22px 0 0',
+            background: 'var(--color-surface)', borderRadius: '22px 22px 0 0',
             width: '100%', maxWidth: '540px', padding: '20px', paddingBottom: '32px'
           }}>
-            <div style={{ width: '40px', height: '4px', background: '#E2E0FF', borderRadius: '2px', margin: '0 auto 18px' }} />
-            <div style={{ fontSize: '18px', fontWeight: '800', color: '#14123A', marginBottom: '2px' }}>
+            <div style={{ width: '40px', height: '4px', background: 'var(--color-border)', borderRadius: '2px', margin: '0 auto 18px' }} />
+            <div style={{ fontSize: '18px', fontWeight: '800', color: 'var(--color-text)', marginBottom: '2px' }}>
               Withdraw from {activeCurrency} Wallet
             </div>
-            <div style={{ fontSize: '13px', color: '#8B8FAF', marginBottom: '4px' }}>
+            <div style={{ fontSize: '13px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>
               Send money straight to your bank — no minimum
             </div>
-            <div style={{ fontSize: '12px', color: '#6C47FF', fontWeight: '700', marginBottom: '16px' }}>
+            <div style={{ fontSize: '12px', color: 'var(--color-brand)', fontWeight: '700', marginBottom: '16px' }}>
               Available: {getCurrency(activeCurrency).symbol}{Number(wallets.find(w => w.currency === activeCurrency)?.balance || 0).toLocaleString()} {activeCurrency}
             </div>
 
-            <label style={{ fontSize: '11px', fontWeight: '700', color: '#8B8FAF', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
+            <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-text-muted)', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
               Bank
             </label>
             <select
@@ -623,7 +768,7 @@ export default function WalletScreen() {
               {banks.map((b, i) => <option key={i} value={b.code}>{b.name}</option>)}
             </select>
 
-            <label style={{ fontSize: '11px', fontWeight: '700', color: '#8B8FAF', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
+            <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-text-muted)', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
               Account Number
             </label>
             <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
@@ -634,7 +779,7 @@ export default function WalletScreen() {
                 style={{ ...inputStyle, flex: 1 }}
               />
               <button onClick={verifyWithdrawAccount} disabled={verifying} style={{
-                padding: '0 18px', background: '#6C47FF', color: '#fff',
+                padding: '0 18px', background: 'var(--color-brand)', color: 'var(--color-surface)',
                 border: 'none', borderRadius: '12px', fontSize: '13px',
                 fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap'
               }}>
@@ -644,13 +789,13 @@ export default function WalletScreen() {
 
             {verifiedName && (
               <div style={{
-                background: '#DFFDF4', border: '1.5px solid #7EECD2',
+                background: 'var(--color-success-soft)', border: '1.5px solid var(--color-success-border)',
                 borderRadius: '10px', padding: '10px 12px',
-                fontSize: '13px', color: '#00A878', fontWeight: '700', marginBottom: '14px'
+                fontSize: '13px', color: 'var(--color-success)', fontWeight: '700', marginBottom: '14px'
               }}>✓ {verifiedName}</div>
             )}
 
-            <label style={{ fontSize: '11px', fontWeight: '700', color: '#8B8FAF', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
+            <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-text-muted)', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
               Amount ({activeCurrency})
             </label>
             <input
@@ -662,16 +807,16 @@ export default function WalletScreen() {
 
             {withdrawError && (
               <div style={{
-                background: '#FFE8EE', border: '1.5px solid #FF99B3',
+                background: 'var(--color-danger-soft)', border: '1.5px solid var(--color-danger-border)',
                 borderRadius: '10px', padding: '10px 12px',
-                fontSize: '12px', color: '#FF3366', fontWeight: '600', marginBottom: '14px'
+                fontSize: '12px', color: 'var(--color-danger)', fontWeight: '600', marginBottom: '14px'
               }}>{withdrawError}</div>
             )}
 
             <button onClick={submitWithdraw} disabled={withdrawing || !verifiedName} style={{
               width: '100%', padding: '14px',
-              background: (withdrawing || !verifiedName) ? '#B8A5FF' : 'linear-gradient(135deg, #6C47FF, #9B59FF)',
-              border: 'none', borderRadius: '12px', color: '#fff', fontWeight: '700',
+              background: (withdrawing || !verifiedName) ? 'var(--color-brand-border-strong)' : 'var(--color-brand-gradient)',
+              border: 'none', borderRadius: '12px', color: 'var(--color-surface)', fontWeight: '700',
               fontSize: '14px', cursor: (withdrawing || !verifiedName) ? 'not-allowed' : 'pointer',
               fontFamily: 'inherit',
               boxShadow: (withdrawing || !verifiedName) ? 'none' : '0 4px 16px rgba(108,71,255,0.35)'
@@ -682,6 +827,28 @@ export default function WalletScreen() {
         </div>
       )}
     </div>
+    {showStatementPreview && (
+      <div className="wallet-print-overlay" onClick={() => setShowStatementPreview(false)}>
+        <section className="wallet-statement-print" role="dialog" aria-modal="true" aria-labelledby="wallet-statement-title" onClick={event => event.stopPropagation()}>
+          <div className="wallet-statement-actions">
+            <button type="button" onClick={() => setShowStatementPreview(false)}>Close</button>
+            <button type="button" className="wallet-statement-print-button" onClick={() => window.print()}>Print / Save PDF</button>
+          </div>
+          <h2 id="wallet-statement-title">{historyTab === 'fund' ? 'Funding History' : 'Withdrawal History'}</h2>
+          <p className="wallet-statement-meta">{profile?.full_name || user?.email || 'Prima member'} ? Generated {new Date().toLocaleString()} ? {activeHistory.length} transactions</p>
+          <div className="wallet-statement-table-wrap">
+            <table className="wallet-statement-table">
+              <thead><tr><th>Transaction ID</th><th>Date</th><th>Type</th><th>Description</th><th>Amount</th><th>Status</th><th>Provider Reference</th></tr></thead>
+              <tbody>{activeHistory.map(tx => {
+                const currency = getCurrency(tx.currency || 'NGN')
+                const amount = `${WITHDRAW_TYPES.includes(tx.type) ? '-' : '+'}${currency.symbol}${Number(tx.amount || 0).toLocaleString()} ${tx.currency || ''}`
+                return <tr key={tx.id}><td>{tx.id}</td><td>{parseTimestamp(tx.created_at).toLocaleString()}</td><td>{tx.type.replace(/_/g, ' ')}</td><td>{tx.description || ''}</td><td>{amount}</td><td>{tx.status || ''}</td><td>{tx.fincra_reference || ''}</td></tr>
+              })}</tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    )}
     </>
   )
 }

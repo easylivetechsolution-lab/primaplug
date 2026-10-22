@@ -141,9 +141,9 @@ export default function Withdrawal({ onClose }) {
 
   const inputStyle = {
     width: '100%', padding: '12px',
-    borderRadius: '10px', border: '1.5px solid #E2E0FF',
+    borderRadius: '10px', border: '1.5px solid var(--color-border)',
     fontSize: '14px', fontFamily: 'inherit',
-    color: '#14123A', boxSizing: 'border-box'
+    color: 'var(--color-text)', boxSizing: 'border-box'
   }
 
   return (
@@ -157,33 +157,33 @@ export default function Withdrawal({ onClose }) {
       fontFamily: "'Plus Jakarta Sans', sans-serif"
     }} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} style={{
-        background: '#fff', borderRadius: '22px 22px 0 0',
+        background: 'var(--color-surface)', borderRadius: '22px 22px 0 0',
         width: '100%', maxWidth: '540px',
         maxHeight: '88vh', overflowY: 'auto',
         padding: '20px', paddingBottom: '32px'
       }}>
         <div style={{
           width: '40px', height: '4px',
-          background: '#E2E0FF', borderRadius: '2px',
+          background: 'var(--color-border)', borderRadius: '2px',
           margin: '0 auto 20px'
         }} />
 
         {success ? (
           <div style={{ textAlign: 'center', padding: '30px 0' }}>
             <div style={{ fontSize: '40px', marginBottom: '12px' }}>✅</div>
-            <div style={{ fontSize: '18px', fontWeight: '800', color: '#00C48C', marginBottom: '6px' }}>
+            <div style={{ fontSize: '18px', fontWeight: '800', color: 'var(--color-success)', marginBottom: '6px' }}>
               Withdrawal Initiated
             </div>
-            <div style={{ fontSize: '13px', color: '#8B8FAF' }}>
+            <div style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>
               Your money is on its way. You'll be notified once it lands.
             </div>
           </div>
         ) : (
           <>
-            <div style={{ fontSize: '18px', fontWeight: '800', color: '#14123A', marginBottom: '4px' }}>
+            <div style={{ fontSize: '18px', fontWeight: '800', color: 'var(--color-text)', marginBottom: '4px' }}>
               Withdraw Funds
             </div>
-            <div style={{ fontSize: '13px', color: '#8B8FAF', marginBottom: '20px' }}>
+            <div style={{ fontSize: '13px', color: 'var(--color-text-muted)', marginBottom: '20px' }}>
               Send money to your bank account
             </div>
 
@@ -198,14 +198,14 @@ export default function Withdrawal({ onClose }) {
                   onClick={() => setSource(s.key)}
                   style={{
                     flex: 1, padding: '12px',
-                    background: source === s.key ? '#EEE9FF' : '#F5F4FF',
-                    border: `1.5px solid ${source === s.key ? '#6C47FF' : '#E2E0FF'}`,
+                    background: source === s.key ? 'var(--color-brand-soft)' : 'var(--color-page)',
+                    border: `1.5px solid ${source === s.key ? 'var(--color-brand)' : 'var(--color-border)'}`,
                     borderRadius: '12px', cursor: 'pointer', fontFamily: 'inherit'
                   }}>
-                  <div style={{ fontSize: '12px', fontWeight: '700', color: source === s.key ? '#6C47FF' : '#8B8FAF' }}>
+                  <div style={{ fontSize: '12px', fontWeight: '700', color: source === s.key ? 'var(--color-brand)' : 'var(--color-text-muted)' }}>
                     {s.label}
                   </div>
-                  <div style={{ fontSize: '14px', fontWeight: '800', color: '#14123A', marginTop: '2px' }}>
+                  <div style={{ fontSize: '14px', fontWeight: '800', color: 'var(--color-text)', marginTop: '2px' }}>
                     {s.balance}
                   </div>
                 </button>
@@ -215,7 +215,7 @@ export default function Withdrawal({ onClose }) {
             {/* Wallet currency picker (only when multiple wallets) */}
             {source === 'wallet' && (wallets || []).length > 1 && (
               <div style={{ marginBottom: '18px' }}>
-                <label style={{ fontSize: '11px', fontWeight: '700', color: '#8B8FAF', display: 'block', marginBottom: '6px' }}>
+                <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-text-muted)', display: 'block', marginBottom: '6px' }}>
                   Wallet Currency
                 </label>
                 <select
@@ -223,8 +223,8 @@ export default function Withdrawal({ onClose }) {
                   onChange={e => { setWalletCurrency(e.target.value); setBankCode(''); setVerifiedName('') }}
                   style={{
                     width: '100%', padding: '10px 12px',
-                    borderRadius: '10px', border: '1.5px solid #E2E0FF',
-                    fontSize: '14px', fontFamily: 'inherit', color: '#14123A'
+                    borderRadius: '10px', border: '1.5px solid var(--color-border)',
+                    fontSize: '14px', fontFamily: 'inherit', color: 'var(--color-text)'
                   }}>
                   {(wallets || []).map(w => (
                     <option key={w.currency} value={w.currency}>
@@ -237,7 +237,7 @@ export default function Withdrawal({ onClose }) {
 
             {/* Bank selector */}
             <div style={{ marginBottom: '14px' }}>
-              <label style={{ fontSize: '11px', fontWeight: '700', color: '#8B8FAF', display: 'block', marginBottom: '6px' }}>
+              <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-text-muted)', display: 'block', marginBottom: '6px' }}>
                 Bank
               </label>
               <select
@@ -253,7 +253,7 @@ export default function Withdrawal({ onClose }) {
 
             {/* Account number */}
             <div style={{ marginBottom: '10px' }}>
-              <label style={{ fontSize: '11px', fontWeight: '700', color: '#8B8FAF', display: 'block', marginBottom: '6px' }}>
+              <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-text-muted)', display: 'block', marginBottom: '6px' }}>
                 Account Number
               </label>
               <div style={{ display: 'flex', gap: '8px' }}>
@@ -268,7 +268,7 @@ export default function Withdrawal({ onClose }) {
                   onClick={verifyAccount}
                   disabled={verifying}
                   style={{
-                    padding: '0 16px', background: '#6C47FF', color: '#fff',
+                    padding: '0 16px', background: 'var(--color-brand)', color: 'var(--color-surface)',
                     border: 'none', borderRadius: '10px', fontSize: '12px',
                     fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit',
                     whiteSpace: 'nowrap'
@@ -280,24 +280,24 @@ export default function Withdrawal({ onClose }) {
 
             {verifiedName && (
               <div style={{
-                background: '#DFFDF4', border: '1.5px solid #7EECD2',
+                background: 'var(--color-success-soft)', border: '1.5px solid var(--color-success-border)',
                 borderRadius: '10px', padding: '10px 12px',
-                fontSize: '13px', color: '#00A878', fontWeight: '700',
+                fontSize: '13px', color: 'var(--color-success)', fontWeight: '700',
                 marginBottom: '14px'
               }}>✓ {verifiedName}</div>
             )}
 
             {verifyError && (
               <div style={{
-                background: '#FFE8EE', border: '1.5px solid #FF99B3',
+                background: 'var(--color-danger-soft)', border: '1.5px solid var(--color-danger-border)',
                 borderRadius: '10px', padding: '10px 12px',
-                fontSize: '12px', color: '#FF3366', marginBottom: '14px'
+                fontSize: '12px', color: 'var(--color-danger)', marginBottom: '14px'
               }}>{verifyError}</div>
             )}
 
             {/* Amount */}
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ fontSize: '11px', fontWeight: '700', color: '#8B8FAF', display: 'block', marginBottom: '6px' }}>
+              <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-text-muted)', display: 'block', marginBottom: '6px' }}>
                 Amount
               </label>
               <input
@@ -311,9 +311,9 @@ export default function Withdrawal({ onClose }) {
 
             {error && (
               <div style={{
-                background: '#FFE8EE', border: '1.5px solid #FF99B3',
+                background: 'var(--color-danger-soft)', border: '1.5px solid var(--color-danger-border)',
                 borderRadius: '10px', padding: '10px 12px',
-                fontSize: '12px', color: '#FF3366', fontWeight: '600', marginBottom: '14px'
+                fontSize: '12px', color: 'var(--color-danger)', fontWeight: '600', marginBottom: '14px'
               }}>{error}</div>
             )}
 
@@ -322,9 +322,9 @@ export default function Withdrawal({ onClose }) {
               disabled={loading || !verifiedName}
               style={{
                 width: '100%',
-                background: (loading || !verifiedName) ? '#B8A5FF' : 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+                background: (loading || !verifiedName) ? 'var(--color-brand-border-strong)' : 'var(--color-brand-gradient)',
                 border: 'none', borderRadius: '12px', padding: '14px',
-                fontSize: '14px', fontWeight: '700', color: '#fff',
+                fontSize: '14px', fontWeight: '700', color: 'var(--color-surface)',
                 cursor: (loading || !verifiedName) ? 'not-allowed' : 'pointer',
                 fontFamily: 'inherit'
               }}>

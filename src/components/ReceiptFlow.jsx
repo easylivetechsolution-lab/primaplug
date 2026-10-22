@@ -6,6 +6,7 @@ import { CURRENCIES, getCurrency } from '../data/currencies'
 import { getPendingGigReferralForPayout, rewardGigReferral } from '../utils/referral'
 import { updateWorkerLevel } from '../utils/workerLevel'
 import { calculateCommission, calculateWorkerEscrowShare, PAYMENT_METHODS } from '../utils/payments'
+import ConfirmDialog from './ConfirmDialog'
 
 export default function ReceiptFlow({ gig, onClose, onComplete }) {
   const { user } = useAuth()
@@ -18,6 +19,7 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
   const [uploading, setUploading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
+  const [confirmDialog, setConfirmDialog] = useState(null)
 
   const isPoster = gig?.poster_id === user?.id
   const isWorker = gig?.worker_id === user?.id
@@ -370,11 +372,31 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
     setUploading(false)
   }
 
+  const confirmDisputePaymentReceived = async () => {
+    setSubmitting(true)
+    try {
+      const { data: currentReceipt } = await supabase
+        .from('receipts').select('*').eq('gig_id', gig.id).single()
+      await supabase.from('receipts')
+        .update({ disputed: false, dispute_reason: null }).eq('id', currentReceipt.id)
+      await supabase.from('notifications').insert({
+        user_id: gig.poster_id,
+        title: 'Dispute Resolved',
+        message: `The worker confirmed they received payment for "${gig.title}" and has closed the dispute.`,
+        type: 'general', gig_id: gig.id
+      })
+      await handleWorkerConfirm(true)
+    } catch (e) {
+      setError('Error resolving dispute: ' + e.message)
+      setSubmitting(false)
+    }
+  }
+
   const inputStyle = {
-    width: '100%', background: '#F5F4FF',
-    border: '1.5px solid #E2E0FF', borderRadius: '12px',
+    width: '100%', background: 'var(--color-page)',
+    border: '1.5px solid var(--color-border)', borderRadius: '12px',
     padding: '14px 16px', fontSize: '18px',
-    color: '#14123A', fontFamily: 'inherit',
+    color: 'var(--color-text)', fontFamily: 'inherit',
     outline: 'none', boxSizing: 'border-box',
     fontWeight: '700', textAlign: 'center'
   }
@@ -390,7 +412,7 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
       fontFamily: "'Plus Jakarta Sans', sans-serif"
     }} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} style={{
-        background: '#fff',
+        background: 'var(--color-surface)',
         borderRadius: '22px 22px 0 0',
         width: '100%', maxWidth: '540px',
         maxHeight: '92vh', overflowY: 'auto',
@@ -399,7 +421,7 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
         {/* Handle */}
         <div style={{
           width: '40px', height: '4px',
-          background: '#E2E0FF', borderRadius: '2px',
+          background: 'var(--color-border)', borderRadius: '2px',
           margin: '12px auto 0'
         }} />
 
@@ -409,7 +431,7 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
           {step === 'start' && (
             <div style={{
               textAlign: 'center', padding: '32px 20px',
-              color: '#A09DC8', fontSize: '14px', fontWeight: '600'
+              color: 'var(--color-text-subtle)', fontSize: '14px', fontWeight: '600'
             }}>
               <div style={{ fontSize: '32px', marginBottom: '10px' }}>⏳</div>
               Loading...
@@ -420,16 +442,16 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
           {step === 'poster_amount' && !isWalletGig && (
             <div>
               <div style={{
-                fontSize: '10px', color: '#6C47FF',
+                fontSize: '12px', color: 'var(--color-brand)',
                 fontWeight: '700', textTransform: 'uppercase',
                 letterSpacing: '1.5px', marginBottom: '6px'
               }}>Receipt Confirmation</div>
               <div style={{
                 fontSize: '22px', fontWeight: '800',
-                color: '#14123A', marginBottom: '6px'
+                color: 'var(--color-text)', marginBottom: '6px'
               }}>How much did you pay?</div>
               <div style={{
-                fontSize: '13px', color: '#8B8FAF',
+                fontSize: '13px', color: 'var(--color-text-muted)',
                 marginBottom: '24px', lineHeight: '1.6'
               }}>
                 Enter the exact amount you paid the worker for "{gig?.title}"
@@ -438,8 +460,8 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
               {/* Currency Selector */}
               <div style={{ marginBottom: '14px' }}>
                 <div style={{
-                  fontSize: '11px', fontWeight: '700',
-                  color: '#A09DC8', textTransform: 'uppercase',
+                  fontSize: '12px', fontWeight: '700',
+                  color: 'var(--color-text-subtle)', textTransform: 'uppercase',
                   letterSpacing: '0.8px', marginBottom: '8px'
                 }}>Currency Paid In</div>
 
@@ -447,11 +469,11 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
                   <button
                     onClick={() => setShowCurrencyPicker(s => !s)}
                     style={{
-                      width: '100%', background: '#F5F4FF',
-                      border: '1.5px solid #E2E0FF',
+                      width: '100%', background: 'var(--color-page)',
+                      border: '1.5px solid var(--color-border)',
                       borderRadius: '12px', padding: '12px 16px',
                       fontSize: '14px', fontWeight: '700',
-                      color: '#14123A', cursor: 'default',
+                      color: 'var(--color-text)', cursor: 'default',
                       fontFamily: 'inherit',
                       display: 'flex', alignItems: 'center',
                       justifyContent: 'space-between', gap: '10px'
@@ -465,13 +487,13 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
                         {CURRENCIES.find(c => c.code === selectedCurrency)?.name}
                       </span>
                     </div>
-                    <span style={{ fontSize: '12px', color: '#A09DC8' }}>▼</span>
+                    <span style={{ fontSize: '12px', color: 'var(--color-text-subtle)' }}>▼</span>
                   </button>
 
                   {showCurrencyPicker && (
                     <div style={{
                       position: 'absolute', top: '50px', left: 0, right: 0,
-                      background: '#fff', border: '1.5px solid #E2E0FF',
+                      background: 'var(--color-surface)', border: '1.5px solid var(--color-border)',
                       borderRadius: '14px', padding: '8px',
                       zIndex: 100, maxHeight: '250px', overflowY: 'auto',
                       boxShadow: '0 8px 32px rgba(108,71,255,0.15)'
@@ -488,24 +510,24 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
                             alignItems: 'center', padding: '10px 12px',
                             borderRadius: '10px', cursor: 'pointer',
                             background: selectedCurrency === curr.code
-                              ? '#EEE9FF' : 'transparent'
+                              ? 'var(--color-brand-soft)' : 'transparent'
                           }}
                           onMouseEnter={e =>
-                            e.currentTarget.style.background = '#F5F4FF'}
+                            e.currentTarget.style.background = 'var(--color-page)'}
                           onMouseLeave={e =>
                             e.currentTarget.style.background =
-                            selectedCurrency === curr.code ? '#EEE9FF' : 'transparent'}
+                            selectedCurrency === curr.code ? 'var(--color-brand-soft)' : 'transparent'}
                         >
                           <span style={{ fontSize: '20px' }}>{curr.flag}</span>
                           <div style={{ flex: 1 }}>
                             <div style={{
                               fontSize: '13px', fontWeight: '600',
-                              color: selectedCurrency === curr.code ? '#6C47FF' : '#14123A'
+                              color: selectedCurrency === curr.code ? 'var(--color-brand)' : 'var(--color-text)'
                             }}>{curr.code} — {curr.symbol}</div>
-                            <div style={{ fontSize: '10px', color: '#A09DC8' }}>{curr.name}</div>
+                            <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)' }}>{curr.name}</div>
                           </div>
                           {selectedCurrency === curr.code && (
-                            <span style={{ color: '#6C47FF' }}>✓</span>
+                            <span style={{ color: 'var(--color-brand)' }}>✓</span>
                           )}
                         </div>
                       ))}
@@ -516,19 +538,19 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
 
               {/* Amount input */}
               <div style={{
-                background: '#F5F4FF', borderRadius: '16px',
+                background: 'var(--color-page)', borderRadius: '16px',
                 padding: '20px', marginBottom: '16px'
               }}>
                 <div style={{
-                  fontSize: '11px', fontWeight: '700',
-                  color: '#A09DC8', textTransform: 'uppercase',
+                  fontSize: '12px', fontWeight: '700',
+                  color: 'var(--color-text-subtle)', textTransform: 'uppercase',
                   letterSpacing: '0.8px', marginBottom: '10px',
                   textAlign: 'center'
                 }}>Amount Paid</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <div style={{
                     fontSize: '24px', fontWeight: '800',
-                    color: '#6C47FF', flexShrink: 0
+                    color: 'var(--color-brand)', flexShrink: 0
                   }}>
                     {CURRENCIES.find(c => c.code === selectedCurrency)?.symbol || '$'}
                   </div>
@@ -542,16 +564,16 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
                     }}
                     placeholder="0"
                     style={inputStyle}
-                    onFocus={e => e.target.style.borderColor = '#B8A5FF'}
-                    onBlur={e => e.target.style.borderColor = '#E2E0FF'}
+                    onFocus={e => e.target.style.borderColor = 'var(--color-brand-border-strong)'}
+                    onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
                   />
                 </div>
 
                 {gig?.pay_min && (
                   <div
                     style={{
-                      fontSize: '11px',
-                      color: '#A09DC8',
+                      fontSize: '12px',
+                      color: 'var(--color-text-subtle)',
                       marginTop: '8px',
                       textAlign: 'center'
                     }}
@@ -565,15 +587,15 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
                 {amount && parseFloat(amount) > 0 && (
                   <div style={{
                     marginTop: '14px', padding: '12px',
-                    background: '#fff', borderRadius: '10px',
-                    border: '1px solid #E2E0FF'
+                    background: 'var(--color-surface)', borderRadius: '10px',
+                    border: '1px solid var(--color-border)'
                   }}>
                     <div style={{
                       display: 'flex', justifyContent: 'space-between',
                       fontSize: '12px', marginBottom: '6px'
                     }}>
-                      <span style={{ color: '#8B8FAF' }}>Amount paid</span>
-                      <span style={{ fontWeight: '700', color: '#14123A' }}>
+                      <span style={{ color: 'var(--color-text-muted)' }}>Amount paid</span>
+                      <span style={{ fontWeight: '700', color: 'var(--color-text)' }}>
                         {CURRENCIES.find(c => c.code === selectedCurrency)?.symbol}
                         {parseFloat(amount).toLocaleString()} {selectedCurrency}
                       </span>
@@ -581,12 +603,12 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
                     <div style={{
                       display: 'flex', justifyContent: 'space-between',
                       fontSize: '12px', paddingTop: '6px',
-                      borderTop: '1px solid #F5F4FF'
+                      borderTop: '1px solid var(--color-page)'
                     }}>
-                      <span style={{ color: '#FF6B2B' }}>
+                      <span style={{ color: 'var(--color-warning)' }}>
                         Platform commission debt (10%)
                       </span>
-                      <span style={{ fontWeight: '800', color: '#FF6B2B' }}>
+                      <span style={{ fontWeight: '800', color: 'var(--color-warning)' }}>
                         {CURRENCIES.find(c => c.code === selectedCurrency)?.symbol}
                         {calculateCommission(parseFloat(amount)).toLocaleString()} {selectedCurrency}
                       </span>
@@ -598,22 +620,22 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
               {/* Receipt upload (optional) */}
               <div style={{ marginBottom: '16px' }}>
                 <div style={{
-                  fontSize: '11px', fontWeight: '700',
-                  color: '#A09DC8', textTransform: 'uppercase',
+                  fontSize: '12px', fontWeight: '700',
+                  color: 'var(--color-text-subtle)', textTransform: 'uppercase',
                   letterSpacing: '0.8px', marginBottom: '8px'
-                }}>Payment Proof {!isWalletGig && <span style={{ color: '#FF3366' }}>*Required</span>}</div>
+                }}>Payment Proof {!isWalletGig && <span style={{ color: 'var(--color-danger)' }}>*Required</span>}</div>
                 <div
                   onClick={() => document.getElementById('receipt-upload').click()}
                   style={{
-                    background: receiptFile ? '#DFFDF4' : '#F5F4FF',
-                    border: `2px dashed ${receiptFile ? '#7EECD2' : '#B8A5FF'}`,
+                    background: receiptFile ? 'var(--color-success-soft)' : 'var(--color-page)',
+                    border: `2px dashed ${receiptFile ? 'var(--color-success-border)' : 'var(--color-brand-border-strong)'}`,
                     borderRadius: '12px', padding: '16px',
                     textAlign: 'center', cursor: 'pointer'
                   }}>
                   {receiptFile ? (
                     <div style={{
                       fontSize: '13px', fontWeight: '700',
-                      color: '#00C48C'
+                      color: 'var(--color-success)'
                     }}>✓ Receipt uploaded</div>
                   ) : (
                     <>
@@ -621,7 +643,7 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
                         {uploading ? '⏳' : '📸'}
                       </div>
                       <div style={{
-                        fontSize: '12px', color: '#6C47FF',
+                        fontSize: '12px', color: 'var(--color-brand)',
                         fontWeight: '600'
                       }}>
                         {uploading ? 'Uploading...' : 'Upload bank screenshot'}
@@ -642,9 +664,9 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
 
               {error && (
                 <div style={{
-                  background: '#FFE8EE', border: '1.5px solid #FF99B3',
+                  background: 'var(--color-danger-soft)', border: '1.5px solid var(--color-danger-border)',
                   borderRadius: '10px', padding: '10px 14px',
-                  fontSize: '12px', color: '#FF3366',
+                  fontSize: '12px', color: 'var(--color-danger)',
                   marginBottom: '14px'
                 }}>{error}</div>
               )}
@@ -658,10 +680,10 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
                     disabled={isBlocked}
                     style={{
                       width: '100%',
-                      background: isBlocked ? '#E2E0FF' : 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+                      background: isBlocked ? 'var(--color-border)' : 'var(--color-brand-gradient)',
                       border: 'none', borderRadius: '14px', padding: '16px',
                       fontSize: '15px', fontWeight: '700',
-                      color: isBlocked ? '#A09DC8' : '#fff',
+                      color: isBlocked ? 'var(--color-text-subtle)' : 'var(--color-surface)',
                       cursor: isBlocked ? 'not-allowed' : 'pointer',
                       fontFamily: 'inherit',
                       boxShadow: !isBlocked ? '0 4px 20px rgba(108,71,255,0.35)' : 'none'
@@ -672,7 +694,7 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
               })()}
               {!isWalletGig && !receiptFile && (
                 <div style={{
-                  fontSize: '11px', color: '#FF6B2B', textAlign: 'center',
+                  fontSize: '12px', color: 'var(--color-warning)', textAlign: 'center',
                   marginTop: '8px'
                 }}>Please upload payment proof before confirming</div>
               )}
@@ -682,29 +704,29 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
           {step === 'poster_amount' && isWalletGig && (
             <div>
               <div style={{
-                fontSize: '10px', color: '#00A878',
+                fontSize: '12px', color: 'var(--color-success)',
                 fontWeight: '700', textTransform: 'uppercase',
                 letterSpacing: '1.5px', marginBottom: '6px'
               }}>Escrow Release</div>
               <div style={{
                 fontSize: '22px', fontWeight: '800',
-                color: '#14123A', marginBottom: '6px'
+                color: 'var(--color-text)', marginBottom: '6px'
               }}>Mark this gig as done?</div>
               <div style={{
-                fontSize: '13px', color: '#8B8FAF',
+                fontSize: '13px', color: 'var(--color-text-muted)',
                 marginBottom: '24px', lineHeight: '1.6'
               }}>
                 Funds are already secured in escrow for "{gig?.title}". Confirming will notify the worker to release payment.
               </div>
 
               <div style={{
-                background: 'linear-gradient(135deg, #00C48C, #00A878)',
+                background: 'linear-gradient(135deg, var(--color-success-accent), var(--color-success))',
                 borderRadius: '16px', padding: '24px',
-                textAlign: 'center', color: '#fff',
+                textAlign: 'center', color: 'var(--color-surface)',
                 marginBottom: '20px'
               }}>
                 <div style={{
-                  fontSize: '11px', opacity: 0.85,
+                  fontSize: '12px', opacity: 0.85,
                   textTransform: 'uppercase', letterSpacing: '1px',
                   marginBottom: '8px'
                 }}>Amount in Escrow</div>
@@ -719,9 +741,9 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
 
               {error && (
                 <div style={{
-                  background: '#FFE8EE', border: '1.5px solid #FF99B3',
+                  background: 'var(--color-danger-soft)', border: '1.5px solid var(--color-danger-border)',
                   borderRadius: '10px', padding: '10px 14px',
-                  fontSize: '12px', color: '#FF3366',
+                  fontSize: '12px', color: 'var(--color-danger)',
                   marginBottom: '14px'
                 }}>{error}</div>
               )}
@@ -731,9 +753,9 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
                 disabled={submitting}
                 style={{
                   width: '100%',
-                  background: submitting ? '#B8A5FF' : 'linear-gradient(135deg, #00C48C, #00A878)',
+                  background: submitting ? 'var(--color-brand-border-strong)' : 'linear-gradient(135deg, var(--color-success-accent), var(--color-success))',
                   border: 'none', borderRadius: '14px', padding: '16px',
-                  fontSize: '15px', fontWeight: '700', color: '#fff',
+                  fontSize: '15px', fontWeight: '700', color: 'var(--color-surface)',
                   cursor: submitting ? 'not-allowed' : 'pointer',
                   fontFamily: 'inherit',
                   boxShadow: submitting ? 'none' : '0 4px 20px rgba(0,196,140,0.35)'
@@ -749,19 +771,19 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
               <div style={{ fontSize: '56px', marginBottom: '16px' }}>⏳</div>
               <div style={{
                 fontSize: '20px', fontWeight: '800',
-                color: '#14123A', marginBottom: '8px'
+                color: 'var(--color-text)', marginBottom: '8px'
               }}>Waiting for Worker</div>
               <div style={{
-                fontSize: '13px', color: '#8B8FAF',
+                fontSize: '13px', color: 'var(--color-text-muted)',
                 lineHeight: '1.7', marginBottom: '20px'
               }}>
                 You confirmed payment of {getCurrency(receipt?.currency || gig?.currency || 'USD').symbol}{receipt?.amount?.toLocaleString()}.
                 Waiting for the worker to confirm they received this amount.
               </div>
               <div style={{
-                background: '#F5F4FF', borderRadius: '14px',
+                background: 'var(--color-page)', borderRadius: '14px',
                 padding: '14px', fontSize: '12px',
-                color: '#6C47FF', lineHeight: '1.6'
+                color: 'var(--color-brand)', lineHeight: '1.6'
               }}>
                 The worker will be notified to confirm the receipt.
                 You'll get notified once they confirm.
@@ -775,10 +797,10 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
               <div style={{ fontSize: '56px', marginBottom: '16px' }}>⏳</div>
               <div style={{
                 fontSize: '20px', fontWeight: '800',
-                color: '#14123A', marginBottom: '8px'
+                color: 'var(--color-text)', marginBottom: '8px'
               }}>Waiting for Poster</div>
               <div style={{
-                fontSize: '13px', color: '#8B8FAF',
+                fontSize: '13px', color: 'var(--color-text-muted)',
                 lineHeight: '1.7'
               }}>
                 The poster needs to confirm the payment amount first.
@@ -791,16 +813,16 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
           {step === 'worker_confirm' && (
             <div>
               <div style={{
-                fontSize: '10px', color: '#6C47FF',
+                fontSize: '12px', color: 'var(--color-brand)',
                 fontWeight: '700', textTransform: 'uppercase',
                 letterSpacing: '1.5px', marginBottom: '6px'
               }}>Confirm Receipt</div>
               <div style={{
                 fontSize: '22px', fontWeight: '800',
-                color: '#14123A', marginBottom: '6px'
+                color: 'var(--color-text)', marginBottom: '6px'
               }}>Did you receive this amount?</div>
               <div style={{
-                fontSize: '13px', color: '#8B8FAF',
+                fontSize: '13px', color: 'var(--color-text-muted)',
                 marginBottom: '24px'
               }}>
                 The poster confirmed they paid for "{gig?.title}"
@@ -808,13 +830,13 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
 
               {/* Amount display */}
               <div style={{
-                background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+                background: 'var(--color-brand-gradient)',
                 borderRadius: '16px', padding: '24px',
-                textAlign: 'center', color: '#fff',
+                textAlign: 'center', color: 'var(--color-surface)',
                 marginBottom: '20px'
               }}>
                 <div style={{
-                  fontSize: '11px', opacity: 0.8,
+                  fontSize: '12px', opacity: 0.8,
                   textTransform: 'uppercase', letterSpacing: '1px',
                   marginBottom: '8px'
                 }}>Poster confirmed payment of</div>
@@ -844,7 +866,7 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
                 )
                 return (
                   <div style={{
-                    background: '#FFF0E8', border: '1.5px solid #FFBC99',
+                    background: 'var(--color-warning-soft)', border: '1.5px solid var(--color-warning-border)',
                     borderRadius: '12px', padding: '14px',
                     marginBottom: '20px',
                     display: 'flex', gap: '10px', alignItems: 'flex-start'
@@ -853,10 +875,10 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
                     <div>
                       <div style={{
                         fontSize: '13px', fontWeight: '700',
-                        color: '#FF6B2B', marginBottom: '3px'
+                        color: 'var(--color-warning)', marginBottom: '3px'
                       }}>Platform Commission</div>
                       <div style={{
-                        fontSize: '12px', color: '#FF6B2B',
+                        fontSize: '12px', color: 'var(--color-warning)',
                         opacity: 0.8, lineHeight: '1.5'
                       }}>
                         Confirming this receipt means you agree a 10% platform
@@ -870,9 +892,9 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
 
               {error && (
                 <div style={{
-                  background: '#FFE8EE', border: '1.5px solid #FF99B3',
+                  background: 'var(--color-danger-soft)', border: '1.5px solid var(--color-danger-border)',
                   borderRadius: '10px', padding: '10px 14px',
-                  fontSize: '12px', color: '#FF3366',
+                  fontSize: '12px', color: 'var(--color-danger)',
                   marginBottom: '14px'
                 }}>{error}</div>
               )}
@@ -883,11 +905,11 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
                   onClick={() => handleWorkerConfirm(false)}
                   disabled={submitting}
                   style={{
-                    flex: 1, background: '#FFE8EE',
-                    border: '1.5px solid #FF99B3',
+                    flex: 1, background: 'var(--color-danger-soft)',
+                    border: '1.5px solid var(--color-danger-border)',
                     borderRadius: '12px', padding: '14px',
                     fontSize: '13px', fontWeight: '700',
-                    color: '#FF3366', cursor: 'pointer',
+                    color: 'var(--color-danger)', cursor: 'pointer',
                     fontFamily: 'inherit'
                   }}>
                   ✗ Dispute Amount
@@ -898,10 +920,10 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
                   style={{
                     flex: 2,
                     background: submitting
-                      ? '#B8A5FF'
-                      : 'linear-gradient(135deg, #00C48C, #00A878)',
+                      ? 'var(--color-brand-border-strong)'
+                      : 'linear-gradient(135deg, var(--color-success-accent), var(--color-success))',
                     border: 'none', borderRadius: '12px', padding: '14px',
-                    fontSize: '13px', fontWeight: '700', color: '#fff',
+                    fontSize: '13px', fontWeight: '700', color: 'var(--color-surface)',
                     cursor: submitting ? 'not-allowed' : 'pointer',
                     fontFamily: 'inherit',
                     boxShadow: submitting
@@ -919,10 +941,10 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
               <div style={{ fontSize: '56px', marginBottom: '16px' }}>⚠️</div>
               <div style={{
                 fontSize: '20px', fontWeight: '800',
-                color: '#14123A', marginBottom: '8px'
+                color: 'var(--color-text)', marginBottom: '8px'
               }}>Amount Disputed</div>
               <div style={{
-                fontSize: '13px', color: '#8B8FAF',
+                fontSize: '13px', color: 'var(--color-text-muted)',
                 lineHeight: '1.7', marginBottom: '20px'
               }}>
                 {isWorker
@@ -931,9 +953,9 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
                 }
               </div>
               <div style={{
-                background: '#FFF0E8', border: '1.5px solid #FFBC99',
+                background: 'var(--color-warning-soft)', border: '1.5px solid var(--color-warning-border)',
                 borderRadius: '12px', padding: '14px',
-                fontSize: '12px', color: '#FF6B2B', lineHeight: '1.6',
+                fontSize: '12px', color: 'var(--color-warning)', lineHeight: '1.6',
                 marginBottom: isWorker ? '20px' : '0'
               }}>
                 In the meantime please have your payment proof ready.
@@ -944,51 +966,28 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
               {isWorker && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '4px' }}>
                   <div style={{
-                    background: '#F5F4FF', border: '1.5px solid #E2E0FF',
+                    background: 'var(--color-page)', border: '1.5px solid var(--color-border)',
                     borderRadius: '12px', padding: '12px 14px',
-                    fontSize: '12px', color: '#6C47FF', lineHeight: '1.5',
+                    fontSize: '12px', color: 'var(--color-brand)', lineHeight: '1.5',
                     textAlign: 'left'
                   }}>
                     💡 Found the payment? Tap below to confirm and close this dispute without waiting for admin.
                   </div>
                   <button
                     onClick={async () => {
-                      if (!window.confirm('Are you sure you received the payment and want to close this dispute?')) return
-                      setSubmitting(true)
-                      try {
-                        const { data: currentReceipt } = await supabase
-                          .from('receipts')
-                          .select('*')
-                          .eq('gig_id', gig.id)
-                          .single()
-
-                        await supabase
-                          .from('receipts')
-                          .update({ disputed: false, dispute_reason: null })
-                          .eq('id', currentReceipt.id)
-
-                        // Notify poster dispute is resolved
-                        await supabase.from('notifications').insert({
-                          user_id: gig.poster_id,
-                          title: '✅ Dispute Resolved',
-                          message: `The worker confirmed they received payment for "${gig.title}" and has closed the dispute.`,
-                          type: 'general',
-                          gig_id: gig.id
-                        })
-
-                        // Proceed with full confirmation
-                        await handleWorkerConfirm(true)
-                      } catch (e) {
-                        setError('Error resolving dispute: ' + e.message)
-                        setSubmitting(false)
-                      }
+                      setConfirmDialog({
+                        title: 'Confirm that you received the payment?',
+                        message: 'This closes the dispute and confirms that the payment for this job reached you.',
+                        confirmLabel: 'Yes, payment received',
+                        action: confirmDisputePaymentReceived
+                      })
                     }}
                     disabled={submitting}
                     style={{
                       width: '100%',
-                      background: submitting ? '#B8A5FF' : 'linear-gradient(135deg, #00C48C, #00A878)',
+                      background: submitting ? 'var(--color-brand-border-strong)' : 'linear-gradient(135deg, var(--color-success-accent), var(--color-success))',
                       border: 'none', borderRadius: '12px', padding: '14px',
-                      fontSize: '14px', fontWeight: '700', color: '#fff',
+                      fontSize: '14px', fontWeight: '700', color: 'var(--color-surface)',
                       cursor: submitting ? 'not-allowed' : 'pointer',
                       fontFamily: 'inherit',
                       boxShadow: submitting ? 'none' : '0 4px 16px rgba(0,196,140,0.35)'
@@ -1000,9 +999,9 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
 
               {error && (
                 <div style={{
-                  background: '#FFE8EE', border: '1.5px solid #FF99B3',
+                  background: 'var(--color-danger-soft)', border: '1.5px solid var(--color-danger-border)',
                   borderRadius: '10px', padding: '10px 14px',
-                  fontSize: '12px', color: '#FF3366', marginTop: '12px'
+                  fontSize: '12px', color: 'var(--color-danger)', marginTop: '12px'
                 }}>{error}</div>
               )}
             </div>
@@ -1014,10 +1013,10 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
               <div style={{ fontSize: '64px', marginBottom: '16px' }}>🎉</div>
               <div style={{
                 fontSize: '24px', fontWeight: '800',
-                color: '#14123A', marginBottom: '8px'
+                color: 'var(--color-text)', marginBottom: '8px'
               }}>Gig Complete!</div>
               <div style={{
-                fontSize: '13px', color: '#8B8FAF',
+                fontSize: '13px', color: 'var(--color-text-muted)',
                 lineHeight: '1.7', marginBottom: '20px'
               }}>
                 Both parties have confirmed the receipt.
@@ -1026,22 +1025,22 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
 
               {isWorker && receipt?.commission_amount && (
                 <div style={{
-                  background: '#FFF0E8', border: '1.5px solid #FFBC99',
+                  background: 'var(--color-warning-soft)', border: '1.5px solid var(--color-warning-border)',
                   borderRadius: '14px', padding: '16px',
                   marginBottom: '16px', textAlign: 'left'
                 }}>
                   <div style={{
                     fontSize: '13px', fontWeight: '700',
-                    color: '#FF6B2B', marginBottom: '6px'
+                    color: 'var(--color-warning)', marginBottom: '6px'
                   }}>💰 Commission Due</div>
                   <div style={{
                     fontSize: '22px', fontWeight: '800',
-                    color: '#FF6B2B', marginBottom: '4px'
+                    color: 'var(--color-warning)', marginBottom: '4px'
                   }}>
                     {getCurrency(receipt?.currency || gig?.currency || 'USD').symbol}{receipt.commission_amount.toLocaleString()}
                   </div>
                   <div style={{
-                    fontSize: '11px', color: '#FF6B2B',
+                    fontSize: '12px', color: 'var(--color-warning)',
                     opacity: 0.8, lineHeight: '1.5'
                   }}>
                     10% platform fee due within 3 days.
@@ -1057,10 +1056,10 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
                     }}
                     style={{
                       width: '100%', marginTop: '12px',
-                      background: 'linear-gradient(135deg, #FF6B2B, #FF4DCF)',
+                      background: 'linear-gradient(135deg, var(--color-warning), var(--color-brand-highlight))',
                       border: 'none', borderRadius: '10px',
                       padding: '12px', fontSize: '13px',
-                      fontWeight: '700', color: '#fff',
+                      fontWeight: '700', color: 'var(--color-surface)',
                       cursor: 'pointer', fontFamily: 'inherit'
                     }}>
                     Pay Commission Now →
@@ -1072,9 +1071,9 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
                 onClick={onClose}
                 style={{
                   width: '100%',
-                  background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+                  background: 'var(--color-brand-gradient)',
                   border: 'none', borderRadius: '14px', padding: '16px',
-                  fontSize: '15px', fontWeight: '700', color: '#fff',
+                  fontSize: '15px', fontWeight: '700', color: 'var(--color-surface)',
                   cursor: 'pointer', fontFamily: 'inherit',
                   boxShadow: '0 4px 20px rgba(108,71,255,0.35)'
                 }}>
@@ -1084,6 +1083,15 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
           )}
         </div>
 
+        {confirmDialog && (
+          <ConfirmDialog
+            title={confirmDialog.title}
+            message={confirmDialog.message}
+            confirmLabel={confirmDialog.confirmLabel}
+            onCancel={() => setConfirmDialog(null)}
+            onConfirm={() => { const action = confirmDialog.action; setConfirmDialog(null); action() }}
+          />
+        )}
         <style>{`
           @keyframes slideUp {
             from { opacity: 0; transform: translateY(24px); }

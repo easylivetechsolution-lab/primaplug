@@ -7,23 +7,23 @@ import { CURRENCIES } from '../data/currencies'
 import { showToast } from '../utils/toast'
 
 const inputStyle = {
-  width: '100%', background: '#F5F4FF',
-  border: '1.5px solid #E2E0FF', borderRadius: '10px',
-  padding: '11px 14px', fontSize: '13px', color: '#14123A',
+  width: '100%', background: 'var(--color-page)',
+  border: '1.5px solid var(--color-border)', borderRadius: '10px',
+  padding: '11px 14px', fontSize: '13px', color: 'var(--color-text)',
   fontFamily: 'inherit', outline: 'none',
   boxSizing: 'border-box', transition: 'border-color 0.15s'
 }
 
 const labelStyle = {
-  fontSize: '10px', fontWeight: '700', color: '#8B8FAF',
+  fontSize: '12px', fontWeight: '700', color: 'var(--color-text-muted)',
   textTransform: 'uppercase', letterSpacing: '0.8px',
   display: 'block', marginBottom: '6px'
 }
 
 const PACKAGE_COLORS = {
-  basic: { color: '#00C48C', bg: '#DFFDF4', border: '#7EECD2' },
-  standard: { color: '#6C47FF', bg: '#EEE9FF', border: '#B8A5FF' },
-  premium: { color: '#FFB800', bg: '#FFF8E0', border: '#FFD966' },
+  basic: { color: 'var(--color-success)', bg: 'var(--color-success-soft)', border: 'var(--color-success-border)' },
+  standard: { color: 'var(--color-brand)', bg: 'var(--color-brand-soft)', border: 'var(--color-brand-border-strong)' },
+  premium: { color: 'var(--color-warning-gold)', bg: 'var(--color-warning-gold-soft)', border: 'var(--color-warning-gold-border)' },
 }
 
 export default function EditService({ service, onClose, onUpdated }) {
@@ -161,10 +161,10 @@ export default function EditService({ service, onClose, onUpdated }) {
       fontFamily: "'Plus Jakarta Sans', sans-serif"
     }} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} style={{
-        background: '#fff', borderRadius: '24px',
+        background: 'var(--color-surface)', borderRadius: '24px',
         width: '100%', maxWidth: '520px',
         maxHeight: '90vh', overflowY: 'auto',
-        border: '1.5px solid #E2E0FF',
+        border: '1.5px solid var(--color-border)',
         boxShadow: '0 20px 60px rgba(108,71,255,0.25)',
         animation: 'slideUp 0.3s cubic-bezier(0.16,1,0.3,1)'
       }}>
@@ -172,9 +172,9 @@ export default function EditService({ service, onClose, onUpdated }) {
         <div style={{
           padding: '24px 24px 0',
           position: 'sticky', top: 0,
-          background: '#fff', zIndex: 10,
+          background: 'var(--color-surface)', zIndex: 10,
           borderRadius: '24px 24px 0 0',
-          borderBottom: '1px solid #F5F4FF',
+          borderBottom: '1px solid var(--color-page)',
           paddingBottom: '0'
         }}>
           <div style={{
@@ -183,21 +183,21 @@ export default function EditService({ service, onClose, onUpdated }) {
           }}>
             <div>
               <div style={{
-                fontSize: '10px', color: '#6C47FF', fontWeight: '700',
+                fontSize: '12px', color: 'var(--color-brand)', fontWeight: '700',
                 letterSpacing: '1.5px', textTransform: 'uppercase',
                 marginBottom: '3px'
               }}>Edit Service</div>
               <div style={{
                 fontSize: '18px', fontWeight: '800',
-                color: '#14123A',
+                color: 'var(--color-text)',
                 maxWidth: '300px', overflow: 'hidden',
                 textOverflow: 'ellipsis', whiteSpace: 'nowrap'
               }}>{service.title}</div>
             </div>
-            <button onClick={onClose} style={{
-              background: '#F5F4FF', border: '1.5px solid #E2E0FF',
+            <button  onClick={onClose} style={{
+              background: 'var(--color-page)', border: '1.5px solid var(--color-border)',
               borderRadius: '10px', width: '36px', height: '36px',
-              fontSize: '18px', color: '#8B8FAF', cursor: 'pointer',
+              fontSize: '18px', color: 'var(--color-text-muted)', cursor: 'pointer',
               display: 'flex', alignItems: 'center',
               justifyContent: 'center', fontFamily: 'inherit',
               flexShrink: 0
@@ -214,10 +214,10 @@ export default function EditService({ service, onClose, onUpdated }) {
                 onClick={() => setActiveTab(tab.key)}
                 style={{
                   flex: 1, background: 'transparent',
-                  border: 'none', borderBottom: `2px solid ${activeTab === tab.key ? '#6C47FF' : 'transparent'}`,
+                  border: 'none', borderBottom: `2px solid ${activeTab === tab.key ? 'var(--color-brand)' : 'transparent'}`,
                   padding: '10px 4px', fontSize: '12px',
                   fontWeight: activeTab === tab.key ? '700' : '500',
-                  color: activeTab === tab.key ? '#6C47FF' : '#8B8FAF',
+                  color: activeTab === tab.key ? 'var(--color-brand)' : 'var(--color-text-muted)',
                   cursor: 'pointer', fontFamily: 'inherit',
                   transition: 'all 0.15s', whiteSpace: 'nowrap'
                 }}>{tab.label}</button>
@@ -228,10 +228,10 @@ export default function EditService({ service, onClose, onUpdated }) {
         <div style={{ padding: '20px 24px 24px' }}>
           {saved && (
             <div style={{
-              background: '#DFFDF4', border: '1.5px solid #7EECD2',
+              background: 'var(--color-success-soft)', border: '1.5px solid var(--color-success-border)',
               borderRadius: '12px', padding: '12px 16px',
               fontSize: '13px', fontWeight: '700',
-              color: '#00C48C', textAlign: 'center',
+              color: 'var(--color-success)', textAlign: 'center',
               marginBottom: '16px'
             }}>✓ Service updated successfully!</div>
           )}
@@ -244,14 +244,14 @@ export default function EditService({ service, onClose, onUpdated }) {
               {/* Active toggle */}
               <div style={{
                 display: 'flex', justifyContent: 'space-between',
-                alignItems: 'center', background: '#F5F4FF',
+                alignItems: 'center', background: 'var(--color-page)',
                 borderRadius: '12px', padding: '12px 14px'
               }}>
                 <div>
                   <div style={{
-                    fontSize: '13px', fontWeight: '600', color: '#14123A'
+                    fontSize: '13px', fontWeight: '600', color: 'var(--color-text)'
                   }}>Service Active</div>
-                  <div style={{ fontSize: '11px', color: '#A09DC8' }}>
+                  <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)' }}>
                     {form.is_active
                       ? 'Visible to everyone'
                       : 'Hidden from listings'}
@@ -261,13 +261,13 @@ export default function EditService({ service, onClose, onUpdated }) {
                   onClick={() => update('is_active', !form.is_active)}
                   style={{
                     width: '44px', height: '24px', borderRadius: '12px',
-                    background: form.is_active ? '#6C47FF' : '#E2E0FF',
+                    background: form.is_active ? 'var(--color-brand)' : 'var(--color-border)',
                     position: 'relative', cursor: 'pointer',
                     transition: 'background 0.2s'
                   }}>
                   <div style={{
                     width: '18px', height: '18px', borderRadius: '50%',
-                    background: '#fff', position: 'absolute',
+                    background: 'var(--color-surface)', position: 'absolute',
                     top: '3px', transition: 'left 0.2s',
                     left: form.is_active ? '23px' : '3px',
                     boxShadow: '0 1px 4px rgba(0,0,0,0.2)'
@@ -282,8 +282,8 @@ export default function EditService({ service, onClose, onUpdated }) {
                   value={form.title}
                   onChange={e => update('title', e.target.value)}
                   placeholder="e.g. I will design a professional logo"
-                  onFocus={e => e.target.style.borderColor = '#B8A5FF'}
-                  onBlur={e => e.target.style.borderColor = '#E2E0FF'}
+                  onFocus={e => e.target.style.borderColor = 'var(--color-brand-border-strong)'}
+                  onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
                 />
               </div>
 
@@ -294,8 +294,8 @@ export default function EditService({ service, onClose, onUpdated }) {
                   value={form.description}
                   onChange={e => update('description', e.target.value)}
                   placeholder="Describe your service..."
-                  onFocus={e => e.target.style.borderColor = '#B8A5FF'}
-                  onBlur={e => e.target.style.borderColor = '#E2E0FF'}
+                  onFocus={e => e.target.style.borderColor = 'var(--color-brand-border-strong)'}
+                  onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
                 />
               </div>
 
@@ -321,8 +321,8 @@ export default function EditService({ service, onClose, onUpdated }) {
                       onClick={() => update('type', t.key)}
                       style={{
                         flex: 1,
-                        background: form.type === t.key ? '#EEE9FF' : '#F5F4FF',
-                        border: `1.5px solid ${form.type === t.key ? '#B8A5FF' : '#E2E0FF'}`,
+                        background: form.type === t.key ? 'var(--color-brand-soft)' : 'var(--color-page)',
+                        border: `1.5px solid ${form.type === t.key ? 'var(--color-brand-border-strong)' : 'var(--color-border)'}`,
                         borderRadius: '12px', padding: '12px',
                         cursor: 'pointer', fontFamily: 'inherit',
                         textAlign: 'center'
@@ -331,7 +331,7 @@ export default function EditService({ service, onClose, onUpdated }) {
                         {t.label}
                       </div>
                       <div style={{
-                        fontSize: '10px', color: '#A09DC8', fontWeight: '600'
+                        fontSize: '12px', color: 'var(--color-text-subtle)', fontWeight: '600'
                       }}>{t.sub}</div>
                     </button>
                   ))}
@@ -360,7 +360,7 @@ export default function EditService({ service, onClose, onUpdated }) {
               display: 'flex', flexDirection: 'column', gap: '14px'
             }}>
               <div style={{
-                fontSize: '12px', color: '#8B8FAF', lineHeight: '1.6'
+                fontSize: '12px', color: 'var(--color-text-muted)', lineHeight: '1.6'
               }}>
                 Basic is required. Standard and Premium are optional.
               </div>
@@ -387,13 +387,13 @@ export default function EditService({ service, onClose, onUpdated }) {
                       </div>
                       {isRequired ? (
                         <span style={{
-                          background: colors.color, color: '#fff',
+                          background: colors.color, color: 'var(--color-surface)',
                           borderRadius: '5px', padding: '2px 7px',
-                          fontSize: '9px', fontWeight: '700'
+                          fontSize: '12px', fontWeight: '700'
                         }}>Required</span>
                       ) : (
                         <span style={{
-                          fontSize: '9px', color: '#A09DC8',
+                          fontSize: '12px', color: 'var(--color-text-subtle)',
                           fontWeight: '600', textTransform: 'uppercase'
                         }}>Optional</span>
                       )}
@@ -407,11 +407,11 @@ export default function EditService({ service, onClose, onUpdated }) {
                           Package Name
                         </label>
                         <input
-                          style={{ ...inputStyle, background: '#fff' }}
+                          style={{ ...inputStyle, background: 'var(--color-surface)' }}
                           value={form[`${tier}_name`]}
                           onChange={e => update(`${tier}_name`, e.target.value)}
                           onFocus={e => e.target.style.borderColor = colors.border}
-                          onBlur={e => e.target.style.borderColor = '#E2E0FF'}
+                          onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
                         />
                       </div>
                       <div>
@@ -420,14 +420,14 @@ export default function EditService({ service, onClose, onUpdated }) {
                         </label>
                         <textarea
                           style={{
-                            ...inputStyle, background: '#fff',
+                            ...inputStyle, background: 'var(--color-surface)',
                             minHeight: '60px', resize: 'vertical'
                           }}
                           value={form[`${tier}_desc`]}
                           onChange={e => update(`${tier}_desc`, e.target.value)}
                           placeholder="Describe what's included..."
                           onFocus={e => e.target.style.borderColor = colors.border}
-                          onBlur={e => e.target.style.borderColor = '#E2E0FF'}
+                          onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
                         />
                       </div>
                       <div style={{
@@ -440,12 +440,12 @@ export default function EditService({ service, onClose, onUpdated }) {
                           </label>
                           <input
                             type="number"
-                            style={{ ...inputStyle, background: '#fff' }}
+                            style={{ ...inputStyle, background: 'var(--color-surface)' }}
                             value={form[`${tier}_price`]}
                             onChange={e => update(`${tier}_price`, e.target.value)}
                             placeholder="0"
                             onFocus={e => e.target.style.borderColor = colors.border}
-                            onBlur={e => e.target.style.borderColor = '#E2E0FF'}
+                            onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
                           />
                         </div>
                         <div>
@@ -454,12 +454,12 @@ export default function EditService({ service, onClose, onUpdated }) {
                           </label>
                           <input
                             type="number"
-                            style={{ ...inputStyle, background: '#fff' }}
+                            style={{ ...inputStyle, background: 'var(--color-surface)' }}
                             value={form[`${tier}_delivery`]}
                             onChange={e => update(`${tier}_delivery`, e.target.value)}
                             placeholder="1"
                             onFocus={e => e.target.style.borderColor = colors.border}
-                            onBlur={e => e.target.style.borderColor = '#E2E0FF'}
+                            onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
                           />
                         </div>
                       </div>
@@ -474,7 +474,7 @@ export default function EditService({ service, onClose, onUpdated }) {
           {activeTab === 'images' && (
             <div>
               <div style={{
-                fontSize: '12px', color: '#8B8FAF',
+                fontSize: '12px', color: 'var(--color-text-muted)',
                 lineHeight: '1.6', marginBottom: '14px'
               }}>
                 Upload 3–5 images showing your work. First image appears as the cover.
@@ -493,24 +493,24 @@ export default function EditService({ service, onClose, onUpdated }) {
                           width: '100%', height: '100%',
                           borderRadius: '10px', objectFit: 'cover',
                           border: i === 0
-                            ? '2px solid #6C47FF'
-                            : '1.5px solid #E2E0FF'
+                            ? '2px solid var(--color-brand)'
+                            : '1.5px solid var(--color-border)'
                         }} />
                       {i === 0 && (
                         <div style={{
                           position: 'absolute', bottom: '5px', left: '5px',
-                          background: '#6C47FF', color: '#fff',
+                          background: 'var(--color-brand)', color: 'var(--color-surface)',
                           borderRadius: '5px', padding: '2px 6px',
-                          fontSize: '8px', fontWeight: '700'
+                          fontSize: '12px', fontWeight: '700'
                         }}>COVER</div>
                       )}
-                      <button
+                      <button 
                         onClick={() => removeImage(i)}
                         style={{
                           position: 'absolute', top: '-6px', right: '-6px',
                           width: '22px', height: '22px', borderRadius: '50%',
-                          background: '#FF3366', border: '2px solid #fff',
-                          color: '#fff', fontSize: '11px', cursor: 'pointer',
+                          background: 'var(--color-danger)', border: '2px solid #fff',
+                          color: 'var(--color-surface)', fontSize: '12px', cursor: 'pointer',
                           display: 'flex', alignItems: 'center',
                           justifyContent: 'center', fontFamily: 'inherit'
                         }}>×</button>
@@ -523,23 +523,23 @@ export default function EditService({ service, onClose, onUpdated }) {
                 <div
                   onClick={() => document.getElementById('edit-svc-img').click()}
                   style={{
-                    background: '#F5F4FF', border: '2px dashed #B8A5FF',
+                    background: 'var(--color-page)', border: '2px dashed var(--color-brand-border-strong)',
                     borderRadius: '12px', padding: '24px',
                     textAlign: 'center', cursor: 'pointer',
                     transition: 'all 0.15s', marginBottom: '10px'
                   }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#EEE9FF'}
-                  onMouseLeave={e => e.currentTarget.style.background = '#F5F4FF'}>
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--color-brand-soft)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'var(--color-page)'}>
                   <div style={{ fontSize: '28px', marginBottom: '8px' }}>
                     {uploadingImages ? '⏳' : '📸'}
                   </div>
                   <div style={{
                     fontSize: '14px', fontWeight: '700',
-                    color: '#6C47FF', marginBottom: '4px'
+                    color: 'var(--color-brand)', marginBottom: '4px'
                   }}>
                     {uploadingImages ? 'Uploading...' : 'Add More Photos'}
                   </div>
-                  <div style={{ fontSize: '11px', color: '#A09DC8' }}>
+                  <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)' }}>
                     {form.images.length}/5 uploaded
                   </div>
                   <input
@@ -553,9 +553,9 @@ export default function EditService({ service, onClose, onUpdated }) {
 
               {form.images.length < 3 && (
                 <div style={{
-                  background: '#FFF0E8', border: '1.5px solid #FFBC99',
+                  background: 'var(--color-warning-soft)', border: '1.5px solid var(--color-warning-border)',
                   borderRadius: '10px', padding: '10px 14px',
-                  fontSize: '12px', color: '#FF6B2B',
+                  fontSize: '12px', color: 'var(--color-warning)',
                   display: 'flex', alignItems: 'center', gap: '8px'
                 }}>
                   <span>⚠️</span>
@@ -565,7 +565,7 @@ export default function EditService({ service, onClose, onUpdated }) {
 
               {form.images.length > 0 && (
                 <div style={{
-                  fontSize: '11px', color: '#A09DC8',
+                  fontSize: '12px', color: 'var(--color-text-subtle)',
                   marginTop: '8px', lineHeight: '1.5'
                 }}>
                   💡 Drag to reorder coming soon. First image is always the cover.
@@ -581,10 +581,10 @@ export default function EditService({ service, onClose, onUpdated }) {
             style={{
               width: '100%', marginTop: '20px',
               background: saving
-                ? '#B8A5FF'
-                : 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+                ? 'var(--color-brand-border-strong)'
+                : 'var(--color-brand-gradient)',
               border: 'none', borderRadius: '12px', padding: '14px',
-              fontSize: '14px', fontWeight: '700', color: '#fff',
+              fontSize: '14px', fontWeight: '700', color: 'var(--color-surface)',
               cursor: saving ? 'not-allowed' : 'pointer',
               boxShadow: saving ? 'none' : '0 4px 20px rgba(108,71,255,0.35)',
               fontFamily: 'inherit', transition: 'all 0.2s'

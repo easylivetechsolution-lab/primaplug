@@ -7,6 +7,7 @@ import EmptyState from '../EmptyState'
 import { showToast } from '../../utils/toast'
 import ScreenLoader from '../ScreenLoader'
 import { CATEGORIES, ALL_FIELDS } from '../../data/categories'
+import CategoryIcon from '../CategoryIcon'
 import { getCurrency } from '../../data/currencies'
 import { getProfileCompletion } from '../../utils/profileComplete'
 import ProfilePrompt from '../ProfilePrompt'
@@ -16,10 +17,10 @@ import ReportModal from '../ReportModal'
 import { applyToGig } from '../../utils/gigApplications'
 
 const URGENCY = {
-  now: { label: 'NOW', color: '#FF3366', bg: '#FFE8EE', border: '#FF99B3' },
-  today: { label: 'TODAY', color: '#FF6B2B', bg: '#FFF0E8', border: '#FFBC99' },
-  scheduled: { label: 'SCHEDULED', color: '#6C47FF', bg: '#EEE9FF', border: '#B8A5FF' },
-  flexible: { label: 'FLEXIBLE', color: '#A09DC8', bg: '#F5F4FF', border: '#E2E0FF' },
+  now: { label: 'NOW', color: 'var(--color-danger)', bg: 'var(--color-danger-soft)', border: 'var(--color-danger-border)' },
+  today: { label: 'TODAY', color: 'var(--color-warning)', bg: 'var(--color-warning-soft)', border: 'var(--color-warning-border)' },
+  scheduled: { label: 'SCHEDULED', color: 'var(--color-brand)', bg: 'var(--color-brand-soft)', border: 'var(--color-brand-border-strong)' },
+  flexible: { label: 'FLEXIBLE', color: 'var(--color-text-subtle)', bg: 'var(--color-page)', border: 'var(--color-border)' },
 }
 
 const getCurrencySymbol = (code) => getCurrency(code || 'USD').symbol
@@ -53,9 +54,9 @@ const ExpiryBadge = ({ expiresAt, small = false }) => {
   if (!remaining) return null
   const isUrgent = parseTimestamp(expiresAt) - Date.now() < 24 * 60 * 60 * 1000
   const isWarning = parseTimestamp(expiresAt) - Date.now() < 3 * 24 * 60 * 60 * 1000
-  const color = isUrgent ? '#FF3366' : isWarning ? '#FF6B2B' : '#A09DC8'
-  const bg = isUrgent ? '#FFE8EE' : isWarning ? '#FFF0E8' : '#F5F4FF'
-  const border = isUrgent ? '#FF99B3' : isWarning ? '#FFBC99' : '#E2E0FF'
+  const color = isUrgent ? 'var(--color-danger)' : isWarning ? 'var(--color-warning)' : 'var(--color-text-subtle)'
+  const bg = isUrgent ? 'var(--color-danger-soft)' : isWarning ? 'var(--color-warning-soft)' : 'var(--color-page)'
+  const border = isUrgent ? 'var(--color-danger-border)' : isWarning ? 'var(--color-warning-border)' : 'var(--color-border)'
   return (
     <span style={{
       fontSize: small ? '9px' : '11px', fontWeight: '700', color,
@@ -259,14 +260,14 @@ export default function FeedScreen() {
     }
   }
 
-  const chipStyle = (active, color = '#6C47FF', bg = '#EEE9FF', border = '#B8A5FF') => ({
+  const chipStyle = (active, color = 'var(--color-brand)', bg = 'var(--color-brand-soft)', border = 'var(--color-brand-border-strong)') => ({
     background: active ? bg : 'transparent',
-    border: `1.5px solid ${active ? border : '#E2E0FF'}`,
+    border: `1.5px solid ${active ? border : 'var(--color-border)'}`,
     borderRadius: '20px',
     padding: '6px 14px',
     fontSize: '12px',
     fontWeight: '600',
-    color: active ? color : '#8B8FAF',
+    color: active ? color : 'var(--color-text-muted)',
     cursor: 'pointer',
     whiteSpace: 'nowrap',
     fontFamily: 'inherit',
@@ -280,31 +281,24 @@ export default function FeedScreen() {
         display: 'inline-flex', alignItems: 'center', gap: '4px',
         background: u.bg, border: `1px solid ${u.border}`,
         borderRadius: '5px', padding: '2px 8px',
-        fontSize: '9px', fontWeight: '800',
+        fontSize: '12px', fontWeight: '800',
         color: u.color, letterSpacing: '0.8px'
       }}>
-        {urgency === 'now' && (
-          <span style={{
-            width: '5px', height: '5px', borderRadius: '50%',
-            background: u.color, display: 'inline-block',
-            animation: 'blink 0.9s infinite'
-          }} />
-        )}
         {u.label}
       </span>
     )
   }
 
   return (
-    <div style={{
+    <div className="feed-screen" style={{
       padding: '20px 20px 100px',
       fontFamily: "'Plus Jakarta Sans', sans-serif"
     }}>
 
       {/* AI Match Strip */}
       <div style={{
-        background: 'linear-gradient(135deg, #EEE9FF, #F8F5FF)',
-        border: '1.5px solid #B8A5FF',
+        background: 'linear-gradient(135deg, var(--color-brand-soft), var(--color-brand-pale))',
+        border: '1.5px solid var(--color-brand-border-strong)',
         borderRadius: '16px', padding: '16px', marginBottom: '20px'
       }}>
         <div style={{
@@ -313,14 +307,14 @@ export default function FeedScreen() {
         }}>
           <BrandIcon name="discover" size={30} />
           <span style={{
-            fontSize: '11px', fontWeight: '700', color: '#6C47FF',
+            fontSize: '13px', fontWeight: '700', color: 'var(--color-brand)',
             letterSpacing: '0.8px', textTransform: 'uppercase'
           }}>AI Matched For You</span>
         </div>
         {loading ? (
           <ScreenLoader />
         ) : gigs.length === 0 ? (
-          <div style={{ fontSize: '13px', color: '#A09DC8' }}>
+          <div style={{ fontSize: '13px', color: 'var(--color-text-subtle)' }}>
             No gigs yet — be the first to post one! 🚀
           </div>
         ) : (
@@ -332,19 +326,19 @@ export default function FeedScreen() {
             {gigs.slice(0, 3).map(gig => (
               <div key={gig.id} onClick={() => handleGigClick(gig)}
                 style={{
-                  background: '#fff', borderRadius: '12px',
+                  background: 'var(--color-surface)', borderRadius: '12px',
                   padding: '12px 14px', minWidth: '180px',
-                  border: '1.5px solid #E2E0FF',
+                  border: '1.5px solid var(--color-border)',
                   cursor: 'pointer', flexShrink: 0
                 }}>
                 <UrgencyBadge urgency={gig.urgency} />
                 <div style={{
                   fontSize: '12px', fontWeight: '700',
-                  color: '#14123A', margin: '7px 0 5px',
+                  color: 'var(--color-text)', margin: '7px 0 5px',
                   lineHeight: '1.3'
                 }}>{gig.title}</div>
                 <div style={{
-                  fontSize: '14px', fontWeight: '800', color: '#00C48C'
+                  fontSize: '14px', fontWeight: '800', color: 'var(--color-success)'
                 }}>{getCurrencySymbol(gig.currency)}{gig.pay_min}+</div>
               </div>
             ))}
@@ -361,11 +355,13 @@ export default function FeedScreen() {
           <button key={t} onClick={() => setTypeFilter(t)}
             style={chipStyle(
               typeFilter === t,
-              t === 'digital' ? '#6C47FF' : '#FF6B2B',
-              t === 'digital' ? '#EEE9FF' : '#FFF0E8',
-              t === 'digital' ? '#B8A5FF' : '#FFBC99'
+              t === 'digital' ? 'var(--color-brand)' : 'var(--color-warning)',
+              t === 'digital' ? 'var(--color-brand-soft)' : 'var(--color-warning-soft)',
+              t === 'digital' ? 'var(--color-brand-border-strong)' : 'var(--color-warning-border)'
             )}>
-            {t === 'all' ? '✦ All' : t === 'physical' ? '📌 Physical' : '💻 Digital'}
+            {t === 'all'
+              ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}><BrandIcon name="feed" size={18} active={false} />All</span>
+              : t === 'physical' ? '📌 Physical' : '💻 Digital'}
           </button>
         ))}
       </div>
@@ -379,9 +375,9 @@ export default function FeedScreen() {
           <button key={u} onClick={() => setUrgFilter(u)}
             style={chipStyle(
               urgFilter === u,
-              u === 'all' ? '#6C47FF' : URGENCY[u]?.color,
-              u === 'all' ? '#EEE9FF' : URGENCY[u]?.bg,
-              u === 'all' ? '#B8A5FF' : URGENCY[u]?.border
+              u === 'all' ? 'var(--color-brand)' : URGENCY[u]?.color,
+              u === 'all' ? 'var(--color-brand-soft)' : URGENCY[u]?.bg,
+              u === 'all' ? 'var(--color-brand-border-strong)' : URGENCY[u]?.border
             )}>
             {u === 'all' ? 'All' : URGENCY[u]?.label}
           </button>
@@ -399,7 +395,7 @@ export default function FeedScreen() {
           <button
             onClick={() => setFieldFilter('All')}
             style={chipStyle(fieldFilter === 'All')}>
-            ✦ All Fields
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}><BrandIcon name="discover" size={18} active={false} />All Fields</span>
           </button>
 
           {/* Category group buttons */}
@@ -413,22 +409,22 @@ export default function FeedScreen() {
                 background: showFieldGroup === cat.group ||
                   cat.fields.includes(fieldFilter) ? cat.bg : 'transparent',
                 border: `1.5px solid ${showFieldGroup === cat.group ||
-                  cat.fields.includes(fieldFilter) ? cat.border : '#E2E0FF'}`,
+                  cat.fields.includes(fieldFilter) ? cat.border : 'var(--color-border)'}`,
                 borderRadius: '20px', padding: '6px 13px',
                 fontSize: '12px', fontWeight: '600',
                 color: showFieldGroup === cat.group ||
-                  cat.fields.includes(fieldFilter) ? cat.color : '#8B8FAF',
+                  cat.fields.includes(fieldFilter) ? cat.color : 'var(--color-text-muted)',
                 cursor: 'pointer', whiteSpace: 'nowrap',
                 fontFamily: 'inherit', transition: 'all 0.15s',
                 display: 'flex', alignItems: 'center', gap: '5px'
               }}>
-              <span>{cat.icon}</span>
+              <CategoryIcon category={cat.group} size={16} color={cat.color} />
               <span>{cat.group}</span>
               {cat.fields.includes(fieldFilter) && (
                 <span style={{
-                  background: cat.color, color: '#fff',
+                  background: cat.color, color: 'var(--color-surface)',
                   borderRadius: '50%', width: '14px', height: '14px',
-                  fontSize: '8px', display: 'flex',
+                  fontSize: '12px', display: 'flex',
                   alignItems: 'center', justifyContent: 'center',
                   fontWeight: '800'
                 }}>✓</span>
@@ -440,7 +436,7 @@ export default function FeedScreen() {
         {/* Sub-fields dropdown */}
         {showFieldGroup && (
           <div style={{
-            background: '#fff', border: '1.5px solid #E2E0FF',
+            background: 'var(--color-surface)', border: '1.5px solid var(--color-border)',
             borderRadius: '14px', padding: '12px 14px',
             marginTop: '8px', animation: 'fadeIn 0.2s ease'
           }}>
@@ -450,12 +446,12 @@ export default function FeedScreen() {
               return (
                 <>
                   <div style={{
-                    fontSize: '10px', fontWeight: '700', color: cat.color,
+                    fontSize: '12px', fontWeight: '700', color: cat.color,
                     textTransform: 'uppercase', letterSpacing: '0.8px',
                     marginBottom: '10px', display: 'flex',
                     alignItems: 'center', gap: '6px'
                   }}>
-                    <span>{cat.icon}</span>
+                    <CategoryIcon category={cat.group} size={16} color={cat.color} />
                     <span>{cat.group}</span>
                   </div>
                   <div style={{ display: 'flex', gap: '7px', flexWrap: 'wrap' }}>
@@ -467,11 +463,11 @@ export default function FeedScreen() {
                           setShowFieldGroup(null)
                         }}
                         style={{
-                          background: fieldFilter === field ? cat.bg : '#F5F4FF',
-                          border: `1.5px solid ${fieldFilter === field ? cat.border : '#E2E0FF'}`,
+                          background: fieldFilter === field ? cat.bg : 'var(--color-page)',
+                          border: `1.5px solid ${fieldFilter === field ? cat.border : 'var(--color-border)'}`,
                           borderRadius: '20px', padding: '6px 12px',
                           fontSize: '12px', fontWeight: '600',
-                          color: fieldFilter === field ? cat.color : '#8B8FAF',
+                          color: fieldFilter === field ? cat.color : 'var(--color-text-muted)',
                           cursor: 'pointer', fontFamily: 'inherit',
                           transition: 'all 0.15s'
                         }}>
@@ -491,19 +487,19 @@ export default function FeedScreen() {
             display: 'flex', alignItems: 'center',
             gap: '8px', marginTop: '8px'
           }}>
-            <span style={{ fontSize: '11px', color: '#8B8FAF' }}>
+            <span style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>
               Filtered by:
             </span>
             <span style={{
-              background: '#EEE9FF', border: '1.5px solid #B8A5FF',
+              background: 'var(--color-brand-soft)', border: '1.5px solid var(--color-brand-border-strong)',
               borderRadius: '20px', padding: '4px 12px',
-              fontSize: '12px', fontWeight: '600', color: '#6C47FF',
+              fontSize: '12px', fontWeight: '600', color: 'var(--color-brand)',
               display: 'flex', alignItems: 'center', gap: '6px'
             }}>
               {fieldFilter}
               <span
                 onClick={() => setFieldFilter('All')}
-                style={{ cursor: 'pointer', fontSize: '14px', color: '#A09DC8' }}>
+                style={{ cursor: 'pointer', fontSize: '14px', color: 'var(--color-text-subtle)' }}>
                 ×
               </span>
             </span>
@@ -514,7 +510,7 @@ export default function FeedScreen() {
       {/* Gig Count */}
       {!loading && (
         <div style={{
-          fontSize: '11px', color: '#A09DC8', fontWeight: '600',
+          fontSize: '13px', color: 'var(--color-text-subtle)', fontWeight: '600',
           letterSpacing: '0.5px', marginBottom: '12px'
         }}>
           {filtered.length} GIG{filtered.length !== 1 ? 'S' : ''} AVAILABLE
@@ -542,17 +538,17 @@ export default function FeedScreen() {
           {filtered.map(gig => (
             <div key={gig.id} onClick={() => handleGigClick(gig)}
               style={{
-                background: '#fff', border: '1.5px solid #E2E0FF',
+                background: 'var(--color-surface)', border: '1.5px solid var(--color-border)',
                 borderRadius: '16px', padding: '18px',
                 cursor: 'pointer', transition: 'all 0.15s'
               }}
               onMouseEnter={e => {
-                e.currentTarget.style.borderColor = '#B8A5FF'
+                e.currentTarget.style.borderColor = 'var(--color-brand-border-strong)'
                 e.currentTarget.style.transform = 'translateY(-2px)'
                 e.currentTarget.style.boxShadow = '0 8px 24px rgba(108,71,255,0.1)'
               }}
               onMouseLeave={e => {
-                e.currentTarget.style.borderColor = '#E2E0FF'
+                e.currentTarget.style.borderColor = 'var(--color-border)'
                 e.currentTarget.style.transform = 'translateY(0)'
                 e.currentTarget.style.boxShadow = 'none'
               }}>
@@ -569,26 +565,26 @@ export default function FeedScreen() {
                   }}>
                     <UrgencyBadge urgency={gig.urgency} />
                     <span style={{
-                      background: gig.type === 'physical' ? '#FFF0E8' : '#EEE9FF',
-                      border: `1px solid ${gig.type === 'physical' ? '#FFBC99' : '#B8A5FF'}`,
+                      background: gig.type === 'physical' ? 'var(--color-warning-soft)' : 'var(--color-brand-soft)',
+                      border: `1px solid ${gig.type === 'physical' ? 'var(--color-warning-border)' : 'var(--color-brand-border-strong)'}`,
                       borderRadius: '5px', padding: '2px 8px',
-                      fontSize: '9px', fontWeight: '700',
-                      color: gig.type === 'physical' ? '#FF6B2B' : '#6C47FF',
+                      fontSize: '12px', fontWeight: '700',
+                      color: gig.type === 'physical' ? 'var(--color-warning)' : 'var(--color-brand)',
                       letterSpacing: '0.5px'
                     }}>
                       {gig.type === 'physical' ? '📌 LOCAL' : '💻 REMOTE'}
                     </span>
                     {gig.slots > 1 && (
                       <span style={{
-                        background: '#DFFDF4', border: '1px solid #7EECD2',
+                        background: 'var(--color-success-soft)', border: '1px solid var(--color-success-border)',
                         borderRadius: '5px', padding: '2px 8px',
-                        fontSize: '9px', fontWeight: '700', color: '#00C48C'
+                        fontSize: '12px', fontWeight: '700', color: 'var(--color-success)'
                       }}>{gig.slots} SLOTS</span>
                     )}
                   </div>
                   <div style={{
                     fontSize: '15px', fontWeight: '700',
-                    color: '#14123A', lineHeight: '1.35'
+                    color: 'var(--color-text)', lineHeight: '1.35'
                   }}>{gig.title}</div>
                 </div>
                 <div style={{
@@ -597,16 +593,16 @@ export default function FeedScreen() {
                 }}>
                   <div style={{
                     fontSize: '19px', fontWeight: '800',
-                    color: '#00C48C', letterSpacing: '-0.5px'
+                    color: 'var(--color-success)', letterSpacing: '-0.5px'
                   }}>{getCurrencySymbol(gig.currency)}{gig.pay_min}</div>
-                  <div style={{ fontSize: '10px', color: '#A09DC8' }}>
+                  <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)' }}>
                     –{getCurrencySymbol(gig.currency)}{gig.pay_max}
                   </div>
                   <button
                     onClick={(e) => toggleSave(e, gig.id)}
                     style={{
-                      background: savedGigIds.has(gig.id) ? '#EEE9FF' : 'transparent',
-                      border: `1.5px solid ${savedGigIds.has(gig.id) ? '#B8A5FF' : '#E2E0FF'}`,
+                      background: savedGigIds.has(gig.id) ? 'var(--color-brand-soft)' : 'transparent',
+                      border: `1.5px solid ${savedGigIds.has(gig.id) ? 'var(--color-brand-border-strong)' : 'var(--color-border)'}`,
                       borderRadius: '8px', padding: '4px',
                       cursor: 'pointer',
                       transition: 'all 0.15s', fontFamily: 'inherit',
@@ -631,9 +627,9 @@ export default function FeedScreen() {
                 }}>
                   <div style={{
                     width: '32px', height: '32px', borderRadius: '9px',
-                    background: '#EEE9FF', display: 'flex',
+                    background: 'var(--color-brand-soft)', display: 'flex',
                     alignItems: 'center', justifyContent: 'center',
-                    fontSize: '14px', fontWeight: '800', color: '#6C47FF',
+                    fontSize: '14px', fontWeight: '800', color: 'var(--color-brand)',
                     overflow: 'hidden', flexShrink: 0
                   }}>
                     {gig.poster?.avatar_url ? (
@@ -645,22 +641,22 @@ export default function FeedScreen() {
                   </div>
                   <div>
                     <div style={{
-                      fontSize: '12px', fontWeight: '600', color: '#14123A'
+                      fontSize: '12px', fontWeight: '600', color: 'var(--color-text)'
                     }}>
                       {gig.poster?.full_name || 'Anonymous'}
                     </div>
-                    <div style={{ fontSize: '10px', color: '#A09DC8' }}>
+                    <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)' }}>
                       ⭐ {gig.poster?.rating || 5.0} · {gig.poster?.gigs_completed || 0} gigs
                     </div>
                   </div>
                 </div>
                 <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: '3px', alignItems: 'flex-end' }}>
                   {gig.location && (
-                    <div style={{ fontSize: '10px', color: '#FF6B2B' }}>
+                    <div style={{ fontSize: '12px', color: 'var(--color-warning)' }}>
                       📍 {gig.location}
                     </div>
                   )}
-                  <div style={{ fontSize: '10px', color: '#A09DC8' }}>
+                  <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)' }}>
                     {timeAgo(gig.created_at)}
                   </div>
                   <ExpiryBadge expiresAt={gig.expires_at} small />
@@ -685,17 +681,17 @@ export default function FeedScreen() {
           setApplied(false)
         }}>
           <div onClick={e => e.stopPropagation()} style={{
-            background: '#fff',
+            background: 'var(--color-surface)',
             borderRadius: '22px 22px 0 0',
             padding: '24px', width: '100%',
             maxWidth: '640px', maxHeight: '88vh',
             overflowY: 'auto',
-            border: '1.5px solid #E2E0FF',
+            border: '1.5px solid var(--color-border)',
             animation: 'slideUp 0.3s cubic-bezier(0.16,1,0.3,1)'
           }}>
             <div style={{
               width: '40px', height: '4px',
-              background: '#E2E0FF', borderRadius: '2px',
+              background: 'var(--color-border)', borderRadius: '2px',
               margin: '0 auto 20px'
             }} />
 
@@ -704,10 +700,10 @@ export default function FeedScreen() {
                 <div style={{ fontSize: '52px', marginBottom: '12px' }}>🎯</div>
                 <div style={{
                   fontSize: '22px', fontWeight: '800',
-                  color: '#6C47FF', marginBottom: '8px'
+                  color: 'var(--color-brand)', marginBottom: '8px'
                 }}>Application Sent!</div>
                 <div style={{
-                  fontSize: '13px', color: '#8B8FAF', lineHeight: '1.6'
+                  fontSize: '13px', color: 'var(--color-text-muted)', lineHeight: '1.6'
                 }}>
                   The client has been notified. They will review and confirm your application.
                 </div>
@@ -721,19 +717,19 @@ export default function FeedScreen() {
                 }}>
                   <UrgencyBadge urgency={selectedGig.urgency} />
                   <span style={{
-                    background: selectedGig.type === 'physical' ? '#FFF0E8' : '#EEE9FF',
-                    border: `1px solid ${selectedGig.type === 'physical' ? '#FFBC99' : '#B8A5FF'}`,
+                    background: selectedGig.type === 'physical' ? 'var(--color-warning-soft)' : 'var(--color-brand-soft)',
+                    border: `1px solid ${selectedGig.type === 'physical' ? 'var(--color-warning-border)' : 'var(--color-brand-border-strong)'}`,
                     borderRadius: '6px', padding: '3px 9px',
-                    fontSize: '9px', fontWeight: '700',
-                    color: selectedGig.type === 'physical' ? '#FF6B2B' : '#6C47FF'
+                    fontSize: '12px', fontWeight: '700',
+                    color: selectedGig.type === 'physical' ? 'var(--color-warning)' : 'var(--color-brand)'
                   }}>
                     {selectedGig.type === 'physical' ? '📌 PHYSICAL' : '💻 DIGITAL'}
                   </span>
                   {selectedGig.slots > 1 && (
                     <span style={{
-                      background: '#DFFDF4', border: '1px solid #7EECD2',
+                      background: 'var(--color-success-soft)', border: '1px solid var(--color-success-border)',
                       borderRadius: '6px', padding: '3px 9px',
-                      fontSize: '9px', fontWeight: '700', color: '#00C48C'
+                      fontSize: '12px', fontWeight: '700', color: 'var(--color-success)'
                     }}>{selectedGig.slots} OPEN SLOTS</span>
                   )}
                 </div>
@@ -743,25 +739,25 @@ export default function FeedScreen() {
                   display: 'flex', alignItems: 'center', gap: '8px',
                   flexWrap: 'wrap', marginBottom: '12px'
                 }}>
-                  <span style={{ fontSize: '11px', color: '#A09DC8' }}>
+                  <span style={{ fontSize: '13px', color: 'var(--color-text-subtle)' }}>
                     Posted {timeAgo(selectedGig.created_at)}
                   </span>
                   {selectedGig.expires_at ? (
                     <ExpiryBadge expiresAt={selectedGig.expires_at} />
                   ) : (
-                    <span style={{ fontSize: '11px', color: '#A09DC8' }}>· Open-ended</span>
+                    <span style={{ fontSize: '13px', color: 'var(--color-text-subtle)' }}>· Open-ended</span>
                   )}
                 </div>
 
                 {/* Title */}
                 <h2 style={{
                   fontSize: '20px', fontWeight: '800',
-                  color: '#14123A', lineHeight: '1.3', marginBottom: '16px'
+                  color: 'var(--color-text)', lineHeight: '1.3', marginBottom: '16px'
                 }}>{selectedGig.title}</h2>
 
                 {/* Poster Info */}
                 <div style={{
-                  background: '#F5F4FF', borderRadius: '14px',
+                  background: 'var(--color-page)', borderRadius: '14px',
                   padding: '14px', marginBottom: '14px',
                   display: 'flex', gap: '12px', alignItems: 'center'
                 }}>
@@ -769,9 +765,9 @@ export default function FeedScreen() {
                     onClick={() => setViewingProfile(selectedGig.poster_id)}
                     style={{
                         width: '46px', height: '46px', borderRadius: '12px',
-                        background: '#EEE9FF', display: 'flex',
+                        background: 'var(--color-brand-soft)', display: 'flex',
                         alignItems: 'center', justifyContent: 'center',
-                        fontSize: '18px', fontWeight: '800', color: '#6C47FF',
+                        fontSize: '18px', fontWeight: '800', color: 'var(--color-brand)',
                         overflow: 'hidden', flexShrink: 0, cursor: 'pointer'
                     }}>
                     {selectedGig.poster?.avatar_url ? (
@@ -786,28 +782,28 @@ export default function FeedScreen() {
                     onClick={() => setViewingProfile(selectedGig.poster_id)}
                     style={{
                     fontSize: '14px', fontWeight: '700',
-                    color: '#6C47FF', marginBottom: '2px',
+                    color: 'var(--color-brand)', marginBottom: '2px',
                     cursor: 'pointer', textDecoration: 'underline',
                     textDecorationStyle: 'dotted'
                     }}>
                     {selectedGig.poster?.full_name || 'Anonymous'} →
                     </div>
-                    <div style={{ fontSize: '11px', color: '#8B8FAF' }}>
+                    <div style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>
                       ⭐ {selectedGig.poster?.rating || 5.0} rating ·{' '}
                       {selectedGig.poster?.gigs_completed || 0} gigs completed
                     </div>
                   </div>
                   <div style={{
-                    background: '#EEE9FF', borderRadius: '10px',
+                    background: 'var(--color-brand-soft)', borderRadius: '10px',
                     padding: '8px 12px', textAlign: 'center'
                   }}>
                     <div style={{
-                      fontSize: '14px', fontWeight: '800', color: '#6C47FF'
+                      fontSize: '14px', fontWeight: '800', color: 'var(--color-brand)'
                     }}>
                       {selectedGig.poster?.trust_score || 100}%
                     </div>
                     <div style={{
-                      fontSize: '8px', color: '#A09DC8',
+                      fontSize: '12px', color: 'var(--color-text-subtle)',
                       fontWeight: '600', letterSpacing: '0.5px'
                     }}>TRUST</div>
                   </div>
@@ -819,35 +815,35 @@ export default function FeedScreen() {
                   gap: '10px', marginBottom: '14px'
                 }}>
                   <div style={{
-                    background: 'linear-gradient(135deg, #E8FFE4, #DFFDF4)',
-                    border: '1.5px solid #7EECD2',
+                    background: 'linear-gradient(135deg, var(--color-success-tint), var(--color-success-soft))',
+                    border: '1.5px solid var(--color-success-border)',
                     borderRadius: '14px', padding: '16px'
                   }}>
                     <div style={{
-                      fontSize: '9px', color: '#00C48C',
+                      fontSize: '12px', color: 'var(--color-success)',
                       textTransform: 'uppercase', letterSpacing: '0.8px',
                       fontWeight: '700', marginBottom: '4px'
                     }}>Pay Range</div>
                     <div style={{
                       fontSize: '24px', fontWeight: '800',
-                      color: '#00C48C', letterSpacing: '-0.5px'
+                      color: 'var(--color-success)', letterSpacing: '-0.5px'
                     }}>{getCurrencySymbol(selectedGig.currency)}{selectedGig.pay_min}</div>
-                    <div style={{ fontSize: '11px', color: '#00C48C', opacity: 0.7 }}>
+                    <div style={{ fontSize: '13px', color: 'var(--color-success)', opacity: 0.7 }}>
                       up to {getCurrencySymbol(selectedGig.currency)}{selectedGig.pay_max}
                     </div>
                   </div>
                   <div style={{
-                    background: '#FFF0E8', border: '1.5px solid #FFBC99',
+                    background: 'var(--color-warning-soft)', border: '1.5px solid var(--color-warning-border)',
                     borderRadius: '14px', padding: '16px'
                   }}>
                     <div style={{
-                      fontSize: '9px', color: '#FF6B2B',
+                      fontSize: '12px', color: 'var(--color-warning)',
                       textTransform: 'uppercase', letterSpacing: '0.8px',
                       fontWeight: '700', marginBottom: '4px'
                     }}>Location</div>
                     <div style={{
                       fontSize: '14px', fontWeight: '700',
-                      color: '#14123A', lineHeight: '1.3'
+                      color: 'var(--color-text)', lineHeight: '1.3'
                     }}>
                       {selectedGig.location || 'Remote'}
                     </div>
@@ -857,9 +853,9 @@ export default function FeedScreen() {
                 {/* Description */}
                 {selectedGig.description && (
                   <div style={{
-                    background: '#F5F4FF', borderRadius: '12px',
+                    background: 'var(--color-page)', borderRadius: '12px',
                     padding: '14px', marginBottom: '14px',
-                    fontSize: '13px', color: '#5B5887', lineHeight: '1.6'
+                    fontSize: '13px', color: 'var(--color-text-muted)', lineHeight: '1.6'
                   }}>
                     {selectedGig.description}
                   </div>
@@ -868,26 +864,26 @@ export default function FeedScreen() {
                 {/* Protection */}
                 {selectedGig.payment_method === 'wallet' ? (
   <div style={{
-    background: '#DFFDF4', border: '1.5px solid #7EECD2',
+    background: 'var(--color-success-soft)', border: '1.5px solid var(--color-success-border)',
     borderRadius: '12px', padding: '14px',
     display: 'flex', gap: '10px', marginBottom: '20px'
   }}>
     <span style={{ fontSize: '16px', flexShrink: 0 }}>💰</span>
     <div style={{
-      fontSize: '12px', color: '#00A878', lineHeight: '1.6'
+      fontSize: '12px', color: 'var(--color-success)', lineHeight: '1.6'
     }}>
       Payment is already secured in escrow. You'll receive it automatically once the work is confirmed complete — no chasing payment needed.
     </div>
   </div>
 ) : (
   <div style={{
-    background: '#EEE9FF', border: '1.5px solid #B8A5FF',
+    background: 'var(--color-brand-soft)', border: '1.5px solid var(--color-brand-border-strong)',
     borderRadius: '12px', padding: '14px',
     display: 'flex', gap: '10px', marginBottom: '20px'
   }}>
     <span style={{ fontSize: '16px', flexShrink: 0 }}>🔒</span>
     <div style={{
-      fontSize: '12px', color: '#6C47FF', lineHeight: '1.6'
+      fontSize: '12px', color: 'var(--color-brand)', lineHeight: '1.6'
     }}>
       Both parties confirm completion by uploading receipts with their names. No payment platform needed — direct and protected.
     </div>
@@ -906,18 +902,18 @@ export default function FeedScreen() {
                     }}
                     style={{
                       width: '100%',
-                      background: '#F5F4FF',
-                      border: '1.5px solid #B8A5FF',
+                      background: 'var(--color-page)',
+                      border: '1.5px solid var(--color-brand-border-strong)',
                       borderRadius: '12px', padding: '13px',
                       fontSize: '14px', fontWeight: '700',
-                      color: '#6C47FF', cursor: 'pointer',
+                      color: 'var(--color-brand)', cursor: 'pointer',
                       fontFamily: 'inherit',
                       display: 'flex', alignItems: 'center',
                       justifyContent: 'center', gap: '8px',
                       transition: 'all 0.15s'
                     }}
-                    onMouseEnter={e => { e.currentTarget.style.background = '#EEE9FF' }}
-                    onMouseLeave={e => { e.currentTarget.style.background = '#F5F4FF' }}>
+                    onMouseEnter={e => { e.currentTarget.style.background = 'var(--color-brand-soft)' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'var(--color-page)' }}>
                     <BrandIcon name="compose" size={22} /> Message Client
                   </button>
 
@@ -926,18 +922,18 @@ export default function FeedScreen() {
                     onClick={() => setSharingGig(selectedGig)}
                     style={{
                       width: '100%',
-                      background: '#F5F4FF',
-                      border: '1.5px solid #B8A5FF',
+                      background: 'var(--color-page)',
+                      border: '1.5px solid var(--color-brand-border-strong)',
                       borderRadius: '12px', padding: '13px',
                       fontSize: '14px', fontWeight: '700',
-                      color: '#6C47FF', cursor: 'pointer',
+                      color: 'var(--color-brand)', cursor: 'pointer',
                       fontFamily: 'inherit',
                       display: 'flex', alignItems: 'center',
                       justifyContent: 'center', gap: '8px',
                       transition: 'all 0.15s'
                     }}
-                    onMouseEnter={e => { e.currentTarget.style.background = '#EEE9FF' }}
-                    onMouseLeave={e => { e.currentTarget.style.background = '#F5F4FF' }}>
+                    onMouseEnter={e => { e.currentTarget.style.background = 'var(--color-brand-soft)' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'var(--color-page)' }}>
                     <span>🔗</span> Share & Earn Credits
                   </button>
 
@@ -946,10 +942,10 @@ export default function FeedScreen() {
                     onClick={() => setReportingGig(selectedGig)}
                     style={{
                       width: '100%',
-                      background: '#FFE8EE', border: '1.5px solid #FF99B3',
+                      background: 'var(--color-danger-soft)', border: '1.5px solid var(--color-danger-border)',
                       borderRadius: '12px', padding: '10px',
                       fontSize: '12px', fontWeight: '700',
-                      color: '#FF3366', cursor: 'pointer',
+                      color: 'var(--color-danger)', cursor: 'pointer',
                       fontFamily: 'inherit',
                       display: 'flex', alignItems: 'center',
                       justifyContent: 'center', gap: '6px'
@@ -962,8 +958,8 @@ export default function FeedScreen() {
                   <button
                     onClick={(e) => toggleSave(e, selectedGig.id)}
                     style={{
-                      background: savedGigIds.has(selectedGig?.id) ? '#EEE9FF' : '#F5F4FF',
-                      border: `1.5px solid ${savedGigIds.has(selectedGig?.id) ? '#B8A5FF' : '#E2E0FF'}`,
+                      background: savedGigIds.has(selectedGig?.id) ? 'var(--color-brand-soft)' : 'var(--color-page)',
+                      border: `1.5px solid ${savedGigIds.has(selectedGig?.id) ? 'var(--color-brand-border-strong)' : 'var(--color-border)'}`,
                       borderRadius: '12px', padding: '10px 13px',
                       cursor: 'pointer', flexShrink: 0,
                       fontFamily: 'inherit',
@@ -979,19 +975,19 @@ export default function FeedScreen() {
                     setSelectedGig(null)
                     setApplied(false)
                   }} style={{
-                    flex: 1, background: '#F5F4FF',
-                    border: '1.5px solid #E2E0FF',
+                    flex: 1, background: 'var(--color-page)',
+                    border: '1.5px solid var(--color-border)',
                     borderRadius: '12px', padding: '14px',
                     fontSize: '13px', fontWeight: '600',
-                    color: '#8B8FAF', cursor: 'pointer', fontFamily: 'inherit'
+                    color: 'var(--color-text-muted)', cursor: 'pointer', fontFamily: 'inherit'
                   }}>Skip</button>
                   {selectedGig.poster_id === user?.id ? (
                     <div style={{
-                      flex: 2, background: '#F5F4FF',
-                      border: '1.5px solid #E2E0FF',
+                      flex: 2, background: 'var(--color-page)',
+                      border: '1.5px solid var(--color-border)',
                       borderRadius: '12px', padding: '14px',
                       fontSize: '13px', fontWeight: '600',
-                      color: '#A09DC8', textAlign: 'center',
+                      color: 'var(--color-text-subtle)', textAlign: 'center',
                       display: 'flex', alignItems: 'center', justifyContent: 'center'
                     }}>Your gig</div>
                   ) : (
@@ -1001,11 +997,11 @@ export default function FeedScreen() {
                     style={{
                       flex: 2,
                       background: applying
-                        ? '#B8A5FF'
-                        : 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+                        ? 'var(--color-brand-border-strong)'
+                        : 'var(--color-brand-gradient)',
                       border: 'none', borderRadius: '12px',
                       padding: '14px', fontSize: '14px',
-                      fontWeight: '700', color: '#fff',
+                      fontWeight: '700', color: 'var(--color-surface)',
                       cursor: applying ? 'not-allowed' : 'pointer',
                       boxShadow: '0 4px 20px rgba(108,71,255,0.35)',
                       fontFamily: 'inherit', transition: 'all 0.2s'
@@ -1028,8 +1024,8 @@ export default function FeedScreen() {
           bottom: '92px',
           transform: 'translateX(-50%)',
           zIndex: 12000,
-          background: '#14123A',
-          color: '#fff',
+          background: 'var(--color-text)',
+          color: 'var(--color-surface)',
           borderRadius: '12px',
           padding: '10px 14px',
           fontSize: '13px',
@@ -1045,10 +1041,6 @@ export default function FeedScreen() {
       )}
 
       <style>{`
-        @keyframes blink {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.2; }
-        }
         @keyframes slideUp {
           from { opacity: 0; transform: translateY(24px); }
           to { opacity: 1; transform: translateY(0); }

@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useMemo, useCallback } from 'react'
+﻿import { useEffect, useState, useRef, useMemo, useCallback } from 'react'
 import { MapContainer, Marker, useMap, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -91,25 +91,6 @@ const URGENCY_COLORS = {
 
 // Create custom pin with profile photo
 const createProfilePin = (avatarUrl, initial, color, urgency) => {
-  const isNow = urgency === 'now'
-  const pulseRing = isNow ? `
-    <div style="
-      position:absolute;
-      inset:-8px;
-      border-radius:50%;
-      border:2px solid ${color};
-      opacity:0.6;
-      animation:pinpulse 1.5s ease-out infinite;
-    "></div>
-    <div style="
-      position:absolute;
-      inset:-16px;
-      border-radius:50%;
-      border:2px solid ${color};
-      opacity:0.3;
-      animation:pinpulse 1.5s ease-out infinite 0.4s;
-    "></div>
-  ` : ''
 
   const avatar = avatarUrl
     ? `<img src="${avatarUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`
@@ -120,7 +101,6 @@ const createProfilePin = (avatarUrl, initial, color, urgency) => {
     html: `
       <div style="position:relative;display:flex;flex-direction:column;align-items:center;">
         <div style="position:relative;">
-          ${pulseRing}
           <div style="
             width:44px;height:44px;
             border-radius:50%;
@@ -141,12 +121,6 @@ const createProfilePin = (avatarUrl, initial, color, urgency) => {
           margin-top:-2px;
         "></div>
       </div>
-      <style>
-        @keyframes pinpulse {
-          0% { transform:scale(1);opacity:0.6; }
-          100% { transform:scale(2);opacity:0; }
-        }
-      </style>
     `,
     iconSize: [44, 58],
     iconAnchor: [22, 58],
@@ -160,7 +134,6 @@ const createUserPin = () => L.divIcon({
   html: `
     <div class="prima-user-pin">
       <div class="prima-user-accuracy"></div>
-      <div class="prima-user-pulse"></div>
       <div class="prima-user-core"></div>
     </div>
   `,
@@ -207,7 +180,6 @@ const ClusterLayer = ({ gigs, onSelect, selectedGigId }) => {
         className: 'custom-gig-pin',
         html: `
           <div class="prima-gig-pin ${isSelected ? 'is-selected' : ''}" style="--pin-color:${pinColor};">
-            ${isUrgent || isSelected ? '<div class="prima-gig-pulse"></div>' : ''}
             <div class="prima-gig-avatar" style="border-color:${pinColor};background:${pinBg};color:${pinColor};">
               ${gig.poster?.avatar_url ? `<img src="${gig.poster.avatar_url}" style="width:100%;height:100%;object-fit:cover"/>` : gig.poster?.full_name?.charAt(0) || '?'}
             </div>
@@ -230,7 +202,6 @@ const ClusterLayer = ({ gigs, onSelect, selectedGigId }) => {
       className: 'prima-cluster-marker',
       html: `
         <div class="prima-cluster-pin">
-          <div class="prima-cluster-halo"></div>
           <div class="prima-cluster-core">${cluster.gigs.length}</div>
         </div>
       `,
@@ -582,11 +553,6 @@ export default function MapScreen() {
             display: 'flex', alignItems: 'center', gap: '6px',
             border: '1px solid rgba(255,255,255,0.1)'
           }}>
-            <div style={{
-              width: '7px', height: '7px', borderRadius: '50%',
-              background: '#FF3366',
-              animation: 'blink 0.9s infinite'
-            }} />
             <span style={{
               fontSize: '11px', fontWeight: '700', color: '#fff'
             }}>{liveCount} live</span>
@@ -681,56 +647,6 @@ export default function MapScreen() {
           ))}
         </div>
 
-        {/* Map Controls */}
-        <div style={{
-          position: 'absolute', right: '14px', bottom: '18px',
-          zIndex: 40, display: 'flex', flexDirection: 'column', gap: '12px'
-        }}>
-          <div style={{
-            width: '42px',
-            borderRadius: '14px',
-            background: 'rgba(255,255,255,0.96)',
-            border: '1.5px solid #E2E0FF',
-            boxShadow: '0 8px 22px rgba(20,18,58,0.16)',
-            overflow: 'hidden'
-          }}>
-            <button
-              onClick={() => zoomMap(1)}
-              title="Zoom in"
-              style={{
-                width: '42px', height: '40px',
-                background: 'transparent', border: 'none',
-                color: '#14123A', fontSize: '22px', fontWeight: 800,
-                cursor: 'pointer', fontFamily: 'inherit', lineHeight: 1
-              }}>+</button>
-            <div style={{
-              height: '1px',
-              background: 'rgba(20,18,58,0.14)',
-              margin: '0 8px'
-            }} />
-            <button
-              onClick={() => zoomMap(-1)}
-              title="Zoom out"
-              style={{
-                width: '42px', height: '40px',
-                background: 'transparent', border: 'none',
-                color: '#14123A', fontSize: '24px', fontWeight: 800,
-                cursor: 'pointer', fontFamily: 'inherit', lineHeight: 1
-              }}>-</button>
-          </div>
-          <button
-            onClick={recenterOnUser}
-            title="Recenter"
-            style={{
-              width: '40px', height: '40px', borderRadius: '14px',
-              background: 'rgba(66,133,244,0.96)',
-              border: '1.5px solid rgba(255,255,255,0.72)',
-              boxShadow: '0 8px 22px rgba(66,133,244,0.28)',
-              color: '#fff', fontSize: '16px', fontWeight: 800,
-              cursor: 'pointer', fontFamily: 'inherit', lineHeight: 1
-            }}>◎</button>
-        </div>
-
       </div>
 
       {/* Happening Now Strip */}
@@ -808,13 +724,6 @@ export default function MapScreen() {
                     color: gig.urgency === 'now' ? '#FF3366' : '#FF6B2B',
                     letterSpacing: '0.8px'
                   }}>
-                    {gig.urgency === 'now' && (
-                      <span style={{
-                        width: '4px', height: '4px', borderRadius: '50%',
-                        background: '#FF3366', display: 'inline-block',
-                        animation: 'blink 0.9s infinite'
-                      }} />
-                    )}
                     {gig.urgency?.toUpperCase()}
                   </span>
                   {gig.type === 'digital' ? (
@@ -986,42 +895,11 @@ export default function MapScreen() {
                           }}>
                           <BrandIcon name="map" size={22} active /> Show on Map
                         </button>
-                        <a
-                          href={`https://www.google.com/maps/dir/?api=1&destination=${selectedGig.latitude},${selectedGig.longitude}`}
-                          target="_blank" rel="noreferrer"
-                          style={{
-                            display: 'flex', alignItems: 'center',
-                            justifyContent: 'center', gap: '8px',
-                            width: '100%', boxSizing: 'border-box',
-                            background: '#4285F4', border: 'none',
-                            borderRadius: '10px', padding: '10px',
-                            fontSize: '13px', fontWeight: '700',
-                            color: '#fff', textDecoration: 'none'
-                          }}>
-                          🗺️ Get Directions
-                        </a>
                       </div>
                     )}
                   </div>
                 )}
 
-                {/* WhatsApp button */}
-                {selectedGig.poster?.phone && (
-                  <a
-                    href={`https://wa.me/${selectedGig.poster.phone.replace(/\D/g, '')}?text=Hi, I just applied for your gig "${selectedGig.title}" on Prima`}
-                    target="_blank" rel="noreferrer"
-                    style={{
-                      display: 'flex', alignItems: 'center',
-                      justifyContent: 'center', gap: '8px',
-                      background: '#25D366', border: 'none',
-                      borderRadius: '12px', padding: '14px',
-                      fontSize: '14px', fontWeight: '700',
-                      color: '#fff', textDecoration: 'none',
-                      width: '100%', boxSizing: 'border-box'
-                    }}>
-                    <BrandIcon name="chat" size={22} /> Message on WhatsApp
-                  </a>
-                )}
               </div>
             ) : (
               <>
@@ -1071,13 +949,6 @@ export default function MapScreen() {
     fontSize: '10px', fontWeight: '800',
     color: URGENCY_COLORS[selectedGig.urgency], letterSpacing: '0.8px'
   }}>
-    {selectedGig.urgency === 'now' && (
-      <span style={{
-        width: '5px', height: '5px', borderRadius: '50%',
-        background: URGENCY_COLORS[selectedGig.urgency],
-        display: 'inline-block', animation: 'blink 0.9s infinite'
-      }} />
-    )}
     {selectedGig.urgency?.toUpperCase()}
   </div>
   {selectedGig.slots > 1 && (
@@ -1646,14 +1517,6 @@ export default function MapScreen() {
           background: rgba(66, 133, 244, 0.16);
           border: 1px solid rgba(66, 133, 244, 0.22);
         }
-        .prima-user-pulse {
-          position: absolute;
-          width: 20px;
-          height: 20px;
-          border-radius: 50%;
-          background: rgba(66, 133, 244, 0.25);
-          animation: primaUserPulse 2s ease-out infinite;
-        }
         .prima-user-core {
           position: relative;
           z-index: 2;
@@ -1700,18 +1563,6 @@ export default function MapScreen() {
         .prima-gig-pin.is-selected .prima-gig-label {
           color: #6C47FF;
         }
-        .prima-gig-pin.is-selected .prima-gig-pulse {
-          animation-duration: 1.25s;
-        }
-        .prima-gig-pulse {
-          position: absolute;
-          top: -4px;
-          width: 52px;
-          height: 52px;
-          border-radius: 50%;
-          background: color-mix(in srgb, var(--pin-color) 22%, transparent);
-          animation: primaGigPulse 1.8s ease-out infinite;
-        }
         .prima-gig-label {
           background: rgba(255, 255, 255, 0.96);
           border-radius: 8px;
@@ -1731,14 +1582,6 @@ export default function MapScreen() {
           width: 58px;
           height: 58px;
           animation: primaPinDrop 260ms ease-out both;
-        }
-        .prima-cluster-halo {
-          position: absolute;
-          width: 58px;
-          height: 58px;
-          border-radius: 50%;
-          background: rgba(108, 71, 255, 0.15);
-          animation: primaClusterPulse 2.2s ease-out infinite;
         }
         .prima-cluster-core {
           width: 44px;
@@ -1762,18 +1605,6 @@ export default function MapScreen() {
         }
         .prima-now-card.is-active {
           animation: primaActiveCard 1.9s ease-in-out infinite;
-        }
-        @keyframes primaUserPulse {
-          0% { transform: scale(0.9); opacity: 0.75; }
-          100% { transform: scale(2.35); opacity: 0; }
-        }
-        @keyframes primaGigPulse {
-          0% { transform: scale(0.75); opacity: 0.65; }
-          100% { transform: scale(1.75); opacity: 0; }
-        }
-        @keyframes primaClusterPulse {
-          0% { transform: scale(0.8); opacity: 0.75; }
-          100% { transform: scale(1.35); opacity: 0; }
         }
         @keyframes primaPinDrop {
           0% { transform: translateY(-10px) scale(0.86); opacity: 0; }

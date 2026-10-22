@@ -42,7 +42,8 @@ export default function PrimaBasemap({ mode = 'light', provider = 'carto' }) {
       attribution={selectedMode.attribution}
       url={selectedMode.url}
       subdomains={selectedMode.subdomains}
-      maxZoom={19}
+      maxZoom={20}
+      maxNativeZoom={18}
       eventHandlers={{
         tileerror: () => {
           if (activeProvider !== 'osm') setActiveProvider('osm')

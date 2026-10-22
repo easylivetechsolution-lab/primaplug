@@ -83,18 +83,18 @@ export default function DiscoverScreen() {
 
   const GigCard = ({ gig }) => (
     <div onClick={() => setSelectedGig(gig)} style={{
-      background: '#fff', border: '1.5px solid #E2E0FF',
+      background: 'var(--color-surface)', border: '1.5px solid var(--color-border)',
       borderRadius: '14px', padding: '16px',
       cursor: 'pointer', transition: 'all 0.15s',
       marginBottom: '10px'
     }}
       onMouseEnter={e => {
-        e.currentTarget.style.borderColor = '#B8A5FF'
+        e.currentTarget.style.borderColor = 'var(--color-brand-border-strong)'
         e.currentTarget.style.transform = 'translateY(-2px)'
         e.currentTarget.style.boxShadow = '0 8px 24px rgba(108,71,255,0.1)'
       }}
       onMouseLeave={e => {
-        e.currentTarget.style.borderColor = '#E2E0FF'
+        e.currentTarget.style.borderColor = 'var(--color-border)'
         e.currentTarget.style.transform = 'translateY(0)'
         e.currentTarget.style.boxShadow = 'none'
       }}>
@@ -103,15 +103,15 @@ export default function DiscoverScreen() {
         alignItems: 'flex-start'
       }}>
         <div style={{ flex: 1, paddingRight: '10px' }}>
-          <div style={{ fontSize: '14px', fontWeight: '700', color: '#14123A', marginBottom: '6px' }}>
+          <div style={{ fontSize: '14px', fontWeight: '700', color: 'var(--color-text)', marginBottom: '6px' }}>
             {gig.title}
           </div>
           <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
             <div style={{
               width: '24px', height: '24px', borderRadius: '6px',
-              background: '#EEE9FF', display: 'flex', alignItems: 'center',
-              justifyContent: 'center', fontSize: '10px',
-              fontWeight: '800', color: '#6C47FF', overflow: 'hidden'
+              background: 'var(--color-brand-soft)', display: 'flex', alignItems: 'center',
+              justifyContent: 'center', fontSize: '12px',
+              fontWeight: '800', color: 'var(--color-brand)', overflow: 'hidden'
             }}>
               {gig.users?.avatar_url ? (
                 <img src={gig.users.avatar_url} alt=""
@@ -120,11 +120,11 @@ export default function DiscoverScreen() {
                 gig.users?.full_name?.charAt(0) || '?'
               )}
             </div>
-            <span style={{ fontSize: '11px', color: '#8B8FAF' }}>
+            <span style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
               {gig.users?.full_name || 'Anonymous'}
             </span>
             {gig.location && (
-              <span style={{ fontSize: '10px', color: '#FF6B2B' }}>
+              <span style={{ fontSize: '12px', color: 'var(--color-warning)' }}>
                 📍 {gig.location}
               </span>
             )}
@@ -133,9 +133,9 @@ export default function DiscoverScreen() {
         <div style={{ textAlign: 'right', flexShrink: 0 }}>
           <div style={{
             fontSize: '16px', fontWeight: '800',
-            color: '#00C48C', letterSpacing: '-0.3px'
+            color: 'var(--color-success)', letterSpacing: '-0.3px'
           }}>${gig.pay_min}</div>
-          <div style={{ fontSize: '10px', color: '#A09DC8' }}>–${gig.pay_max}</div>
+          <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)' }}>–${gig.pay_max}</div>
         </div>
       </div>
     </div>
@@ -151,9 +151,9 @@ export default function DiscoverScreen() {
       <div style={{ marginBottom: '20px' }}>
         <div style={{
           fontSize: '22px', fontWeight: '800',
-          color: '#14123A', marginBottom: '4px'
+          color: 'var(--color-text)', marginBottom: '4px'
         }}>Discover</div>
-        <div style={{ fontSize: '13px', color: '#8B8FAF' }}>
+        <div style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>
           Find opportunities by field and skill
         </div>
       </div>
@@ -161,12 +161,12 @@ export default function DiscoverScreen() {
       {/* Personalized section */}
       {profile?.skills && profile.skills.length > 0 && (
         <div style={{
-          background: 'linear-gradient(135deg, #EEE9FF, #F8F5FF)',
-          border: '1.5px solid #B8A5FF',
+          background: 'linear-gradient(135deg, var(--color-brand-soft), var(--color-brand-pale))',
+          border: '1.5px solid var(--color-brand-border-strong)',
           borderRadius: '16px', padding: '16px', marginBottom: '20px'
         }}>
           <div style={{
-            fontSize: '11px', fontWeight: '700', color: '#6C47FF',
+            fontSize: '12px', fontWeight: '700', color: 'var(--color-brand)',
             letterSpacing: '0.8px', textTransform: 'uppercase', marginBottom: '12px'
           }}>Based on Your Skills</div>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -176,11 +176,11 @@ export default function DiscoverScreen() {
                 <button key={skill}
                   onClick={() => setSelectedField(skill)}
                   style={{
-                    background: selectedField === skill ? '#6C47FF' : '#fff',
-                    border: `1.5px solid ${selectedField === skill ? '#6C47FF' : '#B8A5FF'}`,
+                    background: selectedField === skill ? 'var(--color-brand)' : 'var(--color-surface)',
+                    border: `1.5px solid ${selectedField === skill ? 'var(--color-brand)' : 'var(--color-brand-border-strong)'}`,
                     borderRadius: '20px', padding: '7px 14px',
                     fontSize: '12px', fontWeight: '600',
-                    color: selectedField === skill ? '#fff' : '#6C47FF',
+                    color: selectedField === skill ? 'var(--color-surface)' : 'var(--color-brand)',
                     cursor: 'pointer', fontFamily: 'inherit',
                     transition: 'all 0.15s',
                     display: 'flex', alignItems: 'center', gap: '7px'
@@ -196,15 +196,15 @@ export default function DiscoverScreen() {
 
       {/* Category Groups */}
       <div style={{
-        fontSize: '11px', fontWeight: '700', color: '#A09DC8',
+        fontSize: '12px', fontWeight: '700', color: 'var(--color-text-subtle)',
         textTransform: 'uppercase', letterSpacing: '1.2px', marginBottom: '12px'
       }}>Browse by Field</div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '24px' }}>
         {CATEGORIES.map(cat => (
           <div key={cat.group} style={{
-            background: '#fff',
-            border: `1.5px solid ${selectedField && cat.fields.includes(selectedField) ? cat.border : '#E2E0FF'}`,
+            background: 'var(--color-surface)',
+            border: `1.5px solid ${selectedField && cat.fields.includes(selectedField) ? cat.border : 'var(--color-border)'}`,
             borderRadius: '14px', overflow: 'hidden',
             transition: 'border-color 0.15s'
           }}>
@@ -215,21 +215,21 @@ export default function DiscoverScreen() {
                 padding: '14px 16px', cursor: 'pointer',
                 display: 'flex', justifyContent: 'space-between',
                 alignItems: 'center',
-                background: selectedField && cat.fields.includes(selectedField) ? cat.bg : '#fff'
+                background: selectedField && cat.fields.includes(selectedField) ? cat.bg : 'var(--color-surface)'
               }}>
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                 <BrandIcon name={CATEGORY_ICONS[cat.group]} size={36} active={!!(selectedField && cat.fields.includes(selectedField))} />
                 <div>
                   <div style={{
                     fontSize: '14px', fontWeight: '700',
-                    color: selectedField && cat.fields.includes(selectedField) ? cat.color : '#14123A'
+                    color: selectedField && cat.fields.includes(selectedField) ? cat.color : 'var(--color-text)'
                   }}>{cat.group}</div>
-                  <div style={{ fontSize: '10px', color: '#A09DC8' }}>
+                  <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)' }}>
                     {cat.fields.length} specializations
                   </div>
                 </div>
               </div>
-              <span style={{ fontSize: '12px', color: '#A09DC8' }}>
+              <span style={{ fontSize: '12px', color: 'var(--color-text-subtle)' }}>
                 {openGroup === cat.group ? '▲' : '▼'}
               </span>
             </div>
@@ -239,7 +239,7 @@ export default function DiscoverScreen() {
               <div style={{
                 display: 'flex', gap: '7px', flexWrap: 'wrap',
                 padding: '12px 16px', borderTop: `1px solid ${cat.border}`,
-                background: '#FAFAFF'
+                background: 'var(--color-surface-soft)'
               }}>
                 {cat.fields.map(field => {
                   const count = allGigs.filter(g => g.field === field).length
@@ -248,11 +248,11 @@ export default function DiscoverScreen() {
                       key={field}
                       onClick={() => setSelectedField(selectedField === field ? null : field)}
                       style={{
-                        background: selectedField === field ? cat.bg : '#fff',
-                        border: `1.5px solid ${selectedField === field ? cat.border : '#E2E0FF'}`,
+                        background: selectedField === field ? cat.bg : 'var(--color-surface)',
+                        border: `1.5px solid ${selectedField === field ? cat.border : 'var(--color-border)'}`,
                         borderRadius: '20px', padding: '7px 14px',
                         fontSize: '12px', fontWeight: '600',
-                        color: selectedField === field ? cat.color : '#8B8FAF',
+                        color: selectedField === field ? cat.color : 'var(--color-text-muted)',
                         cursor: 'pointer', fontFamily: 'inherit',
                         transition: 'all 0.15s',
                         display: 'flex', alignItems: 'center', gap: '6px'
@@ -260,10 +260,10 @@ export default function DiscoverScreen() {
                       {field}
                       {count > 0 && (
                         <span style={{
-                          background: selectedField === field ? cat.color : '#E2E0FF',
-                          color: selectedField === field ? '#fff' : '#8B8FAF',
+                          background: selectedField === field ? cat.color : 'var(--color-border)',
+                          color: selectedField === field ? 'var(--color-surface)' : 'var(--color-text-muted)',
                           borderRadius: '20px', padding: '0px 6px',
-                          fontSize: '10px', fontWeight: '700'
+                          fontSize: '12px', fontWeight: '700'
                         }}>{count}</span>
                       )}
                     </button>
@@ -279,7 +279,7 @@ export default function DiscoverScreen() {
       {selectedField && (
         <div>
           <div style={{
-            fontSize: '11px', fontWeight: '700', color: '#A09DC8',
+            fontSize: '12px', fontWeight: '700', color: 'var(--color-text-subtle)',
             textTransform: 'uppercase', letterSpacing: '1.2px', marginBottom: '12px'
           }}>
             {loading ? 'Loading...' : `${gigs.length} Gig${gigs.length !== 1 ? 's' : ''} in ${selectedField}`}
@@ -289,17 +289,17 @@ export default function DiscoverScreen() {
           ) : gigs.length === 0 ? (
             <div style={{
               textAlign: 'center', padding: '32px',
-              background: '#fff', borderRadius: '16px',
-              border: '1.5px solid #E2E0FF'
+              background: 'var(--color-surface)', borderRadius: '16px',
+              border: '1.5px solid var(--color-border)'
             }}>
               <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
                 <BrandIcon name="discover" size={44} />
               </div>
               <div style={{
                 fontSize: '14px', fontWeight: '700',
-                color: '#14123A', marginBottom: '6px'
+                color: 'var(--color-text)', marginBottom: '6px'
               }}>No gigs in {selectedField} yet</div>
-              <div style={{ fontSize: '12px', color: '#A09DC8' }}>
+              <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)' }}>
                 Be the first to post one!
               </div>
             </div>
@@ -320,7 +320,7 @@ export default function DiscoverScreen() {
           justifyContent: 'center'
         }} onClick={() => setSelectedGig(null)}>
           <div onClick={e => e.stopPropagation()} style={{
-            background: '#fff',
+            background: 'var(--color-surface)',
             borderRadius: '22px 22px 0 0',
             padding: '24px', width: '100%',
             maxWidth: '640px', maxHeight: '85vh',
@@ -329,65 +329,65 @@ export default function DiscoverScreen() {
           }}>
             <div style={{
               width: '40px', height: '4px',
-              background: '#E2E0FF', borderRadius: '2px',
+              background: 'var(--color-border)', borderRadius: '2px',
               margin: '0 auto 20px'
             }} />
             <h2 style={{
               fontSize: '18px', fontWeight: '800',
-              color: '#14123A', marginBottom: '12px'
+              color: 'var(--color-text)', marginBottom: '12px'
             }}>{selectedGig.title}</h2>
             <div style={{
               display: 'grid', gridTemplateColumns: '1fr 1fr',
               gap: '10px', marginBottom: '16px'
             }}>
               <div style={{
-                background: '#DFFDF4', border: '1.5px solid #7EECD2',
+                background: 'var(--color-success-soft)', border: '1.5px solid var(--color-success-border)',
                 borderRadius: '12px', padding: '14px'
               }}>
                 <div style={{
-                  fontSize: '9px', color: '#00C48C', fontWeight: '700',
+                  fontSize: '12px', color: 'var(--color-success)', fontWeight: '700',
                   textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '4px'
                 }}>Pay Range</div>
                 <div style={{
-                  fontSize: '22px', fontWeight: '800', color: '#00C48C'
+                  fontSize: '22px', fontWeight: '800', color: 'var(--color-success)'
                 }}>${selectedGig.pay_min}</div>
-                <div style={{ fontSize: '11px', color: '#00C48C', opacity: 0.7 }}>
+                <div style={{ fontSize: '12px', color: 'var(--color-success)', opacity: 0.7 }}>
                   up to ${selectedGig.pay_max}
                 </div>
               </div>
               <div style={{
-                background: '#FFF0E8', border: '1.5px solid #FFBC99',
+                background: 'var(--color-warning-soft)', border: '1.5px solid var(--color-warning-border)',
                 borderRadius: '12px', padding: '14px'
               }}>
                 <div style={{
-                  fontSize: '9px', color: '#FF6B2B', fontWeight: '700',
+                  fontSize: '12px', color: 'var(--color-warning)', fontWeight: '700',
                   textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '4px'
                 }}>Location</div>
                 <div style={{
-                  fontSize: '13px', fontWeight: '700', color: '#14123A'
+                  fontSize: '13px', fontWeight: '700', color: 'var(--color-text)'
                 }}>{selectedGig.location || 'Remote'}</div>
               </div>
             </div>
             {selectedGig.description && (
               <div style={{
-                background: '#F5F4FF', borderRadius: '12px',
+                background: 'var(--color-page)', borderRadius: '12px',
                 padding: '14px', marginBottom: '16px',
-                fontSize: '13px', color: '#5B5887', lineHeight: '1.6'
+                fontSize: '13px', color: 'var(--color-text-muted)', lineHeight: '1.6'
               }}>{selectedGig.description}</div>
             )}
             <div style={{ display: 'flex', gap: '10px' }}>
               <button onClick={() => setSelectedGig(null)} style={{
-                flex: 1, background: '#F5F4FF',
-                border: '1.5px solid #E2E0FF',
+                flex: 1, background: 'var(--color-page)',
+                border: '1.5px solid var(--color-border)',
                 borderRadius: '12px', padding: '13px',
                 fontSize: '13px', fontWeight: '600',
-                color: '#8B8FAF', cursor: 'pointer', fontFamily: 'inherit'
+                color: 'var(--color-text-muted)', cursor: 'pointer', fontFamily: 'inherit'
               }}>Close</button>
               <button style={{
                 flex: 2,
-                background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+                background: 'var(--color-brand-gradient)',
                 border: 'none', borderRadius: '12px', padding: '13px',
-                fontSize: '14px', fontWeight: '700', color: '#fff',
+                fontSize: '14px', fontWeight: '700', color: 'var(--color-surface)',
                 cursor: 'pointer', fontFamily: 'inherit',
                 boxShadow: '0 4px 16px rgba(108,71,255,0.3)'
               }}>⚡ Apply for This Gig</button>

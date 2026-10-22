@@ -208,6 +208,14 @@ const ICON_PATHS = {
       <path d="M16 11.5v4.8l3.4 2" />
     </>
   ),
+  calendar: (
+    <>
+      <rect x="9" y="10.5" width="14" height="12.5" rx="1.6" />
+      <path d="M12.5 8v5" />
+      <path d="M19.5 8v5" />
+      <path d="M9 14.5h14" />
+    </>
+  ),
   completed: (
     <>
       <circle cx="16" cy="16" r="8" />
@@ -294,9 +302,8 @@ const ICON_PATHS = {
   ),
   discover: (
     <>
-      <path d="M16 6.9 18 14l7.1 2-7.1 2-2 7.1-2-7.1-7.1-2 7.1-2 2-7.1Z" />
-      <path d="M22.8 7.1v3.4" />
-      <path d="M21.1 8.8h3.4" />
+      <circle cx="16" cy="16" r="8.5" />
+      <path d="m19.5 12.5-2.1 5-4.9 2 2-4.9 5-2.1Z" />
     </>
   ),
   mygigs: (
@@ -360,7 +367,7 @@ const ICON_PATHS = {
   ),
 }
 
-const TILE_GRADIENT = 'linear-gradient(135deg, #6C47FF 0%, #9B59FF 52%, #FF4DCF 100%)'
+const TILE_GRADIENT = 'linear-gradient(135deg, var(--color-brand) 0%, var(--color-brand-mid) 52%, var(--color-brand-highlight) 100%)'
 
 export default function BrandIcon({ name, size = 30, active = true, title, tone }) {
   const icon = ICON_PATHS[name] || ICON_PATHS.discover
@@ -374,7 +381,7 @@ export default function BrandIcon({ name, size = 30, active = true, title, tone 
         width: size,
         height: size,
         borderRadius: Math.max(8, Math.round(size * 0.22)),
-        background: active ? activeBackground : '#EEF0F8',
+        background: active ? activeBackground : 'var(--color-surface-icon)',
         boxShadow: active
           ? 'inset 0 1px 0 rgba(255,255,255,0.42), 0 5px 14px rgba(108,71,255,0.28)'
           : 'inset 0 1px 0 rgba(255,255,255,0.75)',
@@ -399,7 +406,7 @@ export default function BrandIcon({ name, size = 30, active = true, title, tone 
         height={Math.round(size * 0.7)}
         viewBox="0 0 32 32"
         fill="none"
-        stroke={active ? '#fff' : '#8B8FAF'}
+        stroke={active ? 'var(--color-surface)' : 'var(--color-text-muted)'}
         strokeWidth="2.65"
         strokeLinecap="round"
         strokeLinejoin="round"

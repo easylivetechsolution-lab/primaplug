@@ -7,7 +7,10 @@ import BrandIcon from '../BrandIcon'
 import { showToast } from '../../utils/toast'
 import ScreenLoader from '../ScreenLoader'
 import EmptyState from '../EmptyState'
+import ReportModal from '../ReportModal'
+import ConfirmDialog from '../ConfirmDialog'
 import { playMessage } from '../../utils/sounds'
+import { sendPushToUser } from '../../utils/pushNotifications'
 import {
   clearConversationForUser,
   fetchConversationById,
@@ -21,12 +24,12 @@ import {
   isMutedByUser,
   markConversationRead,
   markConversationUnread,
-  markMessageRead,
   parseTimestamp,
   sendMessage as sendChatMessage,
   toggleMessageReaction,
   toggleMuteConversation,
   togglePinConversation,
+  CHAT_MESSAGE_LIMIT,
   updateConversationPreview as updateChatConversationPreview
 } from '../../utils/chat'
 
@@ -72,9 +75,17 @@ export default function ChatScreen() {
   const [newMessage, setNewMessage] = useState('')
   const [sending, setSending] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
   const [loadingMessages, setLoadingMessages] = useState(false)
-  const [, setTyping] = useState(false)
-  const [otherTyping] = useState(false)
+  const [otherTyping, setOtherTyping] = useState(false)
+  const [hasOlderMessages, setHasOlderMessages] = useState(false)
+  const [loadingOlderMessages, setLoadingOlderMessages] = useState(false)
+  const [conversationSearch, setConversationSearch] = useState('')
+  const [showNewChat, setShowNewChat] = useState(false)
+  const [newChatQuery, setNewChatQuery] = useState('')
+  const [newChatUsers, setNewChatUsers] = useState([])
+  const [searchingUsers, setSearchingUsers] = useState(false)
+  const [startingChatUserId, setStartingChatUserId] = useState(null)
   const [viewingProfile, setViewingProfile] = useState(null)
   const [showQuickReplies, setShowQuickReplies] = useState(false)
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
@@ -82,7 +93,12 @@ export default function ChatScreen() {
   const [onlineUsers, setOnlineUsers] = useState(new Set())
   const [conversationMenu, setConversationMenu] = useState(null)
   const [chatHeaderMenuOpen, setChatHeaderMenuOpen] = useState(false)
+  const [reportTarget, setReportTarget] = useState(null)
   const [messageMenu, setMessageMenu] = useState(null)
+  const [editingMessage, setEditingMessage] = useState(null)
+  const [editedMessageText, setEditedMessageText] = useState('')
+  const [savingEdit, setSavingEdit] = useState(false)
+  const [confirmDialog, setConfirmDialog] = useState(null)
   const [replyingTo, setReplyingTo] = useState(null)
   const [reactingTo, setReactingTo] = useState(null)
   const [forwardMsg, setForwardMsg] = useState(null)
@@ -91,9 +107,16 @@ export default function ChatScreen() {
   const [lightboxImg, setLightboxImg] = useState(null)
   const messagesEndRef = useRef()
   const inputRef = useRef()
+  const messagesContainerRef = useRef()
+  const preserveScrollRef = useRef(null)
   const fileInputRef = useRef()
   const typingTimeoutRef = useRef()
+  const otherTypingTimeoutRef = useRef()
+  const messageRequestRef = useRef(0)
+  const userSearchRequestRef = useRef(0)
   const channelRef = useRef()
+  const conversationChannelRef = useRef([])
+  const typingChannelRef = useRef()
   const presenceChannelRef = useRef()
   const longPressTimerRef = useRef()
 
@@ -102,17 +125,46 @@ export default function ChatScreen() {
   }, [user?.id])
 
   useEffect(() => {
+    const updateViewport = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', updateViewport)
+    return () => window.removeEventListener('resize', updateViewport)
+  }, [])
+
+  useEffect(() => {
+    if (!user?.id) return undefined
+    const refresh = () => fetchConversations()
+    const channels = [
+      supabase.channel(`chat-list-p1-${user.id}`).on('postgres_changes', {
+        event: '*', schema: 'public', table: 'conversations',
+        filter: `participant_1=eq.${user.id}`
+      }, refresh).subscribe(),
+      supabase.channel(`chat-list-p2-${user.id}`).on('postgres_changes', {
+        event: '*', schema: 'public', table: 'conversations',
+        filter: `participant_2=eq.${user.id}`
+      }, refresh).subscribe()
+    ]
+    conversationChannelRef.current = channels
+    return () => {
+      channels.forEach(channel => supabase.removeChannel(channel))
+      conversationChannelRef.current = []
+    }
+  }, [user?.id])
+
+  useEffect(() => {
     const handleOpenChat = async (e) => {
       const { convoId } = e.detail
       if (!convoId || !user) return
 
-      const data = await fetchConversationById(convoId, user.id)
-
-      if (data) {
-        setActiveConvo(data)
-        setConversations(prev =>
-          prev.find(c => c.id === data.id) ? prev : [data, ...prev]
-        )
+      try {
+        const data = await fetchConversationById(convoId, user.id)
+        if (data) {
+          setActiveConvo(data)
+          setConversations(prev =>
+            prev.find(c => c.id === data.id) ? prev : [data, ...prev]
+          )
+        }
+      } catch (error) {
+        showToast('Could not open this conversation: ' + error.message, 'error')
       }
     }
 
@@ -120,19 +172,23 @@ export default function ChatScreen() {
       const { userId: targetUserId } = e.detail
       if (!targetUserId || !user) return
 
-      const convo = await getOrCreateConversation({
-        currentUser: user,
-        targetUserId
-      })
+      try {
+        const convo = await getOrCreateConversation({
+          currentUser: user,
+          targetUserId
+        })
 
-      if (convo) {
-        setActiveConvo(convo)
-        if (convo.id && convo.last_message) {
-          setConversations(prev =>
-            prev.find(c => c.id === convo.id) ? prev : [convo, ...prev]
-          )
+        if (convo) {
+          setActiveConvo(convo)
+          if (convo.id) {
+            setConversations(prev =>
+              prev.find(c => c.id === convo.id) ? prev : [convo, ...prev]
+            )
+          }
+          if (!convo.id) setMessages([])
         }
-        if (!convo.id) setMessages([])
+      } catch (error) {
+        showToast('Could not open conversation: ' + error.message, 'error')
       }
     }
 
@@ -160,13 +216,76 @@ export default function ChatScreen() {
       fetchMessages(activeConvo)
       markAsRead(activeConvo)
       subscribeToMessages(activeConvo.id)
+    } else {
+      setMessages([])
+      setHasOlderMessages(false)
     }
     return () => {
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current)
       }
+      messageRequestRef.current += 1
     }
   }, [activeConvo?.id])
+
+  useEffect(() => {
+    if (!activeConvo?.id || !user?.id) return undefined
+    const channel = supabase.channel(`typing-${activeConvo.id}`)
+      .on('broadcast', { event: 'typing' }, ({ payload }) => {
+        if (payload?.userId === user.id) return
+        setOtherTyping(Boolean(payload?.typing))
+        clearTimeout(otherTypingTimeoutRef.current)
+        if (payload?.typing) {
+          otherTypingTimeoutRef.current = setTimeout(() => setOtherTyping(false), 2500)
+        }
+      })
+      .subscribe()
+    typingChannelRef.current = channel
+    setOtherTyping(false)
+    return () => {
+      clearTimeout(typingTimeoutRef.current)
+      clearTimeout(otherTypingTimeoutRef.current)
+      if (typingChannelRef.current === channel) typingChannelRef.current = null
+      supabase.removeChannel(channel)
+    }
+  }, [activeConvo?.id, user?.id])
+
+  useEffect(() => {
+    setNewMessage('')
+    setReplyingTo(null)
+    setShowEmojiPicker(false)
+    setShowQuickReplies(false)
+    setOtherTyping(false)
+  }, [activeConvo?.id])
+
+  useEffect(() => {
+    if (!showNewChat || newChatQuery.trim().length < 2 || !user?.id) {
+      setNewChatUsers([])
+      setSearchingUsers(false)
+      return undefined
+    }
+    const requestId = ++userSearchRequestRef.current
+    setSearchingUsers(true)
+    const timeout = setTimeout(async () => {
+      try {
+        const { data, error } = await supabase.from('users')
+          .select('id, full_name, avatar_url, trust_score')
+          .ilike('full_name', `%${newChatQuery.trim()}%`)
+          .neq('id', user.id)
+          .limit(12)
+        if (error) throw error
+        if (requestId === userSearchRequestRef.current) setNewChatUsers(data || [])
+      } catch (error) {
+        if (requestId === userSearchRequestRef.current) {
+          setNewChatUsers([])
+          showToast('Could not search people: ' + error.message, 'error')
+        }
+      } finally {
+        if (requestId === userSearchRequestRef.current) setSearchingUsers(false)
+      }
+    }, 250)
+    return () => clearTimeout(timeout)
+  }, [showNewChat, newChatQuery, user?.id])
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -182,7 +301,13 @@ export default function ChatScreen() {
   }, [])
 
   useEffect(() => {
-    scrollToBottom()
+    const savedScroll = preserveScrollRef.current
+    if (savedScroll && messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = savedScroll.top + messagesContainerRef.current.scrollHeight - savedScroll.height
+      preserveScrollRef.current = null
+    } else {
+      scrollToBottom()
+    }
   }, [messages])
 
   // Supabase Realtime Presence — track who's online
@@ -243,20 +368,63 @@ export default function ChatScreen() {
   async function fetchConversations() {
     if (!user) return
     try {
-      const data = await fetchChatConversations(user.id)
+      const data = await fetchChatConversations(user.id, { includeEmpty: true })
       setConversations(data)
+      setActiveConvo(current => current
+        ? data.find(item => item.id === current.id) || current
+        : current)
+    } catch (error) {
+      showToast('Could not load messages: ' + error.message, 'error')
     } finally {
       setLoading(false)
     }
   }
 
   async function fetchMessages(convo) {
+    const requestId = ++messageRequestRef.current
     setLoadingMessages(true)
     try {
       const data = await fetchChatMessages(convo, user.id)
+      if (requestId !== messageRequestRef.current) return
       setMessages(data)
+      setHasOlderMessages(data.length === CHAT_MESSAGE_LIMIT)
+    } catch (error) {
+      if (requestId === messageRequestRef.current) {
+        setMessages([])
+        setHasOlderMessages(false)
+        showToast('Could not load this conversation: ' + error.message, 'error')
+      }
     } finally {
-      setLoadingMessages(false)
+      if (requestId === messageRequestRef.current) setLoadingMessages(false)
+    }
+  }
+
+  async function fetchOlderMessages() {
+    if (!activeConvo?.id || !messages.length || loadingOlderMessages || !hasOlderMessages) return
+    const oldestMessage = messages[0]
+    const container = messagesContainerRef.current
+    preserveScrollRef.current = {
+      height: container?.scrollHeight || 0,
+      top: container?.scrollTop || 0
+    }
+    setLoadingOlderMessages(true)
+    try {
+      const older = await fetchChatMessages(activeConvo, user.id, {
+        limit: CHAT_MESSAGE_LIMIT,
+        before: oldestMessage.created_at
+      })
+      setHasOlderMessages(older.length === CHAT_MESSAGE_LIMIT)
+      if (older.length) {
+        setMessages(prev => {
+          const currentIds = new Set(prev.map(message => message.id))
+          return [...older.filter(message => !currentIds.has(message.id)), ...prev]
+        })
+      } else preserveScrollRef.current = null
+    } catch (error) {
+      preserveScrollRef.current = null
+      showToast('Could not load older messages: ' + error.message, 'error')
+    } finally {
+      setLoadingOlderMessages(false)
     }
   }
 
@@ -265,18 +433,24 @@ export default function ChatScreen() {
     channelRef.current = supabase
       .channel('messages-' + convoId)
       .on('postgres_changes', {
-        event: 'INSERT',
+        event: '*',
         schema: 'public',
         table: 'messages',
         filter: `conversation_id=eq.${convoId}`
       }, (payload) => {
-        setMessages(prev => {
-          if (prev.find(m => m.id === payload.new.id)) return prev
-          return [...prev, payload.new]
-        })
-        if (payload.new.sender_id !== user.id) {
-          playMessage()
-          markMessageRead(payload.new.id)
+        if (payload.eventType === 'INSERT') {
+          setMessages(prev => {
+            if (prev.find(m => m.id === payload.new.id)) return prev
+            return [...prev, payload.new]
+          })
+          if (payload.new.sender_id !== user.id) {
+            if (!isMutedByUser(activeConvo, user.id)) playMessage()
+            markAsRead(activeConvo)
+          }
+        } else if (payload.eventType === 'UPDATE') {
+          setMessages(prev => prev.map(message => message.id === payload.new.id ? payload.new : message))
+        } else if (payload.eventType === 'DELETE') {
+          setMessages(prev => prev.filter(message => message.id !== payload.old.id))
         }
       })
       .subscribe()
@@ -284,8 +458,17 @@ export default function ChatScreen() {
 
   async function markAsRead(convo) {
     if (!convo) return
-    await markConversationRead(convo, user.id)
-    fetchConversations()
+    try {
+      await markConversationRead(convo, user.id)
+      setMessages(prev => prev.map(message => message.conversation_id !== convo.id || message.sender_id === user.id || message.read
+        ? message
+        : { ...message, read: true, read_at: new Date().toISOString() }))
+      setConversations(prev => prev.map(item => item.id === convo.id
+        ? { ...item, ...(item.participant_1 === user.id ? { unread_count_1: 0 } : { unread_count_2: 0 }) }
+        : item))
+    } catch (error) {
+      showToast('Could not update read status: ' + error.message, 'error')
+    }
   }
 
   const sendMessage = async (content = newMessage) => {
@@ -315,7 +498,10 @@ export default function ChatScreen() {
     setReplyingTo(null)
 
     try {
-      const result = await sendChatMessage({ user, conversation: activeConvo, content: text, replyTo: pendingReply })
+      const result = await sendChatMessage({
+        user, conversation: activeConvo, content: text, replyTo: pendingReply,
+        notifyPush: true, sendPushToUser
+      })
       if (result?.conversation?.id && !activeConvo.id) setActiveConvo(result.conversation)
       if (result?.message) {
         // Remove both the temp placeholder AND any realtime-received copy (which may lack reply fields),
@@ -343,34 +529,47 @@ export default function ChatScreen() {
     fetchConversations()
   }
 
-  const editMessage = async (msg) => {
+  const editMessage = (msg) => {
     if (msg.sender_id !== user.id) return
-    const next = window.prompt('Edit message', msg.content)
-    if (next === null) return
-    const text = next.trim()
-    if (!text) return
+    setEditingMessage(msg)
+    setEditedMessageText(msg.content || '')
+  }
 
+  const saveMessageEdit = async () => {
+    const text = editedMessageText.trim()
+    if (!editingMessage || !text || savingEdit) return
+    setSavingEdit(true)
     const { error } = await supabase
       .from('messages')
       .update({ content: text })
-      .eq('id', msg.id)
+      .eq('id', editingMessage.id)
       .eq('sender_id', user.id)
 
     if (error) {
       showToast('Could not edit message: ' + error.message, 'error')
+      setSavingEdit(false)
       return
     }
 
-    const nextMessages = messages.map(m => m.id === msg.id ? { ...m, content: text } : m)
+    const nextMessages = messages.map(m => m.id === editingMessage.id ? { ...m, content: text } : m)
     setMessages(nextMessages)
-    if (messages[messages.length - 1]?.id === msg.id) {
+    if (messages[messages.length - 1]?.id === editingMessage.id) {
       await updateConversationPreview(activeConvo.id, nextMessages)
     }
+    setEditingMessage(null)
+    setEditedMessageText('')
+    setSavingEdit(false)
   }
 
-  const deleteMessage = async (msg) => {
+  const deleteMessage = async (msg, confirmed = false) => {
     if (msg.sender_id !== user.id) return
-    if (!window.confirm('Delete this message?')) return
+    if (!confirmed) {
+      setConfirmDialog({
+        title: 'Delete message?', message: 'This message will be removed from the conversation.',
+        confirmLabel: 'Delete message', action: () => deleteMessage(msg, true)
+      })
+      return
+    }
 
     const { error } = await supabase
       .from('messages')
@@ -388,14 +587,20 @@ export default function ChatScreen() {
     await updateConversationPreview(activeConvo.id, nextMessages)
   }
 
-  const deleteConversation = async (convo, e) => {
+  const deleteConversation = async (convo, e, confirmed = false) => {
     e?.stopPropagation()
     if (!convo?.id) {
       setActiveConvo(null)
       setMessages([])
       return
     }
-    if (!window.confirm('Delete this conversation from your inbox? The other person will keep their copy.')) return
+    if (!confirmed) {
+      setConfirmDialog({
+        title: 'Delete this conversation?', message: 'It will be removed from your inbox. The other person will keep their copy.',
+        confirmLabel: 'Delete conversation', action: () => deleteConversation(convo, null, true)
+      })
+      return
+    }
 
     try {
       await hideConversationForUser(convo, user.id)
@@ -411,14 +616,20 @@ export default function ChatScreen() {
     }
   }
 
-  const clearConversation = async (convo, e) => {
+  const clearConversation = async (convo, e, confirmed = false) => {
     e?.stopPropagation()
     if (!convo?.id) {
       setActiveConvo(null)
       setMessages([])
       return
     }
-    if (!window.confirm('Clear this chat for you?')) return
+    if (!confirmed) {
+      setConfirmDialog({
+        title: 'Clear this chat?', message: 'Messages will be hidden from your view. The other person will keep their copy.',
+        confirmLabel: 'Clear chat', action: () => clearConversation(convo, null, true)
+      })
+      return
+    }
 
     let now
     try {
@@ -453,10 +664,38 @@ export default function ChatScreen() {
 
   const handleTyping = () => {
     clearTimeout(typingTimeoutRef.current)
+    const channel = typingChannelRef.current
+    if (channel) channel.send({
+      type: 'broadcast', event: 'typing', payload: { userId: user.id, typing: true }
+    }).catch(() => {})
     typingTimeoutRef.current = setTimeout(() => {
-      setTyping(false)
+      const currentChannel = typingChannelRef.current
+      if (currentChannel) currentChannel.send({
+        type: 'broadcast', event: 'typing', payload: { userId: user.id, typing: false }
+      }).catch(() => {})
     }, 2000)
-    setTyping(true)
+  }
+
+  const startConversationWith = async (person) => {
+    setStartingChatUserId(person.id)
+    try {
+      const convo = await getOrCreateConversation({
+        currentUser: user,
+        targetUserId: person.id,
+        create: true
+      })
+      setConversations(prev => prev.some(item => item.id === convo.id)
+        ? prev
+        : [convo, ...prev])
+      setActiveConvo(convo)
+      setShowNewChat(false)
+      setNewChatQuery('')
+      setNewChatUsers([])
+    } catch (error) {
+      showToast('Could not start conversation: ' + error.message, 'error')
+    } finally {
+      setStartingChatUserId(null)
+    }
   }
 
   const handleReaction = async (msg, emoji) => {
@@ -527,12 +766,25 @@ export default function ChatScreen() {
     return getChatOtherUser(convo, user.id)
   }
 
+  const reportConversation = (convo = activeConvo, message = null) => {
+    const other = getOtherUser(convo)
+    if (!other?.id) {
+      showToast('Could not find the person to report', 'error')
+      return
+    }
+    const context = message
+      ? `Message ID: ${message.id}\nSent: ${message.created_at}\nMessage: ${String(message.content || '').slice(0, 1200)}`
+      : `Conversation ID: ${convo.id}`
+    setReportTarget({ userId: other.id, type: message ? 'chat_message' : 'chat', name: message ? 'this message' : 'this conversation', details: context })
+    setConversationMenu(null)
+    setChatHeaderMenuOpen(false)
+    setMessageMenu(null)
+  }
+
   const getUnreadCount = (convo) => {
     if (!convo || !user) return 0
     return getChatUnreadCount(convo, user.id)
   }
-
-  void editMessage
 
   const timeAgo = (date) => {
     const seconds = Math.floor((new Date() - parseTimestamp(date)) / 1000)
@@ -570,8 +822,11 @@ export default function ChatScreen() {
       return parseTimestamp(b.last_message_at || 0) - parseTimestamp(a.last_message_at || 0)
     })
   })()
-
-  const isMobile = window.innerWidth < 768
+  const visibleConversations = dedupedConversations.filter(convo => {
+    const other = getOtherUser(convo)
+    const query = conversationSearch.trim().toLowerCase()
+    return !query || `${other?.full_name || ''} ${convo.last_message || ''}`.toLowerCase().includes(query)
+  })
 
   const startMsgLongPress = (msgId) => {
     longPressTimerRef.current = setTimeout(() => {
@@ -590,7 +845,7 @@ export default function ChatScreen() {
   }
 
   return (
-    <div style={{
+    <div className="chat-screen" style={{
       display: 'flex', flex: 1, minHeight: 0,
       fontFamily: "'Plus Jakarta Sans', sans-serif",
       overflow: 'hidden'
@@ -599,16 +854,16 @@ export default function ChatScreen() {
       {/* ── CONVERSATIONS LIST ── */}
       <div style={{
         width: isMobile && activeConvo ? '0' : isMobile ? '100%' : '320px',
-        borderRight: '1.5px solid #E2E0FF',
+        borderRight: '1.5px solid var(--color-border)',
         display: 'flex', flexDirection: 'column',
-        background: '#fff', flexShrink: 0,
+        background: 'var(--color-surface)', flexShrink: 0,
         overflow: 'hidden',
         transition: 'width 0.3s ease'
       }}>
         {/* Header */}
         <div style={{
           padding: '20px 16px 14px',
-          borderBottom: '1.5px solid #E2E0FF'
+          borderBottom: '1.5px solid var(--color-border)'
         }}>
           <div style={{
             display: 'flex', justifyContent: 'space-between',
@@ -616,26 +871,44 @@ export default function ChatScreen() {
           }}>
             <div>
               <div style={{
-                fontSize: '20px', fontWeight: '800', color: '#14123A'
+                fontSize: '20px', fontWeight: '800', color: 'var(--color-text)'
               }}>Messages</div>
               {totalUnread > 0 && (
                 <div style={{
-                  fontSize: '12px', color: '#6C47FF',
+                  fontSize: '12px', color: 'var(--color-brand)',
                   fontWeight: '600', marginTop: '2px'
                 }}>
                   {totalUnread} unread
                 </div>
               )}
             </div>
-            <div style={{
+            <button
+              type="button"
+              aria-label="Start a new conversation"
+              title="New message"
+              onClick={() => setShowNewChat(true)}
+              style={{
               width: '36px', height: '36px', borderRadius: '10px',
-              background: '#EEE9FF', display: 'flex',
+              background: 'var(--color-brand-soft)', display: 'flex',
               alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer'
+              cursor: 'pointer', border: 0, padding: 0
             }}>
               <BrandIcon name="compose" size={28} active />
-            </div>
+            </button>
           </div>
+          <input
+            type="search"
+            value={conversationSearch}
+            onChange={event => setConversationSearch(event.target.value)}
+            placeholder="Search conversations"
+            aria-label="Search conversations"
+            style={{
+              width: '100%', boxSizing: 'border-box', marginTop: '12px',
+              padding: '10px 12px', border: 0, borderRadius: '12px',
+              outline: 'none', background: 'var(--color-page)',
+              color: 'var(--color-text)', font: 'inherit', fontSize: '13px'
+            }}
+          />
         </div>
 
         {/* Conversation List */}
@@ -653,7 +926,11 @@ export default function ChatScreen() {
               />
             </div>
           ) : (
-            dedupedConversations.map(convo => {
+            visibleConversations.length === 0 ? (
+              <div style={{ padding: '24px 16px', color: 'var(--color-text-subtle)', fontSize: '13px', textAlign: 'center' }}>
+                {conversationSearch ? 'No conversations match your search.' : 'No conversations yet.'}
+              </div>
+            ) : visibleConversations.map(convo => {
               const other = getOtherUser(convo)
               const unread = getUnreadCount(convo)
               const isActive = activeConvo?.id === convo.id
@@ -668,18 +945,18 @@ export default function ChatScreen() {
                     display: 'flex', gap: '12px',
                     alignItems: 'flex-start',
                     cursor: 'pointer',
-                    background: isActive ? '#F8F7FF' : '#fff',
-                    borderBottom: '1px solid #F5F4FF',
+                    background: isActive ? 'var(--color-surface-tint)' : 'var(--color-surface)',
+                    borderBottom: '1px solid var(--color-page)',
                     transition: 'background 0.1s',
                     position: 'relative',
-                    borderLeft: isPinned ? '3px solid #6C47FF' : '3px solid transparent'
+                    borderLeft: isPinned ? '3px solid var(--color-brand)' : '3px solid transparent'
                   }}
                   onMouseEnter={e => {
-                    if (!isActive) e.currentTarget.style.background = '#F8F7FF'
+                    if (!isActive) e.currentTarget.style.background = 'var(--color-surface-tint)'
                     setHoveredConvo(convo.id)
                   }}
                   onMouseLeave={e => {
-                    if (!isActive) e.currentTarget.style.background = '#fff'
+                    if (!isActive) e.currentTarget.style.background = 'var(--color-surface)'
                     setHoveredConvo(null)
                   }}
                   onTouchStart={() => startConvoLongPress(convo.id)}
@@ -690,34 +967,26 @@ export default function ChatScreen() {
                   <div style={{ position: 'relative', flexShrink: 0 }}>
                     <div style={{
                       width: '48px', height: '48px', borderRadius: '13px',
-                      background: '#EEE9FF', display: 'flex',
+                      background: 'var(--color-brand-soft)', display: 'flex',
                       alignItems: 'center', justifyContent: 'center',
                       fontSize: '18px', fontWeight: '800',
-                      color: '#6C47FF', overflow: 'hidden'
+                      color: 'var(--color-brand)', overflow: 'hidden'
                     }}>
                       {other?.avatar_url ? (
                         <img src={other.avatar_url} alt=""
                           style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       ) : other?.full_name?.charAt(0) || '?'}
                     </div>
-                    {/* Online dot */}
-                    <div style={{
-                      position: 'absolute', bottom: '-1px', right: '-1px',
-                      width: '12px', height: '12px', borderRadius: '50%',
-                      background: onlineUsers.has(other?.id) ? '#00C48C' : '#CBD5E1',
-                      border: '2px solid #fff',
-                      transition: 'background 0.3s'
-                    }} />
                     {/* Pin badge */}
                     {isPinned && (
                       <div style={{ position: 'absolute', top: '-5px', left: '-5px' }}>
-                        <BrandIcon name="saved" size={16} active tone="linear-gradient(135deg,#6C47FF,#9B59FF)" />
+                        <BrandIcon name="saved" size={16} active tone="var(--color-brand-gradient)" />
                       </div>
                     )}
                     {/* Mute badge */}
                     {isMuted && (
                       <div style={{ position: 'absolute', top: '-5px', right: '-5px' }}>
-                        <BrandIcon name="notifications" size={16} active tone="linear-gradient(135deg,#FF6B2B,#FF4DCF)" />
+                        <BrandIcon name="notifications" size={16} active tone="linear-gradient(135deg,var(--color-warning-accent),var(--color-brand-highlight))" />
                       </div>
                     )}
                   </div>
@@ -729,13 +998,13 @@ export default function ChatScreen() {
                     }}>
                       <div style={{
                         fontSize: '15px', fontWeight: unread > 0 ? '700' : '600',
-                        color: '#14123A', overflow: 'hidden',
+                        color: 'var(--color-text)', overflow: 'hidden',
                         textOverflow: 'ellipsis', whiteSpace: 'nowrap'
                       }}>
                         {other?.full_name || 'Unknown'}
                       </div>
                       <div style={{
-                        fontSize: '11px', color: '#A09DC8',
+                        fontSize: '13px', color: 'var(--color-text-subtle)',
                         flexShrink: 0, marginLeft: '8px'
                       }}>
                         {timeAgo(convo.last_message_at)}
@@ -748,7 +1017,7 @@ export default function ChatScreen() {
                     }}>
                       <div style={{
                         fontSize: '12px',
-                        color: unread > 0 ? '#14123A' : '#A09DC8',
+                        color: unread > 0 ? 'var(--color-text)' : 'var(--color-text-subtle)',
                         fontWeight: unread > 0 ? '600' : '400',
                         overflow: 'hidden', textOverflow: 'ellipsis',
                         whiteSpace: 'nowrap', flex: 1
@@ -757,10 +1026,10 @@ export default function ChatScreen() {
                       </div>
                       {unread > 0 && (
                         <div style={{
-                          background: '#6C47FF', color: '#fff',
+                          background: 'var(--color-brand)', color: 'var(--color-surface)',
                           borderRadius: '50%', width: '20px', height: '20px',
                           display: 'flex', alignItems: 'center',
-                          justifyContent: 'center', fontSize: '10px',
+                          justifyContent: 'center', fontSize: '12px',
                           fontWeight: '800', flexShrink: 0, marginLeft: '6px'
                         }}>
                           {unread > 9 ? '9+' : unread}
@@ -777,8 +1046,8 @@ export default function ChatScreen() {
                       style={{
                         position: 'absolute', top: '14px', right: '14px',
                         width: '28px', height: '28px', borderRadius: '50%',
-                        background: '#F5F4FF', border: '1.5px solid #E2E0FF',
-                        color: '#6C47FF', fontSize: '18px', cursor: 'pointer',
+                        background: 'var(--color-page)', border: '1.5px solid var(--color-border)',
+                        color: 'var(--color-brand)', fontSize: '18px', cursor: 'pointer',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         padding: 0, zIndex: 10000,
                         opacity: (hoveredConvo === convo.id || conversationMenu === convo.id) ? 1 : 0,
@@ -790,45 +1059,52 @@ export default function ChatScreen() {
                     {conversationMenu === convo.id && (
                       <div style={{
                         position: 'absolute', top: '48px', right: '0',
-                        background: '#fff', border: '1.5px solid #E2E0FF',
+                        background: 'var(--color-surface)', border: '1.5px solid var(--color-border)',
                         borderRadius: '14px', boxShadow: '0 12px 28px rgba(108,71,255,0.15)',
                         zIndex: 10001, minWidth: '175px', overflow: 'hidden'
                       }}>
                         {[
                           {
                             icon: isPinned ? 'unsaved' : 'saved',
-                            tone: isPinned ? 'linear-gradient(135deg,#8B8FAF,#A09DC8)' : 'linear-gradient(135deg,#6C47FF,#9B59FF)',
+                            tone: isPinned ? 'linear-gradient(135deg,var(--color-text-muted),var(--color-text-subtle))' : 'var(--color-brand-gradient)',
                             label: isPinned ? 'Unpin' : 'Pin',
-                            color: '#14123A',
+                            color: 'var(--color-text)',
                             action: (e) => handlePinToggle(convo, e)
                           },
                           {
                             icon: isMuted ? 'sound' : 'notifications',
-                            tone: isMuted ? 'linear-gradient(135deg,#00C48C,#0EA5E9)' : 'linear-gradient(135deg,#FF6B2B,#FF4DCF)',
+                            tone: isMuted ? 'linear-gradient(135deg,var(--color-success-accent),var(--color-info))' : 'linear-gradient(135deg,var(--color-warning-accent),var(--color-brand-highlight))',
                             label: isMuted ? 'Unmute' : 'Mute',
-                            color: '#14123A',
+                            color: 'var(--color-text)',
                             action: (e) => handleMuteToggle(convo, e)
                           },
                           {
                             icon: 'chat',
-                            tone: 'linear-gradient(135deg,#0EA5E9,#6C47FF)',
+                            tone: 'linear-gradient(135deg,var(--color-info),var(--color-brand))',
                             label: 'Mark as unread',
-                            color: '#14123A',
+                            color: 'var(--color-text)',
                             action: (e) => handleMarkUnread(convo, e)
                           },
                           {
                             icon: 'edit',
-                            tone: 'linear-gradient(135deg,#8B8FAF,#A09DC8)',
+                            tone: 'linear-gradient(135deg,var(--color-text-muted),var(--color-text-subtle))',
                             label: 'Clear chat',
-                            color: '#14123A',
+                            color: 'var(--color-text)',
                             action: (e) => { clearConversation(convo, e); setConversationMenu(null) }
                           },
                           {
                             icon: 'unsaved',
-                            tone: 'linear-gradient(135deg,#FF3366,#FF6B2B)',
+                            tone: 'linear-gradient(135deg,var(--color-text-muted),var(--color-text-subtle))',
                             label: 'Delete',
-                            color: '#FF3366',
+                            color: 'var(--color-danger)',
                             action: (e) => { deleteConversation(convo, e); setConversationMenu(null) }
+                          },
+                          {
+                            icon: 'report',
+                            tone: 'linear-gradient(135deg,var(--color-danger),var(--color-danger-accent))',
+                            label: 'Report conversation',
+                            color: 'var(--color-danger)',
+                            action: () => reportConversation(convo)
                           },
                         ].map(item => (
                           <button
@@ -838,10 +1114,10 @@ export default function ChatScreen() {
                               width: '100%', textAlign: 'left', padding: '10px 14px',
                               border: 'none', background: 'transparent', color: item.color,
                               fontSize: '13px', cursor: 'pointer', fontFamily: 'inherit',
-                              borderBottom: '1px solid #F5F4FF',
+                              borderBottom: '1px solid var(--color-page)',
                               display: 'flex', alignItems: 'center', gap: '10px'
                             }}
-                            onMouseEnter={e => e.currentTarget.style.background = '#F8F7FF'}
+                            onMouseEnter={e => e.currentTarget.style.background = 'var(--color-surface-tint)'}
                             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                             <BrandIcon name={item.icon} size={24} active tone={item.tone} />
                             {item.label}
@@ -861,7 +1137,7 @@ export default function ChatScreen() {
       {/* ── CHAT WINDOW ── */}
       <div style={{
         flex: 1, flexDirection: 'column',
-        background: '#F8F7FF', overflow: 'hidden',
+        background: 'var(--color-surface-tint)', overflow: 'hidden',
         display: isMobile && !activeConvo ? 'none' : 'flex'
       }}>
         {!activeConvo ? (
@@ -874,10 +1150,10 @@ export default function ChatScreen() {
             <BrandIcon name="chat" size={58} />
             <div style={{
               fontSize: '18px', fontWeight: '800',
-              color: '#14123A', textAlign: 'center'
+              color: 'var(--color-text)', textAlign: 'center'
             }}>Select a conversation</div>
             <div style={{
-              fontSize: '13px', color: '#A09DC8',
+              fontSize: '13px', color: 'var(--color-text-subtle)',
               textAlign: 'center', lineHeight: '1.6'
             }}>
               Choose a conversation from the left to start messaging
@@ -891,8 +1167,8 @@ export default function ChatScreen() {
               return (
                 <div style={{
                   padding: '14px 20px',
-                  background: '#fff',
-                  borderBottom: '1.5px solid #E2E0FF',
+                  background: 'var(--color-surface)',
+                  borderBottom: '1.5px solid var(--color-border)',
                   display: 'flex', gap: '12px',
                   alignItems: 'center', flexShrink: 0
                 }}>
@@ -903,7 +1179,7 @@ export default function ChatScreen() {
                       style={{
                         background: 'none', border: 'none',
                         fontSize: '20px', cursor: 'pointer',
-                        color: '#6C47FF', padding: '0',
+                        color: 'var(--color-brand)', padding: '0',
                         fontFamily: 'inherit'
                       }}>←</button>
                   )}
@@ -913,12 +1189,12 @@ export default function ChatScreen() {
                     onClick={() => setViewingProfile(other?.id)}
                     style={{
                       width: '42px', height: '42px', borderRadius: '12px',
-                      background: '#EEE9FF', display: 'flex',
+                      background: 'var(--color-brand-soft)', display: 'flex',
                       alignItems: 'center', justifyContent: 'center',
                       fontSize: '16px', fontWeight: '800',
-                      color: '#6C47FF', overflow: 'hidden',
+                      color: 'var(--color-brand)', overflow: 'hidden',
                       flexShrink: 0, cursor: 'pointer',
-                      border: '2px solid #B8A5FF'
+                      border: '2px solid var(--color-brand-border-strong)'
                     }}>
                     {other?.avatar_url ? (
                       <img src={other.avatar_url} alt=""
@@ -931,7 +1207,7 @@ export default function ChatScreen() {
                       onClick={() => setViewingProfile(other?.id)}
                       style={{
                         fontSize: '15px', fontWeight: '700',
-                        color: '#14123A', cursor: 'pointer',
+                        color: 'var(--color-text)', cursor: 'pointer',
                         marginBottom: '2px'
                       }}>
                       {other?.full_name || 'Unknown'}
@@ -940,7 +1216,7 @@ export default function ChatScreen() {
                       const isOtherOnline = onlineUsers.has(other?.id)
                       const trustPart = other?.trust_score != null ? ` · Trust ${other.trust_score}%` : ''
                       return (
-                        <div style={{ fontSize: '11px', color: isOtherOnline ? '#00C48C' : '#A09DC8', fontWeight: '600' }}>
+                        <div style={{ fontSize: '13px', color: isOtherOnline ? 'var(--color-success)' : 'var(--color-text-subtle)', fontWeight: '600' }}>
                           {isOtherOnline ? 'Online' : 'Offline'}{trustPart}
                         </div>
                       )
@@ -956,8 +1232,8 @@ export default function ChatScreen() {
                         }}
                         style={{
                           marginLeft: 'auto', width: '40px', height: '40px',
-                          borderRadius: '50%', border: '1.5px solid #E2E0FF',
-                          background: '#F5F4FF', color: '#6C47FF',
+                          borderRadius: '50%', border: '1.5px solid var(--color-border)',
+                          background: 'var(--color-page)', color: 'var(--color-brand)',
                           cursor: 'pointer', fontSize: '20px', display: 'flex',
                           alignItems: 'center', justifyContent: 'center', padding: 0,
                           fontFamily: 'inherit', zIndex: 10000
@@ -967,23 +1243,24 @@ export default function ChatScreen() {
                       {chatHeaderMenuOpen && (
                         <div style={{
                           position: 'absolute', top: '52px', right: '0',
-                          background: '#fff', border: '1.5px solid #E2E0FF',
+                          background: 'var(--color-surface)', border: '1.5px solid var(--color-border)',
                           borderRadius: '14px', boxShadow: '0 12px 28px rgba(108,71,255,0.15)',
-                          zIndex: 10001, minWidth: '160px', overflow: 'hidden'
+                          zIndex: 10001, minWidth: '190px', overflow: 'hidden'
                         }}>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              clearConversation(activeConvo, e)
-                              setChatHeaderMenuOpen(false)
-                            }}
-                            style={{
-                              width: '100%', textAlign: 'left', padding: '12px 14px',
-                              border: 'none', background: 'transparent', color: '#14123A',
-                              fontSize: '13px', cursor: 'pointer', fontFamily: 'inherit'
-                            }}>
-                            Clear chat
-                          </button>
+                          {[
+                            { label: isPinnedByUser(activeConvo, user?.id) ? 'Unpin chat' : 'Pin chat', run: () => handlePinToggle(activeConvo) },
+                            { label: isMutedByUser(activeConvo, user?.id) ? 'Unmute notifications' : 'Mute notifications', run: () => handleMuteToggle(activeConvo) },
+                            { label: 'Mark as unread', run: () => handleMarkUnread(activeConvo) },
+                            { label: 'Clear chat for me', run: () => clearConversation(activeConvo) },
+                            { label: 'Delete conversation', color: 'var(--color-text-muted)', run: () => deleteConversation(activeConvo) },
+                            { label: 'Report conversation', color: 'var(--color-danger)', run: () => reportConversation(activeConvo) },
+                          ].map(item => (
+                            <button key={item.label} onClick={e => { e.stopPropagation(); item.run(); setChatHeaderMenuOpen(false) }} style={{
+                              width: '100%', textAlign: 'left', padding: '11px 14px',
+                              border: 'none', borderBottom: '1px solid var(--color-page)', background: 'transparent',
+                              color: item.color || 'var(--color-text)', fontSize: '13px', cursor: 'pointer', fontFamily: 'inherit'
+                            }}>{item.label}</button>
+                          ))}
                         </div>
                       )}
                     </div>
@@ -993,20 +1270,34 @@ export default function ChatScreen() {
             })()}
 
             {/* Messages */}
-            <div style={{
+            <div ref={messagesContainerRef} style={{
               flex: 1, overflowY: 'auto',
               padding: '16px 20px',
               display: 'flex', flexDirection: 'column',
               gap: '4px'
             }}>
+              {hasOlderMessages && !loadingMessages && (
+                <button
+                  type="button"
+                  onClick={fetchOlderMessages}
+                  disabled={loadingOlderMessages}
+                  style={{
+                    alignSelf: 'center', margin: '0 0 12px', padding: '8px 14px',
+                    border: 0, borderRadius: '999px', background: 'var(--color-surface)',
+                    color: 'var(--color-brand)', font: 'inherit', fontSize: '12px',
+                    fontWeight: '700', cursor: loadingOlderMessages ? 'wait' : 'pointer',
+                    boxShadow: '0 4px 14px rgba(38,26,82,0.08)'
+                  }}
+                >{loadingOlderMessages ? 'Loading…' : 'Load older messages'}</button>
+              )}
               {loadingMessages ? (
                 <ScreenLoader />
               ) : messages.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '32px' }}>
                   <div style={{
                     width: '56px', height: '56px', borderRadius: '16px',
-                    background: 'linear-gradient(135deg, #EEE9FF, #F8F5FF)',
-                    border: '1.5px solid #B8A5FF',
+                    background: 'linear-gradient(135deg, var(--color-brand-soft), var(--color-brand-pale))',
+                    border: '1.5px solid var(--color-brand-border-strong)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     margin: '0 auto 12px'
                   }}>
@@ -1014,9 +1305,9 @@ export default function ChatScreen() {
                   </div>
                   <div style={{
                     fontSize: '14px', fontWeight: '700',
-                    color: '#14123A', marginBottom: '4px'
+                    color: 'var(--color-text)', marginBottom: '4px'
                   }}>Start the conversation</div>
-                  <div style={{ fontSize: '12px', color: '#A09DC8' }}>
+                  <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)' }}>
                     Send a message to get things moving
                   </div>
                 </div>
@@ -1040,7 +1331,7 @@ export default function ChatScreen() {
                           parseTimestamp(prevMsg.created_at).toDateString()) && (
                           <div style={{
                             textAlign: 'center', margin: '12px 0',
-                            fontSize: '11px', color: '#A09DC8', fontWeight: '600'
+                            fontSize: '13px', color: 'var(--color-text-subtle)', fontWeight: '600'
                           }}>
                             {parseTimestamp(msg.created_at).toLocaleDateString('en-US', {
                               weekday: 'long', month: 'short', day: 'numeric'
@@ -1064,10 +1355,10 @@ export default function ChatScreen() {
                           {!isMe && (
                             <div style={{
                               width: '28px', height: '28px',
-                              borderRadius: '8px', background: '#EEE9FF',
+                              borderRadius: '8px', background: 'var(--color-brand-soft)',
                               display: 'flex', alignItems: 'center',
-                              justifyContent: 'center', fontSize: '11px',
-                              fontWeight: '800', color: '#6C47FF',
+                              justifyContent: 'center', fontSize: '13px',
+                              fontWeight: '800', color: 'var(--color-brand)',
                               overflow: 'hidden', flexShrink: 0,
                               opacity: isGrouped ? 0 : 1
                             }}>
@@ -1085,9 +1376,9 @@ export default function ChatScreen() {
                             {/* Message bubble */}
                             <div style={{
                               background: isMe
-                                ? 'linear-gradient(135deg, #6C47FF, #9B59FF)'
-                                : '#fff',
-                              color: isMe ? '#fff' : '#14123A',
+                                ? 'var(--color-brand-gradient)'
+                                : 'var(--color-surface)',
+                              color: isMe ? 'var(--color-surface)' : 'var(--color-text)',
                               borderRadius: isMe
                                 ? '18px 18px 4px 18px'
                                 : '18px 18px 18px 4px',
@@ -1095,7 +1386,7 @@ export default function ChatScreen() {
                               boxShadow: isMe
                                 ? '0 2px 12px rgba(108,71,255,0.3)'
                                 : '0 2px 8px rgba(0,0,0,0.06)',
-                              border: isMe ? 'none' : '1px solid #E2E0FF',
+                              border: isMe ? 'none' : '1px solid var(--color-border)',
                               wordBreak: 'break-word',
                               padding: (isImageUrl(msg.content) || isVideoUrl(msg.content)) ? '4px' : '10px 14px',
                               overflow: 'hidden'
@@ -1113,8 +1404,8 @@ export default function ChatScreen() {
                                     }
                                   }}
                                   style={{
-                                    background: isMe ? 'rgba(255,255,255,0.15)' : '#F5F4FF',
-                                    borderLeft: `3px solid ${isMe ? 'rgba(255,255,255,0.6)' : '#6C47FF'}`,
+                                    background: isMe ? 'rgba(255,255,255,0.15)' : 'var(--color-page)',
+                                    borderLeft: `3px solid ${isMe ? 'rgba(255,255,255,0.6)' : 'var(--color-brand)'}`,
                                     borderRadius: '6px',
                                     padding: '6px 10px',
                                     marginBottom: '8px',
@@ -1160,7 +1451,7 @@ export default function ChatScreen() {
                                   rel="noopener noreferrer"
                                   style={{
                                     display: 'flex', alignItems: 'center', gap: '8px',
-                                    color: isMe ? '#fff' : '#6C47FF',
+                                    color: isMe ? 'var(--color-surface)' : 'var(--color-brand)',
                                     textDecoration: 'none',
                                     padding: '6px 2px'
                                   }}
@@ -1186,14 +1477,14 @@ export default function ChatScreen() {
                                     key={emoji}
                                     onClick={() => handleReaction(msg, emoji)}
                                     style={{
-                                      background: users.includes(user.id) ? '#EEE9FF' : '#F5F4FF',
-                                      border: `1px solid ${users.includes(user.id) ? '#B8A5FF' : '#E2E0FF'}`,
+                                      background: users.includes(user.id) ? 'var(--color-brand-soft)' : 'var(--color-page)',
+                                      border: `1px solid ${users.includes(user.id) ? 'var(--color-brand-border-strong)' : 'var(--color-border)'}`,
                                       borderRadius: '12px', padding: '2px 7px',
                                       fontSize: '12px', cursor: 'pointer',
                                       display: 'flex', alignItems: 'center', gap: '3px',
-                                      fontFamily: 'inherit', color: '#14123A'
+                                      fontFamily: 'inherit', color: 'var(--color-text)'
                                     }}>
-                                    {emoji} <span style={{ fontSize: '11px', fontWeight: '600' }}>{users.length}</span>
+                                    {emoji} <span style={{ fontSize: '13px', fontWeight: '600' }}>{users.length}</span>
                                   </button>
                                 ))}
                               </div>
@@ -1204,7 +1495,7 @@ export default function ChatScreen() {
                               <div className="reaction-picker" style={{
                                 position: 'absolute', bottom: '110%',
                                 [isMe ? 'right' : 'left']: 0,
-                                background: '#fff', border: '1.5px solid #E2E0FF',
+                                background: 'var(--color-surface)', border: '1.5px solid var(--color-border)',
                                 borderRadius: '28px', padding: '6px 10px',
                                 boxShadow: '0 8px 24px rgba(108,71,255,0.18)',
                                 display: 'flex', gap: '4px', zIndex: 10002
@@ -1241,8 +1532,8 @@ export default function ChatScreen() {
                                 }}
                                 style={{
                                   width: '26px', height: '26px', borderRadius: '50%',
-                                  border: '1px solid #E2E0FF', background: '#fff',
-                                  color: '#6C47FF', cursor: 'pointer', fontSize: '16px',
+                                  border: '1px solid var(--color-border)', background: 'var(--color-surface)',
+                                  color: 'var(--color-brand)', cursor: 'pointer', fontSize: '16px',
                                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                                   padding: 0,
                                   opacity: (hoveredMsg === msg.id || messageMenu === msg.id) ? 1 : 0,
@@ -1255,14 +1546,14 @@ export default function ChatScreen() {
                                 <div style={{
                                   position: 'absolute', top: '32px',
                                   [isMe ? 'left' : 'right']: '0',
-                                  background: '#fff', border: '1.5px solid #E2E0FF',
+                                  background: 'var(--color-surface)', border: '1.5px solid var(--color-border)',
                                   borderRadius: '14px', boxShadow: '0 12px 28px rgba(108,71,255,0.15)',
                                   zIndex: 10001, minWidth: '145px', overflow: 'hidden'
                                 }}>
                                   {[
                                     {
                                       icon: 'compose',
-                                      tone: 'linear-gradient(135deg,#6C47FF,#9B59FF)',
+                                      tone: 'var(--color-brand-gradient)',
                                       label: 'Reply',
                                       action: () => {
                                         const other = getOtherUser(activeConvo)
@@ -1277,7 +1568,7 @@ export default function ChatScreen() {
                                     },
                                     {
                                       icon: 'suggest',
-                                      tone: 'linear-gradient(135deg,#FF4DCF,#FF6B2B)',
+                                      tone: 'linear-gradient(135deg,var(--color-brand-highlight),var(--color-warning-accent))',
                                       label: 'React',
                                       action: () => {
                                         setReactingTo(msg.id)
@@ -1286,19 +1577,29 @@ export default function ChatScreen() {
                                     },
                                     {
                                       icon: 'send',
-                                      tone: 'linear-gradient(135deg,#00C48C,#0EA5E9)',
+                                      tone: 'linear-gradient(135deg,var(--color-success-accent),var(--color-info))',
                                       label: 'Forward',
                                       action: () => {
                                         setForwardMsg(msg)
                                         setMessageMenu(null)
                                       }
                                     },
-                                    ...(isMe ? [{
+                                    ...(isMe && !isStorageUrl(msg.content) && !isImageUrl(msg.content) && !isVideoUrl(msg.content) ? [{
+                                      icon: 'edit',
+                                      tone: 'var(--color-brand-gradient)',
+                                      label: 'Edit',
+                                      action: () => { editMessage(msg); setMessageMenu(null) }
+                                    }, {
                                       icon: 'unsaved',
-                                      tone: 'linear-gradient(135deg,#FF3366,#FF6B2B)',
+                                      tone: 'linear-gradient(135deg,var(--color-text-muted),var(--color-text-subtle))',
                                       label: 'Delete',
-                                      color: '#FF3366',
+                                      color: 'var(--color-danger)',
                                       action: () => { deleteMessage(msg); setMessageMenu(null) }
+                                    }] : []),
+                                    ...(!isMe ? [{
+                                      icon: 'report', tone: 'linear-gradient(135deg,var(--color-danger-accent),var(--color-warning-accent))',
+                                      label: 'Report message', color: 'var(--color-danger)',
+                                      action: () => reportConversation(activeConvo, msg)
                                     }] : [])
                                   ].map(item => (
                                     <button
@@ -1307,12 +1608,12 @@ export default function ChatScreen() {
                                       style={{
                                         width: '100%', textAlign: 'left', padding: '10px 12px',
                                         border: 'none', background: 'transparent',
-                                        color: item.color || '#14123A',
+                                        color: item.color || 'var(--color-text)',
                                         fontSize: '13px', cursor: 'pointer', fontFamily: 'inherit',
-                                        borderBottom: '1px solid #F5F4FF',
+                                        borderBottom: '1px solid var(--color-page)',
                                         display: 'flex', alignItems: 'center', gap: '10px'
                                       }}
-                                      onMouseEnter={e => e.currentTarget.style.background = '#F8F7FF'}
+                                      onMouseEnter={e => e.currentTarget.style.background = 'var(--color-surface-tint)'}
                                       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                                       <BrandIcon name={item.icon} size={24} active tone={item.tone} />
                                       {item.label}
@@ -1325,7 +1626,7 @@ export default function ChatScreen() {
                             {/* Time + read receipt */}
                             {showTime && (
                               <div style={{
-                                fontSize: '10px', color: '#A09DC8',
+                                fontSize: '12px', color: 'var(--color-text-subtle)',
                                 marginTop: '3px', fontWeight: '500',
                                 textAlign: isMe ? 'right' : 'left',
                                 display: 'flex',
@@ -1335,8 +1636,8 @@ export default function ChatScreen() {
                                 {formatTime(msg.created_at)}
                                 {isMe && (
                                   <span style={{
-                                    color: msg.read ? '#6C47FF' : '#A09DC8',
-                                    fontSize: '11px'
+                                    color: msg.read ? 'var(--color-brand)' : 'var(--color-text-subtle)',
+                                    fontSize: '13px'
                                   }}>
                                     {msg.read ? '✓✓' : '✓'}
                                   </span>
@@ -1357,27 +1658,21 @@ export default function ChatScreen() {
                     }}>
                       <div style={{
                         width: '28px', height: '28px', borderRadius: '8px',
-                        background: '#EEE9FF', display: 'flex',
+                        background: 'var(--color-brand-soft)', display: 'flex',
                         alignItems: 'center', justifyContent: 'center',
-                        fontSize: '11px', fontWeight: '800', color: '#6C47FF'
+                        fontSize: '13px', fontWeight: '800', color: 'var(--color-brand)'
                       }}>
                         {getOtherUser(activeConvo)?.full_name?.charAt(0) || '?'}
                       </div>
                       <div style={{
-                        background: '#fff', borderRadius: '18px 18px 18px 4px',
+                        background: 'var(--color-surface)', borderRadius: '18px 18px 18px 4px',
                         padding: '12px 16px',
-                        border: '1px solid #E2E0FF',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-                        display: 'flex', gap: '4px', alignItems: 'center'
+                        border: 'none',
+                        boxShadow: 'var(--shadow-glass)',
+                        display: 'flex', alignItems: 'center',
+                        color: 'var(--color-text-muted)', fontSize: '12px', fontWeight: '600'
                       }}>
-                        {[0, 1, 2].map(i => (
-                          <div key={i} style={{
-                            width: '6px', height: '6px', borderRadius: '50%',
-                            background: '#A09DC8',
-                            animation: `typingDot 1.2s ease infinite`,
-                            animationDelay: `${i * 0.2}s`
-                          }} />
-                        ))}
+                        Typing…
                       </div>
                     </div>
                   )}
@@ -1392,28 +1687,28 @@ export default function ChatScreen() {
                 padding: '8px 16px',
                 display: 'flex', gap: '8px',
                 overflowX: 'auto', scrollbarWidth: 'none',
-                background: '#fff',
-                borderTop: '1px solid #F5F4FF'
+                background: 'var(--color-surface)',
+                borderTop: '1px solid var(--color-page)'
               }}>
                 {QUICK_REPLIES.map(reply => (
                   <button
                     key={reply}
                     onClick={() => sendMessage(reply)}
                     style={{
-                      background: '#EEE9FF', border: '1.5px solid #B8A5FF',
+                      background: 'var(--color-brand-soft)', border: '1.5px solid var(--color-brand-border-strong)',
                       borderRadius: '20px', padding: '6px 13px',
                       fontSize: '12px', fontWeight: '600',
-                      color: '#6C47FF', cursor: 'pointer',
+                      color: 'var(--color-brand)', cursor: 'pointer',
                       whiteSpace: 'nowrap', fontFamily: 'inherit',
                       transition: 'all 0.15s'
                     }}
                     onMouseEnter={e => {
-                      e.currentTarget.style.background = '#6C47FF'
-                      e.currentTarget.style.color = '#fff'
+                      e.currentTarget.style.background = 'var(--color-brand)'
+                      e.currentTarget.style.color = 'var(--color-surface)'
                     }}
                     onMouseLeave={e => {
-                      e.currentTarget.style.background = '#EEE9FF'
-                      e.currentTarget.style.color = '#6C47FF'
+                      e.currentTarget.style.background = 'var(--color-brand-soft)'
+                      e.currentTarget.style.color = 'var(--color-brand)'
                     }}>
                     {reply}
                   </button>
@@ -1425,8 +1720,8 @@ export default function ChatScreen() {
             {showEmojiPicker && (
               <div style={{
                 padding: '10px 14px',
-                background: '#fff',
-                borderTop: '1px solid #F5F4FF',
+                background: 'var(--color-surface)',
+                borderTop: '1px solid var(--color-page)',
                 display: 'flex', flexWrap: 'wrap', gap: '4px'
               }}>
                 {COMMON_EMOJIS.map(emoji => (
@@ -1441,7 +1736,7 @@ export default function ChatScreen() {
                       cursor: 'pointer', borderRadius: '8px', padding: '4px 6px',
                       lineHeight: 1, transition: 'background 0.1s'
                     }}
-                    onMouseEnter={e => e.currentTarget.style.background = '#F5F4FF'}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--color-page)'}
                     onMouseLeave={e => e.currentTarget.style.background = 'none'}
                   >{emoji}</button>
                 ))}
@@ -1452,26 +1747,26 @@ export default function ChatScreen() {
             {replyingTo && (
               <div style={{
                 padding: '8px 16px',
-                background: '#F5F4FF',
-                borderTop: '1px solid #E2E0FF',
+                background: 'var(--color-page)',
+                borderTop: '1px solid var(--color-border)',
                 display: 'flex', alignItems: 'center', gap: '10px'
               }}>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: '11px', color: '#6C47FF', fontWeight: '700', marginBottom: '2px' }}>
+                  <div style={{ fontSize: '13px', color: 'var(--color-brand)', fontWeight: '700', marginBottom: '2px' }}>
                     Replying to {replyingTo.senderName}
                   </div>
                   <div style={{
-                    fontSize: '12px', color: '#A09DC8',
+                    fontSize: '12px', color: 'var(--color-text-subtle)',
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
                   }}>
                     {replyingTo.content}
                   </div>
                 </div>
-                <button
+                <button 
                   onClick={() => setReplyingTo(null)}
                   style={{
                     background: 'none', border: 'none', fontSize: '18px',
-                    cursor: 'pointer', color: '#A09DC8', padding: '4px',
+                    cursor: 'pointer', color: 'var(--color-text-subtle)', padding: '4px',
                     lineHeight: 1
                   }}>✕</button>
               </div>
@@ -1489,8 +1784,8 @@ export default function ChatScreen() {
             {/* Message Input */}
             <div style={{
               padding: '12px 16px',
-              background: '#fff',
-              borderTop: '1.5px solid #E2E0FF',
+              background: 'var(--color-surface)',
+              borderTop: '1.5px solid var(--color-border)',
               display: 'flex', gap: '8px',
               alignItems: 'flex-end', flexShrink: 0
             }}>
@@ -1500,8 +1795,8 @@ export default function ChatScreen() {
                 onClick={() => { setShowQuickReplies(q => !q); setShowEmojiPicker(false) }}
                 style={{
                   width: '38px', height: '38px', borderRadius: '11px',
-                  background: showQuickReplies ? '#EEE9FF' : '#F5F4FF',
-                  border: `1.5px solid ${showQuickReplies ? '#B8A5FF' : '#E2E0FF'}`,
+                  background: showQuickReplies ? 'var(--color-brand-soft)' : 'var(--color-page)',
+                  border: `1.5px solid ${showQuickReplies ? 'var(--color-brand-border-strong)' : 'var(--color-border)'}`,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   cursor: 'pointer', flexShrink: 0, fontFamily: 'inherit'
                 }}>
@@ -1514,12 +1809,12 @@ export default function ChatScreen() {
                 onClick={() => { setShowEmojiPicker(e => !e); setShowQuickReplies(false) }}
                 style={{
                   width: '38px', height: '38px', borderRadius: '11px',
-                  background: showEmojiPicker ? '#EEE9FF' : '#F5F4FF',
-                  border: `1.5px solid ${showEmojiPicker ? '#B8A5FF' : '#E2E0FF'}`,
+                  background: showEmojiPicker ? 'var(--color-brand-soft)' : 'var(--color-page)',
+                  border: `1.5px solid ${showEmojiPicker ? 'var(--color-brand-border-strong)' : 'var(--color-border)'}`,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   cursor: 'pointer', flexShrink: 0, padding: 0
                 }}>
-                <BrandIcon name="creative" size={28} active={showEmojiPicker} tone="linear-gradient(135deg,#FF4DCF,#FF6B2B)" />
+                <BrandIcon name="creative" size={28} active={showEmojiPicker} tone="linear-gradient(135deg,var(--color-brand-highlight),var(--color-warning-accent))" />
               </button>
 
               {/* Attachment button */}
@@ -1529,19 +1824,19 @@ export default function ChatScreen() {
                 disabled={uploadingFile}
                 style={{
                   width: '38px', height: '38px', borderRadius: '11px',
-                  background: '#F5F4FF', border: '1.5px solid #E2E0FF',
+                  background: 'var(--color-page)', border: '1.5px solid var(--color-border)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   cursor: uploadingFile ? 'not-allowed' : 'pointer',
                   flexShrink: 0, padding: 0,
                   opacity: uploadingFile ? 0.5 : 1
                 }}>
-                <BrandIcon name="applied" size={28} active={!uploadingFile} tone="linear-gradient(135deg,#0EA5E9,#6C47FF)" />
+                <BrandIcon name="applied" size={28} active={!uploadingFile} tone="linear-gradient(135deg,var(--color-info),var(--color-brand))" />
               </button>
 
               {/* Input */}
               <div style={{
-                flex: 1, background: '#F5F4FF',
-                border: '1.5px solid #E2E0FF',
+                flex: 1, background: 'var(--color-page)',
+                border: '1.5px solid var(--color-border)',
                 borderRadius: '14px', padding: '10px 14px',
                 display: 'flex', alignItems: 'center', gap: '8px',
                 transition: 'border-color 0.15s'
@@ -1565,7 +1860,7 @@ export default function ChatScreen() {
                   rows={1}
                   style={{
                     flex: 1, background: 'none', border: 'none',
-                    outline: 'none', fontSize: '14px', color: '#14123A',
+                    outline: 'none', fontSize: '14px', color: 'var(--color-text)',
                     fontFamily: 'inherit', resize: 'none',
                     lineHeight: '1.5', maxHeight: '120px',
                     overflowY: 'auto'
@@ -1580,8 +1875,8 @@ export default function ChatScreen() {
                 style={{
                   width: '44px', height: '44px', borderRadius: '12px',
                   background: newMessage.trim()
-                    ? 'linear-gradient(135deg, #6C47FF, #9B59FF)'
-                    : '#E2E0FF',
+                    ? 'var(--color-brand-gradient)'
+                    : 'var(--color-border)',
                   border: 'none', display: 'flex',
                   alignItems: 'center', justifyContent: 'center',
                   fontSize: '18px', cursor: newMessage.trim() ? 'pointer' : 'default',
@@ -1596,6 +1891,87 @@ export default function ChatScreen() {
           </>
         )}
       </div>
+
+      {/* New conversation */}
+      {showNewChat && (
+        <div
+          role="presentation"
+          onClick={() => setShowNewChat(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 20000,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '16px', background: 'rgba(20,18,58,0.48)', backdropFilter: 'blur(6px)'
+          }}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="new-chat-title"
+            onClick={event => event.stopPropagation()}
+            style={{
+              width: 'min(100%, 460px)', maxHeight: 'min(80vh, 620px)',
+              display: 'flex', flexDirection: 'column', overflow: 'hidden',
+              borderRadius: '20px', background: 'var(--color-surface)',
+              boxShadow: '0 24px 70px rgba(20,18,58,0.25)'
+            }}
+          >
+            <div style={{ padding: '20px 20px 14px' }}>
+              <div id="new-chat-title" style={{ fontSize: '18px', fontWeight: '800', color: 'var(--color-text)' }}>New message</div>
+              <input
+                autoFocus
+                type="search"
+                value={newChatQuery}
+                onChange={event => setNewChatQuery(event.target.value)}
+                placeholder="Search people by name"
+                aria-label="Search people by name"
+                style={{
+                  width: '100%', boxSizing: 'border-box', marginTop: '14px', padding: '12px 14px',
+                  border: 0, borderRadius: '12px', outline: 'none',
+                  background: 'var(--color-page)', color: 'var(--color-text)', font: 'inherit'
+                }}
+              />
+            </div>
+            <div style={{ minHeight: '140px', overflowY: 'auto', padding: '0 12px 12px' }}>
+              {newChatQuery.trim().length < 2 ? (
+                <div style={{ padding: '22px 12px', textAlign: 'center', color: 'var(--color-text-subtle)', fontSize: '13px' }}>Type at least 2 characters to search.</div>
+              ) : searchingUsers ? (
+                <ScreenLoader />
+              ) : newChatUsers.length === 0 ? (
+                <div style={{ padding: '22px 12px', textAlign: 'center', color: 'var(--color-text-subtle)', fontSize: '13px' }}>No people found.</div>
+              ) : newChatUsers.map(person => (
+                <button
+                  key={person.id}
+                  type="button"
+                  disabled={Boolean(startingChatUserId)}
+                  onClick={() => startConversationWith(person)}
+                  style={{
+                    width: '100%', display: 'flex', alignItems: 'center', gap: '12px',
+                    padding: '10px', border: 0, borderRadius: '12px', background: 'transparent',
+                    textAlign: 'left', cursor: startingChatUserId ? 'wait' : 'pointer', font: 'inherit'
+                  }}
+                >
+                  <span style={{
+                    width: '42px', height: '42px', display: 'grid', placeItems: 'center',
+                    flexShrink: 0, overflow: 'hidden', borderRadius: '13px',
+                    background: 'var(--color-brand-soft)', color: 'var(--color-brand)', fontWeight: '800'
+                  }}>
+                    {person.avatar_url ? <img src={person.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : person.full_name?.charAt(0) || '?'}
+                  </span>
+                  <span style={{ color: 'var(--color-text)', fontSize: '14px', fontWeight: '700' }}>{person.full_name || 'Prima member'}</span>
+                  {startingChatUserId === person.id && <span style={{ marginLeft: 'auto', color: 'var(--color-text-subtle)', fontSize: '12px' }}>Opening…</span>}
+                </button>
+              ))}
+            </div>
+            <div style={{ padding: '12px 20px', borderTop: '1px solid var(--color-page)' }}>
+              <button type="button" onClick={() => setShowNewChat(false)} style={{
+                width: '100%', minHeight: '42px', border: 0, borderRadius: '12px',
+                background: 'var(--color-page)', color: 'var(--color-text-muted)',
+                font: 'inherit', fontWeight: '700', cursor: 'pointer'
+              }}>Cancel</button>
+            </div>
+          </section>
+        </div>
+      )}
 
       {/* Public Profile */}
       {viewingProfile && (
@@ -1615,16 +1991,16 @@ export default function ChatScreen() {
           <div
             onClick={e => e.stopPropagation()}
             style={{
-              background: '#fff', borderRadius: '20px',
+              background: 'var(--color-surface)', borderRadius: '20px',
               boxShadow: '0 24px 60px rgba(108,71,255,0.2)',
               width: '340px', maxWidth: '90vw', overflow: 'hidden'
             }}>
-            <div style={{ padding: '18px 20px', borderBottom: '1.5px solid #E2E0FF' }}>
-              <div style={{ fontSize: '16px', fontWeight: '800', color: '#14123A', marginBottom: '4px' }}>
+            <div style={{ padding: '18px 20px', borderBottom: '1.5px solid var(--color-border)' }}>
+              <div style={{ fontSize: '16px', fontWeight: '800', color: 'var(--color-text)', marginBottom: '4px' }}>
                 Forward message
               </div>
               <div style={{
-                fontSize: '12px', color: '#A09DC8',
+                fontSize: '12px', color: 'var(--color-text-subtle)',
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
               }}>
                 "{forwardMsg.content}"
@@ -1640,35 +2016,35 @@ export default function ChatScreen() {
                     style={{
                       padding: '12px 20px', display: 'flex', gap: '12px',
                       alignItems: 'center', cursor: 'pointer',
-                      borderBottom: '1px solid #F5F4FF',
+                      borderBottom: '1px solid var(--color-page)',
                       transition: 'background 0.1s'
                     }}
-                    onMouseEnter={e => e.currentTarget.style.background = '#F8F7FF'}
-                    onMouseLeave={e => e.currentTarget.style.background = '#fff'}>
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--color-surface-tint)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'var(--color-surface)'}>
                     <div style={{
                       width: '36px', height: '36px', borderRadius: '10px',
-                      background: '#EEE9FF', display: 'flex', alignItems: 'center',
+                      background: 'var(--color-brand-soft)', display: 'flex', alignItems: 'center',
                       justifyContent: 'center', fontSize: '14px', fontWeight: '800',
-                      color: '#6C47FF', overflow: 'hidden', flexShrink: 0
+                      color: 'var(--color-brand)', overflow: 'hidden', flexShrink: 0
                     }}>
                       {other?.avatar_url
                         ? <img src={other.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         : other?.full_name?.charAt(0) || '?'}
                     </div>
-                    <div style={{ fontSize: '14px', fontWeight: '600', color: '#14123A' }}>
+                    <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--color-text)' }}>
                       {other?.full_name || 'Unknown'}
                     </div>
                   </div>
                 )
               })}
             </div>
-            <div style={{ padding: '14px 20px', borderTop: '1.5px solid #E2E0FF' }}>
+            <div style={{ padding: '14px 20px', borderTop: '1.5px solid var(--color-border)' }}>
               <button
                 onClick={() => setForwardMsg(null)}
                 style={{
                   width: '100%', padding: '10px', borderRadius: '12px',
-                  border: '1.5px solid #E2E0FF', background: '#F5F4FF',
-                  color: '#A09DC8', fontFamily: 'inherit', fontSize: '13px',
+                  border: '1.5px solid var(--color-border)', background: 'var(--color-page)',
+                  color: 'var(--color-text-subtle)', fontFamily: 'inherit', fontSize: '13px',
                   fontWeight: '600', cursor: 'pointer'
                 }}>
                 Cancel
@@ -1698,13 +2074,13 @@ export default function ChatScreen() {
               boxShadow: '0 8px 40px rgba(0,0,0,0.5)',
             }}
           />
-          <button
+          <button 
             onClick={() => setLightboxImg(null)}
             style={{
               position: 'absolute', top: '16px', right: '16px',
               width: '36px', height: '36px', borderRadius: '50%',
               background: 'rgba(255,255,255,0.15)', border: 'none',
-              color: '#fff', fontSize: '20px', cursor: 'pointer',
+              color: 'var(--color-surface)', fontSize: '20px', cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}
           >×</button>
@@ -1716,19 +2092,78 @@ export default function ChatScreen() {
               position: 'absolute', bottom: '24px',
               background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)',
               borderRadius: '20px', padding: '8px 20px',
-              color: '#fff', fontSize: '13px', fontWeight: '600',
+              color: 'var(--color-surface)', fontSize: '13px', fontWeight: '600',
               textDecoration: 'none',
             }}
           >⬇ Download</a>
         </div>
       )}
 
-      <style>{`
-        @keyframes typingDot {
-          0%, 100% { transform: translateY(0); opacity: 0.4; }
-          50% { transform: translateY(-4px); opacity: 1; }
-        }
-      `}</style>
+      {reportTarget && (
+        <ReportModal
+          onClose={() => setReportTarget(null)}
+          reportedUserId={reportTarget.userId}
+          type={reportTarget.type}
+          name={reportTarget.name}
+          initialDetails={reportTarget.details}
+          notifyReportedUser={false}
+        />
+      )}
+
+      {editingMessage && (
+        <div onClick={() => !savingEdit && setEditingMessage(null)} style={{
+          position: 'fixed', inset: 0, zIndex: 9998,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px',
+          background: 'linear-gradient(135deg, rgba(89,53,232,0.58), rgba(30,27,75,0.68))',
+          backdropFilter: 'blur(7px)'
+        }}>
+          <div role="dialog" aria-modal="true" aria-labelledby="edit-message-title" onClick={e => e.stopPropagation()} style={{
+            width: '100%', maxWidth: '480px', padding: '24px', borderRadius: '22px',
+            background: 'var(--color-brand-surface-gradient)',
+            boxShadow: '0 20px 60px rgba(30,27,75,0.28), var(--shadow-glass)'
+          }}>
+            <div style={{ fontSize: '12px', fontWeight: '800', letterSpacing: '1.2px', color: 'var(--color-brand)', textTransform: 'uppercase', marginBottom: '6px' }}>Edit message</div>
+            <h2 id="edit-message-title" style={{ color: 'var(--color-text)', fontSize: '20px', marginBottom: '16px' }}>Update your message</h2>
+            <textarea
+              autoFocus
+              value={editedMessageText}
+              onChange={e => setEditedMessageText(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Escape' && !savingEdit) setEditingMessage(null) }}
+              aria-label="Message text"
+              style={{
+                width: '100%', minHeight: '120px', resize: 'vertical', padding: '13px 14px',
+                borderRadius: '14px', border: '1px solid var(--color-brand-border-strong)',
+                background: 'var(--color-brand-tint)', color: 'var(--color-text)',
+                font: 'inherit', outline: 'none', lineHeight: '1.5'
+              }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '18px' }}>
+              <button type="button" disabled={savingEdit} onClick={() => setEditingMessage(null)} style={{
+                minHeight: '44px', padding: '0 18px', borderRadius: '12px',
+                border: '1px solid var(--color-border)', background: 'var(--color-surface)',
+                color: 'var(--color-text-muted)', font: 'inherit', fontWeight: '700', cursor: 'pointer'
+              }}>Cancel</button>
+              <button type="button" disabled={!editedMessageText.trim() || savingEdit} onClick={saveMessageEdit} style={{
+                minHeight: '44px', padding: '0 20px', borderRadius: '12px', border: 'none',
+                background: !editedMessageText.trim() || savingEdit ? 'var(--color-brand-border-strong)' : 'var(--color-brand-gradient)',
+                color: 'white', font: 'inherit', fontWeight: '700', cursor: !editedMessageText.trim() || savingEdit ? 'wait' : 'pointer',
+                boxShadow: '0 5px 16px rgba(108,71,255,0.22)'
+              }}>{savingEdit ? 'Saving…' : 'Save changes'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmDialog && (
+        <ConfirmDialog
+          title={confirmDialog.title}
+          message={confirmDialog.message}
+          confirmLabel={confirmDialog.confirmLabel}
+          onCancel={() => setConfirmDialog(null)}
+          onConfirm={() => { const action = confirmDialog.action; setConfirmDialog(null); action() }}
+        />
+      )}
+
     </div>
   )
 }

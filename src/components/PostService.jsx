@@ -7,12 +7,12 @@ import { uploadToR2 } from '../utils/r2upload'
 
 const inputStyle = {
   width: '100%',
-  background: '#F5F4FF',
-  border: '1.5px solid #E2E0FF',
+  background: 'var(--color-page)',
+  border: '1.5px solid var(--color-border)',
   borderRadius: '10px',
   padding: '11px 14px',
   fontSize: '13px',
-  color: '#14123A',
+  color: 'var(--color-text)',
   fontFamily: 'inherit',
   outline: 'none',
   boxSizing: 'border-box',
@@ -20,9 +20,9 @@ const inputStyle = {
 }
 
 const labelStyle = {
-  fontSize: '10px',
+  fontSize: '12px',
   fontWeight: '700',
-  color: '#8B8FAF',
+  color: 'var(--color-text-muted)',
   textTransform: 'uppercase',
   letterSpacing: '0.8px',
   display: 'block',
@@ -115,9 +115,9 @@ export default function PostService({ onClose, onPosted }) {
   }
 
   const PACKAGE_COLORS = {
-    basic: { color: '#00C48C', bg: '#DFFDF4', border: '#7EECD2' },
-    standard: { color: '#6C47FF', bg: '#EEE9FF', border: '#B8A5FF' },
-    premium: { color: '#FFB800', bg: '#FFF8E0', border: '#FFD966' },
+    basic: { color: 'var(--color-success)', bg: 'var(--color-success-soft)', border: 'var(--color-success-border)' },
+    standard: { color: 'var(--color-brand)', bg: 'var(--color-brand-soft)', border: 'var(--color-brand-border-strong)' },
+    premium: { color: 'var(--color-warning-gold)', bg: 'var(--color-warning-gold-soft)', border: 'var(--color-warning-gold-border)' },
   }
 
   return (
@@ -131,10 +131,10 @@ export default function PostService({ onClose, onPosted }) {
       fontFamily: "'Plus Jakarta Sans', sans-serif"
     }} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} style={{
-        background: '#fff', borderRadius: '24px',
+        background: 'var(--color-surface)', borderRadius: '24px',
         width: '100%', maxWidth: '520px',
         maxHeight: '90vh', overflowY: 'auto',
-        border: '1.5px solid #E2E0FF',
+        border: '1.5px solid var(--color-border)',
         boxShadow: '0 20px 60px rgba(108,71,255,0.25)',
         animation: 'slideUp 0.3s cubic-bezier(0.16,1,0.3,1)'
       }}>
@@ -142,7 +142,7 @@ export default function PostService({ onClose, onPosted }) {
         <div style={{
           padding: '24px 24px 0',
           position: 'sticky', top: 0,
-          background: '#fff', zIndex: 10,
+          background: 'var(--color-surface)', zIndex: 10,
           borderRadius: '24px 24px 0 0'
         }}>
           <div style={{
@@ -151,14 +151,14 @@ export default function PostService({ onClose, onPosted }) {
           }}>
             <div>
               <div style={{
-                fontSize: '10px', color: '#6C47FF', fontWeight: '700',
+                fontSize: '12px', color: 'var(--color-brand)', fontWeight: '700',
                 letterSpacing: '1.5px', textTransform: 'uppercase',
                 marginBottom: '3px'
               }}>
                 {done ? 'Published!' : `Step ${step} of 3`}
               </div>
               <div style={{
-                fontSize: '20px', fontWeight: '800', color: '#14123A'
+                fontSize: '20px', fontWeight: '800', color: 'var(--color-text)'
               }}>
                 {done ? '🎉 Service Live!' :
                   step === 1 ? 'Service Details' :
@@ -166,10 +166,10 @@ export default function PostService({ onClose, onPosted }) {
                   'Review & Publish'}
               </div>
             </div>
-            <button onClick={onClose} style={{
-              background: '#F5F4FF', border: '1.5px solid #E2E0FF',
+            <button  onClick={onClose} style={{
+              background: 'var(--color-page)', border: '1.5px solid var(--color-border)',
               borderRadius: '10px', width: '36px', height: '36px',
-              fontSize: '18px', color: '#8B8FAF', cursor: 'pointer',
+              fontSize: '18px', color: 'var(--color-text-muted)', cursor: 'pointer',
               display: 'flex', alignItems: 'center',
               justifyContent: 'center', fontFamily: 'inherit'
             }}>×</button>
@@ -184,8 +184,8 @@ export default function PostService({ onClose, onPosted }) {
                 <div key={s} style={{
                   flex: 1, height: '4px', borderRadius: '2px',
                   background: s <= step
-                    ? 'linear-gradient(90deg, #6C47FF, #9B59FF)'
-                    : '#E2E0FF',
+                    ? 'linear-gradient(90deg, var(--color-brand), var(--color-brand-mid))'
+                    : 'var(--color-border)',
                   transition: 'background 0.3s'
                 }} />
               ))}
@@ -200,10 +200,10 @@ export default function PostService({ onClose, onPosted }) {
               <div style={{ fontSize: '56px', marginBottom: '16px' }}>🚀</div>
               <div style={{
                 fontSize: '18px', fontWeight: '800',
-                color: '#6C47FF', marginBottom: '8px'
+                color: 'var(--color-brand)', marginBottom: '8px'
               }}>Your service is live!</div>
               <div style={{
-                fontSize: '13px', color: '#8B8FAF', lineHeight: '1.6'
+                fontSize: '13px', color: 'var(--color-text-muted)', lineHeight: '1.6'
               }}>
                 Clients can now find and order your service on Prima.
               </div>
@@ -222,11 +222,11 @@ export default function PostService({ onClose, onPosted }) {
                   placeholder="e.g. I will design a professional logo"
                   value={form.title}
                   onChange={e => update('title', e.target.value)}
-                  onFocus={e => e.target.style.borderColor = '#B8A5FF'}
-                  onBlur={e => e.target.style.borderColor = '#E2E0FF'}
+                  onFocus={e => e.target.style.borderColor = 'var(--color-brand-border-strong)'}
+                  onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
                 />
                 <div style={{
-                  fontSize: '10px', color: '#A09DC8', marginTop: '4px'
+                  fontSize: '12px', color: 'var(--color-text-subtle)', marginTop: '4px'
                 }}>
                   Start with "I will..." for best results
                 </div>
@@ -239,8 +239,8 @@ export default function PostService({ onClose, onPosted }) {
                   placeholder="Describe what you offer, your experience, what clients can expect..."
                   value={form.description}
                   onChange={e => update('description', e.target.value)}
-                  onFocus={e => e.target.style.borderColor = '#B8A5FF'}
-                  onBlur={e => e.target.style.borderColor = '#E2E0FF'}
+                  onFocus={e => e.target.style.borderColor = 'var(--color-brand-border-strong)'}
+                  onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
                 />
               </div>
 
@@ -266,8 +266,8 @@ export default function PostService({ onClose, onPosted }) {
                       onClick={() => update('type', t.key)}
                       style={{
                         flex: 1,
-                        background: form.type === t.key ? '#EEE9FF' : '#F5F4FF',
-                        border: `1.5px solid ${form.type === t.key ? '#B8A5FF' : '#E2E0FF'}`,
+                        background: form.type === t.key ? 'var(--color-brand-soft)' : 'var(--color-page)',
+                        border: `1.5px solid ${form.type === t.key ? 'var(--color-brand-border-strong)' : 'var(--color-border)'}`,
                         borderRadius: '12px', padding: '12px',
                         cursor: 'pointer', fontFamily: 'inherit',
                         transition: 'all 0.15s', textAlign: 'center'
@@ -276,7 +276,7 @@ export default function PostService({ onClose, onPosted }) {
                         {t.label}
                       </div>
                       <div style={{
-                        fontSize: '10px', color: '#A09DC8', fontWeight: '600'
+                        fontSize: '12px', color: 'var(--color-text-subtle)', fontWeight: '600'
                       }}>{t.sub}</div>
                     </button>
                   ))}
@@ -288,7 +288,7 @@ export default function PostService({ onClose, onPosted }) {
                 <label style={labelStyle}>
                   Portfolio Images
                   <span style={{
-                    fontSize: '9px', color: '#A09DC8',
+                    fontSize: '12px', color: 'var(--color-text-subtle)',
                     fontWeight: '500', marginLeft: '6px',
                     textTransform: 'none', letterSpacing: 0
                   }}>Up to 5 images</span>
@@ -300,18 +300,18 @@ export default function PostService({ onClose, onPosted }) {
                     <div key={url} style={{
                       width: '80px', height: '80px',
                       borderRadius: '10px', overflow: 'hidden',
-                      border: '1.5px solid #B8A5FF',
+                      border: '1.5px solid var(--color-brand-border-strong)',
                       position: 'relative', flexShrink: 0
                     }}>
                       <img src={url} alt=""
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      <button
+                      <button 
                         onClick={() => setImages(imgs => imgs.filter((_, idx) => idx !== i))}
                         style={{
                           position: 'absolute', top: '3px', right: '3px',
                           width: '18px', height: '18px', borderRadius: '50%',
                           background: 'rgba(20,18,58,0.7)', border: 'none',
-                          color: '#fff', fontSize: '10px', cursor: 'pointer',
+                          color: 'var(--color-surface)', fontSize: '12px', cursor: 'pointer',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           fontFamily: 'inherit'
                         }}>×</button>
@@ -320,14 +320,14 @@ export default function PostService({ onClose, onPosted }) {
                   {images.length < 5 && (
                     <label style={{
                       width: '80px', height: '80px', borderRadius: '10px',
-                      border: '1.5px dashed #B8A5FF',
-                      background: '#F5F4FF', cursor: 'pointer',
+                      border: '1.5px dashed var(--color-brand-border-strong)',
+                      background: 'var(--color-page)', cursor: 'pointer',
                       display: 'flex', flexDirection: 'column',
                       alignItems: 'center', justifyContent: 'center',
                       gap: '4px', flexShrink: 0
                     }}>
                       <span style={{ fontSize: '20px' }}>📷</span>
-                      <span style={{ fontSize: '9px', color: '#A09DC8', fontWeight: '600' }}>
+                      <span style={{ fontSize: '12px', color: 'var(--color-text-subtle)', fontWeight: '600' }}>
                         {uploadingImages ? 'Uploading...' : 'Add'}
                       </span>
                       <input
@@ -362,7 +362,7 @@ export default function PostService({ onClose, onPosted }) {
                 </div>
                 {images.length > 0 && images.length < 3 && (
                   <div style={{
-                    fontSize: '10px', color: '#FF6B2B', marginTop: '6px'
+                    fontSize: '12px', color: 'var(--color-warning)', marginTop: '6px'
                   }}>
                     💡 Add at least 3 images for better visibility
                   </div>
@@ -377,7 +377,7 @@ export default function PostService({ onClose, onPosted }) {
               display: 'flex', flexDirection: 'column', gap: '14px'
             }}>
               <div style={{
-                fontSize: '12px', color: '#8B8FAF',
+                fontSize: '12px', color: 'var(--color-text-muted)',
                 lineHeight: '1.6', marginBottom: '4px'
               }}>
                 Set up to 3 pricing tiers. Basic is required. Standard and Premium are optional.
@@ -410,15 +410,15 @@ export default function PostService({ onClose, onPosted }) {
                       </div>
                       {!isRequired && (
                         <span style={{
-                          fontSize: '9px', color: '#A09DC8',
+                          fontSize: '12px', color: 'var(--color-text-subtle)',
                           fontWeight: '600', textTransform: 'uppercase'
                         }}>Optional</span>
                       )}
                       {isRequired && (
                         <span style={{
-                          background: colors.color, color: '#fff',
+                          background: colors.color, color: 'var(--color-surface)',
                           borderRadius: '5px', padding: '2px 7px',
-                          fontSize: '9px', fontWeight: '700'
+                          fontSize: '12px', fontWeight: '700'
                         }}>Required</span>
                       )}
                     </div>
@@ -431,12 +431,12 @@ export default function PostService({ onClose, onPosted }) {
                           Package Name
                         </label>
                         <input
-                          style={{ ...inputStyle, background: '#fff' }}
+                          style={{ ...inputStyle, background: 'var(--color-surface)' }}
                           placeholder={`e.g. ${tier.charAt(0).toUpperCase() + tier.slice(1)} Package`}
                           value={form[nameKey]}
                           onChange={e => update(nameKey, e.target.value)}
                           onFocus={e => e.target.style.borderColor = colors.border}
-                          onBlur={e => e.target.style.borderColor = '#E2E0FF'}
+                          onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
                         />
                       </div>
                       <div>
@@ -445,14 +445,14 @@ export default function PostService({ onClose, onPosted }) {
                         </label>
                         <textarea
                           style={{
-                            ...inputStyle, background: '#fff',
+                            ...inputStyle, background: 'var(--color-surface)',
                             minHeight: '60px', resize: 'vertical'
                           }}
                           placeholder="Describe what this package includes..."
                           value={form[descKey]}
                           onChange={e => update(descKey, e.target.value)}
                           onFocus={e => e.target.style.borderColor = colors.border}
-                          onBlur={e => e.target.style.borderColor = '#E2E0FF'}
+                          onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
                         />
                       </div>
                       <div style={{
@@ -464,12 +464,12 @@ export default function PostService({ onClose, onPosted }) {
                           </label>
                           <input
                             type="number"
-                            style={{ ...inputStyle, background: '#fff' }}
+                            style={{ ...inputStyle, background: 'var(--color-surface)' }}
                             placeholder="0"
                             value={form[priceKey]}
                             onChange={e => update(priceKey, e.target.value)}
                             onFocus={e => e.target.style.borderColor = colors.border}
-                            onBlur={e => e.target.style.borderColor = '#E2E0FF'}
+                            onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
                           />
                         </div>
                         <div>
@@ -478,12 +478,12 @@ export default function PostService({ onClose, onPosted }) {
                           </label>
                           <input
                             type="number"
-                            style={{ ...inputStyle, background: '#fff' }}
+                            style={{ ...inputStyle, background: 'var(--color-surface)' }}
                             placeholder="1"
                             value={form[delivKey]}
                             onChange={e => update(delivKey, e.target.value)}
                             onFocus={e => e.target.style.borderColor = colors.border}
-                            onBlur={e => e.target.style.borderColor = '#E2E0FF'}
+                            onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
                           />
                         </div>
                       </div>
@@ -501,25 +501,25 @@ export default function PostService({ onClose, onPosted }) {
             }}>
               {/* Service summary */}
               <div style={{
-                background: '#F5F4FF', borderRadius: '14px',
-                padding: '16px', border: '1.5px solid #E2E0FF'
+                background: 'var(--color-page)', borderRadius: '14px',
+                padding: '16px', border: '1.5px solid var(--color-border)'
               }}>
                 <div style={{
                   fontSize: '16px', fontWeight: '800',
-                  color: '#14123A', marginBottom: '6px'
+                  color: 'var(--color-text)', marginBottom: '6px'
                 }}>{form.title || 'Untitled Service'}</div>
                 {form.field && (
                   <div style={{
                     display: 'inline-flex', alignItems: 'center',
-                    gap: '5px', background: '#EEE9FF',
-                    border: '1px solid #B8A5FF', borderRadius: '6px',
-                    padding: '3px 9px', fontSize: '11px',
-                    fontWeight: '600', color: '#6C47FF', marginBottom: '8px'
+                    gap: '5px', background: 'var(--color-brand-soft)',
+                    border: '1px solid var(--color-brand-border-strong)', borderRadius: '6px',
+                    padding: '3px 9px', fontSize: '12px',
+                    fontWeight: '600', color: 'var(--color-brand)', marginBottom: '8px'
                   }}>{form.field}</div>
                 )}
                 {form.description && (
                   <div style={{
-                    fontSize: '12px', color: '#5B5887', lineHeight: '1.6'
+                    fontSize: '12px', color: 'var(--color-text-muted)', lineHeight: '1.6'
                   }}>{form.description}</div>
                 )}
               </div>
@@ -545,7 +545,7 @@ export default function PostService({ onClose, onPosted }) {
                           fontSize: '12px', fontWeight: '700',
                           color: colors.color, marginBottom: '2px'
                         }}>{form[`${tier}_name`]}</div>
-                        <div style={{ fontSize: '10px', color: '#8B8FAF' }}>
+                        <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
                           {form[`${tier}_delivery`]} day delivery
                         </div>
                       </div>
@@ -558,9 +558,9 @@ export default function PostService({ onClose, onPosted }) {
               </div>
 
               <div style={{
-                background: '#EEE9FF', border: '1.5px solid #B8A5FF',
+                background: 'var(--color-brand-soft)', border: '1.5px solid var(--color-brand-border-strong)',
                 borderRadius: '12px', padding: '14px',
-                fontSize: '12px', color: '#6C47FF', lineHeight: '1.6'
+                fontSize: '12px', color: 'var(--color-brand)', lineHeight: '1.6'
               }}>
                 ✓ Your service will be visible to all Prima users immediately after publishing.
               </div>
@@ -576,11 +576,11 @@ export default function PostService({ onClose, onPosted }) {
                 <button
                   onClick={() => setStep(s => s - 1)}
                   style={{
-                    flex: 1, background: '#F5F4FF',
-                    border: '1.5px solid #E2E0FF',
+                    flex: 1, background: 'var(--color-page)',
+                    border: '1.5px solid var(--color-border)',
                     borderRadius: '12px', padding: '14px',
                     fontSize: '13px', fontWeight: '600',
-                    color: '#8B8FAF', cursor: 'pointer',
+                    color: 'var(--color-text-muted)', cursor: 'pointer',
                     fontFamily: 'inherit'
                   }}>← Back</button>
               )}
@@ -595,9 +595,9 @@ export default function PostService({ onClose, onPosted }) {
                   }}
                   style={{
                     flex: 2,
-                    background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+                    background: 'var(--color-brand-gradient)',
                     border: 'none', borderRadius: '12px', padding: '14px',
-                    fontSize: '14px', fontWeight: '700', color: '#fff',
+                    fontSize: '14px', fontWeight: '700', color: 'var(--color-surface)',
                     cursor: 'pointer', fontFamily: 'inherit',
                     boxShadow: '0 4px 20px rgba(108,71,255,0.35)'
                   }}>Continue →</button>
@@ -608,10 +608,10 @@ export default function PostService({ onClose, onPosted }) {
                   style={{
                     flex: 2,
                     background: loading
-                      ? '#B8A5FF'
-                      : 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+                      ? 'var(--color-brand-border-strong)'
+                      : 'var(--color-brand-gradient)',
                     border: 'none', borderRadius: '12px', padding: '14px',
-                    fontSize: '14px', fontWeight: '700', color: '#fff',
+                    fontSize: '14px', fontWeight: '700', color: 'var(--color-surface)',
                     cursor: loading ? 'not-allowed' : 'pointer',
                     fontFamily: 'inherit',
                     boxShadow: loading ? 'none' : '0 4px 20px rgba(108,71,255,0.35)'

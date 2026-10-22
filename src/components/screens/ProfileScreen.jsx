@@ -15,16 +15,16 @@ import SelfieVerification from '../SelfieVerification'
 import VerificationBadge from '../VerificationBadge'
 
 const LEVELS = [
-  { key: 'new', label: 'New Member', icon: 'profile', tone: 'linear-gradient(135deg,#8B8FAF,#A09DC8)', color: '#8B8FAF', bg: '#F5F4FF', border: '#E2E0FF', min: 0 },
-  { key: 'rising', label: 'Rising', icon: 'stats', tone: 'linear-gradient(135deg,#FF6B2B,#FF4DCF)', color: '#FF6B2B', bg: '#FFF0E8', border: '#FFBC99', min: 3 },
-  { key: 'pro', label: 'Pro', icon: 'level', tone: 'linear-gradient(135deg,#6C47FF,#9B59FF)', color: '#6C47FF', bg: '#EEE9FF', border: '#B8A5FF', min: 10 },
-  { key: 'elite', label: 'Elite', icon: 'rating', tone: 'linear-gradient(135deg,#FFB800,#FF6B2B)', color: '#FFB800', bg: '#FFF8E0', border: '#FFD966', min: 25 },
+  { key: 'new', label: 'New Member', icon: 'profile', tone: 'linear-gradient(135deg,var(--color-text-muted),var(--color-text-subtle))', color: 'var(--color-text-muted)', bg: 'var(--color-page)', border: 'var(--color-border)', min: 0 },
+  { key: 'rising', label: 'Rising', icon: 'stats', tone: 'linear-gradient(135deg,var(--color-warning),var(--color-brand-highlight))', color: 'var(--color-warning)', bg: 'var(--color-warning-soft)', border: 'var(--color-warning-border)', min: 3 },
+  { key: 'pro', label: 'Pro', icon: 'level', tone: 'var(--color-brand-gradient)', color: 'var(--color-brand)', bg: 'var(--color-brand-soft)', border: 'var(--color-brand-border-strong)', min: 10 },
+  { key: 'elite', label: 'Elite', icon: 'rating', tone: 'linear-gradient(135deg,var(--color-warning-gold),var(--color-warning))', color: 'var(--color-warning-gold)', bg: 'var(--color-warning-gold-soft)', border: 'var(--color-warning-gold-border)', min: 25 },
 ]
 
 const WX_STATUS = {
-  completed: { color: '#00A878', bg: '#DFFDF4', label: 'Completed' },
-  pending: { color: '#FF6B2B', bg: '#FFF0E8', label: 'Pending' },
-  failed: { color: '#FF3366', bg: '#FFE8EE', label: 'Failed' },
+  completed: { color: 'var(--color-success)', bg: 'var(--color-success-soft)', label: 'Completed' },
+  pending: { color: 'var(--color-warning)', bg: 'var(--color-warning-soft)', label: 'Pending' },
+  failed: { color: 'var(--color-danger)', bg: 'var(--color-danger-soft)', label: 'Failed' },
 }
 
 // ─────────────────────────────────────────────
@@ -66,7 +66,7 @@ const LocationSearch = ({ value, onSelect, inputStyle }) => {
           position: 'absolute', right: '12px',
           top: '50%', transform: 'translateY(-50%)',
           fontSize: '14px',
-          color: selected ? '#00C48C' : '#A09DC8'
+          color: selected ? 'var(--color-success)' : 'var(--color-text-subtle)'
         }}>
           {loading ? '⏳' : selected ? '✓' : <BrandIcon name="search" size={24} />}
         </span>
@@ -74,7 +74,7 @@ const LocationSearch = ({ value, onSelect, inputStyle }) => {
       {results.length > 0 && !selected && (
         <div style={{
           position: 'absolute', top: '100%', left: 0, right: 0,
-          background: '#fff', border: '1.5px solid #B8A5FF',
+          background: 'var(--color-surface)', border: '1.5px solid var(--color-brand-border-strong)',
           borderRadius: '12px', marginTop: '4px',
           zIndex: 100, overflow: 'hidden',
           boxShadow: '0 8px 32px rgba(108,71,255,0.15)'
@@ -94,18 +94,18 @@ const LocationSearch = ({ value, onSelect, inputStyle }) => {
                 }}
                 style={{
                   padding: '11px 14px', cursor: 'pointer',
-                  borderBottom: i < results.length - 1 ? '1px solid #F5F4FF' : 'none',
+                  borderBottom: i < results.length - 1 ? '1px solid var(--color-page)' : 'none',
                   display: 'flex', gap: '8px', alignItems: 'center'
                 }}
-                onMouseEnter={e => e.currentTarget.style.background = '#F5F4FF'}
-                onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--color-page)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'var(--color-surface)'}
               >
                 <BrandIcon name="location" size={28} />
                 <div>
-                  <div style={{ fontSize: '13px', fontWeight: '600', color: '#14123A' }}>
+                  <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--color-text)' }}>
                     {name || r.display_name.split(',')[0]}
                   </div>
-                  <div style={{ fontSize: '10px', color: '#A09DC8' }}>
+                  <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)' }}>
                     {r.display_name.length > 50 ? r.display_name.substring(0, 50) + '...' : r.display_name}
                   </div>
                 </div>
@@ -121,7 +121,7 @@ const LocationSearch = ({ value, onSelect, inputStyle }) => {
 // ─────────────────────────────────────────────
 // ANIMATED AVATAR RING - the one signature motion piece
 // ─────────────────────────────────────────────
-const AvatarRing = ({ size = 96, avatarUrl, initial, onAvatarClick, uploading, ringColor = '#00C48C' }) => {
+const AvatarRing = ({ size = 96, avatarUrl, initial, onAvatarClick, uploading, ringColor = 'var(--color-success)' }) => {
   const [animatedScore, setAnimatedScore] = useState(0)
   const radius = (size - 8) / 2
   const circumference = 2 * Math.PI * radius
@@ -157,10 +157,10 @@ const AvatarRing = ({ size = 96, avatarUrl, initial, onAvatarClick, uploading, r
           <img src={avatarUrl} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
-            <span style={{ fontSize: size * 0.32, fontWeight: '800', color: '#fff', lineHeight: 1 }}>
+            <span style={{ fontSize: size * 0.32, fontWeight: '800', color: 'var(--color-surface)', lineHeight: 1 }}>
               {initial || '?'}
             </span>
-            {uploading && <span style={{ fontSize: '8px', color: 'rgba(255,255,255,0.8)' }}>Uploading...</span>}
+            {uploading && <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.8)' }}>Uploading...</span>}
           </div>
         )}
       </div>
@@ -171,7 +171,7 @@ const AvatarRing = ({ size = 96, avatarUrl, initial, onAvatarClick, uploading, r
 // ─────────────────────────────────────────────
 // PROGRESS BAR — reusable, used for completion + skill-level style bars
 // ─────────────────────────────────────────────
-const ProgressBar = ({ value, max = 100, color = '#6C47FF', bg = '#E2E0FF', height = 6, animateDelay = 0 }) => {
+const ProgressBar = ({ value, max = 100, color = 'var(--color-brand)', bg = 'var(--color-border)', height = 6, animateDelay = 0 }) => {
   const [width, setWidth] = useState(0)
   useEffect(() => {
     const t = setTimeout(() => setWidth(Math.min(100, (value / max) * 100)), 150 + animateDelay)
@@ -190,9 +190,9 @@ const ProgressBar = ({ value, max = 100, color = '#6C47FF', bg = '#E2E0FF', heig
 // ─────────────────────────────────────────────
 // STAT CARD — used in the metrics strip
 // ─────────────────────────────────────────────
-const StatCard = ({ icon, label, value, sub, color = '#6C47FF', bg = '#EEE9FF' }) => (
+const StatCard = ({ icon, label, value, sub, color = 'var(--color-brand)', bg = 'var(--color-brand-soft)' }) => (
   <div style={{
-    background: '#fff', border: '1.5px solid #E2E0FF',
+    background: 'var(--color-surface)', border: '1.5px solid var(--color-border)',
     borderRadius: '16px', padding: '16px',
     display: 'flex', flexDirection: 'column', gap: '8px', minWidth: 0
   }}>
@@ -204,9 +204,9 @@ const StatCard = ({ icon, label, value, sub, color = '#6C47FF', bg = '#EEE9FF' }
       {icon}
     </div>
     <div>
-      <div style={{ fontSize: '20px', fontWeight: '800', color: '#14123A', lineHeight: 1.1 }}>{value}</div>
-      <div style={{ fontSize: '11px', color: '#A09DC8', fontWeight: '600', marginTop: '2px' }}>{label}</div>
-      {sub && <div style={{ fontSize: '10px', color, fontWeight: '700', marginTop: '3px' }}>{sub}</div>}
+      <div style={{ fontSize: '20px', fontWeight: '800', color: 'var(--color-text)', lineHeight: 1.1 }}>{value}</div>
+      <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)', fontWeight: '600', marginTop: '2px' }}>{label}</div>
+      {sub && <div style={{ fontSize: '12px', color, fontWeight: '700', marginTop: '3px' }}>{sub}</div>}
     </div>
   </div>
 )
@@ -220,7 +220,7 @@ const ProfileToneIcon = ({ name, tone, size = 34 }) => (
 
 const ComingSoonCard = ({ icon, title, desc, gradient }) => (
   <div style={{
-    background: '#fff', border: '1.5px solid #E2E0FF',
+    background: 'var(--color-surface)', border: '1.5px solid var(--color-border)',
     borderRadius: '16px', padding: '16px',
     display: 'flex', gap: '12px', alignItems: 'center',
     position: 'relative', overflow: 'hidden'
@@ -231,12 +231,12 @@ const ComingSoonCard = ({ icon, title, desc, gradient }) => (
       justifyContent: 'center', fontSize: '20px', flexShrink: 0
     }}>{typeof icon === 'string' ? <ProfileToneIcon name={icon} tone={gradient} size={34} /> : icon}</div>
     <div style={{ flex: 1, minWidth: 0 }}>
-      <div style={{ fontSize: '13px', fontWeight: '700', color: '#14123A', marginBottom: '2px' }}>{title}</div>
-      <div style={{ fontSize: '11px', color: '#A09DC8', lineHeight: '1.4' }}>{desc}</div>
+      <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--color-text)', marginBottom: '2px' }}>{title}</div>
+      <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)', lineHeight: '1.4' }}>{desc}</div>
     </div>
     <span style={{
-      fontSize: '9px', fontWeight: '800', color: '#A09DC8',
-      background: '#F5F4FF', border: '1px solid #E2E0FF',
+      fontSize: '12px', fontWeight: '800', color: 'var(--color-text-subtle)',
+      background: 'var(--color-page)', border: '1px solid var(--color-border)',
       borderRadius: '6px', padding: '4px 8px', flexShrink: 0,
       textTransform: 'uppercase', letterSpacing: '0.4px'
     }}>Soon</span>
@@ -397,13 +397,13 @@ export default function ProfileScreen({ onLogout }) {
   }
 
   const inputStyle = {
-    width: '100%', background: '#F5F4FF', border: '1.5px solid #E2E0FF',
+    width: '100%', background: 'var(--color-page)', border: '1.5px solid var(--color-border)',
     borderRadius: '10px', padding: '11px 14px', fontSize: '13px',
-    color: '#14123A', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box'
+    color: 'var(--color-text)', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box'
   }
 
   const labelStyle = {
-    fontSize: '10px', fontWeight: '700', color: '#8B8FAF',
+    fontSize: '12px', fontWeight: '700', color: 'var(--color-text-muted)',
     textTransform: 'uppercase', letterSpacing: '0.8px',
     display: 'block', marginBottom: '6px'
   }
@@ -425,9 +425,9 @@ export default function ProfileScreen({ onLogout }) {
   const nextEarnedTarget = Math.max(100, Math.ceil((totalEarned + 1) / 100) * 100)
   const nextReviewTarget = Math.max(10, Math.ceil((reviewsCount + 1) / 10) * 10)
   const progressMetrics = [
-    { label: 'Total Earned', value: `$${totalEarned.toLocaleString()}`, current: totalEarned, max: nextEarnedTarget, color: 'linear-gradient(90deg,#00C48C,#06D6D6)' },
-    { label: 'Gigs Completed', value: gigsCompleted, current: gigsCompleted, max: nextLevelTarget, color: 'linear-gradient(90deg,#6C47FF,#0EA5E9)' },
-    { label: 'Reviews', value: `${reviewsCount}/${nextReviewTarget}`, current: reviewsCount, max: nextReviewTarget, color: 'linear-gradient(90deg,#FF4DCF,#9B59FF)' },
+    { label: 'Total Earned', value: `$${totalEarned.toLocaleString()}`, current: totalEarned, max: nextEarnedTarget, color: 'linear-gradient(90deg,var(--color-success),#06D6D6)' },
+    { label: 'Gigs Completed', value: gigsCompleted, current: gigsCompleted, max: nextLevelTarget, color: 'linear-gradient(90deg,var(--color-brand),var(--color-info))' },
+    { label: 'Reviews', value: `${reviewsCount}/${nextReviewTarget}`, current: reviewsCount, max: nextReviewTarget, color: 'linear-gradient(90deg,var(--color-brand-highlight),var(--color-brand-mid))' },
   ]
 
   const isMobile = window.innerWidth < 768
@@ -452,22 +452,22 @@ export default function ProfileScreen({ onLogout }) {
     WebkitOverflowScrolling: 'touch'
   }}>
           <div style={{
-  background: '#fff',
+  background: 'var(--color-surface)',
   borderRadius: '24px', padding: '28px',
   width: '100%', maxWidth: '520px',
   margin: '20px 0',
-  border: '1.5px solid #E2E0FF',
+  border: '1.5px solid var(--color-border)',
   boxShadow: '0 20px 60px rgba(108,71,255,0.25)'
 }}>
             <div style={{
               display: 'flex', justifyContent: 'space-between',
               alignItems: 'center', padding: '22px 22px 16px',
-              borderBottom: '1px solid #F5F4FF', flexShrink: 0
+              borderBottom: '1px solid var(--color-page)', flexShrink: 0
             }}>
-              <div style={{ fontSize: '18px', fontWeight: '800', color: '#14123A' }}>Edit Profile</div>
-              <button onClick={() => setEditing(false)} style={{
-                background: '#F5F4FF', border: '1.5px solid #E2E0FF', borderRadius: '8px',
-                width: '34px', height: '34px', fontSize: '18px', color: '#8B8FAF',
+              <div style={{ fontSize: '18px', fontWeight: '800', color: 'var(--color-text)' }}>Edit Profile</div>
+              <button  onClick={() => setEditing(false)} style={{
+                background: 'var(--color-page)', border: '1.5px solid var(--color-border)', borderRadius: '8px',
+                width: '34px', height: '34px', fontSize: '18px', color: 'var(--color-text-muted)',
                 cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'inherit'
               }}>×</button>
             </div>
@@ -486,7 +486,7 @@ export default function ProfileScreen({ onLogout }) {
               <div>
                 <label style={labelStyle}>Username</label>
                 <div style={{ position: 'relative' }}>
-                  <span style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#A09DC8', fontSize: '14px' }}>@</span>
+                  <span style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-subtle)', fontSize: '14px' }}>@</span>
                   <input style={{ ...inputStyle, paddingLeft: '28px' }} value={editForm.username || ''}
                     onChange={e => setEditForm(f => ({ ...f, username: e.target.value }))} />
                 </div>
@@ -515,25 +515,25 @@ export default function ProfileScreen({ onLogout }) {
                 <label style={labelStyle}>Work Modes</label>
                 <div style={{ display: 'flex', gap: '10px' }}>
                   {[
-                    { key: 'physical_mode', icon: 'physical', label: 'Physical', color: '#FF6B2B', bg: '#FFF0E8', border: '#FFBC99' },
-                    { key: 'digital_mode', icon: 'digital', label: 'Digital', color: '#6C47FF', bg: '#EEE9FF', border: '#B8A5FF' }
+                    { key: 'physical_mode', icon: 'physical', label: 'Physical', color: 'var(--color-warning)', bg: 'var(--color-warning-soft)', border: 'var(--color-warning-border)' },
+                    { key: 'digital_mode', icon: 'digital', label: 'Digital', color: 'var(--color-brand)', bg: 'var(--color-brand-soft)', border: 'var(--color-brand-border-strong)' }
                   ].map(m => (
                     <div key={m.key} onClick={() => setEditForm(f => ({ ...f, [m.key]: !f[m.key] }))} style={{
-                      flex: 1, background: editForm[m.key] ? m.bg : '#F5F4FF',
-                      border: `1.5px solid ${editForm[m.key] ? m.border : '#E2E0FF'}`,
+                      flex: 1, background: editForm[m.key] ? m.bg : 'var(--color-page)',
+                      border: `1.5px solid ${editForm[m.key] ? m.border : 'var(--color-border)'}`,
                       borderRadius: '12px', padding: '14px', cursor: 'pointer', textAlign: 'center', transition: 'all 0.15s'
                     }}>
                       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
                         <BrandIcon name={m.icon} size={40} active={!!editForm[m.key]} />
                       </div>
-                      <div style={{ fontSize: '12px', fontWeight: '700', color: editForm[m.key] ? m.color : '#8B8FAF' }}>{m.label}</div>
+                      <div style={{ fontSize: '12px', fontWeight: '700', color: editForm[m.key] ? m.color : 'var(--color-text-muted)' }}>{m.label}</div>
                       <div style={{
                         width: '20px', height: '20px', borderRadius: '50%',
-                        background: editForm[m.key] ? m.color : '#E2E0FF',
+                        background: editForm[m.key] ? m.color : 'var(--color-border)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         margin: '8px auto 0', transition: 'all 0.2s'
                       }}>
-                        {editForm[m.key] && <span style={{ color: '#fff', fontSize: '10px', fontWeight: '700' }}>✓</span>}
+                        {editForm[m.key] && <span style={{ color: 'var(--color-surface)', fontSize: '12px', fontWeight: '700' }}>✓</span>}
                       </div>
                     </div>
                   ))}
@@ -556,13 +556,13 @@ export default function ProfileScreen({ onLogout }) {
                   <div style={{ display: 'flex', gap: '7px', flexWrap: 'wrap', marginTop: '12px' }}>
                     {editForm.skills.map((skill, i) => (
                       <span key={i} style={{
-                        background: '#EEE9FF', border: '1.5px solid #B8A5FF', borderRadius: '20px',
-                        padding: '6px 12px', fontSize: '12px', fontWeight: '600', color: '#6C47FF',
+                        background: 'var(--color-brand-soft)', border: '1.5px solid var(--color-brand-border-strong)', borderRadius: '20px',
+                        padding: '6px 12px', fontSize: '12px', fontWeight: '600', color: 'var(--color-brand)',
                         display: 'flex', alignItems: 'center', gap: '6px'
                       }}>
                         {skill}
                         <span onClick={() => setEditForm(f => ({ ...f, skills: f.skills.filter((_, j) => j !== i) }))}
-                          style={{ cursor: 'pointer', fontSize: '14px', color: '#A09DC8', lineHeight: 1 }}>×</span>
+                          style={{ cursor: 'pointer', fontSize: '14px', color: 'var(--color-text-subtle)', lineHeight: 1 }}>×</span>
                       </span>
                     ))}
                   </div>
@@ -589,19 +589,19 @@ export default function ProfileScreen({ onLogout }) {
             <div style={{
               display: 'flex', gap: '10px',
               padding: '14px 22px calc(14px + env(safe-area-inset-bottom))',
-              borderTop: '1px solid #F5F4FF',
-              background: '#fff',
+              borderTop: '1px solid var(--color-page)',
+              background: 'var(--color-surface)',
               boxShadow: '0 -10px 24px rgba(20,18,58,0.06)',
               flexShrink: 0
             }}>
               <button onClick={() => { document.activeElement?.blur(); setEditForm(profile); setEditing(false) }} disabled={saving} style={{
-                flex: 1, background: '#F5F4FF', border: '1.5px solid #E2E0FF', borderRadius: '12px',
-                padding: '13px', fontSize: '13px', fontWeight: '600', color: '#8B8FAF', cursor: 'pointer', fontFamily: 'inherit'
+                flex: 1, background: 'var(--color-page)', border: '1.5px solid var(--color-border)', borderRadius: '12px',
+                padding: '13px', fontSize: '13px', fontWeight: '600', color: 'var(--color-text-muted)', cursor: 'pointer', fontFamily: 'inherit'
               }}>Cancel</button>
               <button onClick={handleSave} disabled={saving} style={{
-                flex: 2, background: saving ? '#B8A5FF' : 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+                flex: 2, background: saving ? 'var(--color-brand-border-strong)' : 'var(--color-brand-gradient)',
                 border: 'none', borderRadius: '12px', padding: '13px', fontSize: '14px', fontWeight: '700',
-                color: '#fff', cursor: saving ? 'not-allowed' : 'pointer',
+                color: 'var(--color-surface)', cursor: saving ? 'not-allowed' : 'pointer',
                 boxShadow: '0 4px 16px rgba(108,71,255,0.3)', fontFamily: 'inherit'
               }}>{saving ? '⏳ Saving...' : '✓ Save Profile'}</button>
             </div>
@@ -624,14 +624,14 @@ export default function ProfileScreen({ onLogout }) {
 
           {/* IDENTITY CARD */}
           <div style={{
-            background: 'linear-gradient(135deg, #6C47FF 0%, #9B59FF 50%, #FF4DCF 100%)',
-            borderRadius: '24px', padding: '24px', color: '#fff', position: 'relative'
+            background: 'linear-gradient(135deg, var(--color-brand) 0%, var(--color-brand-mid) 50%, var(--color-brand-highlight) 100%)',
+            borderRadius: '24px', padding: '24px', color: 'var(--color-surface)', position: 'relative'
           }}>
             <button onClick={() => setEditing(true)} style={{
               position: 'absolute', top: '16px', right: '16px',
               background: 'rgba(255,255,255,0.2)', border: '1.5px solid rgba(255,255,255,0.3)',
-              borderRadius: '10px', padding: '7px 12px', fontSize: '11px', fontWeight: '700',
-              color: '#fff', cursor: 'pointer', fontFamily: 'inherit',
+              borderRadius: '10px', padding: '7px 12px', fontSize: '12px', fontWeight: '700',
+              color: 'var(--color-surface)', cursor: 'pointer', fontFamily: 'inherit',
               display: 'flex', alignItems: 'center', gap: '5px'
             }}>
               <BrandIcon name="edit" size={20} /> Edit
@@ -643,7 +643,7 @@ export default function ProfileScreen({ onLogout }) {
                 initial={profile?.full_name?.charAt(0)?.toUpperCase()}
                 onAvatarClick={() => fileRef.current.click()}
                 uploading={uploadingAvatar}
-                ringColor="#00C48C"
+                ringColor="var(--color-success)"
               />
               <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatarUpload} />
 
@@ -652,7 +652,7 @@ export default function ProfileScreen({ onLogout }) {
               </div>
               <div style={{ fontSize: '12px', opacity: 0.8, marginBottom: '4px' }}>@{profile?.username || 'username'}</div>
               {profile?.location && (
-                <div style={{ fontSize: '11px', opacity: 0.75, display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <div style={{ fontSize: '12px', opacity: 0.75, display: 'flex', alignItems: 'center', gap: '5px' }}>
                   <BrandIcon name="location" size={18} /> {profile.location}
                 </div>
               )}
@@ -674,8 +674,8 @@ export default function ProfileScreen({ onLogout }) {
               {['physical', 'digital'].map(m => (
                 <button key={m} onClick={() => setMode(m)} style={{
                   flex: 1, background: mode === m ? 'rgba(255,255,255,0.25)' : 'transparent',
-                  border: 'none', borderRadius: '9px', padding: '9px 0', fontSize: '11px', fontWeight: '700',
-                  color: mode === m ? '#fff' : 'rgba(255,255,255,0.5)', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s'
+                  border: 'none', borderRadius: '9px', padding: '9px 0', fontSize: '12px', fontWeight: '700',
+                  color: mode === m ? 'var(--color-surface)' : 'rgba(255,255,255,0.5)', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s'
                 }}>
                   <span style={{ display: 'inline-flex', verticalAlign: 'middle', marginRight: '5px' }}>
                     <BrandIcon name={m === 'physical' ? 'physical' : 'digital'} size={18} active={mode === m} />
@@ -689,15 +689,15 @@ export default function ProfileScreen({ onLogout }) {
           {/* PROFILE COMPLETION */}
           {completionScore < 100 && (
             <div onClick={() => setEditing(true)} style={{
-              background: '#fff', border: '1.5px solid #E2E0FF', borderRadius: '16px',
+              background: 'var(--color-surface)', border: '1.5px solid var(--color-border)', borderRadius: '16px',
               padding: '16px', cursor: 'pointer'
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <span style={{ fontSize: '12px', fontWeight: '700', color: '#14123A' }}>Profile Strength</span>
-                <span style={{ fontSize: '12px', fontWeight: '800', color: '#6C47FF' }}>{completionScore}%</span>
+                <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-text)' }}>Profile Strength</span>
+                <span style={{ fontSize: '12px', fontWeight: '800', color: 'var(--color-brand)' }}>{completionScore}%</span>
               </div>
-              <ProgressBar value={completionScore} color="linear-gradient(90deg, #6C47FF, #9B59FF)" />
-              <div style={{ fontSize: '10px', color: '#A09DC8', marginTop: '6px' }}>Complete your profile to unlock more gigs →</div>
+              <ProgressBar value={completionScore} color="linear-gradient(90deg, var(--color-brand), var(--color-brand-mid))" />
+              <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)', marginTop: '6px' }}>Complete your profile to unlock more gigs →</div>
             </div>
           )}
 
@@ -711,30 +711,30 @@ export default function ProfileScreen({ onLogout }) {
                     <div
                       onClick={() => window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'wallet' }))}
                       style={{
-                        flex: 1, background: 'linear-gradient(135deg, #00C48C, #00A878)',
-                        borderRadius: '14px', padding: '14px', color: '#fff', cursor: 'pointer'
+                        flex: 1, background: 'linear-gradient(135deg, var(--color-success-accent), var(--color-success))',
+                        borderRadius: '14px', padding: '14px', color: 'var(--color-surface)', cursor: 'pointer'
                       }}>
-                      <div style={{ fontSize: '11px', opacity: 0.85, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '6px', fontWeight: '700' }}>Wallet</div>
+                      <div style={{ fontSize: '12px', opacity: 0.85, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '6px', fontWeight: '700' }}>Wallet</div>
                       <div style={{ fontSize: '18px', fontWeight: '800', marginBottom: '4px' }}>
                         {profileWallets.length > 0 ? profileWallets.map(w => `${w.currency} ${Number(w.balance || 0).toLocaleString()}`).join(' · ') : '—'}
                       </div>
-                      <div style={{ fontSize: '11px', opacity: 0.8 }}>Tap to fund →</div>
+                      <div style={{ fontSize: '12px', opacity: 0.8 }}>Tap to fund →</div>
                     </div>
                     <div
                       onClick={() => window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'commission' }))}
                       style={{
-                        flex: 1, background: hasUnpaidCommissions ? '#FFE8EE' : '#DFFDF4',
-                        border: `1.5px solid ${hasUnpaidCommissions ? '#FF99B3' : '#7EECD2'}`,
+                        flex: 1, background: hasUnpaidCommissions ? 'var(--color-danger-soft)' : 'var(--color-success-soft)',
+                        border: `1.5px solid ${hasUnpaidCommissions ? 'var(--color-danger-border)' : 'var(--color-success-border)'}`,
                         borderRadius: '14px', padding: '14px', cursor: 'pointer'
                       }}>
-                      <div style={{ fontSize: '11px', color: hasUnpaidCommissions ? '#FF3366' : '#00C48C', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '6px' }}>Commission</div>
+                      <div style={{ fontSize: '12px', color: hasUnpaidCommissions ? 'var(--color-danger)' : 'var(--color-success)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '6px' }}>Commission</div>
                       {hasUnpaidCommissions ? (
                         <>
-                          <div style={{ fontSize: '18px', fontWeight: '800', color: '#FF3366' }}>${totalOwed.toFixed(2)}</div>
-                          <div style={{ fontSize: '11px', color: '#FF3366', opacity: 0.85, marginTop: '4px' }}>{pendingCommissions.length} pending →</div>
+                          <div style={{ fontSize: '18px', fontWeight: '800', color: 'var(--color-danger)' }}>${totalOwed.toFixed(2)}</div>
+                          <div style={{ fontSize: '12px', color: 'var(--color-danger)', opacity: 0.85, marginTop: '4px' }}>{pendingCommissions.length} pending →</div>
                         </>
                       ) : (
-                        <div style={{ fontSize: '14px', fontWeight: '700', color: '#00C48C' }}>✓ Clear</div>
+                        <div style={{ fontSize: '14px', fontWeight: '700', color: 'var(--color-success)' }}>✓ Clear</div>
                       )}
                     </div>
                   </div>
@@ -743,14 +743,14 @@ export default function ProfileScreen({ onLogout }) {
                   <div
                     onClick={() => window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'withdrawal' }))}
                     style={{
-                      background: 'linear-gradient(135deg, #6C47FF, #9B59FF)', borderRadius: '14px',
-                      padding: '14px', color: '#fff', cursor: 'pointer',
+                      background: 'var(--color-brand-gradient)', borderRadius: '14px',
+                      padding: '14px', color: 'var(--color-surface)', cursor: 'pointer',
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center'
                     }}>
                     <div>
-                      <div style={{ fontSize: '9px', opacity: 0.8, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Prima Credits</div>
+                      <div style={{ fontSize: '12px', opacity: 0.8, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Prima Credits</div>
                       <div style={{ fontSize: '20px', fontWeight: '800', marginBottom: '2px' }}>{credits?.balance?.toFixed(0) || 0}</div>
-                      <div style={{ fontSize: '10px', opacity: 0.7 }}>≈ ${((credits?.balance || 0) / CREDITS_PER_DOLLAR).toFixed(2)}</div>
+                      <div style={{ fontSize: '12px', opacity: 0.7 }}>≈ ${((credits?.balance || 0) / CREDITS_PER_DOLLAR).toFixed(2)}</div>
                     </div>
                     <div style={{ fontSize: '12px', fontWeight: '700', opacity: 0.85 }}>Withdraw →</div>
                   </div>
@@ -769,28 +769,28 @@ export default function ProfileScreen({ onLogout }) {
                     }}>
                       <ProfileToneIcon name={currentLevel.icon} tone={currentLevel.tone} size={36} />
                       <div style={{ textAlign: 'center' }}>
-                        <div style={{ fontSize: '10px', color: currentLevel.color, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '3px' }}>Current Level</div>
-                        <div style={{ fontSize: '18px', fontWeight: '800', color: '#14123A' }}>{currentLevel.label}</div>
+                        <div style={{ fontSize: '12px', color: currentLevel.color, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '3px' }}>Current Level</div>
+                        <div style={{ fontSize: '18px', fontWeight: '800', color: 'var(--color-text)' }}>{currentLevel.label}</div>
                       </div>
                       <button
                         onClick={e => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'stats' })) }}
                         style={{
                           background: currentLevel.tone, border: 'none', borderRadius: '8px',
-                          padding: '7px 14px', fontSize: '11px', fontWeight: '700',
-                          color: '#fff', cursor: 'pointer', fontFamily: 'inherit'
+                          padding: '7px 14px', fontSize: '12px', fontWeight: '700',
+                          color: 'var(--color-surface)', cursor: 'pointer', fontFamily: 'inherit'
                         }}>Stats →</button>
                     </div>
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '10px' }}>
                       {nextLevelItem ? (
                         <>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span style={{ fontSize: '12px', color: '#8B8FAF', fontWeight: '600' }}>Next:</span>
+                            <span style={{ fontSize: '12px', color: 'var(--color-text-muted)', fontWeight: '600' }}>Next:</span>
                             <ProfileToneIcon name={nextLevelItem.icon} tone={nextLevelItem.tone} size={28} />
-                            <span style={{ fontSize: '14px', fontWeight: '800', color: '#14123A' }}>{nextLevelItem.label}</span>
+                            <span style={{ fontSize: '14px', fontWeight: '800', color: 'var(--color-text)' }}>{nextLevelItem.label}</span>
                           </div>
                           <ProgressBar value={levelProgress} max={100} color={currentLevel.color} bg="rgba(255,255,255,0.6)" height={9} />
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div style={{ fontSize: '12px', fontWeight: '600', color: '#8B8FAF' }}>
+                            <div style={{ fontSize: '12px', fontWeight: '600', color: 'var(--color-text-muted)' }}>
                               {nextLevelItem.min - gigsCompleted > 0 ? `${nextLevelItem.min - gigsCompleted} gigs to go` : 'Ready!'}
                             </div>
                             <div style={{ fontSize: '15px', fontWeight: '800', color: currentLevel.color }}>{levelProgress}%</div>
@@ -798,7 +798,7 @@ export default function ProfileScreen({ onLogout }) {
                         </>
                       ) : (
                         <div style={{ textAlign: 'center' }}>
-                          <ProfileToneIcon name="rating" tone="linear-gradient(135deg,#FFB800,#FF6B2B)" size={44} />
+                          <ProfileToneIcon name="rating" tone="linear-gradient(135deg,var(--color-warning-gold),var(--color-warning))" size={44} />
                           <div style={{ fontSize: '13px', color: currentLevel.color, fontWeight: '700', marginTop: '6px' }}>Max level!</div>
                         </div>
                       )}
@@ -809,50 +809,50 @@ export default function ProfileScreen({ onLogout }) {
                 <>
                   {/* Desktop: stacked full-width */}
                   <div style={{
-                    background: 'linear-gradient(135deg, #00C48C, #00A878)', borderRadius: '16px',
-                    padding: '14px', color: '#fff'
+                    background: 'linear-gradient(135deg, var(--color-success-accent), var(--color-success))', borderRadius: '16px',
+                    padding: '14px', color: 'var(--color-surface)'
                   }}>
-                    <div style={{ fontSize: '9px', opacity: 0.8, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Wallet</div>
+                    <div style={{ fontSize: '12px', opacity: 0.8, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Wallet</div>
                     <div style={{ fontSize: '20px', fontWeight: '800', marginBottom: '8px' }}>
                       {profileWallets.length > 0 ? profileWallets.map(w => `${w.currency} ${Number(w.balance || 0).toLocaleString()}`).join(' · ') : '—'}
                     </div>
                     <button onClick={() => window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'wallet' }))} style={{
                       background: 'rgba(255,255,255,0.25)', border: '1px solid rgba(255,255,255,0.4)',
-                      borderRadius: '8px', padding: '6px 12px', fontSize: '11px', fontWeight: '700',
-                      color: '#fff', cursor: 'pointer', fontFamily: 'inherit', width: '100%'
+                      borderRadius: '8px', padding: '6px 12px', fontSize: '12px', fontWeight: '700',
+                      color: 'var(--color-surface)', cursor: 'pointer', fontFamily: 'inherit', width: '100%'
                     }}>Open Wallet</button>
                   </div>
 
                   <div
                     onClick={() => window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'withdrawal' }))}
                     style={{
-                      background: 'linear-gradient(135deg, #6C47FF, #9B59FF)', borderRadius: '16px',
-                      padding: '14px', color: '#fff', cursor: 'pointer',
+                      background: 'var(--color-brand-gradient)', borderRadius: '16px',
+                      padding: '14px', color: 'var(--color-surface)', cursor: 'pointer',
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center'
                     }}>
                     <div>
-                      <div style={{ fontSize: '9px', opacity: 0.8, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Prima Credits</div>
+                      <div style={{ fontSize: '12px', opacity: 0.8, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Prima Credits</div>
                       <div style={{ fontSize: '20px', fontWeight: '800', marginBottom: '2px' }}>{credits?.balance?.toFixed(0) || 0}</div>
-                      <div style={{ fontSize: '10px', opacity: 0.7 }}>≈ ${((credits?.balance || 0) / CREDITS_PER_DOLLAR).toFixed(2)}</div>
+                      <div style={{ fontSize: '12px', opacity: 0.7 }}>≈ ${((credits?.balance || 0) / CREDITS_PER_DOLLAR).toFixed(2)}</div>
                     </div>
                     <div style={{ fontSize: '12px', fontWeight: '700', opacity: 0.85 }}>Withdraw →</div>
                   </div>
 
                   <div onClick={() => window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'commission' }))} style={{
-                    background: hasUnpaidCommissions ? '#FFE8EE' : '#DFFDF4',
-                    border: `1.5px solid ${hasUnpaidCommissions ? '#FF99B3' : '#7EECD2'}`,
+                    background: hasUnpaidCommissions ? 'var(--color-danger-soft)' : 'var(--color-success-soft)',
+                    border: `1.5px solid ${hasUnpaidCommissions ? 'var(--color-danger-border)' : 'var(--color-success-border)'}`,
                     borderRadius: '16px', padding: '14px', cursor: 'pointer'
                   }}>
-                    <div style={{ fontSize: '9px', color: hasUnpaidCommissions ? '#FF3366' : '#00C48C', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>
+                    <div style={{ fontSize: '12px', color: hasUnpaidCommissions ? 'var(--color-danger)' : 'var(--color-success)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>
                       Commission
                     </div>
                     {hasUnpaidCommissions ? (
                       <>
-                        <div style={{ fontSize: '18px', fontWeight: '800', color: '#FF3366' }}>${totalOwed.toFixed(2)}</div>
-                        <div style={{ fontSize: '10px', color: '#FF3366', opacity: 0.8 }}>{pendingCommissions.length} pending — pay now →</div>
+                        <div style={{ fontSize: '18px', fontWeight: '800', color: 'var(--color-danger)' }}>${totalOwed.toFixed(2)}</div>
+                        <div style={{ fontSize: '12px', color: 'var(--color-danger)', opacity: 0.8 }}>{pendingCommissions.length} pending — pay now →</div>
                       </>
                     ) : (
-                      <div style={{ fontSize: '13px', fontWeight: '700', color: '#00C48C' }}>✓ All clear</div>
+                      <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--color-success)' }}>✓ All clear</div>
                     )}
                   </div>
                 </>
@@ -862,7 +862,7 @@ export default function ProfileScreen({ onLogout }) {
 
           {/* REFER & EARN */}
           <div onClick={() => window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'referral' }))} style={{
-            background: 'linear-gradient(135deg, #6C47FF 0%, #9B59FF 55%, #FF4DCF 100%)',
+            background: 'linear-gradient(135deg, var(--color-brand) 0%, var(--color-brand-mid) 55%, var(--color-brand-highlight) 100%)',
             borderRadius: '16px', padding: '14px 16px', cursor: 'pointer',
             display: 'flex', alignItems: 'center', gap: '12px'
           }}>
@@ -874,8 +874,8 @@ export default function ProfileScreen({ onLogout }) {
               <ProfileToneIcon name="commission" tone="rgba(255,255,255,0.24)" size={32} />
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: '12px', fontWeight: '800', color: '#fff', marginBottom: '2px' }}>Refer & Earn</div>
-              <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.75)' }}>5% of friends' first gig earnings</div>
+              <div style={{ fontSize: '12px', fontWeight: '800', color: 'var(--color-surface)', marginBottom: '2px' }}>Refer & Earn</div>
+              <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.75)' }}>5% of friends' first gig earnings</div>
             </div>
             <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '14px' }}>→</span>
           </div>
@@ -883,7 +883,7 @@ export default function ProfileScreen({ onLogout }) {
           {/* VERIFICATION PROMPTS */}
           {!profile?.selfie_verified && (
             <div onClick={() => setShowSelfie(true)} style={{
-              background: 'linear-gradient(135deg, #FF6B2B, #FF4DCF)', borderRadius: '16px', padding: '14px',
+              background: 'linear-gradient(135deg, var(--color-warning), var(--color-brand-highlight))', borderRadius: '16px', padding: '14px',
               cursor: 'pointer', display: 'flex', gap: '10px', alignItems: 'center'
             }}>
               <div style={{
@@ -893,35 +893,35 @@ export default function ProfileScreen({ onLogout }) {
                 <ProfileToneIcon name="camera" tone="rgba(255,255,255,0.24)" size={32} />
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: '12px', fontWeight: '800', color: '#fff' }}>Verify Yourself</div>
-                <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.8)' }}>Required to post & apply</div>
+                <div style={{ fontSize: '12px', fontWeight: '800', color: 'var(--color-surface)' }}>Verify Yourself</div>
+                <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.8)' }}>Required to post & apply</div>
               </div>
             </div>
           )}
 
           {profile?.reverification_required && (
             <div onClick={() => setShowSelfie(true)} style={{
-              background: '#FFE8EE', border: '1.5px solid #FF99B3', borderRadius: '16px', padding: '14px',
+              background: 'var(--color-danger-soft)', border: '1.5px solid var(--color-danger-border)', borderRadius: '16px', padding: '14px',
               cursor: 'pointer', display: 'flex', gap: '10px', alignItems: 'center'
             }}>
               <div style={{
-                width: '40px', height: '40px', borderRadius: '12px', background: '#FFE8EE',
-                border: '1.5px solid #FF99B3', display: 'flex', alignItems: 'center',
+                width: '40px', height: '40px', borderRadius: '12px', background: 'var(--color-danger-soft)',
+                border: '1.5px solid var(--color-danger-border)', display: 'flex', alignItems: 'center',
                 justifyContent: 'center', fontSize: '20px', flexShrink: 0
               }}>
-                <ProfileToneIcon name="level" tone="linear-gradient(135deg, #FF3366, #FF6B2B)" size={32} />
+                <ProfileToneIcon name="level" tone="linear-gradient(135deg, var(--color-danger), var(--color-warning))" size={32} />
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: '12px', fontWeight: '800', color: '#FF3366' }}>Re-verification Needed</div>
-                <div style={{ fontSize: '10px', color: '#FF3366', opacity: 0.8 }}>Take a new selfie</div>
+                <div style={{ fontSize: '12px', fontWeight: '800', color: 'var(--color-danger)' }}>Re-verification Needed</div>
+                <div style={{ fontSize: '12px', color: 'var(--color-danger)', opacity: 0.8 }}>Take a new selfie</div>
               </div>
             </div>
           )}
 
           {!isMobile && (
             <button onClick={onLogout} style={{
-              width: '100%', background: '#FFE8EE', border: '1.5px solid #FF99B3', borderRadius: '12px',
-              padding: '13px', fontSize: '13px', fontWeight: '700', color: '#FF3366', cursor: 'pointer', fontFamily: 'inherit'
+              width: '100%', background: 'var(--color-danger-soft)', border: '1.5px solid var(--color-danger-border)', borderRadius: '12px',
+              padding: '13px', fontSize: '13px', fontWeight: '700', color: 'var(--color-danger)', cursor: 'pointer', fontFamily: 'inherit'
             }}>Log Out of Prima</button>
           )}
         </div>
@@ -934,10 +934,10 @@ export default function ProfileScreen({ onLogout }) {
             display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px',
             order: 1
           }}>
-            <StatCard icon={<ProfileToneIcon name="rating" tone="linear-gradient(135deg, #FFB800, #FF6B2B)" size={30} />} label="Rating" value={reviewsCount > 0 ? `${Number(profile?.rating || 0).toFixed(1)}` : '0.0'} color="#FFB800" bg="#FFF8E0" />
-            <StatCard icon={<ProfileToneIcon name="completed" tone="linear-gradient(135deg, #00C48C, #00A878)" size={30} />} label="Gigs Done" value={gigsCompleted} sub={`${nextLevelTarget - gigsCompleted} to next level`} color="#00C48C" bg="#DFFDF4" />
-            <StatCard icon={<ProfileToneIcon name="reviews" tone="linear-gradient(135deg, #6C47FF, #9B59FF)" size={30} />} label="Reviews" value={reviewsCount} color="#6C47FF" bg="#EEE9FF" />
-            <StatCard icon={<ProfileToneIcon name="open" tone="linear-gradient(135deg, #FF6B2B, #FF4DCF)" size={30} />} label="Response" value={(profile?.response_time || '1h').replace(/^<\s*/, '')} color="#FF6B2B" bg="#FFF0E8" />
+            <StatCard icon={<ProfileToneIcon name="rating" tone="linear-gradient(135deg, var(--color-warning-gold), var(--color-warning))" size={30} />} label="Rating" value={reviewsCount > 0 ? `${Number(profile?.rating || 0).toFixed(1)}` : '0.0'} color="var(--color-warning-gold)" bg="var(--color-warning-gold-soft)" />
+            <StatCard icon={<ProfileToneIcon name="completed" tone="linear-gradient(135deg, var(--color-success-accent), var(--color-success))" size={30} />} label="Gigs Done" value={gigsCompleted} sub={`${nextLevelTarget - gigsCompleted} to next level`} color="var(--color-success)" bg="var(--color-success-soft)" />
+            <StatCard icon={<ProfileToneIcon name="reviews" tone="var(--color-brand-gradient)" size={30} />} label="Reviews" value={reviewsCount} color="var(--color-brand)" bg="var(--color-brand-soft)" />
+            <StatCard icon={<ProfileToneIcon name="open" tone="linear-gradient(135deg, var(--color-warning), var(--color-brand-highlight))" size={30} />} label="Response" value={(profile?.response_time || '1h').replace(/^<\s*/, '')} color="var(--color-warning)" bg="var(--color-warning-soft)" />
           </div>}
 
           {/* LEVEL PROGRESS CARD — desktop only; on mobile it appears in the sidebar after credits */}
@@ -956,15 +956,15 @@ export default function ProfileScreen({ onLogout }) {
             }}>
               <ProfileToneIcon name={currentLevel.icon} tone={currentLevel.tone} size={36} />
               <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '11px', color: currentLevel.color, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Current Level</div>
-                <div style={{ fontSize: '20px', fontWeight: '800', color: '#14123A' }}>{currentLevel.label}</div>
+                <div style={{ fontSize: '12px', color: currentLevel.color, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Current Level</div>
+                <div style={{ fontSize: '20px', fontWeight: '800', color: 'var(--color-text)' }}>{currentLevel.label}</div>
               </div>
               <button
                 onClick={() => window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'stats' }))}
                 style={{
                   background: currentLevel.tone, border: 'none', borderRadius: '10px',
                   padding: '8px 16px', fontSize: '12px', fontWeight: '700',
-                  color: '#fff', cursor: 'pointer', fontFamily: 'inherit'
+                  color: 'var(--color-surface)', cursor: 'pointer', fontFamily: 'inherit'
                 }}>Stats →</button>
             </div>
 
@@ -973,13 +973,13 @@ export default function ProfileScreen({ onLogout }) {
               {nextLevelItem ? (
                 <>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
-                    <span style={{ fontSize: '13px', color: '#8B8FAF', fontWeight: '600' }}>Next:</span>
+                    <span style={{ fontSize: '13px', color: 'var(--color-text-muted)', fontWeight: '600' }}>Next:</span>
                     <ProfileToneIcon name={nextLevelItem.icon} tone={nextLevelItem.tone} size={32} />
-                    <span style={{ fontSize: '15px', fontWeight: '800', color: '#14123A' }}>{nextLevelItem.label}</span>
+                    <span style={{ fontSize: '15px', fontWeight: '800', color: 'var(--color-text)' }}>{nextLevelItem.label}</span>
                   </div>
                   <ProgressBar value={levelProgress} max={100} color={currentLevel.color} bg="rgba(255,255,255,0.6)" height={10} />
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ fontSize: '13px', fontWeight: '600', color: '#8B8FAF' }}>
+                    <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--color-text-muted)' }}>
                       {nextLevelItem.min - gigsCompleted > 0
                         ? `${nextLevelItem.min - gigsCompleted} gigs to go`
                         : 'Ready to level up!'}
@@ -989,7 +989,7 @@ export default function ProfileScreen({ onLogout }) {
                 </>
               ) : (
                 <div style={{ textAlign: 'center', padding: '8px' }}>
-                  <ProfileToneIcon name="rating" tone="linear-gradient(135deg,#FFB800,#FF6B2B)" size={52} />
+                  <ProfileToneIcon name="rating" tone="linear-gradient(135deg,var(--color-warning-gold),var(--color-warning))" size={52} />
                   <div style={{ fontSize: '14px', color: currentLevel.color, fontWeight: '700', marginTop: '8px' }}>
                     Max level reached!
                   </div>
@@ -1000,20 +1000,20 @@ export default function ProfileScreen({ onLogout }) {
 
           {/* PROGRESS OVERVIEW — compact 2-col */}
           <div style={{
-            background: '#fff', border: '1.5px solid #E2E0FF',
+            background: 'var(--color-surface)', border: '1.5px solid var(--color-border)',
             borderRadius: '16px', padding: '14px 16px',
             maxWidth: isMobile ? '100%' : '50%',
             order: 5
           }}>
-            <div style={{ fontSize: '11px', fontWeight: '800', color: '#14123A', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.6px' }}>Progress</div>
+            <div style={{ fontSize: '12px', fontWeight: '800', color: 'var(--color-text)', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.6px' }}>Progress</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {progressMetrics.map((metric, index) => (
                 <div key={metric.label}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
-                    <span style={{ fontSize: '11px', fontWeight: '700', color: '#8B8FAF' }}>{metric.label}</span>
-                    <span style={{ fontSize: '12px', fontWeight: '800', color: '#14123A' }}>{metric.value}</span>
+                    <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-text-muted)' }}>{metric.label}</span>
+                    <span style={{ fontSize: '12px', fontWeight: '800', color: 'var(--color-text)' }}>{metric.value}</span>
                   </div>
-                  <ProgressBar value={metric.current} max={metric.max} color={metric.color} bg="#E2E0FF" height={5} animateDelay={index * 60} />
+                  <ProgressBar value={metric.current} max={metric.max} color={metric.color} bg="var(--color-border)" height={5} animateDelay={index * 60} />
                 </div>
               ))}
             </div>
@@ -1021,30 +1021,30 @@ export default function ProfileScreen({ onLogout }) {
 
           {/* TABS */}
           <div style={{
-            display: 'flex', gap: '4px', background: '#fff', borderRadius: '14px',
-            padding: '4px', border: '1.5px solid #E2E0FF', overflowX: 'auto',
+            display: 'flex', gap: '4px', background: 'var(--color-surface)', borderRadius: '14px',
+            padding: '4px', border: '1.5px solid var(--color-border)', overflowX: 'auto',
             order: 2
           }}>
             {['about', 'skills', 'experience', 'activity', 'links'].map(tab => (
               <button key={tab} onClick={() => setActiveTab(tab)} style={{
-                flex: 1, minWidth: '80px', background: activeTab === tab ? '#6C47FF' : 'transparent',
-                border: 'none', borderRadius: '10px', padding: '9px 4px', fontSize: '11px',
-                fontWeight: activeTab === tab ? '700' : '500', color: activeTab === tab ? '#fff' : '#8B8FAF',
+                flex: 1, minWidth: '80px', background: activeTab === tab ? 'var(--color-brand)' : 'transparent',
+                border: 'none', borderRadius: '10px', padding: '9px 4px', fontSize: '12px',
+                fontWeight: activeTab === tab ? '700' : '500', color: activeTab === tab ? 'var(--color-surface)' : 'var(--color-text-muted)',
                 cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s', textTransform: 'capitalize'
               }}>{tab}</button>
             ))}
           </div>
 
           {/* TAB CONTENT */}
-          <div style={{ background: '#fff', border: '1.5px solid #E2E0FF', borderRadius: '16px', padding: '20px', order: 3 }}>
+          <div style={{ background: 'var(--color-surface)', border: '1.5px solid var(--color-border)', borderRadius: '16px', padding: '20px', order: 3 }}>
 
             {activeTab === 'about' && (
               <div>
-                <div style={{ fontSize: '11px', fontWeight: '700', color: '#A09DC8', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px' }}>About</div>
+                <div style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-text-subtle)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px' }}>About</div>
                 {profile?.bio ? (
-                  <p style={{ fontSize: '14px', color: '#5B5887', lineHeight: '1.7', marginBottom: '16px' }}>{profile.bio}</p>
+                  <p style={{ fontSize: '14px', color: 'var(--color-text-muted)', lineHeight: '1.7', marginBottom: '16px' }}>{profile.bio}</p>
                 ) : (
-                  <p style={{ fontSize: '13px', color: '#A09DC8', marginBottom: '16px' }}>No bio yet. Click Edit to add one.</p>
+                  <p style={{ fontSize: '13px', color: 'var(--color-text-subtle)', marginBottom: '16px' }}>No bio yet. Click Edit to add one.</p>
                 )}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '10px' }}>
                   {[
@@ -1055,11 +1055,11 @@ export default function ProfileScreen({ onLogout }) {
                     ['completed', 'Joined', profile?.joined_at ? parseTimestamp(profile.joined_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'Recently'],
                     ['accepted', 'Status', profile?.is_available ? 'Available' : 'Busy'],
                   ].map(([icon, key, val]) => (
-                    <div key={key} style={{ background: '#F5F4FF', borderRadius: '10px', padding: '10px 12px', minWidth: 0 }}>
-                      <div style={{ fontSize: '10px', color: '#A09DC8', marginBottom: '5px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div key={key} style={{ background: 'var(--color-page)', borderRadius: '10px', padding: '10px 12px', minWidth: 0 }}>
+                      <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)', marginBottom: '5px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <BrandIcon name={icon} size={22} active={false} />{key}
                       </div>
-                      <div style={{ fontSize: '13px', fontWeight: '600', color: '#14123A', minWidth: 0, overflowWrap: 'anywhere', wordBreak: 'break-word', lineHeight: 1.35 }}>{val}</div>
+                      <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--color-text)', minWidth: 0, overflowWrap: 'anywhere', wordBreak: 'break-word', lineHeight: 1.35 }}>{val}</div>
                     </div>
                   ))}
                 </div>
@@ -1068,7 +1068,7 @@ export default function ProfileScreen({ onLogout }) {
 
             {activeTab === 'skills' && (
               <div>
-                <div style={{ fontSize: '11px', fontWeight: '700', color: '#A09DC8', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px' }}>
+                <div style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-text-subtle)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px' }}>
                   <span style={{ display: 'inline-flex', verticalAlign: 'middle', marginRight: '6px' }}>
                     <BrandIcon name={mode === 'physical' ? 'physical' : 'digital'} size={22} />
                   </span>
@@ -1078,17 +1078,17 @@ export default function ProfileScreen({ onLogout }) {
                   <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                     {profile.skills.map(skill => (
                       <span key={skill} style={{
-                        background: mode === 'physical' ? '#FFF0E8' : '#EEE9FF',
-                        border: `1.5px solid ${mode === 'physical' ? '#FFBC99' : '#B8A5FF'}`,
+                        background: mode === 'physical' ? 'var(--color-warning-soft)' : 'var(--color-brand-soft)',
+                        border: `1.5px solid ${mode === 'physical' ? 'var(--color-warning-border)' : 'var(--color-brand-border-strong)'}`,
                         borderRadius: '20px', padding: '7px 14px', fontSize: '13px', fontWeight: '600',
-                        color: mode === 'physical' ? '#FF6B2B' : '#6C47FF'
+                        color: mode === 'physical' ? 'var(--color-warning)' : 'var(--color-brand)'
                       }}>{skill}</span>
                     ))}
                   </div>
                 ) : (
-                  <div style={{ fontSize: '13px', color: '#A09DC8' }}>No skills added yet. Click Edit to add your skills.</div>
+                  <div style={{ fontSize: '13px', color: 'var(--color-text-subtle)' }}>No skills added yet. Click Edit to add your skills.</div>
                 )}
-                <div style={{ marginTop: '16px', padding: '12px 14px', background: '#F5F4FF', borderRadius: '10px', fontSize: '12px', color: '#8B8FAF', lineHeight: '1.5' }}>
+                <div style={{ marginTop: '16px', padding: '12px 14px', background: 'var(--color-page)', borderRadius: '10px', fontSize: '12px', color: 'var(--color-text-muted)', lineHeight: '1.5' }}>
                   Toggle between Physical and Digital mode above to see how your skills appear to different clients.
                 </div>
               </div>
@@ -1096,28 +1096,28 @@ export default function ProfileScreen({ onLogout }) {
 
             {activeTab === 'experience' && (
               <div>
-                <div style={{ fontSize: '11px', fontWeight: '700', color: '#A09DC8', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px' }}>Work Experience</div>
+                <div style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-text-subtle)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px' }}>Work Experience</div>
                 {profile?.work_experience ? (
-                  <p style={{ fontSize: '14px', color: '#5B5887', lineHeight: '1.7', whiteSpace: 'pre-wrap' }}>{profile.work_experience}</p>
+                  <p style={{ fontSize: '14px', color: 'var(--color-text-muted)', lineHeight: '1.7', whiteSpace: 'pre-wrap' }}>{profile.work_experience}</p>
                 ) : (
-                  <div style={{ fontSize: '13px', color: '#A09DC8' }}>No experience added yet. Click Edit to describe your background.</div>
+                  <div style={{ fontSize: '13px', color: 'var(--color-text-subtle)' }}>No experience added yet. Click Edit to describe your background.</div>
                 )}
               </div>
             )}
 
             {activeTab === 'activity' && (
               <div>
-                <div style={{ fontSize: '11px', fontWeight: '700', color: '#A09DC8', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '14px' }}>This Month</div>
+                <div style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-text-subtle)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '14px' }}>This Month</div>
                 {[
-                  ['Total Earned', `$${totalEarned}`, '#00C48C'],
-                  ['Gigs Completed', gigsCompleted, '#14123A'],
-                  ['Avg. Rating', reviewsCount > 0 ? `${Number(profile?.rating || 0).toFixed(1)}` : '0.0', '#FFB800'],
+                  ['Total Earned', `$${totalEarned}`, 'var(--color-success)'],
+                  ['Gigs Completed', gigsCompleted, 'var(--color-text)'],
+                  ['Avg. Rating', reviewsCount > 0 ? `${Number(profile?.rating || 0).toFixed(1)}` : '0.0', 'var(--color-warning-gold)'],
                 ].map(([label, val, color]) => (
                   <div key={label} style={{
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    padding: '12px 0', borderBottom: '1px solid #E2E0FF'
+                    padding: '12px 0', borderBottom: '1px solid var(--color-border)'
                   }}>
-                    <span style={{ fontSize: '13px', color: '#8B8FAF' }}>{label}</span>
+                    <span style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>{label}</span>
                     <span style={{ fontSize: '14px', fontWeight: '700', color }}>{val}</span>
                   </div>
                 ))}
@@ -1126,12 +1126,12 @@ export default function ProfileScreen({ onLogout }) {
                   <ComingSoonCard
                     icon="stats" title="Full Analytics Dashboard"
                     desc="Earnings trends, gig performance, and conversion rates over time."
-                    gradient="linear-gradient(135deg, #6C47FF, #9B59FF)"
+                    gradient="var(--color-brand-gradient)"
                   />
                   <ComingSoonCard
                     icon="receipt" title="Activity Log"
                     desc="A complete timeline of every action on your account."
-                    gradient="linear-gradient(135deg, #00C48C, #00A878)"
+                    gradient="linear-gradient(135deg, var(--color-success-accent), var(--color-success))"
                   />
                 </div>
               </div>
@@ -1139,7 +1139,7 @@ export default function ProfileScreen({ onLogout }) {
 
             {activeTab === 'links' && (
               <div>
-                <div style={{ fontSize: '11px', fontWeight: '700', color: '#A09DC8', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px' }}>Links & Portfolio</div>
+                <div style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-text-subtle)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px' }}>Links & Portfolio</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {[
                     ['portfolio', 'Portfolio', profile?.portfolio_url],
@@ -1147,19 +1147,19 @@ export default function ProfileScreen({ onLogout }) {
                     ['twitter', 'Twitter / X', profile?.social_twitter],
                   ].map(([icon, label, url]) => (
                     <div key={label} style={{
-                      background: '#F5F4FF', borderRadius: '10px', padding: '12px 14px',
+                      background: 'var(--color-page)', borderRadius: '10px', padding: '12px 14px',
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center'
                     }}>
-                      <span style={{ fontSize: '13px', color: '#8B8FAF', fontWeight: '600' }}>
+                      <span style={{ fontSize: '13px', color: 'var(--color-text-muted)', fontWeight: '600' }}>
                         <span style={{ display: 'inline-flex', verticalAlign: 'middle', marginRight: '8px' }}>
                           <BrandIcon name={icon} size={28} />
                         </span>{label}
                       </span>
                       {url ? (
                         <a href={url.startsWith('http') ? url : `https://${url}`} target="_blank" rel="noreferrer"
-                          style={{ fontSize: '12px', color: '#6C47FF', fontWeight: '600', textDecoration: 'none' }}>Visit →</a>
+                          style={{ fontSize: '12px', color: 'var(--color-brand)', fontWeight: '600', textDecoration: 'none' }}>Visit →</a>
                       ) : (
-                        <span style={{ fontSize: '12px', color: '#A09DC8' }}>Not set</span>
+                        <span style={{ fontSize: '12px', color: 'var(--color-text-subtle)' }}>Not set</span>
                       )}
                     </div>
                   ))}
@@ -1171,18 +1171,18 @@ export default function ProfileScreen({ onLogout }) {
           {/* VERIFICATION BANNER */}
           {!profile?.is_verified && (
             <div style={{
-              background: 'linear-gradient(135deg, #FFF8E0, #FFF0E8)', border: '1.5px solid #FFBC99',
+              background: 'linear-gradient(135deg, var(--color-warning-gold-soft), var(--color-warning-soft))', border: '1.5px solid var(--color-warning-border)',
               borderRadius: '16px', padding: '16px', display: 'flex', gap: '12px', alignItems: 'center',
               order: 6
             }}>
               <BrandIcon name="level" size={42} />
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: '14px', fontWeight: '700', color: '#14123A', marginBottom: '3px' }}>Get Verified on Prima</div>
-                <div style={{ fontSize: '12px', color: '#8B8FAF', lineHeight: '1.5' }}>Verified users get 3x more gig responses. Show clients you're legit.</div>
+                <div style={{ fontSize: '14px', fontWeight: '700', color: 'var(--color-text)', marginBottom: '3px' }}>Get Verified on Prima</div>
+                <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', lineHeight: '1.5' }}>Verified users get 3x more gig responses. Show clients you're legit.</div>
               </div>
               <button style={{
-                background: 'linear-gradient(135deg, #FFB800, #FF6B2B)', border: 'none', borderRadius: '10px',
-                padding: '9px 14px', fontSize: '12px', fontWeight: '700', color: '#fff', cursor: 'pointer',
+                background: 'linear-gradient(135deg, var(--color-warning-gold), var(--color-warning))', border: 'none', borderRadius: '10px',
+                padding: '9px 14px', fontSize: '12px', fontWeight: '700', color: 'var(--color-surface)', cursor: 'pointer',
                 fontFamily: 'inherit', flexShrink: 0, whiteSpace: 'nowrap'
               }}>Get Verified</button>
             </div>
@@ -1190,19 +1190,19 @@ export default function ProfileScreen({ onLogout }) {
 
           {/* COMING SOON SECTION */}
           <div style={{ order: 7 }}>
-            <div style={{ fontSize: '11px', fontWeight: '700', color: '#A09DC8', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '10px' }}>
+            <div style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-text-subtle)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '10px' }}>
               Coming to Prima
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '10px' }}>
               <ComingSoonCard
                 icon="level" title="Verified ID + Payment Badge"
                 desc="A clearer verification badge showing ID and payment method are both verified."
-                gradient="linear-gradient(135deg, #6C47FF, #9B59FF)"
+                gradient="var(--color-brand-gradient)"
               />
               <ComingSoonCard
                 icon="accepted" title="Prima Pro"
                 desc="Priority placement, lower commission, and advanced tools for power users."
-                gradient="linear-gradient(135deg, #FFB800, #FF6B2B)"
+                gradient="linear-gradient(135deg, var(--color-warning-gold), var(--color-warning))"
               />
             </div>
           </div>
@@ -1224,9 +1224,9 @@ export default function ProfileScreen({ onLogout }) {
       {isMobile && (
         <div style={{ marginTop: '16px', paddingBottom: '8px' }}>
           <button onClick={onLogout} style={{
-            width: '100%', background: '#FFE8EE', border: '1.5px solid #FF99B3',
+            width: '100%', background: 'var(--color-danger-soft)', border: '1.5px solid var(--color-danger-border)',
             borderRadius: '14px', padding: '15px', fontSize: '14px', fontWeight: '700',
-            color: '#FF3366', cursor: 'pointer', fontFamily: 'inherit'
+            color: 'var(--color-danger)', cursor: 'pointer', fontFamily: 'inherit'
           }}>Log Out of Prima</button>
         </div>
       )}

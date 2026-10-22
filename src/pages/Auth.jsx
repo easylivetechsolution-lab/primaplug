@@ -71,9 +71,9 @@ export default function Auth() {
   }
 
   return (
-    <div style={{
+    <div className="auth-page" style={{
       minHeight: '100dvh',
-      background: 'linear-gradient(135deg, #6C47FF 0%, #9B59FF 50%, #FF4DCF 100%)',
+      background: 'linear-gradient(135deg, var(--color-brand) 0%, var(--color-brand-mid) 50%, var(--color-brand-highlight) 100%)',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
@@ -83,7 +83,7 @@ export default function Auth() {
       overflowY: 'auto'
     }}>
       <div style={{
-        background: '#fff',
+        background: 'var(--color-surface)',
         borderRadius: '20px',
         padding: 'clamp(16px, 5vw, 32px)',
         width: '100%',
@@ -97,7 +97,7 @@ export default function Auth() {
         }}>
           <div style={{
             width: 'clamp(44px, 12vw, 56px)', height: 'clamp(44px, 12vw, 56px)', borderRadius: '50%',
-            background: '#EEE9FF', border: '1.5px solid #E2E0FF',
+            background: 'var(--color-brand-soft)', border: '1.5px solid var(--color-border)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             flexShrink: 0
           }}>
@@ -110,28 +110,28 @@ export default function Auth() {
           <button
             onClick={() => setShowLangPicker(s => !s)}
             style={{
-              background: '#F5F4FF', border: '1.5px solid #E2E0FF',
+              background: 'var(--color-page)', border: '1.5px solid var(--color-border)',
               borderRadius: '10px', padding: '8px 14px',
-              fontSize: '13px', fontWeight: '600', color: '#14123A',
+              fontSize: '13px', fontWeight: '600', color: 'var(--color-text)',
               cursor: 'pointer', fontFamily: 'inherit',
               display: 'flex', alignItems: 'center', gap: '7px'
             }}>
             <span>{SUPPORTED_LANGUAGES.find(l => l.code === language)?.flag || '🇬🇧'}</span>
             <span>{SUPPORTED_LANGUAGES.find(l => l.code === language)?.native || 'English'}</span>
-            <span style={{ fontSize: '10px', color: '#A09DC8' }}>▼</span>
+            <span style={{ fontSize: '12px', color: 'var(--color-text-subtle)' }}>▼</span>
           </button>
 
           {showLangPicker && (
             <div style={{
               position: 'absolute', top: '44px', right: 0,
-              background: '#fff', border: '1.5px solid #E2E0FF',
+              background: 'var(--color-surface)', border: '1.5px solid var(--color-border)',
               borderRadius: '14px', padding: '8px',
               zIndex: 100, minWidth: '200px',
               boxShadow: '0 8px 32px rgba(108,71,255,0.15)',
               maxHeight: '300px', overflowY: 'auto'
             }}>
               <div style={{
-                fontSize: '10px', fontWeight: '700', color: '#A09DC8',
+                fontSize: '12px', fontWeight: '700', color: 'var(--color-text-subtle)',
                 textTransform: 'uppercase', letterSpacing: '0.8px',
                 padding: '4px 8px 8px'
               }}>{t('chooseLanguage')}</div>
@@ -146,23 +146,23 @@ export default function Auth() {
                     display: 'flex', gap: '10px', alignItems: 'center',
                     padding: '10px 12px', borderRadius: '10px',
                     cursor: 'pointer', transition: 'background 0.1s',
-                    background: language === lang.code ? '#EEE9FF' : 'transparent'
+                    background: language === lang.code ? 'var(--color-brand-soft)' : 'transparent'
                   }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#F5F4FF'}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--color-page)'}
                   onMouseLeave={e => e.currentTarget.style.background =
-                    language === lang.code ? '#EEE9FF' : 'transparent'}
+                    language === lang.code ? 'var(--color-brand-soft)' : 'transparent'}
                 >
                   <span style={{ fontSize: '20px' }}>{lang.flag}</span>
                   <div>
                     <div style={{
                       fontSize: '13px', fontWeight: language === lang.code ? '700' : '500',
-                      color: language === lang.code ? '#6C47FF' : '#14123A'
+                      color: language === lang.code ? 'var(--color-brand)' : 'var(--color-text)'
                     }}>{lang.native}</div>
-                    <div style={{ fontSize: '10px', color: '#A09DC8' }}>{lang.name}</div>
+                    <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)' }}>{lang.name}</div>
                   </div>
                   {language === lang.code && (
                     <span style={{
-                      marginLeft: 'auto', color: '#6C47FF', fontSize: '14px'
+                      marginLeft: 'auto', color: 'var(--color-brand)', fontSize: '14px'
                     }}>✓</span>
                   )}
                 </div>
@@ -177,14 +177,14 @@ export default function Auth() {
             <span style={{
               fontSize: 'clamp(18px, 5vw, 24px)',
               fontWeight: '900',
-              color: '#14123A',
+              color: 'var(--color-text)',
               letterSpacing: '-1.5px',
               fontFamily: 'Georgia, "Times New Roman", serif',
               fontStyle: 'italic',
               lineHeight: 1,
             }}>Prima</span>
           </div>
-          <div style={{ fontSize: '10px', color: '#A09DC8', letterSpacing: '1.5px', textTransform: 'uppercase' }}>
+          <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)', letterSpacing: '1.5px', textTransform: 'uppercase' }}>
             Real-Time Workforce Network
           </div>
         </div>
@@ -192,7 +192,7 @@ export default function Auth() {
         {/* Toggle */}
         <div style={{
           display: 'flex',
-          background: '#F5F4FF',
+          background: 'var(--color-page)',
           borderRadius: '12px',
           padding: '4px',
           marginBottom: '16px'
@@ -201,10 +201,10 @@ export default function Auth() {
             <button key={m} onClick={() => { setMode(m); setError(''); setMessage(''); }}
               style={{
                 flex: 1, padding: '10px',
-                background: mode === m ? '#fff' : 'transparent',
+                background: mode === m ? 'var(--color-surface)' : 'transparent',
                 border: 'none', borderRadius: '9px',
-                fontSize: '13px', fontWeight: '700',
-                color: mode === m ? '#6C47FF' : '#8B8FAF',
+                fontSize: '15px', fontWeight: '700',
+                color: mode === m ? 'var(--color-brand)' : 'var(--color-text-muted)',
                 cursor: 'pointer',
                 boxShadow: mode === m ? '0 2px 8px rgba(108,71,255,0.15)' : 'none',
                 transition: 'all 0.2s',
@@ -224,9 +224,9 @@ export default function Auth() {
               onChange={e => setFullName(e.target.value)}
               style={{
                 padding: '11px 14px', borderRadius: '10px',
-                border: '1.5px solid #E2E0FF', fontSize: '14px',
-                outline: 'none', fontFamily: 'inherit', color: '#14123A',
-                background: '#F5F4FF'
+                border: '1.5px solid var(--color-border)', fontSize: '16px',
+                outline: 'none', fontFamily: 'inherit', color: 'var(--color-text)',
+                background: 'var(--color-page)'
               }}
             />
           )}
@@ -237,9 +237,9 @@ export default function Auth() {
             onChange={e => setEmail(e.target.value)}
             style={{
               padding: '13px 16px', borderRadius: '10px',
-              border: '1.5px solid #E2E0FF', fontSize: '14px',
-              outline: 'none', fontFamily: 'inherit', color: '#14123A',
-              background: '#F5F4FF'
+              border: '1.5px solid var(--color-border)', fontSize: '16px',
+              outline: 'none', fontFamily: 'inherit', color: 'var(--color-text)',
+              background: 'var(--color-page)'
             }}
           />
           <div style={{ position: 'relative' }}>
@@ -251,9 +251,9 @@ export default function Auth() {
               style={{
                 width: '100%', boxSizing: 'border-box',
                 padding: '11px 44px 11px 14px', borderRadius: '10px',
-                border: '1.5px solid #E2E0FF', fontSize: '14px',
-                outline: 'none', fontFamily: 'inherit', color: '#14123A',
-                background: '#F5F4FF'
+                border: '1.5px solid var(--color-border)', fontSize: '16px',
+                outline: 'none', fontFamily: 'inherit', color: 'var(--color-text)',
+                background: 'var(--color-page)'
               }}
             />
             <button
@@ -263,7 +263,7 @@ export default function Auth() {
                 position: 'absolute', right: '12px', top: '50%',
                 transform: 'translateY(-50%)',
                 background: 'none', border: 'none', cursor: 'pointer',
-                padding: '4px', color: '#A09DC8', display: 'flex',
+                padding: '4px', color: 'var(--color-text-subtle)', display: 'flex',
                 alignItems: 'center', justifyContent: 'center'
               }}>
               {showPassword ? (
@@ -284,12 +284,12 @@ export default function Auth() {
 
         {/* Error / Message */}
         {error && (
-          <div style={{ background: '#FFE8EE', border: '1.5px solid #FF99B3', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: '#FF3366', marginBottom: '16px' }}>
+          <div style={{ background: 'var(--color-danger-soft)', border: '1.5px solid var(--color-danger-border)', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: 'var(--color-danger)', marginBottom: '16px' }}>
             {error}
           </div>
         )}
         {message && (
-          <div style={{ background: '#DFFDF4', border: '1.5px solid #7EECD2', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: '#00C48C', marginBottom: '16px' }}>
+          <div style={{ background: 'var(--color-success-soft)', border: '1.5px solid var(--color-success-border)', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: 'var(--color-success)', marginBottom: '16px' }}>
             {message}
           </div>
         )}
@@ -306,15 +306,17 @@ export default function Auth() {
             if (error) showToast(error.message, 'error')
           }}
           type="button"
+          className="pp-button"
           style={{
             width: '100%',
-            background: '#fff',
-            border: '1.5px solid #E2E0FF',
+            background: 'var(--color-surface)',
+            border: '1.5px solid var(--color-border)',
             borderRadius: '12px',
             padding: '11px',
-            fontSize: '13px',
+            minHeight: 'var(--control-height)',
+            fontSize: 'var(--font-size-control)',
             fontWeight: '600',
-            color: '#14123A',
+            color: 'var(--color-text)',
             cursor: 'pointer',
             fontFamily: 'inherit',
             display: 'flex',
@@ -326,11 +328,11 @@ export default function Auth() {
             boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
           }}
           onMouseEnter={e => {
-            e.currentTarget.style.borderColor = '#B8A5FF'
+            e.currentTarget.style.borderColor = 'var(--color-brand-border-strong)'
             e.currentTarget.style.boxShadow = '0 4px 16px rgba(108,71,255,0.15)'
           }}
           onMouseLeave={e => {
-            e.currentTarget.style.borderColor = '#E2E0FF'
+            e.currentTarget.style.borderColor = 'var(--color-border)'
             e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)'
           }}>
           <svg width="20" height="20" viewBox="0 0 24 24">
@@ -347,41 +349,42 @@ export default function Auth() {
           display: 'flex', alignItems: 'center',
           gap: '12px', marginBottom: '10px'
         }}>
-          <div style={{ flex: 1, height: '1px', background: '#E2E0FF' }} />
-          <span style={{ fontSize: '12px', color: '#A09DC8', fontWeight: '500' }}>
+          <div style={{ flex: 1, height: '1px', background: 'var(--color-border)' }} />
+          <span style={{ fontSize: '12px', color: 'var(--color-text-subtle)', fontWeight: '500' }}>
             or continue with email
           </span>
-          <div style={{ flex: 1, height: '1px', background: '#E2E0FF' }} />
+          <div style={{ flex: 1, height: '1px', background: 'var(--color-border)' }} />
         </div>
 
         {/* Submit */}
         <button
           onClick={mode === 'login' ? handleLogin : handleSignup}
           disabled={loading}
+          className="pp-button pp-button--primary"
           style={{
-            width: '100%', padding: '12px',
-            background: loading ? '#B8A5FF' : 'linear-gradient(135deg, #6C47FF, #9B59FF)',
-            border: 'none', borderRadius: '12px',
-            fontSize: '15px', fontWeight: '700',
-            color: '#fff', cursor: loading ? 'not-allowed' : 'pointer',
+            width: '100%', padding: '12px', minHeight: 'var(--control-height)',
+            background: loading ? 'var(--color-brand-border-strong)' : 'var(--color-brand-gradient)',
+            border: 'none', borderRadius: 'var(--control-radius)',
+            fontSize: '16px', fontWeight: '700',
+            color: 'var(--color-surface)', cursor: loading ? 'not-allowed' : 'pointer',
             boxShadow: '0 4px 20px rgba(108,71,255,0.4)',
             fontFamily: 'inherit', transition: 'all 0.2s'
           }}>
           {loading ? 'Please wait...' : mode === 'login' ? t('signIn') : t('signUp')}
         </button>
 
-        <div style={{ textAlign: 'center', marginTop: '12px', fontSize: '11px', color: '#A09DC8' }}>
+        <div style={{ textAlign: 'center', marginTop: '12px', fontSize: '13px', color: 'var(--color-text-subtle)' }}>
           By continuing you agree to PrimaPlug's{' '}
           <Link
             to="/terms"
-            style={{ color: '#6C47FF', fontWeight: '700', textDecoration: 'none' }}
+            style={{ color: 'var(--color-brand)', fontWeight: '700', textDecoration: 'none' }}
           >
             Terms of Service
           </Link>
           {' '}and{' '}
           <Link
             to="/privacy"
-            style={{ color: '#6C47FF', fontWeight: '700', textDecoration: 'none' }}
+            style={{ color: 'var(--color-brand)', fontWeight: '700', textDecoration: 'none' }}
           >
             Privacy Policy
           </Link>
@@ -395,7 +398,7 @@ export default function Auth() {
         boxSizing: 'border-box'
       }}>
         <p style={{
-          fontSize: '10px', color: 'rgba(255,255,255,0.55)',
+          fontSize: '12px', color: 'rgba(255,255,255,0.55)',
           textAlign: 'center', margin: '0 0 8px',
           textTransform: 'uppercase', letterSpacing: '1px'
         }}>
@@ -409,7 +412,7 @@ export default function Auth() {
             download="PrimaPlug.apk"
             style={{
               flex: 1, textDecoration: 'none',
-              background: '#fff',
+              background: 'var(--color-surface)',
               borderRadius: '14px',
               padding: '12px 10px',
               display: 'flex', alignItems: 'center', gap: '10px',
@@ -419,8 +422,8 @@ export default function Auth() {
               <path d="M17.6 9.48l1.84-3.18c.16-.31.04-.69-.26-.85-.29-.15-.65-.06-.83.22l-1.88 3.24A10.27 10.27 0 0 0 12 8c-1.53 0-2.98.35-4.47.91L5.65 5.67a.64.64 0 0 0-.83-.22.64.64 0 0 0-.26.85l1.84 3.18A9.98 9.98 0 0 0 2 17h20a9.98 9.98 0 0 0-4.4-7.52zM8.5 14a1 1 0 1 1 0-2 1 1 0 0 1 0 2zm7 0a1 1 0 1 1 0-2 1 1 0 0 1 0 2z" fill="#3DDC84"/>
             </svg>
             <div>
-              <div style={{ fontSize: '9px', color: '#8B8FAF', fontWeight: '600' }}>Download for</div>
-              <div style={{ fontSize: '13px', fontWeight: '800', color: '#14123A', lineHeight: 1.2 }}>Android</div>
+              <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', fontWeight: '600' }}>Download for</div>
+              <div style={{ fontSize: '13px', fontWeight: '800', color: 'var(--color-text)', lineHeight: 1.2 }}>Android</div>
             </div>
           </a>
 
@@ -429,7 +432,7 @@ export default function Auth() {
             onClick={() => setShowIOSSteps(s => !s)}
             style={{
               flex: 1,
-              background: '#fff',
+              background: 'var(--color-surface)',
               border: 'none',
               borderRadius: '14px',
               padding: '12px 10px',
@@ -437,12 +440,12 @@ export default function Auth() {
               cursor: 'pointer', fontFamily: 'inherit',
               boxShadow: '0 4px 20px rgba(0,0,0,0.15)'
             }}>
-            <svg viewBox="0 0 24 24" width="26" height="26" fill="#14123A">
+            <svg viewBox="0 0 24 24" width="26" height="26" fill="var(--color-text)">
               <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
             </svg>
             <div style={{ textAlign: 'left' }}>
-              <div style={{ fontSize: '9px', color: '#8B8FAF', fontWeight: '600' }}>Add to</div>
-              <div style={{ fontSize: '13px', fontWeight: '800', color: '#14123A', lineHeight: 1.2 }}>iPhone</div>
+              <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', fontWeight: '600' }}>Add to</div>
+              <div style={{ fontSize: '13px', fontWeight: '800', color: 'var(--color-text)', lineHeight: 1.2 }}>iPhone</div>
             </div>
           </button>
         </div>
@@ -450,12 +453,12 @@ export default function Auth() {
         {showIOSSteps && (
           <div style={{
             marginTop: '10px',
-            background: '#fff',
+            background: 'var(--color-surface)',
             borderRadius: '14px',
             padding: '14px 16px',
             boxShadow: '0 4px 20px rgba(0,0,0,0.12)'
           }}>
-            <div style={{ fontSize: '12px', fontWeight: '800', color: '#14123A', marginBottom: '10px' }}>
+            <div style={{ fontSize: '12px', fontWeight: '800', color: 'var(--color-text)', marginBottom: '10px' }}>
               Add PrimaPlug to your iPhone
             </div>
             {[
@@ -467,13 +470,13 @@ export default function Auth() {
               <div key={num} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', marginBottom: '8px' }}>
                 <div style={{
                   width: '22px', height: '22px', borderRadius: '50%', flexShrink: 0,
-                  background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+                  background: 'var(--color-brand-gradient)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '11px', fontWeight: '800', color: '#fff'
+                  fontSize: '13px', fontWeight: '800', color: 'var(--color-surface)'
                 }}>{num}</div>
                 <div>
-                  <div style={{ fontSize: '12px', fontWeight: '700', color: '#14123A' }}>{title}</div>
-                  <div style={{ fontSize: '10px', color: '#8B8FAF', marginTop: '1px' }}>{sub}</div>
+                  <div style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-text)' }}>{title}</div>
+                  <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: '1px' }}>{sub}</div>
                 </div>
               </div>
             ))}

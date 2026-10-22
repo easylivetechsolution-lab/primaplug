@@ -18,11 +18,11 @@ const TRENDING = [
 ]
 
 const QUICK_FILTERS = [
-  { label: '📌 Physical', key: 'type', value: 'physical' },
-  { label: '💻 Digital', key: 'type', value: 'digital' },
-  { label: '🔴 Urgent NOW', key: 'urgency', value: 'now' },
-  { label: '📅 Today', key: 'urgency', value: 'today' },
-  { label: '💰 High Pay', key: 'pay', value: 'high' },
+  { label: 'Physical', icon: 'physical', key: 'type', value: 'physical' },
+  { label: 'Digital', icon: 'digital', key: 'type', value: 'digital' },
+  { label: 'Urgent now', icon: 'open', key: 'urgency', value: 'now' },
+  { label: 'Today', icon: 'calendar', key: 'urgency', value: 'today' },
+  { label: 'High pay', icon: 'pay', key: 'pay', value: 'high' },
 ]
 
 export default function Search({ onClose }) {
@@ -145,7 +145,7 @@ export default function Search({ onClose }) {
           onClick={e => e.stopPropagation()}
           style={{
             position: 'absolute', top: 0, left: 0, right: 0,
-            background: '#fff',
+            background: 'var(--color-surface)',
             borderRadius: '0 0 24px 24px',
             boxShadow: '0 20px 60px rgba(108,71,255,0.2)',
             maxHeight: '90vh', overflowY: 'auto',
@@ -157,22 +157,22 @@ export default function Search({ onClose }) {
             padding: '16px 20px',
             display: 'flex', gap: '12px',
             alignItems: 'center',
-            borderBottom: '1.5px solid #E2E0FF',
+            borderBottom: '1.5px solid var(--color-border)',
             position: 'sticky', top: 0,
-            background: '#fff', zIndex: 10
+            background: 'var(--color-surface)', zIndex: 10
           }}>
             <div style={{
               flex: 1, display: 'flex',
               alignItems: 'center', gap: '10px',
-              background: '#F5F4FF',
-              border: '1.5px solid #E2E0FF',
+              background: 'var(--color-page)',
+              border: '1.5px solid var(--color-border)',
               borderRadius: '14px', padding: '10px 14px',
               transition: 'border-color 0.15s'
             }}
               onFocus={() => {}}
             >
               <span style={{ flexShrink: 0, display: 'inline-flex' }}>
-                {loading ? '⏳' : <BrandIcon name="search" size={32} />}
+                <BrandIcon name="search" size={32} />
               </span>
               <input
                 ref={inputRef}
@@ -188,14 +188,14 @@ export default function Search({ onClose }) {
                 style={{
                   flex: 1, background: 'none', border: 'none',
                   outline: 'none', fontSize: '15px',
-                  color: '#14123A', fontFamily: 'inherit'
+                  color: 'var(--color-text)', fontFamily: 'inherit'
                 }}
               />
               {query && (
                 <span
                   onClick={() => setQuery('')}
                   style={{
-                    fontSize: '18px', color: '#A09DC8',
+                    fontSize: '18px', color: 'var(--color-text-subtle)',
                     cursor: 'pointer', flexShrink: 0
                   }}>×</span>
               )}
@@ -203,10 +203,10 @@ export default function Search({ onClose }) {
             <button
               onClick={onClose}
               style={{
-                background: '#F5F4FF', border: '1.5px solid #E2E0FF',
+                background: 'var(--color-page)', border: '1.5px solid var(--color-border)',
                 borderRadius: '10px', padding: '10px 14px',
                 fontSize: '13px', fontWeight: '600',
-                color: '#8B8FAF', cursor: 'pointer',
+                color: 'var(--color-text-muted)', cursor: 'pointer',
                 fontFamily: 'inherit', whiteSpace: 'nowrap'
               }}>Cancel</button>
           </div>
@@ -216,7 +216,7 @@ export default function Search({ onClose }) {
             padding: '12px 20px',
             display: 'flex', gap: '8px',
             overflowX: 'auto', scrollbarWidth: 'none',
-            borderBottom: '1px solid #F5F4FF'
+            borderBottom: '1px solid var(--color-page)'
           }}>
             {QUICK_FILTERS.map(filter => {
               const active = activeFilters[filter.key] === filter.value
@@ -225,14 +225,15 @@ export default function Search({ onClose }) {
                   key={filter.label}
                   onClick={() => toggleFilter(filter)}
                   style={{
-                    background: active ? '#EEE9FF' : 'transparent',
-                    border: `1.5px solid ${active ? '#B8A5FF' : '#E2E0FF'}`,
+                    background: active ? 'var(--color-brand-soft)' : 'transparent',
+                    border: `1.5px solid ${active ? 'var(--color-brand-border-strong)' : 'var(--color-border)'}`,
                     borderRadius: '20px', padding: '6px 13px',
                     fontSize: '12px', fontWeight: '600',
-                    color: active ? '#6C47FF' : '#8B8FAF',
+                    color: active ? 'var(--color-brand)' : 'var(--color-text-muted)',
                     cursor: 'pointer', whiteSpace: 'nowrap',
                     fontFamily: 'inherit', transition: 'all 0.15s'
                   }}>
+                  <BrandIcon name={filter.icon} size={20} active={active} />
                   {filter.label}
                 </button>
               )
@@ -249,14 +250,14 @@ export default function Search({ onClose }) {
                     alignItems: 'center', marginBottom: '12px'
                   }}>
                     <div style={{
-                      fontSize: '11px', fontWeight: '700', color: '#A09DC8',
+                      fontSize: '12px', fontWeight: '700', color: 'var(--color-text-subtle)',
                       textTransform: 'uppercase', letterSpacing: '1px'
                     }}>Recent Searches</div>
                     <button
                       onClick={clearRecent}
                       style={{
                         background: 'none', border: 'none',
-                        fontSize: '12px', color: '#6C47FF',
+                        fontSize: '12px', color: 'var(--color-brand)',
                         fontWeight: '600', cursor: 'pointer',
                         fontFamily: 'inherit'
                       }}>Clear all</button>
@@ -274,11 +275,11 @@ export default function Search({ onClose }) {
                           borderRadius: '10px', cursor: 'pointer',
                           transition: 'background 0.1s'
                         }}
-                        onMouseEnter={e => e.currentTarget.style.background = '#F5F4FF'}
+                        onMouseEnter={e => e.currentTarget.style.background = 'var(--color-page)'}
                         onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                       >
-                        <span style={{ fontSize: '16px', color: '#A09DC8' }}>🕐</span>
-                        <span style={{ fontSize: '14px', color: '#14123A', flex: 1 }}>
+                        <BrandIcon name="open" size={20} active={false} />
+                        <span style={{ fontSize: '14px', color: 'var(--color-text)', flex: 1 }}>
                           {search}
                         </span>
                         <span
@@ -288,7 +289,7 @@ export default function Search({ onClose }) {
                             setRecentSearches(updated)
                             localStorage.setItem(RECENT_KEY, JSON.stringify(updated))
                           }}
-                          style={{ fontSize: '16px', color: '#A09DC8', cursor: 'pointer' }}>
+                          style={{ fontSize: '16px', color: 'var(--color-text-subtle)', cursor: 'pointer' }}>
                           ×
                         </span>
                       </div>
@@ -300,31 +301,31 @@ export default function Search({ onClose }) {
               {/* Trending */}
               <div>
                 <div style={{
-                  fontSize: '11px', fontWeight: '700', color: '#A09DC8',
+                  fontSize: '12px', fontWeight: '700', color: 'var(--color-text-subtle)',
                   textTransform: 'uppercase', letterSpacing: '1px',
                   marginBottom: '12px'
-                }}>🔥 Trending Searches</div>
+                }}>Trending Searches</div>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                   {TRENDING.map(t => (
                     <button
                       key={t}
                       onClick={() => { setQuery(t); saveRecentSearch(t) }}
                       style={{
-                        background: '#F5F4FF', border: '1.5px solid #E2E0FF',
+                        background: 'var(--color-page)', border: '1.5px solid var(--color-border)',
                         borderRadius: '20px', padding: '8px 14px',
                         fontSize: '13px', fontWeight: '500',
-                        color: '#5B5887', cursor: 'pointer',
+                        color: 'var(--color-text-muted)', cursor: 'pointer',
                         fontFamily: 'inherit', transition: 'all 0.15s'
                       }}
                       onMouseEnter={e => {
-                        e.currentTarget.style.background = '#EEE9FF'
-                        e.currentTarget.style.borderColor = '#B8A5FF'
-                        e.currentTarget.style.color = '#6C47FF'
+                        e.currentTarget.style.background = 'var(--color-brand-soft)'
+                        e.currentTarget.style.borderColor = 'var(--color-brand-border-strong)'
+                        e.currentTarget.style.color = 'var(--color-brand)'
                       }}
                       onMouseLeave={e => {
-                        e.currentTarget.style.background = '#F5F4FF'
-                        e.currentTarget.style.borderColor = '#E2E0FF'
-                        e.currentTarget.style.color = '#5B5887'
+                        e.currentTarget.style.background = 'var(--color-page)'
+                        e.currentTarget.style.borderColor = 'var(--color-border)'
+                        e.currentTarget.style.color = 'var(--color-text-muted)'
                       }}>
                       {t}
                     </button>
@@ -345,7 +346,7 @@ export default function Search({ onClose }) {
                   padding: '12px 0', alignItems: 'center'
                 }}>
                   <span style={{
-                    fontSize: '12px', color: '#8B8FAF',
+                    fontSize: '12px', color: 'var(--color-text-muted)',
                     marginRight: '8px'
                   }}>
                     {totalResults} result{totalResults !== 1 ? 's' : ''}
@@ -355,11 +356,11 @@ export default function Search({ onClose }) {
                       key={tab}
                       onClick={() => setActiveTab(tab)}
                       style={{
-                        background: activeTab === tab ? '#6C47FF' : 'transparent',
-                        border: `1.5px solid ${activeTab === tab ? '#6C47FF' : '#E2E0FF'}`,
+                        background: activeTab === tab ? 'var(--color-brand)' : 'transparent',
+                        border: `1.5px solid ${activeTab === tab ? 'var(--color-brand)' : 'var(--color-border)'}`,
                         borderRadius: '20px', padding: '5px 13px',
                         fontSize: '12px', fontWeight: '600',
-                        color: activeTab === tab ? '#fff' : '#8B8FAF',
+                        color: activeTab === tab ? 'var(--color-surface)' : 'var(--color-text-muted)',
                         cursor: 'pointer', fontFamily: 'inherit',
                         textTransform: 'capitalize'
                       }}>
@@ -377,9 +378,9 @@ export default function Search({ onClose }) {
               {loading && (
                 <div style={{
                   textAlign: 'center', padding: '32px',
-                  color: '#A09DC8', fontSize: '14px'
+                  color: 'var(--color-text-subtle)', fontSize: '14px'
                 }}>
-                  <div style={{ fontSize: '28px', marginBottom: '8px' }}>⏳</div>
+                  <span className="search-loading-spinner" aria-hidden="true" />
                   Searching...
                 </div>
               )}
@@ -398,13 +399,13 @@ export default function Search({ onClose }) {
                   </div>
                   <div style={{
                     fontSize: '16px', fontWeight: '700',
-                    color: '#14123A', marginBottom: '6px'
+                    color: 'var(--color-text)', marginBottom: '6px'
                   }}>No results for "{query}"</div>
-                  <div style={{ fontSize: '13px', color: '#A09DC8', marginBottom: '20px' }}>
+                  <div style={{ fontSize: '13px', color: 'var(--color-text-subtle)', marginBottom: '20px' }}>
                     Try different keywords or check the spelling
                   </div>
                   <div style={{
-                    fontSize: '12px', color: '#8B8FAF', marginBottom: '12px'
+                    fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '12px'
                   }}>Try searching for:</div>
                   <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
                     {TRENDING.slice(0, 4).map(t => (
@@ -412,10 +413,10 @@ export default function Search({ onClose }) {
                         key={t}
                         onClick={() => setQuery(t)}
                         style={{
-                          background: '#EEE9FF', border: '1.5px solid #B8A5FF',
+                          background: 'var(--color-brand-soft)', border: '1.5px solid var(--color-brand-border-strong)',
                           borderRadius: '20px', padding: '6px 12px',
                           fontSize: '12px', fontWeight: '600',
-                          color: '#6C47FF', cursor: 'pointer',
+                          color: 'var(--color-brand)', cursor: 'pointer',
                           fontFamily: 'inherit'
                         }}>{t}</button>
                     ))}
@@ -428,7 +429,7 @@ export default function Search({ onClose }) {
                 <div style={{ marginBottom: '20px' }}>
                   {activeTab === 'all' && (
                     <div style={{
-                      fontSize: '11px', fontWeight: '700', color: '#A09DC8',
+                      fontSize: '12px', fontWeight: '700', color: 'var(--color-text-subtle)',
                       textTransform: 'uppercase', letterSpacing: '1px',
                       marginBottom: '10px', marginTop: '8px'
                     }}>Gigs ({results.gigs.length})</div>
@@ -444,17 +445,17 @@ export default function Search({ onClose }) {
                           setSelectedGig(gig)
                         }}
                         style={{
-                          background: '#fff', border: '1.5px solid #E2E0FF',
+                          background: 'var(--color-surface)', border: '1.5px solid var(--color-border)',
                           borderRadius: '14px', padding: '14px',
                           cursor: 'pointer', transition: 'all 0.15s'
                         }}
                         onMouseEnter={e => {
-                          e.currentTarget.style.borderColor = '#B8A5FF'
+                          e.currentTarget.style.borderColor = 'var(--color-brand-border-strong)'
                           e.currentTarget.style.transform = 'translateY(-1px)'
                           e.currentTarget.style.boxShadow = '0 4px 16px rgba(108,71,255,0.1)'
                         }}
                         onMouseLeave={e => {
-                          e.currentTarget.style.borderColor = '#E2E0FF'
+                          e.currentTarget.style.borderColor = 'var(--color-border)'
                           e.currentTarget.style.transform = 'translateY(0)'
                           e.currentTarget.style.boxShadow = 'none'
                         }}>
@@ -468,41 +469,44 @@ export default function Search({ onClose }) {
                               flexWrap: 'wrap', marginBottom: '5px'
                             }}>
                               <span style={{
-                                background: gig.urgency === 'now' ? '#FFE8EE' : '#FFF0E8',
-                                border: `1px solid ${gig.urgency === 'now' ? '#FF99B3' : '#FFBC99'}`,
+                                background: gig.urgency === 'now' ? 'var(--color-danger-soft)' : 'var(--color-warning-soft)',
+                                border: `1px solid ${gig.urgency === 'now' ? 'var(--color-danger-border)' : 'var(--color-warning-border)'}`,
                                 borderRadius: '4px', padding: '1px 7px',
-                                fontSize: '8px', fontWeight: '800',
-                                color: gig.urgency === 'now' ? '#FF3366' : '#FF6B2B',
+                                fontSize: '12px', fontWeight: '800',
+                                color: gig.urgency === 'now' ? 'var(--color-danger)' : 'var(--color-warning)',
                                 letterSpacing: '0.8px'
                               }}>
                                 {gig.urgency?.toUpperCase()}
                               </span>
                               <span style={{
-                                background: gig.type === 'physical' ? '#FFF0E8' : '#EEE9FF',
-                                border: `1px solid ${gig.type === 'physical' ? '#FFBC99' : '#B8A5FF'}`,
+                                background: gig.type === 'physical' ? 'var(--color-warning-soft)' : 'var(--color-brand-soft)',
+                                border: `1px solid ${gig.type === 'physical' ? 'var(--color-warning-border)' : 'var(--color-brand-border-strong)'}`,
                                 borderRadius: '4px', padding: '1px 7px',
-                                fontSize: '8px', fontWeight: '700',
-                                color: gig.type === 'physical' ? '#FF6B2B' : '#6C47FF'
+                                fontSize: '12px', fontWeight: '700',
+                                color: gig.type === 'physical' ? 'var(--color-warning)' : 'var(--color-brand)'
                               }}>
-                                {gig.type === 'physical' ? '📌 LOCAL' : '💻 REMOTE'}
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                  <BrandIcon name={gig.type === 'physical' ? 'physical' : 'digital'} size={18} active={false} />
+                                  {gig.type === 'physical' ? 'LOCAL' : 'REMOTE'}
+                                </span>
                               </span>
                               {gig.field && (
                                 <span style={{
-                                  background: '#F5F4FF', border: '1px solid #E2E0FF',
+                                  background: 'var(--color-page)', border: '1px solid var(--color-border)',
                                   borderRadius: '4px', padding: '1px 7px',
-                                  fontSize: '8px', fontWeight: '600', color: '#8B8FAF'
+                                  fontSize: '12px', fontWeight: '600', color: 'var(--color-text-muted)'
                                 }}>{gig.field}</span>
                               )}
                             </div>
                             <div style={{
-                              fontSize: '14px', fontWeight: '700', color: '#14123A'
+                              fontSize: '14px', fontWeight: '700', color: 'var(--color-text)'
                             }}>{gig.title}</div>
                           </div>
                           <div style={{ textAlign: 'right', flexShrink: 0 }}>
                             <div style={{
-                              fontSize: '16px', fontWeight: '800', color: '#00C48C'
+                              fontSize: '16px', fontWeight: '800', color: 'var(--color-success)'
                             }}>${gig.pay_min}</div>
-                            <div style={{ fontSize: '10px', color: '#A09DC8' }}>
+                            <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)' }}>
                               –${gig.pay_max}
                             </div>
                           </div>
@@ -513,22 +517,22 @@ export default function Search({ onClose }) {
                         }}>
                           <div style={{
                             width: '26px', height: '26px', borderRadius: '7px',
-                            background: '#EEE9FF', display: 'flex',
+                            background: 'var(--color-brand-soft)', display: 'flex',
                             alignItems: 'center', justifyContent: 'center',
-                            fontSize: '11px', fontWeight: '800',
-                            color: '#6C47FF', overflow: 'hidden', flexShrink: 0
+                            fontSize: '12px', fontWeight: '800',
+                            color: 'var(--color-brand)', overflow: 'hidden', flexShrink: 0
                           }}>
                             {gig.users?.avatar_url ? (
                               <img src={gig.users.avatar_url} alt=""
                                 style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                             ) : gig.users?.full_name?.charAt(0) || '?'}
                           </div>
-                          <span style={{ fontSize: '11px', color: '#8B8FAF' }}>
+                          <span style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
                             {gig.users?.full_name || 'Anonymous'}
                           </span>
                           {gig.location && (
-                            <span style={{ fontSize: '10px', color: '#FF6B2B' }}>
-                              📍 {gig.location}
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '12px', color: 'var(--color-warning)' }}>
+                              <BrandIcon name="location" size={18} active={false} /> {gig.location}
                             </span>
                           )}
                         </div>
@@ -543,7 +547,7 @@ export default function Search({ onClose }) {
                 <div>
                   {activeTab === 'all' && (
                     <div style={{
-                      fontSize: '11px', fontWeight: '700', color: '#A09DC8',
+                      fontSize: '12px', fontWeight: '700', color: 'var(--color-text-subtle)',
                       textTransform: 'uppercase', letterSpacing: '1px',
                       marginBottom: '10px'
                     }}>People ({results.users.length})</div>
@@ -559,28 +563,28 @@ export default function Search({ onClose }) {
                           setViewingProfile(person.id)
                         }}
                         style={{
-                          background: '#fff', border: '1.5px solid #E2E0FF',
+                          background: 'var(--color-surface)', border: '1.5px solid var(--color-border)',
                           borderRadius: '14px', padding: '14px',
                           cursor: 'pointer', transition: 'all 0.15s',
                           display: 'flex', gap: '12px', alignItems: 'center'
                         }}
                         onMouseEnter={e => {
-                          e.currentTarget.style.borderColor = '#B8A5FF'
+                          e.currentTarget.style.borderColor = 'var(--color-brand-border-strong)'
                           e.currentTarget.style.transform = 'translateY(-1px)'
                           e.currentTarget.style.boxShadow = '0 4px 16px rgba(108,71,255,0.1)'
                         }}
                         onMouseLeave={e => {
-                          e.currentTarget.style.borderColor = '#E2E0FF'
+                          e.currentTarget.style.borderColor = 'var(--color-border)'
                           e.currentTarget.style.transform = 'translateY(0)'
                           e.currentTarget.style.boxShadow = 'none'
                         }}>
                         <div style={{
                           width: '48px', height: '48px', borderRadius: '13px',
-                          background: '#EEE9FF', display: 'flex',
+                          background: 'var(--color-brand-soft)', display: 'flex',
                           alignItems: 'center', justifyContent: 'center',
                           fontSize: '18px', fontWeight: '800',
-                          color: '#6C47FF', overflow: 'hidden', flexShrink: 0,
-                          border: '1.5px solid #B8A5FF'
+                          color: 'var(--color-brand)', overflow: 'hidden', flexShrink: 0,
+                          border: '1.5px solid var(--color-brand-border-strong)'
                         }}>
                           {person.avatar_url ? (
                             <img src={person.avatar_url} alt=""
@@ -590,33 +594,33 @@ export default function Search({ onClose }) {
                         <div style={{ flex: 1 }}>
                           <div style={{
                             fontSize: '14px', fontWeight: '700',
-                            color: '#14123A', marginBottom: '2px'
+                            color: 'var(--color-text)', marginBottom: '2px'
                           }}>{person.full_name}</div>
-                          <div style={{ fontSize: '11px', color: '#8B8FAF', marginBottom: '4px' }}>
-                            @{person.username} · ⭐ {person.rating || 5.0} · Trust {person.trust_score || 100}%
+                          <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>
+                            @{person.username} · <BrandIcon name="rating" size={16} active={false} /> {person.rating || 5.0} · Trust {person.trust_score || 100}%
                           </div>
                           {person.skills && person.skills.length > 0 && (
                             <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
                               {person.skills.slice(0, 3).map(skill => (
                                 <span key={skill} style={{
-                                  background: '#EEE9FF', borderRadius: '20px',
-                                  padding: '2px 8px', fontSize: '10px',
-                                  fontWeight: '600', color: '#6C47FF'
+                                  background: 'var(--color-brand-soft)', borderRadius: '20px',
+                                  padding: '2px 8px', fontSize: '12px',
+                                  fontWeight: '600', color: 'var(--color-brand)'
                                 }}>{skill}</span>
                               ))}
                             </div>
                           )}
                         </div>
                         <div style={{
-                          background: '#EEE9FF', borderRadius: '9px',
+                          background: 'var(--color-brand-soft)', borderRadius: '9px',
                           padding: '6px 10px', textAlign: 'center',
                           flexShrink: 0
                         }}>
                           <div style={{
-                            fontSize: '13px', fontWeight: '800', color: '#6C47FF'
+                            fontSize: '13px', fontWeight: '800', color: 'var(--color-brand)'
                           }}>{person.trust_score || 100}%</div>
                           <div style={{
-                            fontSize: '8px', color: '#A09DC8',
+                            fontSize: '12px', color: 'var(--color-text-subtle)',
                             fontWeight: '600', letterSpacing: '0.3px'
                           }}>TRUST</div>
                         </div>
@@ -642,7 +646,7 @@ export default function Search({ onClose }) {
           fontFamily: "'Plus Jakarta Sans', sans-serif"
         }} onClick={() => setSelectedGig(null)}>
           <div onClick={e => e.stopPropagation()} style={{
-            background: '#fff',
+            background: 'var(--color-surface)',
             borderRadius: '22px 22px 0 0',
             padding: '24px', width: '100%',
             maxWidth: '640px', maxHeight: '88vh',
@@ -651,7 +655,7 @@ export default function Search({ onClose }) {
           }}>
             <div style={{
               width: '40px', height: '4px',
-              background: '#E2E0FF', borderRadius: '2px',
+              background: 'var(--color-border)', borderRadius: '2px',
               margin: '0 auto 20px'
             }} />
 
@@ -659,24 +663,27 @@ export default function Search({ onClose }) {
               display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '12px'
             }}>
               <span style={{
-                background: '#FFF0E8', border: '1px solid #FFBC99',
+                background: 'var(--color-warning-soft)', border: '1px solid var(--color-warning-border)',
                 borderRadius: '6px', padding: '3px 9px',
-                fontSize: '9px', fontWeight: '800', color: '#FF6B2B'
+                fontSize: '12px', fontWeight: '800', color: 'var(--color-warning)'
               }}>{selectedGig.urgency?.toUpperCase()}</span>
               <span style={{
-                background: selectedGig.type === 'physical' ? '#FFF0E8' : '#EEE9FF',
-                border: `1px solid ${selectedGig.type === 'physical' ? '#FFBC99' : '#B8A5FF'}`,
+                background: selectedGig.type === 'physical' ? 'var(--color-warning-soft)' : 'var(--color-brand-soft)',
+                border: `1px solid ${selectedGig.type === 'physical' ? 'var(--color-warning-border)' : 'var(--color-brand-border-strong)'}`,
                 borderRadius: '6px', padding: '3px 9px',
-                fontSize: '9px', fontWeight: '700',
-                color: selectedGig.type === 'physical' ? '#FF6B2B' : '#6C47FF'
+                fontSize: '12px', fontWeight: '700',
+                color: selectedGig.type === 'physical' ? 'var(--color-warning)' : 'var(--color-brand)'
               }}>
-                {selectedGig.type === 'physical' ? '📌 PHYSICAL' : '💻 DIGITAL'}
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                  <BrandIcon name={selectedGig.type === 'physical' ? 'physical' : 'digital'} size={18} active={false} />
+                  {selectedGig.type === 'physical' ? 'PHYSICAL' : 'DIGITAL'}
+                </span>
               </span>
             </div>
 
             <h2 style={{
               fontSize: '20px', fontWeight: '800',
-              color: '#14123A', marginBottom: '16px'
+              color: 'var(--color-text)', marginBottom: '16px'
             }}>{selectedGig.title}</h2>
 
             <div style={{
@@ -684,39 +691,39 @@ export default function Search({ onClose }) {
               gap: '10px', marginBottom: '14px'
             }}>
               <div style={{
-                background: '#DFFDF4', border: '1.5px solid #7EECD2',
+                background: 'var(--color-success-soft)', border: '1.5px solid var(--color-success-border)',
                 borderRadius: '14px', padding: '14px'
               }}>
                 <div style={{
-                  fontSize: '9px', color: '#00C48C', fontWeight: '700',
+                  fontSize: '12px', color: 'var(--color-success)', fontWeight: '700',
                   textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '4px'
                 }}>Pay Range</div>
                 <div style={{
-                  fontSize: '22px', fontWeight: '800', color: '#00C48C'
+                  fontSize: '22px', fontWeight: '800', color: 'var(--color-success)'
                 }}>${selectedGig.pay_min}</div>
-                <div style={{ fontSize: '11px', color: '#00C48C', opacity: 0.7 }}>
+                <div style={{ fontSize: '12px', color: 'var(--color-success)', opacity: 0.7 }}>
                   up to ${selectedGig.pay_max}
                 </div>
               </div>
               <div style={{
-                background: '#FFF0E8', border: '1.5px solid #FFBC99',
+                background: 'var(--color-warning-soft)', border: '1.5px solid var(--color-warning-border)',
                 borderRadius: '14px', padding: '14px'
               }}>
                 <div style={{
-                  fontSize: '9px', color: '#FF6B2B', fontWeight: '700',
+                  fontSize: '12px', color: 'var(--color-warning)', fontWeight: '700',
                   textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '4px'
                 }}>Location</div>
                 <div style={{
-                  fontSize: '13px', fontWeight: '700', color: '#14123A'
+                  fontSize: '13px', fontWeight: '700', color: 'var(--color-text)'
                 }}>{selectedGig.location || 'Remote'}</div>
               </div>
             </div>
 
             {selectedGig.description && (
               <div style={{
-                background: '#F5F4FF', borderRadius: '12px',
+                background: 'var(--color-page)', borderRadius: '12px',
                 padding: '14px', marginBottom: '14px',
-                fontSize: '13px', color: '#5B5887', lineHeight: '1.6'
+                fontSize: '13px', color: 'var(--color-text-muted)', lineHeight: '1.6'
               }}>{selectedGig.description}</div>
             )}
 
@@ -724,17 +731,17 @@ export default function Search({ onClose }) {
               <button
                 onClick={() => setSelectedGig(null)}
                 style={{
-                  flex: 1, background: '#F5F4FF',
-                  border: '1.5px solid #E2E0FF',
+                  flex: 1, background: 'var(--color-page)',
+                  border: '1.5px solid var(--color-border)',
                   borderRadius: '12px', padding: '14px',
                   fontSize: '13px', fontWeight: '600',
-                  color: '#8B8FAF', cursor: 'pointer', fontFamily: 'inherit'
+                  color: 'var(--color-text-muted)', cursor: 'pointer', fontFamily: 'inherit'
                 }}>Close</button>
               <button style={{
                 flex: 2,
-                background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+                background: 'var(--color-brand-gradient)',
                 border: 'none', borderRadius: '12px', padding: '14px',
-                fontSize: '14px', fontWeight: '700', color: '#fff',
+                fontSize: '14px', fontWeight: '700', color: 'var(--color-surface)',
                 cursor: 'pointer', fontFamily: 'inherit',
                 boxShadow: '0 4px 20px rgba(108,71,255,0.35)'
               }}>⚡ Apply for This Gig</button>

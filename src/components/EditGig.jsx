@@ -5,21 +5,21 @@ import { showToast } from '../utils/toast'
 
 const inputStyle = {
   width: '100%',
-  background: '#F5F4FF',
-  border: '1.5px solid #E2E0FF',
+  background: 'var(--color-page)',
+  border: '1.5px solid var(--color-border)',
   borderRadius: '10px',
   padding: '11px 14px',
   fontSize: '13px',
-  color: '#14123A',
+  color: 'var(--color-text)',
   fontFamily: 'inherit',
   outline: 'none',
   boxSizing: 'border-box',
 }
 
 const labelStyle = {
-  fontSize: '10px',
+  fontSize: '12px',
   fontWeight: '700',
-  color: '#8B8FAF',
+  color: 'var(--color-text-muted)',
   textTransform: 'uppercase',
   letterSpacing: '0.8px',
   display: 'block',
@@ -27,10 +27,10 @@ const labelStyle = {
 }
 
 const URGENCY_OPTIONS = [
-  { key: 'now', label: '🔴 NOW', color: '#FF3366', bg: '#FFE8EE', border: '#FF99B3' },
-  { key: 'today', label: '🟠 Today', color: '#FF6B2B', bg: '#FFF0E8', border: '#FFBC99' },
-  { key: 'scheduled', label: '🟣 Scheduled', color: '#6C47FF', bg: '#EEE9FF', border: '#B8A5FF' },
-  { key: 'flexible', label: '⚪ Flexible', color: '#8B8FAF', bg: '#F5F4FF', border: '#E2E0FF' },
+  { key: 'now', label: '🔴 NOW', color: 'var(--color-danger)', bg: 'var(--color-danger-soft)', border: 'var(--color-danger-border)' },
+  { key: 'today', label: '🟠 Today', color: 'var(--color-warning)', bg: 'var(--color-warning-soft)', border: 'var(--color-warning-border)' },
+  { key: 'scheduled', label: '🟣 Scheduled', color: 'var(--color-brand)', bg: 'var(--color-brand-soft)', border: 'var(--color-brand-border-strong)' },
+  { key: 'flexible', label: '⚪ Flexible', color: 'var(--color-text-muted)', bg: 'var(--color-page)', border: 'var(--color-border)' },
 ]
 
 export default function EditGig({ gig, onClose, onSaved }) {
@@ -110,7 +110,7 @@ export default function EditGig({ gig, onClose, onSaved }) {
       fontFamily: "'Plus Jakarta Sans', sans-serif"
     }} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} style={{
-        background: '#fff',
+        background: 'var(--color-surface)',
         borderRadius: '22px 22px 0 0',
         width: '100%', maxWidth: '640px',
         maxHeight: '90vh', overflowY: 'auto',
@@ -118,7 +118,7 @@ export default function EditGig({ gig, onClose, onSaved }) {
       }}>
         <div style={{
           width: '40px', height: '4px',
-          background: '#E2E0FF', borderRadius: '2px',
+          background: 'var(--color-border)', borderRadius: '2px',
           margin: '12px auto 0'
         }} />
 
@@ -130,17 +130,17 @@ export default function EditGig({ gig, onClose, onSaved }) {
           }}>
             <div>
               <div style={{
-                fontSize: '10px', color: '#6C47FF', fontWeight: '700',
+                fontSize: '12px', color: 'var(--color-brand)', fontWeight: '700',
                 letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '3px'
               }}>Edit Gig</div>
-              <div style={{ fontSize: '20px', fontWeight: '800', color: '#14123A' }}>
+              <div style={{ fontSize: '20px', fontWeight: '800', color: 'var(--color-text)' }}>
                 Update Details
               </div>
             </div>
-            <button onClick={onClose} style={{
-              background: '#F5F4FF', border: '1.5px solid #E2E0FF',
+            <button  onClick={onClose} style={{
+              background: 'var(--color-page)', border: '1.5px solid var(--color-border)',
               borderRadius: '10px', width: '36px', height: '36px',
-              fontSize: '18px', color: '#8B8FAF', cursor: 'pointer',
+              fontSize: '18px', color: 'var(--color-text-muted)', cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontFamily: 'inherit'
             }}>×</button>
@@ -154,8 +154,8 @@ export default function EditGig({ gig, onClose, onSaved }) {
                 style={inputStyle}
                 value={form.title}
                 onChange={e => update('title', e.target.value)}
-                onFocus={e => e.target.style.borderColor = '#B8A5FF'}
-                onBlur={e => e.target.style.borderColor = '#E2E0FF'}
+                onFocus={e => e.target.style.borderColor = 'var(--color-brand-border-strong)'}
+                onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
               />
             </div>
 
@@ -166,8 +166,8 @@ export default function EditGig({ gig, onClose, onSaved }) {
                 style={{ ...inputStyle, minHeight: '80px', resize: 'vertical' }}
                 value={form.description}
                 onChange={e => update('description', e.target.value)}
-                onFocus={e => e.target.style.borderColor = '#B8A5FF'}
-                onBlur={e => e.target.style.borderColor = '#E2E0FF'}
+                onFocus={e => e.target.style.borderColor = 'var(--color-brand-border-strong)'}
+                onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
               />
             </div>
 
@@ -180,11 +180,11 @@ export default function EditGig({ gig, onClose, onSaved }) {
                     key={opt.key}
                     onClick={() => update('urgency', opt.key)}
                     style={{
-                      background: form.urgency === opt.key ? opt.bg : '#F5F4FF',
-                      border: `1.5px solid ${form.urgency === opt.key ? opt.border : '#E2E0FF'}`,
+                      background: form.urgency === opt.key ? opt.bg : 'var(--color-page)',
+                      border: `1.5px solid ${form.urgency === opt.key ? opt.border : 'var(--color-border)'}`,
                       borderRadius: '10px', padding: '8px 14px',
                       fontSize: '12px', fontWeight: '600',
-                      color: form.urgency === opt.key ? opt.color : '#8B8FAF',
+                      color: form.urgency === opt.key ? opt.color : 'var(--color-text-muted)',
                       cursor: 'pointer', fontFamily: 'inherit',
                       transition: 'all 0.15s'
                     }}>{opt.label}</button>
@@ -212,8 +212,8 @@ export default function EditGig({ gig, onClose, onSaved }) {
                   style={inputStyle}
                   value={form.pay_min}
                   onChange={e => update('pay_min', e.target.value)}
-                  onFocus={e => e.target.style.borderColor = '#B8A5FF'}
-                  onBlur={e => e.target.style.borderColor = '#E2E0FF'}
+                  onFocus={e => e.target.style.borderColor = 'var(--color-brand-border-strong)'}
+                  onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
                 />
               </div>
               <div>
@@ -223,8 +223,8 @@ export default function EditGig({ gig, onClose, onSaved }) {
                   style={inputStyle}
                   value={form.pay_max}
                   onChange={e => update('pay_max', e.target.value)}
-                  onFocus={e => e.target.style.borderColor = '#B8A5FF'}
-                  onBlur={e => e.target.style.borderColor = '#E2E0FF'}
+                  onFocus={e => e.target.style.borderColor = 'var(--color-brand-border-strong)'}
+                  onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
                 />
               </div>
             </div>
@@ -239,11 +239,11 @@ export default function EditGig({ gig, onClose, onSaved }) {
                     onClick={() => update('slots', n)}
                     style={{
                       width: '44px', height: '44px',
-                      background: form.slots === n ? '#6C47FF' : '#F5F4FF',
-                      border: `1.5px solid ${form.slots === n ? '#6C47FF' : '#E2E0FF'}`,
+                      background: form.slots === n ? 'var(--color-brand)' : 'var(--color-page)',
+                      border: `1.5px solid ${form.slots === n ? 'var(--color-brand)' : 'var(--color-border)'}`,
                       borderRadius: '10px', fontSize: '14px',
                       fontWeight: '700',
-                      color: form.slots === n ? '#fff' : '#8B8FAF',
+                      color: form.slots === n ? 'var(--color-surface)' : 'var(--color-text-muted)',
                       cursor: 'pointer', fontFamily: 'inherit',
                       transition: 'all 0.15s'
                     }}>{n}</button>
@@ -267,11 +267,11 @@ export default function EditGig({ gig, onClose, onSaved }) {
             {/* Physical address — only for physical gigs */}
             {gig.type === 'physical' && (
               <div style={{
-                background: '#F5F4FF', border: '1.5px solid #E2E0FF',
+                background: 'var(--color-page)', border: '1.5px solid var(--color-border)',
                 borderRadius: '14px', padding: '16px'
               }}>
                 <div style={{
-                  fontSize: '11px', fontWeight: '700', color: '#6C47FF',
+                  fontSize: '12px', fontWeight: '700', color: 'var(--color-brand)',
                   textTransform: 'uppercase', letterSpacing: '0.8px',
                   marginBottom: '12px'
                 }}>📍 Address Details</div>
@@ -279,45 +279,45 @@ export default function EditGig({ gig, onClose, onSaved }) {
                   <div>
                     <label style={labelStyle}>Building / House Number</label>
                     <input
-                      style={{ ...inputStyle, background: '#fff' }}
+                      style={{ ...inputStyle, background: 'var(--color-surface)' }}
                       placeholder="e.g. No. 12, Block B"
                       value={form.house_number}
                       onChange={e => update('house_number', e.target.value)}
-                      onFocus={e => e.target.style.borderColor = '#B8A5FF'}
-                      onBlur={e => e.target.style.borderColor = '#E2E0FF'}
+                      onFocus={e => e.target.style.borderColor = 'var(--color-brand-border-strong)'}
+                      onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
                     />
                   </div>
                   <div>
                     <label style={labelStyle}>Street</label>
                     <input
-                      style={{ ...inputStyle, background: '#fff' }}
+                      style={{ ...inputStyle, background: 'var(--color-surface)' }}
                       placeholder="e.g. Adeola Odeku Street"
                       value={form.street}
                       onChange={e => update('street', e.target.value)}
-                      onFocus={e => e.target.style.borderColor = '#B8A5FF'}
-                      onBlur={e => e.target.style.borderColor = '#E2E0FF'}
+                      onFocus={e => e.target.style.borderColor = 'var(--color-brand-border-strong)'}
+                      onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
                     />
                   </div>
                   <div>
                     <label style={labelStyle}>Landmark</label>
                     <input
-                      style={{ ...inputStyle, background: '#fff' }}
+                      style={{ ...inputStyle, background: 'var(--color-surface)' }}
                       placeholder="e.g. Behind GTBank"
                       value={form.landmark}
                       onChange={e => update('landmark', e.target.value)}
-                      onFocus={e => e.target.style.borderColor = '#B8A5FF'}
-                      onBlur={e => e.target.style.borderColor = '#E2E0FF'}
+                      onFocus={e => e.target.style.borderColor = 'var(--color-brand-border-strong)'}
+                      onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
                     />
                   </div>
                   <div>
                     <label style={labelStyle}>Additional Directions</label>
                     <textarea
-                      style={{ ...inputStyle, background: '#fff', minHeight: '60px', resize: 'vertical' }}
+                      style={{ ...inputStyle, background: 'var(--color-surface)', minHeight: '60px', resize: 'vertical' }}
                       placeholder="Any extra directions for the worker..."
                       value={form.directions}
                       onChange={e => update('directions', e.target.value)}
-                      onFocus={e => e.target.style.borderColor = '#B8A5FF'}
-                      onBlur={e => e.target.style.borderColor = '#E2E0FF'}
+                      onFocus={e => e.target.style.borderColor = 'var(--color-brand-border-strong)'}
+                      onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
                     />
                   </div>
                 </div>
@@ -331,14 +331,14 @@ export default function EditGig({ gig, onClose, onSaved }) {
               style={{
                 width: '100%',
                 background: saved
-                  ? '#DFFDF4'
+                  ? 'var(--color-success-soft)'
                   : saving
-                    ? '#B8A5FF'
-                    : 'linear-gradient(135deg, #6C47FF, #9B59FF)',
-                border: saved ? '1.5px solid #7EECD2' : 'none',
+                    ? 'var(--color-brand-border-strong)'
+                    : 'var(--color-brand-gradient)',
+                border: saved ? '1.5px solid var(--color-success-border)' : 'none',
                 borderRadius: '12px', padding: '14px',
                 fontSize: '14px', fontWeight: '700',
-                color: saved ? '#00C48C' : '#fff',
+                color: saved ? 'var(--color-success)' : 'var(--color-surface)',
                 cursor: (saving || saved) ? 'not-allowed' : 'pointer',
                 boxShadow: (saving || saved) ? 'none' : '0 4px 20px rgba(108,71,255,0.35)',
                 fontFamily: 'inherit', transition: 'all 0.2s'

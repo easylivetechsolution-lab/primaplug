@@ -309,7 +309,7 @@ export default function SelfieVerification({ onComplete, onSkip }) {
       fontFamily: "'Plus Jakarta Sans', sans-serif"
     }}>
       <div style={{
-        background: '#fff', borderRadius: '24px',
+        background: 'var(--color-surface)', borderRadius: '24px',
         width: '100%', maxWidth: '420px',
         overflow: 'hidden',
         boxShadow: '0 24px 64px rgba(0,0,0,0.4)',
@@ -322,7 +322,7 @@ export default function SelfieVerification({ onComplete, onSkip }) {
             <div style={{
               width: '80px', height: '80px',
               borderRadius: '50%',
-              background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+              background: 'var(--color-brand-gradient)',
               display: 'flex', alignItems: 'center',
               justifyContent: 'center', fontSize: '36px',
               margin: '0 auto 20px'
@@ -330,11 +330,11 @@ export default function SelfieVerification({ onComplete, onSkip }) {
 
             <div style={{
               fontSize: '22px', fontWeight: '800',
-              color: '#14123A', marginBottom: '10px'
+              color: 'var(--color-text)', marginBottom: '10px'
             }}>Selfie Verification</div>
 
             <div style={{
-              fontSize: '13px', color: '#8B8FAF',
+              fontSize: '13px', color: 'var(--color-text-muted)',
               lineHeight: '1.7', marginBottom: '24px'
             }}>
               Prima requires a one-time selfie to verify you are a real person.
@@ -343,13 +343,13 @@ export default function SelfieVerification({ onComplete, onSkip }) {
 
             {/* What to expect */}
             <div style={{
-              background: '#F5F4FF', borderRadius: '14px',
+              background: 'var(--color-page)', borderRadius: '14px',
               padding: '16px', marginBottom: '24px',
               textAlign: 'left'
             }}>
               <div style={{
-                fontSize: '11px', fontWeight: '700',
-                color: '#6C47FF', textTransform: 'uppercase',
+                fontSize: '12px', fontWeight: '700',
+                color: 'var(--color-brand)', textTransform: 'uppercase',
                 letterSpacing: '1px', marginBottom: '12px'
               }}>What to expect</div>
               {[
@@ -365,7 +365,7 @@ export default function SelfieVerification({ onComplete, onSkip }) {
                 }}>
                   <span style={{ fontSize: '16px' }}>{icon}</span>
                   <span style={{
-                    fontSize: '12px', color: '#5B5887'
+                    fontSize: '12px', color: 'var(--color-text-muted)'
                   }}>{text}</span>
                 </div>
               ))}
@@ -373,9 +373,9 @@ export default function SelfieVerification({ onComplete, onSkip }) {
 
             {error && (
               <div style={{
-                background: '#FFE8EE', border: '1.5px solid #FF99B3',
+                background: 'var(--color-danger-soft)', border: '1.5px solid var(--color-danger-border)',
                 borderRadius: '10px', padding: '10px 14px',
-                fontSize: '12px', color: '#FF3366',
+                fontSize: '12px', color: 'var(--color-danger)',
                 marginBottom: '16px'
               }}>{error}</div>
             )}
@@ -384,9 +384,9 @@ export default function SelfieVerification({ onComplete, onSkip }) {
               onClick={startCamera}
               style={{
                 width: '100%',
-                background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+                background: 'var(--color-brand-gradient)',
                 border: 'none', borderRadius: '14px', padding: '16px',
-                fontSize: '15px', fontWeight: '700', color: '#fff',
+                fontSize: '15px', fontWeight: '700', color: 'var(--color-surface)',
                 cursor: 'pointer', fontFamily: 'inherit',
                 boxShadow: '0 4px 20px rgba(108,71,255,0.4)',
                 marginBottom: '10px'
@@ -399,7 +399,7 @@ export default function SelfieVerification({ onComplete, onSkip }) {
               style={{
                 width: '100%', background: 'transparent',
                 border: 'none', padding: '12px',
-                fontSize: '13px', color: '#A09DC8',
+                fontSize: '13px', color: 'var(--color-text-subtle)',
                 cursor: 'pointer', fontFamily: 'inherit'
               }}>
               Skip for now — limited access
@@ -416,9 +416,9 @@ export default function SelfieVerification({ onComplete, onSkip }) {
               alignItems: 'center'
             }}>
               <div style={{
-                fontSize: '16px', fontWeight: '700', color: '#14123A'
+                fontSize: '16px', fontWeight: '700', color: 'var(--color-text)'
               }}>Position your face</div>
-              <button
+              <button 
                 onClick={() => {
                   if (streamRef.current) {
                     streamRef.current.getTracks().forEach(t => t.stop())
@@ -426,7 +426,7 @@ export default function SelfieVerification({ onComplete, onSkip }) {
                   setStep('intro')
                 }}
                 style={{
-                  background: '#F5F4FF', border: 'none',
+                  background: 'var(--color-page)', border: 'none',
                   borderRadius: '50%', width: '32px', height: '32px',
                   fontSize: '16px', cursor: 'pointer',
                   display: 'flex', alignItems: 'center',
@@ -485,7 +485,7 @@ export default function SelfieVerification({ onComplete, onSkip }) {
                 <ellipse
                   cx="200" cy="200" rx="140" ry="170"
                   fill="none"
-                  stroke="#6C47FF"
+                  stroke="var(--color-brand)"
                   strokeWidth="3"
                 />
               </svg>
@@ -495,7 +495,7 @@ export default function SelfieVerification({ onComplete, onSkip }) {
                 position: 'absolute',
                 bottom: '16px', left: 0, right: 0,
                 textAlign: 'center',
-                color: '#fff',
+                color: 'var(--color-surface)',
                 fontSize: '12px',
                 fontWeight: '600',
                 textShadow: '0 1px 4px rgba(0,0,0,0.8)',
@@ -510,9 +510,9 @@ export default function SelfieVerification({ onComplete, onSkip }) {
             <div style={{ padding: '0 24px 28px' }}>
               {error && (
                 <div style={{
-                  background: '#FFE8EE', border: '1.5px solid #FF99B3',
+                  background: 'var(--color-danger-soft)', border: '1.5px solid var(--color-danger-border)',
                   borderRadius: '10px', padding: '10px 14px',
-                  fontSize: '12px', color: '#FF3366',
+                  fontSize: '12px', color: 'var(--color-danger)',
                   marginBottom: '12px'
                 }}>{error}</div>
               )}
@@ -521,9 +521,9 @@ export default function SelfieVerification({ onComplete, onSkip }) {
                 onClick={takeSelfie}
                 style={{
                   width: '100%',
-                  background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+                  background: 'var(--color-brand-gradient)',
                   border: 'none', borderRadius: '14px', padding: '16px',
-                  fontSize: '15px', fontWeight: '700', color: '#fff',
+                  fontSize: '15px', fontWeight: '700', color: 'var(--color-surface)',
                   cursor: 'pointer', fontFamily: 'inherit',
                   boxShadow: '0 4px 20px rgba(108,71,255,0.4)',
                   display: 'flex', alignItems: 'center',
@@ -551,10 +551,10 @@ export default function SelfieVerification({ onComplete, onSkip }) {
             }}>
               <div style={{
                 fontSize: '18px', fontWeight: '800',
-                color: '#14123A', marginBottom: '4px'
+                color: 'var(--color-text)', marginBottom: '4px'
               }}>Looking good!</div>
               <div style={{
-                fontSize: '13px', color: '#8B8FAF'
+                fontSize: '13px', color: 'var(--color-text-muted)'
               }}>Is this photo clear and well-lit?</div>
             </div>
 
@@ -571,7 +571,7 @@ export default function SelfieVerification({ onComplete, onSkip }) {
               <div style={{
                 position: 'absolute', bottom: '12px', right: '12px',
                 width: '40px', height: '40px', borderRadius: '50%',
-                background: '#00C48C', border: '3px solid #fff',
+                background: 'var(--color-success)', border: '3px solid #fff',
                 display: 'flex', alignItems: 'center',
                 justifyContent: 'center', fontSize: '18px'
               }}>✓</div>
@@ -580,9 +580,9 @@ export default function SelfieVerification({ onComplete, onSkip }) {
             {error && (
               <div style={{
                 margin: '0 24px',
-                background: '#FFE8EE', border: '1.5px solid #FF99B3',
+                background: 'var(--color-danger-soft)', border: '1.5px solid var(--color-danger-border)',
                 borderRadius: '10px', padding: '10px 14px',
-                fontSize: '12px', color: '#FF3366',
+                fontSize: '12px', color: 'var(--color-danger)',
                 marginBottom: '12px'
               }}>{error}</div>
             )}
@@ -594,11 +594,11 @@ export default function SelfieVerification({ onComplete, onSkip }) {
               <button
                 onClick={retake}
                 style={{
-                  flex: 1, background: '#F5F4FF',
-                  border: '1.5px solid #E2E0FF',
+                  flex: 1, background: 'var(--color-page)',
+                  border: '1.5px solid var(--color-border)',
                   borderRadius: '12px', padding: '14px',
                   fontSize: '13px', fontWeight: '700',
-                  color: '#8B8FAF', cursor: 'pointer',
+                  color: 'var(--color-text-muted)', cursor: 'pointer',
                   fontFamily: 'inherit'
                 }}>🔄 Retake</button>
               <button
@@ -607,10 +607,10 @@ export default function SelfieVerification({ onComplete, onSkip }) {
                 style={{
                   flex: 2,
                   background: uploading
-                    ? '#B8A5FF'
-                    : 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+                    ? 'var(--color-brand-border-strong)'
+                    : 'var(--color-brand-gradient)',
                   border: 'none', borderRadius: '12px', padding: '14px',
-                  fontSize: '13px', fontWeight: '700', color: '#fff',
+                  fontSize: '13px', fontWeight: '700', color: 'var(--color-surface)',
                   cursor: uploading ? 'not-allowed' : 'pointer',
                   fontFamily: 'inherit',
                   boxShadow: uploading
@@ -629,18 +629,18 @@ export default function SelfieVerification({ onComplete, onSkip }) {
           }}>
             <div style={{
               width: '80px', height: '80px',
-              borderRadius: '50%', background: '#DFFDF4',
-              border: '3px solid #7EECD2',
+              borderRadius: '50%', background: 'var(--color-success-soft)',
+              border: '3px solid var(--color-success-border)',
               display: 'flex', alignItems: 'center',
               justifyContent: 'center', fontSize: '36px',
               margin: '0 auto 20px'
             }}>✓</div>
             <div style={{
               fontSize: '22px', fontWeight: '800',
-              color: '#14123A', marginBottom: '8px'
+              color: 'var(--color-text)', marginBottom: '8px'
             }}>Verified!</div>
             <div style={{
-              fontSize: '13px', color: '#8B8FAF', lineHeight: '1.6'
+              fontSize: '13px', color: 'var(--color-text-muted)', lineHeight: '1.6'
             }}>
               Your selfie has been saved securely.
               You now have full access to Prima.

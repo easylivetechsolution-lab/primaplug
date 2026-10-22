@@ -48,7 +48,7 @@ const LocationSearch = ({ value, onSelect, inputStyle }) => {
       {results.length > 0 && !selected && (
         <div style={{
           position: 'absolute', top: '100%', left: 0, right: 0,
-          background: '#fff', border: '1.5px solid #B8A5FF',
+          background: 'var(--color-surface)', border: '1.5px solid var(--color-brand-border-strong)',
           borderRadius: '12px', marginTop: '4px',
           zIndex: 100, overflow: 'hidden',
           boxShadow: '0 8px 32px rgba(108,71,255,0.15)'
@@ -68,18 +68,18 @@ const LocationSearch = ({ value, onSelect, inputStyle }) => {
                 }}
                 style={{
                   padding: '11px 14px', cursor: 'pointer',
-                  borderBottom: i < results.length - 1 ? '1px solid #F5F4FF' : 'none',
+                  borderBottom: i < results.length - 1 ? '1px solid var(--color-page)' : 'none',
                   display: 'flex', gap: '8px', alignItems: 'center'
                 }}
-                onMouseEnter={e => e.currentTarget.style.background = '#F5F4FF'}
-                onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--color-page)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'var(--color-surface)'}
               >
                 <span>📍</span>
                 <div>
-                  <div style={{ fontSize: '13px', fontWeight: '600', color: '#14123A' }}>
+                  <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--color-text)' }}>
                     {name || r.display_name.split(',')[0]}
                   </div>
-                  <div style={{ fontSize: '10px', color: '#A09DC8' }}>
+                  <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)' }}>
                     {r.display_name.substring(0, 50)}...
                   </div>
                 </div>
@@ -190,21 +190,21 @@ export default function Onboarding() {
 
   const inputStyle = {
     width: '100%',
-    background: '#F5F4FF',
-    border: '1.5px solid #E2E0FF',
+    background: 'var(--color-page)',
+    border: '1.5px solid var(--color-border)',
     borderRadius: '10px',
     padding: '12px 14px',
     fontSize: '14px',
-    color: '#14123A',
+    color: 'var(--color-text)',
     fontFamily: 'inherit',
     outline: 'none',
     boxSizing: 'border-box'
   }
 
   const labelStyle = {
-    fontSize: '11px',
+    fontSize: '12px',
     fontWeight: '700',
-    color: '#8B8FAF',
+    color: 'var(--color-text-muted)',
     textTransform: 'uppercase',
     letterSpacing: '0.8px',
     display: 'block',
@@ -216,7 +216,7 @@ export default function Onboarding() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #6C47FF 0%, #9B59FF 50%, #FF4DCF 100%)',
+      background: 'linear-gradient(135deg, var(--color-brand) 0%, var(--color-brand-mid) 50%, var(--color-brand-highlight) 100%)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -224,7 +224,7 @@ export default function Onboarding() {
       fontFamily: "'Plus Jakarta Sans', sans-serif"
     }}>
       <div style={{
-        background: '#fff',
+        background: 'var(--color-surface)',
         borderRadius: '24px',
         padding: '36px',
         width: '100%',
@@ -238,7 +238,7 @@ export default function Onboarding() {
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
           <div style={{
             width: '52px', height: '52px',
-            background: 'linear-gradient(135deg, #6C47FF, #FF4DCF)',
+            background: 'linear-gradient(135deg, var(--color-brand), var(--color-brand-highlight))',
             borderRadius: '14px',
             display: 'flex', alignItems: 'center',
             justifyContent: 'center', fontSize: '24px',
@@ -246,9 +246,9 @@ export default function Onboarding() {
           }}>🗺</div>
           <div style={{
             fontSize: '22px', fontWeight: '800',
-            color: '#14123A', marginBottom: '4px'
+            color: 'var(--color-text)', marginBottom: '4px'
           }}>Welcome to Prima!</div>
-          <div style={{ fontSize: '13px', color: '#8B8FAF' }}>
+          <div style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>
             Set up your profile to get started
           </div>
         </div>
@@ -258,7 +258,7 @@ export default function Onboarding() {
           {[1, 2, 3].map(s => (
             <div key={s} style={{
               flex: 1, height: '3px', borderRadius: '2px',
-              background: s <= step ? '#6C47FF' : '#E2E0FF',
+              background: s <= step ? 'var(--color-brand)' : 'var(--color-border)',
               transition: 'background 0.3s'
             }} />
           ))}
@@ -271,20 +271,20 @@ export default function Onboarding() {
         }}>
           {steps.map((label, i) => (
             <span key={label} style={{
-              fontSize: '9px', fontWeight: '600',
-              color: i + 1 <= step ? '#6C47FF' : '#A09DC8',
+              fontSize: '12px', fontWeight: '600',
+              color: i + 1 <= step ? 'var(--color-brand)' : 'var(--color-text-subtle)',
               letterSpacing: '0.5px'
             }}>{label}</span>
           ))}
         </div>
 
         <div style={{
-          fontSize: '10px', color: '#6C47FF', fontWeight: '700',
+          fontSize: '12px', color: 'var(--color-brand)', fontWeight: '700',
           letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '4px'
         }}>Step {step} of 3</div>
         <div style={{
           fontSize: '18px', fontWeight: '800',
-          color: '#14123A', marginBottom: '20px'
+          color: 'var(--color-text)', marginBottom: '20px'
         }}>
           {step === 1 ? 'Who are you?' : step === 2 ? 'Work & Experience' : 'Skills & Links'}
         </div>
@@ -307,7 +307,7 @@ export default function Onboarding() {
                 <span style={{
                   position: 'absolute', left: '14px',
                   top: '50%', transform: 'translateY(-50%)',
-                  color: '#A09DC8', fontSize: '14px'
+                  color: 'var(--color-text-subtle)', fontSize: '14px'
                 }}>@</span>
                 <input
                   style={{ ...inputStyle, paddingLeft: '28px' }}
@@ -368,46 +368,46 @@ export default function Onboarding() {
                     icon: '📌',
                     title: 'Physical Work',
                     sub: 'On-location gigs near you',
-                    color: '#FF6B2B',
-                    bg: '#FFF0E8',
-                    border: '#FFBC99'
+                    color: 'var(--color-warning)',
+                    bg: 'var(--color-warning-soft)',
+                    border: 'var(--color-warning-border)'
                   },
                   {
                     key: 'digital_mode',
                     icon: '💻',
                     title: 'Digital Work',
                     sub: 'Remote gigs online',
-                    color: '#6C47FF',
-                    bg: '#EEE9FF',
-                    border: '#B8A5FF'
+                    color: 'var(--color-brand)',
+                    bg: 'var(--color-brand-soft)',
+                    border: 'var(--color-brand-border-strong)'
                   }
                 ].map(mode => (
                   <div key={mode.key}
                     onClick={() => update(mode.key, !form[mode.key])}
                     style={{
-                      background: form[mode.key] ? mode.bg : '#F5F4FF',
-                      border: `1.5px solid ${form[mode.key] ? mode.border : '#E2E0FF'}`,
+                      background: form[mode.key] ? mode.bg : 'var(--color-page)',
+                      border: `1.5px solid ${form[mode.key] ? mode.border : 'var(--color-border)'}`,
                       borderRadius: '14px', padding: '14px 16px',
                       cursor: 'pointer', transition: 'all 0.2s',
                       display: 'flex', gap: '12px', alignItems: 'center'
                     }}>
                     <div style={{ fontSize: '24px' }}>{mode.icon}</div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: '14px', fontWeight: '700', color: '#14123A' }}>
+                      <div style={{ fontSize: '14px', fontWeight: '700', color: 'var(--color-text)' }}>
                         {mode.title}
                       </div>
-                      <div style={{ fontSize: '11px', color: '#8B8FAF', marginTop: '2px' }}>
+                      <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: '2px' }}>
                         {mode.sub}
                       </div>
                     </div>
                     <div style={{
                       width: '22px', height: '22px', borderRadius: '50%',
-                      background: form[mode.key] ? mode.color : '#E2E0FF',
+                      background: form[mode.key] ? mode.color : 'var(--color-border)',
                       display: 'flex', alignItems: 'center',
                       justifyContent: 'center', transition: 'all 0.2s', flexShrink: 0
                     }}>
                       {form[mode.key] && (
-                        <span style={{ color: '#fff', fontSize: '11px', fontWeight: '700' }}>✓</span>
+                        <span style={{ color: 'var(--color-surface)', fontSize: '12px', fontWeight: '700' }}>✓</span>
                       )}
                     </div>
                   </div>
@@ -438,15 +438,15 @@ export default function Onboarding() {
                 <div style={{ display: 'flex', gap: '7px', flexWrap: 'wrap' }}>
                   {form.skills.map((skill, i) => (
                     <span key={i} style={{
-                      background: '#EEE9FF', border: '1.5px solid #B8A5FF',
+                      background: 'var(--color-brand-soft)', border: '1.5px solid var(--color-brand-border-strong)',
                       borderRadius: '20px', padding: '6px 12px',
-                      fontSize: '12px', fontWeight: '600', color: '#6C47FF',
+                      fontSize: '12px', fontWeight: '600', color: 'var(--color-brand)',
                       display: 'flex', alignItems: 'center', gap: '6px'
                     }}>
                       {skill}
                       <span
                         onClick={() => update('skills', form.skills.filter((_, j) => j !== i))}
-                        style={{ cursor: 'pointer', fontSize: '14px', color: '#A09DC8' }}>×</span>
+                        style={{ cursor: 'pointer', fontSize: '14px', color: 'var(--color-text-subtle)' }}>×</span>
                     </span>
                   ))}
                 </div>
@@ -485,10 +485,10 @@ export default function Onboarding() {
 
             {error && (
               <div style={{
-                background: '#FFE8EE',
-                border: '1.5px solid #FF99B3',
+                background: 'var(--color-danger-soft)',
+                border: '1.5px solid var(--color-danger-border)',
                 borderRadius: '8px', padding: '10px 14px',
-                fontSize: '13px', color: '#FF3366'
+                fontSize: '13px', color: 'var(--color-danger)'
               }}>{error}</div>
             )}
           </div>
@@ -498,11 +498,11 @@ export default function Onboarding() {
         <div style={{ display: 'flex', gap: '10px', marginTop: '24px' }}>
           {step > 1 && (
             <button onClick={() => setStep(s => s - 1)} style={{
-              flex: 1, background: '#F5F4FF',
-              border: '1.5px solid #E2E0FF',
+              flex: 1, background: 'var(--color-page)',
+              border: '1.5px solid var(--color-border)',
               borderRadius: '12px', padding: '14px',
               fontSize: '13px', fontWeight: '600',
-              color: '#8B8FAF', cursor: 'pointer',
+              color: 'var(--color-text-muted)', cursor: 'pointer',
               fontFamily: 'inherit'
             }}>← Back</button>
           )}
@@ -512,11 +512,11 @@ export default function Onboarding() {
             style={{
               flex: 2,
               background: loading
-                ? '#B8A5FF'
-                : 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+                ? 'var(--color-brand-border-strong)'
+                : 'var(--color-brand-gradient)',
               border: 'none', borderRadius: '12px',
               padding: '14px', fontSize: '14px',
-              fontWeight: '700', color: '#fff',
+              fontWeight: '700', color: 'var(--color-surface)',
               cursor: loading ? 'not-allowed' : 'pointer',
               boxShadow: '0 4px 20px rgba(108,71,255,0.35)',
               fontFamily: 'inherit', transition: 'all 0.2s'

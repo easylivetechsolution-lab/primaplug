@@ -75,9 +75,9 @@ export default function ShareGig({ gig, onClose }) {
       fontFamily: "'Plus Jakarta Sans', sans-serif"
     }} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} style={{
-        background: '#fff', borderRadius: '24px',
+        background: 'var(--color-surface)', borderRadius: '24px',
         padding: '28px', width: '100%', maxWidth: '420px',
-        border: '1.5px solid #E2E0FF',
+        border: '1.5px solid var(--color-border)',
         boxShadow: '0 20px 60px rgba(108,71,255,0.25)',
         animation: 'slideUp 0.3s cubic-bezier(0.16,1,0.3,1)'
       }}>
@@ -88,20 +88,20 @@ export default function ShareGig({ gig, onClose }) {
         }}>
           <div>
             <div style={{
-              fontSize: '10px', color: '#6C47FF', fontWeight: '700',
+              fontSize: '12px', color: 'var(--color-brand)', fontWeight: '700',
               letterSpacing: '1.5px', textTransform: 'uppercase',
               marginBottom: '3px'
             }}>Share Gig & Earn</div>
             <div style={{
               fontSize: '18px', fontWeight: '800',
-              color: '#14123A', lineHeight: '1.3',
+              color: 'var(--color-text)', lineHeight: '1.3',
               maxWidth: '260px'
             }}>{gig.title}</div>
           </div>
-          <button onClick={onClose} style={{
-            background: '#F5F4FF', border: '1.5px solid #E2E0FF',
+          <button  onClick={onClose} style={{
+            background: 'var(--color-page)', border: '1.5px solid var(--color-border)',
             borderRadius: '10px', width: '36px', height: '36px',
-            fontSize: '18px', color: '#8B8FAF', cursor: 'pointer',
+            fontSize: '18px', color: 'var(--color-text-muted)', cursor: 'pointer',
             display: 'flex', alignItems: 'center',
             justifyContent: 'center', fontFamily: 'inherit',
             flexShrink: 0
@@ -110,12 +110,12 @@ export default function ShareGig({ gig, onClose }) {
 
         {/* Reward preview */}
         <div style={{
-          background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+          background: 'var(--color-brand-gradient)',
           borderRadius: '16px', padding: '16px',
-          color: '#fff', marginBottom: '20px', textAlign: 'center'
+          color: 'var(--color-surface)', marginBottom: '20px', textAlign: 'center'
         }}>
           <div style={{
-            fontSize: '11px', opacity: 0.8,
+            fontSize: '12px', opacity: 0.8,
             textTransform: 'uppercase', letterSpacing: '1px',
             marginBottom: '6px'
           }}>If they complete the gig you earn</div>
@@ -131,25 +131,25 @@ export default function ShareGig({ gig, onClose }) {
         {/* Share link */}
         {generatingCode ? (
           <div style={{
-            background: '#F5F4FF', borderRadius: '12px',
+            background: 'var(--color-page)', borderRadius: '12px',
             padding: '14px', marginBottom: '14px',
-            textAlign: 'center', fontSize: '12px', color: '#A09DC8', fontWeight: '600'
+            textAlign: 'center', fontSize: '12px', color: 'var(--color-text-subtle)', fontWeight: '600'
           }}>Setting up your referral link...</div>
         ) : !hasCode ? (
           <div style={{
-            background: '#FFE8EE', border: '1.5px solid #FF99B3',
+            background: 'var(--color-danger-soft)', border: '1.5px solid var(--color-danger-border)',
             borderRadius: '12px', padding: '12px 14px', marginBottom: '14px',
-            fontSize: '12px', color: '#FF3366', fontWeight: '600'
+            fontSize: '12px', color: 'var(--color-danger)', fontWeight: '600'
           }}>Could not generate your referral link. Please visit Refer &amp; Earn first.</div>
         ) : (
           <div style={{
-            background: '#F5F4FF', borderRadius: '12px',
+            background: 'var(--color-page)', borderRadius: '12px',
             padding: '12px 14px', marginBottom: '14px',
             display: 'flex', justifyContent: 'space-between',
             alignItems: 'center', gap: '10px'
           }}>
             <div style={{
-              fontSize: '11px', color: '#6C47FF',
+              fontSize: '12px', color: 'var(--color-brand)',
               fontWeight: '600', overflow: 'hidden',
               textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               flex: 1
@@ -157,11 +157,11 @@ export default function ShareGig({ gig, onClose }) {
             <button
               onClick={copyLink}
               style={{
-                background: copied ? '#DFFDF4' : '#EEE9FF',
-                border: `1.5px solid ${copied ? '#7EECD2' : '#B8A5FF'}`,
+                background: copied ? 'var(--color-success-soft)' : 'var(--color-brand-soft)',
+                border: `1.5px solid ${copied ? 'var(--color-success-border)' : 'var(--color-brand-border-strong)'}`,
                 borderRadius: '8px', padding: '6px 12px',
                 fontSize: '12px', fontWeight: '700',
-                color: copied ? '#00C48C' : '#6C47FF',
+                color: copied ? 'var(--color-success)' : 'var(--color-brand)',
                 cursor: 'pointer', fontFamily: 'inherit',
                 whiteSpace: 'nowrap', flexShrink: 0,
                 transition: 'all 0.2s'
@@ -177,9 +177,9 @@ export default function ShareGig({ gig, onClose }) {
             <button
               onClick={shareNative}
               style={{
-                width: '100%', background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+                width: '100%', background: 'var(--color-brand-gradient)',
                 border: 'none', borderRadius: '12px', padding: '13px',
-                fontSize: '14px', fontWeight: '700', color: '#fff',
+                fontSize: '14px', fontWeight: '700', color: 'var(--color-surface)',
                 cursor: 'pointer', fontFamily: 'inherit',
                 display: 'flex', alignItems: 'center',
                 justifyContent: 'center', gap: '8px'
@@ -192,7 +192,7 @@ export default function ShareGig({ gig, onClose }) {
                 style={{
                   flex: 1, background: '#25D366', border: 'none',
                   borderRadius: '12px', padding: '12px',
-                  fontSize: '13px', fontWeight: '700', color: '#fff',
+                  fontSize: '13px', fontWeight: '700', color: 'var(--color-surface)',
                   cursor: 'pointer', fontFamily: 'inherit',
                   display: 'flex', alignItems: 'center',
                   justifyContent: 'center', gap: '6px'
@@ -200,9 +200,9 @@ export default function ShareGig({ gig, onClose }) {
               <button
                 onClick={shareTwitter}
                 style={{
-                  flex: 1, background: '#14123A', border: 'none',
+                  flex: 1, background: 'var(--color-text)', border: 'none',
                   borderRadius: '12px', padding: '12px',
-                  fontSize: '13px', fontWeight: '700', color: '#fff',
+                  fontSize: '13px', fontWeight: '700', color: 'var(--color-surface)',
                   cursor: 'pointer', fontFamily: 'inherit',
                   display: 'flex', alignItems: 'center',
                   justifyContent: 'center', gap: '6px'
@@ -213,12 +213,12 @@ export default function ShareGig({ gig, onClose }) {
 
         {/* How it works */}
         <div style={{
-          background: '#F5F4FF', borderRadius: '12px',
+          background: 'var(--color-page)', borderRadius: '12px',
           padding: '14px', fontSize: '12px',
-          color: '#8B8FAF', lineHeight: '1.6'
+          color: 'var(--color-text-muted)', lineHeight: '1.6'
         }}>
           <div style={{
-            fontWeight: '700', color: '#14123A',
+            fontWeight: '700', color: 'var(--color-text)',
             marginBottom: '6px'
           }}>How it works</div>
           <div>1. Share your link with someone who can do this gig</div>

@@ -17,10 +17,10 @@ export function showToast(msg, type = 'info') {
   _injectStyle()
 
   const bg = type === 'error'
-    ? 'linear-gradient(135deg, #FF3366, #FF6B6B)'
+    ? 'linear-gradient(135deg, var(--color-danger), #FF6B6B)'
     : type === 'success'
-    ? 'linear-gradient(135deg, #00C48C, #00D4A0)'
-    : 'linear-gradient(135deg, #6C47FF, #9B59FF)'
+    ? 'linear-gradient(135deg, var(--color-success), #00D4A0)'
+    : 'var(--color-brand-gradient)'
 
   const icon = type === 'error' ? '✕' : type === 'success' ? '✓' : 'ℹ'
 

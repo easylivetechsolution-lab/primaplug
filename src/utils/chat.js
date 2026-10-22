@@ -129,7 +129,7 @@ export const getOrCreateConversation = async ({ currentUser, targetUserId, creat
   return createDraftConversation({ currentUser, targetUserId })
 }
 
-export const fetchMessages = async (convo, userId, { limit = CHAT_MESSAGE_LIMIT } = {}) => {
+export const fetchMessages = async (convo, userId, { limit = CHAT_MESSAGE_LIMIT, before = null } = {}) => {
   if (!convo?.id) return []
   let query = supabase
     .from('messages')
@@ -137,6 +137,8 @@ export const fetchMessages = async (convo, userId, { limit = CHAT_MESSAGE_LIMIT 
     .eq('conversation_id', convo.id)
     .order('created_at', { ascending: false })
     .limit(limit)
+
+  if (before) query = query.lt('created_at', before)
 
   const clearedAt = getClearTimestamp(convo, userId)
   if (clearedAt) query = query.gt('created_at', clearedAt)
@@ -149,6 +151,15 @@ export const fetchMessages = async (convo, userId, { limit = CHAT_MESSAGE_LIMIT 
 export const markConversationRead = async (convo, userId) => {
   if (!convo?.id || !userId) return
   const isP1 = convo.participant_1 === userId
+  const { error: messagesError } = await supabase
+    .from('messages')
+    .update({ read: true, read_at: new Date().toISOString() })
+    .eq('conversation_id', convo.id)
+    .neq('sender_id', userId)
+    .eq('read', false)
+
+  if (messagesError) throw messagesError
+
   const { error } = await supabase
     .from('conversations')
     .update(isP1 ? { unread_count_1: 0 } : { unread_count_2: 0 })
@@ -209,17 +220,25 @@ export const sendMessage = async ({ user, conversation, content, replyTo = null,
   const senderName = sender?.full_name || user.email?.split('@')[0] || 'Someone'
   const snippet = text.length > 40 ? text.substring(0, 40) + '...' : text
 
-  // Fire and forget — notification insert should not block message delivery
-  supabase.from('notifications').insert({
-    user_id: otherUserId,
-    title: `${senderName} sent you a message`,
-    message: snippet,
-    type: 'message',
-    gig_id: convo.gig_id,
-    conversation_id: convo.id
-  })
+  const otherUserIsMuted = convo.participant_1 === otherUserId
+    ? convo.muted_1
+    : convo.muted_2
 
-  if (notifyPush && sendPushToUser) {
+  // Notification delivery must not fail or delay the message itself.
+  if (!otherUserIsMuted) {
+    supabase.from('notifications').insert({
+      user_id: otherUserId,
+      title: `${senderName} sent you a message`,
+      message: snippet,
+      type: 'message',
+      gig_id: convo.gig_id,
+      conversation_id: convo.id
+    }).then(({ error }) => {
+      if (error) console.warn('Chat notification failed:', error.message)
+    })
+  }
+
+  if (!otherUserIsMuted && notifyPush && sendPushToUser) {
     await sendPushToUser(
       otherUserId,
       'New Message',

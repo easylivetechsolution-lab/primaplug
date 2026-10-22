@@ -14,10 +14,10 @@ import { PAYMENT_METHODS } from '../utils/payments'
 import { startFincraWalletFunding } from '../utils/fincra'
 
 const URGENCY = [
-  { key: 'now', label: 'NOW', color: '#FF3366', bg: '#FFE8EE' },
-  { key: 'today', label: 'TODAY', color: '#FF6B2B', bg: '#FFF0E8' },
-  { key: 'scheduled', label: 'SCHEDULED', color: '#6C47FF', bg: '#EEE9FF' },
-  { key: 'flexible', label: 'FLEXIBLE', color: '#A09DC8', bg: '#F5F4FF' },
+  { key: 'now', label: 'NOW', color: 'var(--color-danger)', bg: 'var(--color-danger-soft)' },
+  { key: 'today', label: 'TODAY', color: 'var(--color-warning)', bg: 'var(--color-warning-soft)' },
+  { key: 'scheduled', label: 'SCHEDULED', color: 'var(--color-brand)', bg: 'var(--color-brand-soft)' },
+  { key: 'flexible', label: 'FLEXIBLE', color: 'var(--color-text-subtle)', bg: 'var(--color-page)' },
 ]
 
 export default function PostGig({ onClose }) {
@@ -228,21 +228,21 @@ export default function PostGig({ onClose }) {
 
   const inputStyle = {
     width: '100%',
-    background: '#F5F4FF',
-    border: '1.5px solid #E2E0FF',
+    background: 'var(--color-page)',
+    border: '1.5px solid var(--color-border)',
     borderRadius: '10px',
     padding: '12px 14px',
-    fontSize: '14px',
-    color: '#14123A',
+    fontSize: '16px',
+    color: 'var(--color-text)',
     fontFamily: 'inherit',
     outline: 'none',
     boxSizing: 'border-box'
   }
 
   const labelStyle = {
-    fontSize: '11px',
+    fontSize: '13px',
     fontWeight: '700',
-    color: '#8B8FAF',
+    color: 'var(--color-text-muted)',
     textTransform: 'uppercase',
     letterSpacing: '0.8px',
     display: 'block',
@@ -261,8 +261,8 @@ export default function PostGig({ onClose }) {
       justifyContent: 'center',
       padding: '20px'
     }} onClick={onClose}>
-      <div onClick={e => e.stopPropagation()} style={{
-        background: '#fff',
+      <div className="post-gig-modal" onClick={e => e.stopPropagation()} style={{
+        background: 'var(--color-surface)',
         borderRadius: '24px',
         padding: '28px',
         width: '100%',
@@ -270,7 +270,7 @@ export default function PostGig({ onClose }) {
         maxHeight: '88vh',
         overflowY: 'auto',
         overflowX: 'hidden',
-        border: '1.5px solid #E2E0FF',
+        border: '1.5px solid var(--color-border)',
         boxShadow: '0 20px 60px rgba(108,71,255,0.25)',
         animation: 'slideUp 0.3s cubic-bezier(0.16,1,0.3,1)'
       }}>
@@ -280,10 +280,10 @@ export default function PostGig({ onClose }) {
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
               <BrandIcon name="discover" size={64} />
             </div>
-            <div style={{ fontSize: '22px', fontWeight: '800', color: '#6C47FF', marginBottom: '8px' }}>
+            <div style={{ fontSize: '22px', fontWeight: '800', color: 'var(--color-brand)', marginBottom: '8px' }}>
               Gig Posted!
             </div>
-            <div style={{ fontSize: '13px', color: '#8B8FAF', lineHeight: '1.6' }}>
+            <div style={{ fontSize: '13px', color: 'var(--color-text-muted)', lineHeight: '1.6' }}>
               Your gig is now live on the Prima map. Workers nearby are being notified.
             </div>
           </div>
@@ -292,17 +292,17 @@ export default function PostGig({ onClose }) {
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
               <div>
-                <div style={{ fontSize: '10px', color: '#6C47FF', fontWeight: '700', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '3px' }}>
+                <div style={{ fontSize: '12px', color: 'var(--color-brand)', fontWeight: '700', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '3px' }}>
                   Post a Gig · Step {step} of 3
                 </div>
-                <div style={{ fontSize: '20px', fontWeight: '800', color: '#14123A' }}>
+                <div style={{ fontSize: '20px', fontWeight: '800', color: 'var(--color-text)' }}>
                   {step === 1 ? 'What do you need?' : step === 2 ? 'Details & Pay' : 'Review & Post'}
                 </div>
               </div>
-              <button onClick={onClose} style={{
-                background: '#F5F4FF', border: '1.5px solid #E2E0FF',
+              <button  onClick={onClose} style={{
+                background: 'var(--color-page)', border: '1.5px solid var(--color-border)',
                 borderRadius: '8px', width: '34px', height: '34px',
-                fontSize: '18px', color: '#8B8FAF', cursor: 'pointer',
+                fontSize: '18px', color: 'var(--color-text-muted)', cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontFamily: 'inherit'
               }}>×</button>
@@ -313,7 +313,7 @@ export default function PostGig({ onClose }) {
               {[1, 2, 3].map(s => (
                 <div key={s} style={{
                   flex: 1, height: '3px', borderRadius: '2px',
-                  background: s <= step ? '#6C47FF' : '#E2E0FF',
+                  background: s <= step ? 'var(--color-brand)' : 'var(--color-border)',
                   transition: 'background 0.3s'
                 }} />
               ))}
@@ -337,16 +337,16 @@ export default function PostGig({ onClose }) {
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                     {['physical', 'digital'].map(t => (
                       <div key={t} onClick={() => update('type', t)} style={{
-                        background: form.type === t ? (t === 'physical' ? '#FFF0E8' : '#EEE9FF') : '#F5F4FF',
-                        border: `1.5px solid ${form.type === t ? (t === 'physical' ? '#FFBC99' : '#B8A5FF') : '#E2E0FF'}`,
+                        background: form.type === t ? (t === 'physical' ? 'var(--color-warning-soft)' : 'var(--color-brand-soft)') : 'var(--color-page)',
+                        border: `1.5px solid ${form.type === t ? (t === 'physical' ? 'var(--color-warning-border)' : 'var(--color-brand-border-strong)') : 'var(--color-border)'}`,
                         borderRadius: '14px', padding: '16px 12px',
                         cursor: 'pointer', textAlign: 'center', transition: 'all 0.15s'
                       }}>
                         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
                           <BrandIcon name={t === 'physical' ? 'physical' : 'digital'} size={42} active={form.type === t} />
                         </div>
-                        <div style={{ fontSize: '13px', fontWeight: '700', color: '#14123A', textTransform: 'capitalize' }}>{t}</div>
-                        <div style={{ fontSize: '10px', color: '#A09DC8', marginTop: '2px' }}>
+                        <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--color-text)', textTransform: 'capitalize' }}>{t}</div>
+                        <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)', marginTop: '2px' }}>
                           {t === 'physical' ? 'On-location work' : 'Remote / online'}
                         </div>
                       </div>
@@ -378,11 +378,11 @@ export default function PostGig({ onClose }) {
                       <button key={u.key} onClick={() => update('urgency', u.key)} style={{
                         flex: 1,
                         background: form.urgency === u.key ? u.bg : 'transparent',
-                        border: `1.5px solid ${form.urgency === u.key ? u.color : '#E2E0FF'}`,
+                        border: `1.5px solid ${form.urgency === u.key ? u.color : 'var(--color-border)'}`,
                         borderRadius: '8px', padding: '9px 4px',
-                        fontSize: '9px', fontWeight: '800',
+                        fontSize: '12px', fontWeight: '800',
                         letterSpacing: '0.6px',
-                        color: form.urgency === u.key ? u.color : '#A09DC8',
+                        color: form.urgency === u.key ? u.color : 'var(--color-text-subtle)',
                         cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s'
                       }}>{u.label}</button>
                     ))}
@@ -441,16 +441,16 @@ export default function PostGig({ onClose }) {
                 {/* Digital gig — map placement from profile location */}
                 {form.type === 'digital' && (
                   <div style={{
-                    background: '#EEE9FF', border: '1.5px solid #B8A5FF',
+                    background: 'var(--color-brand-soft)', border: '1.5px solid var(--color-brand-border-strong)',
                     borderRadius: '12px', padding: '14px',
                     display: 'flex', gap: '10px', alignItems: 'center'
                   }}>
                     <BrandIcon name="location" size={36} active />
                     <div>
                       <div style={{
-                        fontSize: '12px', fontWeight: '700', color: '#6C47FF', marginBottom: '2px'
+                        fontSize: '12px', fontWeight: '700', color: 'var(--color-brand)', marginBottom: '2px'
                       }}>Shown on map as Remote</div>
-                      <div style={{ fontSize: '11px', color: '#8B8FAF', lineHeight: '1.5' }}>
+                      <div style={{ fontSize: '13px', color: 'var(--color-text-muted)', lineHeight: '1.5' }}>
                         {profile?.location
                           ? `Pinned near ${profile.location} — workers worldwide can still apply.`
                           : 'Your gig will appear on the map once you set your location in your profile.'}
@@ -465,8 +465,8 @@ export default function PostGig({ onClose }) {
                     <label style={labelStyle}>
                       General Area
                       <span style={{
-                        marginLeft: '6px', fontSize: '10px',
-                        color: '#A09DC8', fontWeight: '500',
+                        marginLeft: '6px', fontSize: '12px',
+                        color: 'var(--color-text-subtle)', fontWeight: '500',
                         textTransform: 'none', letterSpacing: 0
                       }}>— shown publicly on map</span>
                     </label>
@@ -531,14 +531,14 @@ export default function PostGig({ onClose }) {
                         <div style={{
                           position: 'absolute', right: '12px',
                           top: '50%', transform: 'translateY(-50%)',
-                          fontSize: '16px', color: '#00C48C'
+                          fontSize: '16px', color: 'var(--color-success)'
                         }}>✓</div>
                       )}
 
                       {locationResults.length > 0 && !locationSelected && (
                         <div style={{
                           position: 'absolute', top: '100%', left: 0, right: 0,
-                          background: '#fff', border: '1.5px solid #B8A5FF',
+                          background: 'var(--color-surface)', border: '1.5px solid var(--color-brand-border-strong)',
                           borderRadius: '12px', marginTop: '4px',
                           zIndex: 100, overflow: 'hidden',
                           boxShadow: '0 8px 32px rgba(108,71,255,0.15)'
@@ -566,21 +566,21 @@ export default function PostGig({ onClose }) {
                                 style={{
                                   padding: '11px 14px', cursor: 'pointer',
                                   borderBottom: i < locationResults.length - 1
-                                    ? '1px solid #F5F4FF' : 'none',
+                                    ? '1px solid var(--color-page)' : 'none',
                                   display: 'flex', gap: '8px', alignItems: 'flex-start'
                                 }}
-                                onMouseEnter={e => e.currentTarget.style.background = '#F5F4FF'}
-                                onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+                                onMouseEnter={e => e.currentTarget.style.background = 'var(--color-page)'}
+                                onMouseLeave={e => e.currentTarget.style.background = 'var(--color-surface)'}
                               >
                                 <BrandIcon name="location" size={28} />
                                 <div>
                                   <div style={{
                                     fontSize: '13px', fontWeight: '600',
-                                    color: '#14123A', marginBottom: '1px'
+                                    color: 'var(--color-text)', marginBottom: '1px'
                                   }}>
                                     {shortName || result.display_name.split(',')[0]}
                                   </div>
-                                  <div style={{ fontSize: '10px', color: '#A09DC8' }}>
+                                  <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)' }}>
                                     {result.display_name.length > 55
                                       ? result.display_name.substring(0, 55) + '...'
                                       : result.display_name}
@@ -595,7 +595,7 @@ export default function PostGig({ onClose }) {
 
                     {locationSelected && (
                       <div style={{
-                        fontSize: '11px', color: '#00C48C',
+                        fontSize: '13px', color: 'var(--color-success)',
                         marginTop: '5px', display: 'flex',
                         alignItems: 'center', gap: '4px'
                       }}>✓ Pin placed on map</div>
@@ -604,8 +604,8 @@ export default function PostGig({ onClose }) {
                     {/* Exact Address */}
                     {locationSelected && (
                       <div style={{
-                        background: '#F5F4FF', borderRadius: '14px',
-                        padding: '16px', border: '1.5px solid #E2E0FF',
+                        background: 'var(--color-page)', borderRadius: '14px',
+                        padding: '16px', border: '1.5px solid var(--color-border)',
                         display: 'flex', flexDirection: 'column',
                         gap: '12px', marginTop: '12px'
                       }}>
@@ -613,20 +613,20 @@ export default function PostGig({ onClose }) {
                           <BrandIcon name="lock" size={34} />
                           <div>
                             <div style={{
-                              fontSize: '12px', fontWeight: '700', color: '#14123A'
+                              fontSize: '12px', fontWeight: '700', color: 'var(--color-text)'
                             }}>Exact Address</div>
-                            <div style={{ fontSize: '10px', color: '#A09DC8', marginTop: '1px' }}>
+                            <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)', marginTop: '1px' }}>
                               Only shared with accepted workers
                             </div>
                           </div>
                         </div>
 
                         <div>
-                          <label style={{ ...labelStyle, fontSize: '10px' }}>
+                          <label style={{ ...labelStyle, fontSize: '12px' }}>
                             House / Building Number
                           </label>
                           <input
-                            style={{ ...inputStyle, background: '#fff' }}
+                            style={{ ...inputStyle, background: 'var(--color-surface)' }}
                             placeholder="e.g. 12, Flat 3B..."
                             value={form.house_number || ''}
                             onChange={e => update('house_number', e.target.value)}
@@ -634,9 +634,9 @@ export default function PostGig({ onClose }) {
                         </div>
 
                         <div>
-                          <label style={{ ...labelStyle, fontSize: '10px' }}>Street Name</label>
+                          <label style={{ ...labelStyle, fontSize: '12px' }}>Street Name</label>
                           <input
-                            style={{ ...inputStyle, background: '#fff' }}
+                            style={{ ...inputStyle, background: 'var(--color-surface)' }}
                             placeholder="e.g. Adeola Odeku Street"
                             value={form.street || ''}
                             onChange={e => update('street', e.target.value)}
@@ -644,11 +644,11 @@ export default function PostGig({ onClose }) {
                         </div>
 
                         <div>
-                          <label style={{ ...labelStyle, fontSize: '10px' }}>
+                          <label style={{ ...labelStyle, fontSize: '12px' }}>
                             Nearest Landmark
                           </label>
                           <input
-                            style={{ ...inputStyle, background: '#fff' }}
+                            style={{ ...inputStyle, background: 'var(--color-surface)' }}
                             placeholder="e.g. Beside First Bank..."
                             value={form.landmark || ''}
                             onChange={e => update('landmark', e.target.value)}
@@ -656,12 +656,12 @@ export default function PostGig({ onClose }) {
                         </div>
 
                         <div>
-                          <label style={{ ...labelStyle, fontSize: '10px' }}>
+                          <label style={{ ...labelStyle, fontSize: '12px' }}>
                             Additional Directions (optional)
                           </label>
                           <textarea
                             style={{
-                              ...inputStyle, background: '#fff',
+                              ...inputStyle, background: 'var(--color-surface)',
                               minHeight: '60px', resize: 'vertical'
                             }}
                             placeholder="e.g. Take the gate on the left..."
@@ -681,19 +681,19 @@ export default function PostGig({ onClose }) {
                     {[1, 2, 3, 4, 5].map(n => (
                       <button key={n} onClick={() => update('slots', n)} style={{
                         width: '40px', height: '40px',
-                        background: form.slots === n ? '#EEE9FF' : '#F5F4FF',
-                        border: `1.5px solid ${form.slots === n ? '#B8A5FF' : '#E2E0FF'}`,
+                        background: form.slots === n ? 'var(--color-brand-soft)' : 'var(--color-page)',
+                        border: `1.5px solid ${form.slots === n ? 'var(--color-brand-border-strong)' : 'var(--color-border)'}`,
                         borderRadius: '9px', fontSize: '14px', fontWeight: '700',
-                        color: form.slots === n ? '#6C47FF' : '#8B8FAF',
+                        color: form.slots === n ? 'var(--color-brand)' : 'var(--color-text-muted)',
                         cursor: 'pointer', fontFamily: 'inherit'
                       }}>{n}</button>
                     ))}
                     <button onClick={() => update('slots', 10)} style={{
                       padding: '0 12px', height: '40px',
-                      background: form.slots === 10 ? '#EEE9FF' : '#F5F4FF',
-                      border: `1.5px solid ${form.slots === 10 ? '#B8A5FF' : '#E2E0FF'}`,
-                      borderRadius: '9px', fontSize: '11px', fontWeight: '700',
-                      color: form.slots === 10 ? '#6C47FF' : '#8B8FAF',
+                      background: form.slots === 10 ? 'var(--color-brand-soft)' : 'var(--color-page)',
+                      border: `1.5px solid ${form.slots === 10 ? 'var(--color-brand-border-strong)' : 'var(--color-border)'}`,
+                      borderRadius: '9px', fontSize: '13px', fontWeight: '700',
+                      color: form.slots === 10 ? 'var(--color-brand)' : 'var(--color-text-muted)',
                       cursor: 'pointer', fontFamily: 'inherit'
                     }}>10+</button>
                   </div>
@@ -717,10 +717,10 @@ export default function PostGig({ onClose }) {
             {step === 3 && (
               <div>
                 <div style={{
-                  background: '#F5F4FF',
+                  background: 'var(--color-page)',
                   borderRadius: '14px',
                   overflow: 'hidden',
-                  border: '1.5px solid #E2E0FF',
+                  border: '1.5px solid var(--color-border)',
                   marginBottom: '16px'
                 }}>
                   {[
@@ -737,11 +737,11 @@ export default function PostGig({ onClose }) {
                     <div key={k} style={{
                       display: 'flex', justifyContent: 'space-between',
                       alignItems: 'center', padding: '11px 16px',
-                      borderBottom: '1px solid #E2E0FF',
+                      borderBottom: '1px solid var(--color-border)',
                       fontSize: '13px'
                     }}>
-                      <span style={{ color: '#8B8FAF' }}>{k}</span>
-                      <span style={{ fontWeight: '700', color: '#14123A', textTransform: 'capitalize' }}>{v}</span>
+                      <span style={{ color: 'var(--color-text-muted)' }}>{k}</span>
+                      <span style={{ fontWeight: '700', color: 'var(--color-text)', textTransform: 'capitalize' }}>{v}</span>
                     </div>
                   ))}
                 </div>
@@ -759,9 +759,9 @@ export default function PostGig({ onClose }) {
                       <>
                         {!gigCurrencyFincraSupported && (
                           <div style={{
-                            background: '#FFF8E0', border: '1.5px solid #FFD966',
+                            background: 'var(--color-warning-gold-soft)', border: '1.5px solid var(--color-warning-gold-border)',
                             borderRadius: '12px', padding: '12px 14px',
-                            fontSize: '12px', color: '#B8860B',
+                            fontSize: '12px', color: 'var(--color-warning-gold)',
                             lineHeight: '1.6', marginBottom: '12px',
                             display: 'flex', gap: '8px', alignItems: 'flex-start'
                           }}>
@@ -776,9 +776,9 @@ export default function PostGig({ onClose }) {
 
                         {gigCurrencyFincraSupported && !walletMatchesGig && (
                           <div style={{
-                            background: '#FFF8E0', border: '1.5px solid #FFD966',
+                            background: 'var(--color-warning-gold-soft)', border: '1.5px solid var(--color-warning-gold-border)',
                             borderRadius: '12px', padding: '12px 14px',
-                            fontSize: '12px', color: '#B8860B',
+                            fontSize: '12px', color: 'var(--color-warning-gold)',
                             lineHeight: '1.6', marginBottom: '12px',
                             display: 'flex', gap: '8px', alignItems: 'flex-start'
                           }}>
@@ -819,8 +819,8 @@ export default function PostGig({ onClose }) {
                                 }}
                                 style={{
                                   textAlign: 'left',
-                                  background: option.disabled ? '#F9F9FB' : active ? '#EEE9FF' : '#fff',
-                                  border: `1.5px solid ${option.disabled ? '#E2E0FF' : active ? '#6C47FF' : '#E2E0FF'}`,
+                                  background: option.disabled ? 'var(--color-surface-neutral)' : active ? 'var(--color-brand-soft)' : 'var(--color-surface)',
+                                  border: `1.5px solid ${option.disabled ? 'var(--color-border)' : active ? 'var(--color-brand)' : 'var(--color-border)'}`,
                                   borderRadius: '14px',
                                   padding: '14px',
                                   cursor: option.disabled ? 'not-allowed' : 'pointer',
@@ -832,26 +832,26 @@ export default function PostGig({ onClose }) {
                                 {option.disabled && option.key === PAYMENT_METHODS.WALLET && (
                                   <div style={{
                                     position: 'absolute', top: '8px', right: '8px',
-                                    fontSize: '8px', fontWeight: '800',
-                                    background: '#E2E0FF', color: '#8B8FAF',
+                                    fontSize: '12px', fontWeight: '800',
+                                    background: 'var(--color-border)', color: 'var(--color-text-muted)',
                                     borderRadius: '4px', padding: '2px 6px',
                                     letterSpacing: '0.5px'
                                   }}>UNAVAILABLE</div>
                                 )}
                                 <div style={{
-                                  fontSize: '10px', fontWeight: '800',
-                                  color: active && !option.disabled ? '#6C47FF' : '#A09DC8',
+                                  fontSize: '12px', fontWeight: '800',
+                                  color: active && !option.disabled ? 'var(--color-brand)' : 'var(--color-text-subtle)',
                                   textTransform: 'uppercase',
                                   letterSpacing: '0.8px',
                                   marginBottom: '6px'
                                 }}>{option.tag}</div>
                                 <div style={{
                                   fontSize: '13px', fontWeight: '800',
-                                  color: '#14123A', marginBottom: '4px'
+                                  color: 'var(--color-text)', marginBottom: '4px'
                                 }}>{option.title}</div>
                                 <div style={{
-                                  fontSize: '11px', lineHeight: '1.5',
-                                  color: active && !option.disabled ? '#6C47FF' : '#8B8FAF'
+                                  fontSize: '13px', lineHeight: '1.5',
+                                  color: active && !option.disabled ? 'var(--color-brand)' : 'var(--color-text-muted)'
                                 }}>{option.desc}</div>
                               </button>
                             )
@@ -865,14 +865,14 @@ export default function PostGig({ onClose }) {
                     <div style={{
                       marginTop: '10px',
                       background: Number((wallets || []).find(w => w.currency === form.currency)?.balance || 0) >= Number(form.pay_min || 0)
-                        ? '#DFFDF4' : '#FFF0E8',
+                        ? 'var(--color-success-soft)' : 'var(--color-warning-soft)',
                       border: `1.5px solid ${Number((wallets || []).find(w => w.currency === form.currency)?.balance || 0) >= Number(form.pay_min || 0)
-                        ? '#7EECD2' : '#FFBC99'}`,
+                        ? 'var(--color-success-border)' : 'var(--color-warning-border)'}`,
                       borderRadius: '12px',
                       padding: '12px',
                       fontSize: '12px',
                       color: Number((wallets || []).find(w => w.currency === form.currency)?.balance || 0) >= Number(form.pay_min || 0)
-                        ? '#00A878' : '#FF6B2B',
+                        ? 'var(--color-success)' : 'var(--color-warning)',
                       lineHeight: '1.6'
                     }}>
                       Wallet balance: {CURRENCIES.find(c => c.code === form.currency)?.symbol || '$'}
@@ -882,6 +882,7 @@ export default function PostGig({ onClose }) {
                       {Number((wallets || []).find(w => w.currency === form.currency)?.balance || 0) < Number(form.pay_min || 0) && (
   <button
     type="button"
+    className="pp-button"
     onClick={() => {
       const needed = Number(form.pay_min || 0) - Number((wallets || []).find(w => w.currency === form.currency)?.balance || 0)
       setQuickFundAmount(String(Math.ceil(needed)))
@@ -891,12 +892,12 @@ export default function PostGig({ onClose }) {
     style={{
       width: '100%',
       marginTop: '10px',
-      background: '#FF6B2B',
-      color: '#fff',
+      background: 'var(--color-warning)',
+      color: 'var(--color-surface)',
       border: 'none',
       borderRadius: '10px',
       padding: '10px',
-      fontSize: '12px',
+                  fontSize: 'var(--font-size-control)',
       fontWeight: '800',
       cursor: 'pointer',
       fontFamily: 'inherit'
@@ -910,8 +911,8 @@ export default function PostGig({ onClose }) {
                 </div>
 
                 <div style={{
-                  background: '#EEE9FF',
-                  border: '1.5px solid #B8A5FF',
+                  background: 'var(--color-brand-soft)',
+                  border: '1.5px solid var(--color-brand-border-strong)',
                   borderRadius: '12px',
                   padding: '14px',
                   display: 'flex',
@@ -919,16 +920,16 @@ export default function PostGig({ onClose }) {
                   marginBottom: '20px'
                 }}>
                   <BrandIcon name="lock" size={34} />
-                  <div style={{ fontSize: '12px', color: '#6C47FF', lineHeight: '1.6' }}>
+                  <div style={{ fontSize: '12px', color: 'var(--color-brand)', lineHeight: '1.6' }}>
                     Both parties confirm completion by uploading receipts with their names. This protects everyone involved.
                   </div>
                 </div>
 
                 {error && (
                   <div style={{
-                    background: '#FFE8EE', border: '1.5px solid #FF99B3',
+                    background: 'var(--color-danger-soft)', border: '1.5px solid var(--color-danger-border)',
                     borderRadius: '8px', padding: '10px 14px',
-                    fontSize: '13px', color: '#FF3366', marginBottom: '16px'
+                    fontSize: '13px', color: 'var(--color-danger)', marginBottom: '16px'
                   }}>{error}</div>
                 )}
               </div>
@@ -937,24 +938,25 @@ export default function PostGig({ onClose }) {
             {/* Navigation Buttons */}
             <div style={{ display: 'flex', gap: '10px', marginTop: '24px' }}>
               {step > 1 && (
-                <button onClick={() => setStep(s => s - 1)} style={{
-                  flex: 1, background: '#F5F4FF',
-                  border: '1.5px solid #E2E0FF',
+                <button className="pp-button pp-button--secondary" onClick={() => setStep(s => s - 1)} style={{
+                  flex: 1, background: 'var(--color-page)',
+                  border: '1.5px solid var(--color-border)',
                   borderRadius: '12px', padding: '14px',
-                  fontSize: '13px', fontWeight: '600',
-                  color: '#8B8FAF', cursor: 'pointer',
+                  fontSize: 'var(--font-size-control)', fontWeight: '600',
+                  color: 'var(--color-text-muted)', cursor: 'pointer',
                   fontFamily: 'inherit'
                 }}>← Back</button>
               )}
               <button
                 onClick={step < 3 ? () => setStep(s => s + 1) : handleSubmit}
                 disabled={loading}
+                className="pp-button pp-button--primary"
                 style={{
                   flex: 2,
-                  background: loading ? '#B8A5FF' : 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+                  background: loading ? 'var(--color-brand-border-strong)' : 'var(--color-brand-gradient)',
                   border: 'none', borderRadius: '12px',
-                  padding: '14px', fontSize: '14px',
-                  fontWeight: '700', color: '#fff',
+                  padding: '14px', minHeight: 'var(--control-height)', fontSize: '16px',
+                  fontWeight: '700', color: 'var(--color-surface)',
                   cursor: loading ? 'not-allowed' : 'pointer',
                   boxShadow: '0 4px 20px rgba(108,71,255,0.35)',
                   fontFamily: 'inherit', transition: 'all 0.2s'
@@ -998,13 +1000,13 @@ export default function PostGig({ onClose }) {
     display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
   }} onClick={() => !quickFunding && setShowQuickFund(false)}>
     <div onClick={e => e.stopPropagation()} style={{
-      background: '#fff', borderRadius: '22px', padding: '24px',
+      background: 'var(--color-surface)', borderRadius: '22px', padding: '24px',
       width: '100%', maxWidth: '420px'
     }}>
-      <div style={{ fontSize: '17px', fontWeight: '800', color: '#14123A', marginBottom: '4px' }}>
+      <div style={{ fontSize: '17px', fontWeight: '800', color: 'var(--color-text)', marginBottom: '4px' }}>
         Quick Top-Up
       </div>
-      <div style={{ fontSize: '12px', color: '#8B8FAF', marginBottom: '16px' }}>
+      <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '16px' }}>
         Fund your wallet to continue posting this gig. You'll come right back here.
       </div>
       <input
@@ -1014,14 +1016,14 @@ export default function PostGig({ onClose }) {
         placeholder="Amount"
         style={{
           width: '100%', padding: '13px', borderRadius: '12px',
-          border: '1.5px solid #E2E0FF', fontSize: '18px', fontWeight: '700',
+          border: '1.5px solid var(--color-border)', fontSize: '18px', fontWeight: '700',
           marginBottom: '12px', boxSizing: 'border-box', fontFamily: 'inherit'
         }}
       />
       {quickFundError && (
         <div style={{
-          background: '#FFE8EE', borderRadius: '10px', padding: '10px',
-          marginBottom: '12px', color: '#FF3366', fontSize: '12px', fontWeight: '600'
+          background: 'var(--color-danger-soft)', borderRadius: '10px', padding: '10px',
+          marginBottom: '12px', color: 'var(--color-danger)', fontSize: '12px', fontWeight: '600'
         }}>{quickFundError}</div>
       )}
       <button
@@ -1055,8 +1057,8 @@ export default function PostGig({ onClose }) {
         disabled={quickFunding}
         style={{
           width: '100%', padding: '14px',
-          background: quickFunding ? '#B8A5FF' : 'linear-gradient(135deg, #6C47FF, #9B59FF)',
-          border: 'none', borderRadius: '12px', color: '#fff',
+          background: quickFunding ? 'var(--color-brand-border-strong)' : 'var(--color-brand-gradient)',
+          border: 'none', borderRadius: '12px', color: 'var(--color-surface)',
           fontSize: '14px', fontWeight: '700', cursor: quickFunding ? 'not-allowed' : 'pointer',
           fontFamily: 'inherit'
         }}>

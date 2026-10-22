@@ -4,6 +4,8 @@ import { useAdmin } from '../hooks/useAdmin'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import VerificationBadge from '../components/VerificationBadge'
+import ConfirmDialog from '../components/ConfirmDialog'
+import { showToast } from '../utils/toast'
 
 const TABS = [
   { key: 'overview', label: '📊 Overview', icon: '📊' },
@@ -34,6 +36,9 @@ export default function Admin() {
   const [boosts, setBoosts] = useState([])
   const [loadingData, setLoadingData] = useState(false)
   const [search, setSearch] = useState('')
+  const [confirmDialog, setConfirmDialog] = useState(null)
+  const [reportStatusFilter, setReportStatusFilter] = useState('pending')
+  const [reportsError, setReportsError] = useState('')
 
   useEffect(() => {
     if (!loading && !isAdmin) navigate('/dashboard')
@@ -45,6 +50,14 @@ export default function Admin() {
       fetchTabData(activeTab)
     }
   }, [isAdmin, activeTab])
+
+  useEffect(() => {
+    if (!isAdmin || activeTab !== 'reports') return undefined
+    const channel = supabase.channel(`admin-report-queue-${user?.id || 'admin'}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'reports' }, () => fetchTabData('reports'))
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [isAdmin, activeTab, user?.id])
 
   const fetchOverview = async () => {
     const [
@@ -154,14 +167,15 @@ export default function Admin() {
         setWithdrawals(withdrawalsData || [])
         break
       case 'reports':
-        const { data: reportsData } = await supabase
+        const { data: reportsData, error: reportsFetchError } = await supabase
           .from('reports')
           .select(`
             *,
-            reporter:users!reports_reporter_id_fkey(full_name, avatar_url),
-            reported:users!reports_reported_user_id_fkey(full_name, avatar_url, email, phone, location, selfie_url)
+            reporter:users!reports_reporter_id_fkey(id, full_name, avatar_url, email, phone),
+            reported:users!reports_reported_user_id_fkey(id, full_name, avatar_url, email, phone, location, selfie_url, trust_score, is_verified, is_banned)
           `)
           .order('created_at', { ascending: false })
+        setReportsError(reportsFetchError?.message || '')
         setReports(reportsData || [])
         break
       case 'emergency':
@@ -179,8 +193,11 @@ export default function Admin() {
     setLoadingData(false)
   }
 
-  const banUser = async (userId) => {
-    if (!window.confirm('Ban this user? They will not be able to log in.')) return
+  const banUser = async (userId, confirmed = false) => {
+    if (!confirmed) {
+      setConfirmDialog({ title: 'Ban this user?', message: 'They will not be able to log in.', confirmLabel: 'Ban user', action: () => banUser(userId, true) })
+      return
+    }
     await supabase
       .from('users')
       .update({ is_banned: true })
@@ -196,10 +213,56 @@ export default function Admin() {
     fetchTabData('users')
   }
 
-  const deleteGig = async (gigId) => {
-    if (!window.confirm('Delete this gig?')) return
+  const deleteGig = async (gigId, confirmed = false) => {
+    if (!confirmed) {
+      setConfirmDialog({ title: 'Delete this gig?', message: 'This will permanently remove the gig from the platform.', confirmLabel: 'Delete gig', action: () => deleteGig(gigId, true) })
+      return
+    }
     await supabase.from('gigs').delete().eq('id', gigId)
     fetchTabData('gigs')
+  }
+
+  const performReportAction = async (report, action) => {
+    let result
+    let notice
+    if (action === 'ban_user') {
+      result = await supabase.from('users').update({ is_banned: true }).eq('id', report.reported_user_id)
+      notice = 'Your Prima account has been suspended after a review. Contact support if you believe this is a mistake.'
+    } else if (action === 'remove_gig') {
+      result = await supabase.from('gigs').update({ deleted_at: new Date().toISOString() }).eq('id', report.reported_gig_id)
+      notice = 'A gig you posted was removed after a review of a report.'
+    } else if (action === 'deactivate_service') {
+      result = await supabase.from('services').update({ is_active: false }).eq('id', report.reported_service_id)
+      notice = 'A service you posted was deactivated after a review of a report.'
+    } else if (action === 'require_reverification') {
+      result = await supabase.from('users').update({ reverification_required: true }).eq('id', report.reported_user_id)
+      notice = 'Your account requires re-verification. Please update your selfie to continue using Prima.'
+    }
+    if (result?.error) throw result.error
+
+    const { error: statusError } = await supabase.from('reports').update({ status: 'actioned' }).eq('id', report.id)
+    if (statusError) throw statusError
+
+    if (report.reported_user_id && notice) {
+      const { error } = await supabase.from('notifications').insert({
+        user_id: report.reported_user_id, title: 'Prima account action', message: notice, type: 'general'
+      })
+      if (error) console.warn('Moderation action succeeded but notification failed:', error)
+    }
+    showToast('Moderation action completed and report marked actioned', 'success')
+    await fetchTabData('reports')
+    if (action === 'remove_gig') await fetchTabData('gigs')
+    if (action === 'deactivate_service') await fetchTabData('services')
+  }
+
+  const requestReportAction = (report, action, title, message, confirmLabel) => {
+    setConfirmDialog({
+      title, message, confirmLabel,
+      action: async () => {
+        try { await performReportAction(report, action) }
+        catch (error) { showToast('Could not complete moderation action: ' + error.message, 'error') }
+      }
+    })
   }
 
   const resolveDispute = async (receiptId, favor) => {
@@ -383,7 +446,7 @@ export default function Admin() {
       minHeight: '100vh', display: 'flex',
       alignItems: 'center', justifyContent: 'center',
       fontFamily: "'Plus Jakarta Sans', sans-serif",
-      color: '#6C47FF', fontSize: '16px'
+      color: 'var(--color-brand)', fontSize: '16px'
     }}>Loading...</div>
   )
 
@@ -399,14 +462,18 @@ export default function Admin() {
     g.users?.full_name?.toLowerCase().includes(search.toLowerCase())
   )
 
+  const visibleReports = reportStatusFilter === 'all'
+    ? reports
+    : reports.filter(report => report.status === reportStatusFilter)
+
   return (
     <div style={{
-      minHeight: '100vh', background: '#F8F7FF',
+      minHeight: '100vh', background: 'var(--color-surface-tint)',
       fontFamily: "'Plus Jakarta Sans', sans-serif"
     }}>
       {/* Top Bar */}
       <div style={{
-        background: 'linear-gradient(135deg, #14123A, #1E1B4B)',
+        background: 'linear-gradient(135deg, var(--color-text), var(--color-brand-deep))',
         padding: '16px 24px',
         display: 'flex', justifyContent: 'space-between',
         alignItems: 'center', position: 'sticky',
@@ -416,16 +483,16 @@ export default function Admin() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{
             width: '36px', height: '36px', borderRadius: '10px',
-            background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+            background: 'var(--color-brand-gradient)',
             display: 'flex', alignItems: 'center',
             justifyContent: 'center', fontSize: '18px'
           }}>⚡</div>
           <div>
             <div style={{
-              fontSize: '16px', fontWeight: '800', color: '#fff'
+              fontSize: '16px', fontWeight: '800', color: 'var(--color-surface)'
             }}>PrimaPlug Admin</div>
             <div style={{
-              fontSize: '10px', color: 'rgba(255,255,255,0.5)',
+              fontSize: '12px', color: 'rgba(255,255,255,0.5)',
               textTransform: 'uppercase', letterSpacing: '1px'
             }}>Control Room</div>
           </div>
@@ -443,7 +510,7 @@ export default function Admin() {
               border: '1px solid rgba(255,255,255,0.2)',
               borderRadius: '8px', padding: '7px 14px',
               fontSize: '12px', fontWeight: '600',
-              color: '#fff', cursor: 'pointer',
+              color: 'var(--color-surface)', cursor: 'pointer',
               fontFamily: 'inherit'
             }}>← Back to App</button>
         </div>
@@ -452,8 +519,8 @@ export default function Admin() {
       <div style={{ display: 'flex', minHeight: 'calc(100vh - 69px)' }}>
         {/* Sidebar */}
         <div style={{
-          width: '200px', background: '#fff',
-          borderRight: '1.5px solid #E2E0FF',
+          width: '200px', background: 'var(--color-surface)',
+          borderRight: '1.5px solid var(--color-border)',
           padding: '20px 12px', flexShrink: 0
         }}>
           {TABS.map(tab => (
@@ -465,11 +532,11 @@ export default function Admin() {
               }}
               style={{
                 width: '100%', background: activeTab === tab.key
-                  ? '#EEE9FF' : 'transparent',
-                border: `1.5px solid ${activeTab === tab.key ? '#B8A5FF' : 'transparent'}`,
+                  ? 'var(--color-brand-soft)' : 'transparent',
+                border: `1.5px solid ${activeTab === tab.key ? 'var(--color-brand-border-strong)' : 'transparent'}`,
                 borderRadius: '10px', padding: '10px 14px',
                 fontSize: '13px', fontWeight: activeTab === tab.key ? '700' : '500',
-                color: activeTab === tab.key ? '#6C47FF' : '#8B8FAF',
+                color: activeTab === tab.key ? 'var(--color-brand)' : 'var(--color-text-muted)',
                 cursor: 'pointer', fontFamily: 'inherit',
                 textAlign: 'left', marginBottom: '4px',
                 display: 'flex', alignItems: 'center', gap: '8px',
@@ -479,18 +546,18 @@ export default function Admin() {
               <span>{tab.label.split(' ')[1]}</span>
               {tab.key === 'withdrawals' && stats?.pendingWithdrawals > 0 && (
                 <span style={{
-                  background: '#FFB800', color: '#fff',
+                  background: 'var(--color-warning-gold)', color: 'var(--color-surface)',
                   borderRadius: '10px', padding: '1px 6px',
-                  fontSize: '9px', display: 'flex', alignItems: 'center',
+                  fontSize: '12px', display: 'flex', alignItems: 'center',
                   justifyContent: 'center', fontWeight: '800', marginLeft: 'auto'
                 }}>{stats.pendingWithdrawals}</span>
               )}
               {tab.key === 'disputes' && stats?.openDisputes > 0 && (
                 <span style={{
-                  background: '#FF3366', color: '#fff',
+                  background: 'var(--color-danger)', color: 'var(--color-surface)',
                   borderRadius: '50%', width: '18px', height: '18px',
                   display: 'flex', alignItems: 'center',
-                  justifyContent: 'center', fontSize: '9px',
+                  justifyContent: 'center', fontSize: '12px',
                   fontWeight: '800', marginLeft: 'auto'
                 }}>{stats.openDisputes}</span>
               )}
@@ -506,7 +573,7 @@ export default function Admin() {
             <div>
               <div style={{
                 fontSize: '20px', fontWeight: '800',
-                color: '#14123A', marginBottom: '20px'
+                color: 'var(--color-text)', marginBottom: '20px'
               }}>Platform Overview</div>
 
               {/* Stats Grid */}
@@ -516,16 +583,16 @@ export default function Admin() {
                 gap: '14px', marginBottom: '24px'
               }}>
                 {[
-                  { label: 'Total Users', value: stats.totalUsers, icon: '👥', color: '#6C47FF', sub: `+${stats.newUsersThisWeek} this week` },
-                  { label: 'Total Gigs', value: stats.totalGigs, icon: '⚡', color: '#FF6B2B', sub: `${stats.completedGigs} completed` },
-                  { label: 'Services', value: stats.totalServices, icon: '🛠', color: '#0EA5E9', sub: 'Active listings' },
-                  { label: 'Transactions', value: stats.totalReceipts, icon: '📎', color: '#00C48C', sub: `$${stats.totalValue?.toFixed(0)} total value` },
-                  { label: 'Open Disputes', value: stats.openDisputes, icon: '⚠️', color: '#FF3366', sub: 'Needs review' },
-                  { label: 'Completed Gigs', value: stats.completedGigs, icon: '✅', color: '#00C48C', sub: 'All time' },
-                  { label: 'Pending Payouts', value: stats.pendingWithdrawals, icon: '💸', color: '#FFB800', sub: 'Withdrawal requests' },
+                  { label: 'Total Users', value: stats.totalUsers, icon: '👥', color: 'var(--color-brand)', sub: `+${stats.newUsersThisWeek} this week` },
+                  { label: 'Total Gigs', value: stats.totalGigs, icon: '⚡', color: 'var(--color-warning)', sub: `${stats.completedGigs} completed` },
+                  { label: 'Services', value: stats.totalServices, icon: '🛠', color: 'var(--color-info)', sub: 'Active listings' },
+                  { label: 'Transactions', value: stats.totalReceipts, icon: '📎', color: 'var(--color-success)', sub: `$${stats.totalValue?.toFixed(0)} total value` },
+                  { label: 'Open Disputes', value: stats.openDisputes, icon: '⚠️', color: 'var(--color-danger)', sub: 'Needs review' },
+                  { label: 'Completed Gigs', value: stats.completedGigs, icon: '✅', color: 'var(--color-success)', sub: 'All time' },
+                  { label: 'Pending Payouts', value: stats.pendingWithdrawals, icon: '💸', color: 'var(--color-warning-gold)', sub: 'Withdrawal requests' },
                 ].map(({ label, value, icon, color, sub }) => (
                   <div key={label} style={{
-                    background: '#fff', border: '1.5px solid #E2E0FF',
+                    background: 'var(--color-surface)', border: '1.5px solid var(--color-border)',
                     borderRadius: '16px', padding: '18px'
                   }}>
                     <div style={{ fontSize: '24px', marginBottom: '8px' }}>{icon}</div>
@@ -535,18 +602,18 @@ export default function Admin() {
                     }}>{value?.toLocaleString() || 0}</div>
                     <div style={{
                       fontSize: '12px', fontWeight: '600',
-                      color: '#14123A', marginBottom: '2px'
+                      color: 'var(--color-text)', marginBottom: '2px'
                     }}>{label}</div>
-                    <div style={{ fontSize: '11px', color: '#A09DC8' }}>{sub}</div>
+                    <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)' }}>{sub}</div>
                   </div>
                 ))}
               </div>
 
               {/* Platform Value */}
               <div style={{
-                background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+                background: 'var(--color-brand-gradient)',
                 borderRadius: '20px', padding: '24px',
-                color: '#fff', textAlign: 'center'
+                color: 'var(--color-surface)', textAlign: 'center'
               }}>
                 <div style={{
                   fontSize: '12px', opacity: 0.8,
@@ -576,34 +643,34 @@ export default function Admin() {
                 alignItems: 'center', marginBottom: '16px'
               }}>
                 <div style={{
-                  fontSize: '20px', fontWeight: '800', color: '#14123A'
+                  fontSize: '20px', fontWeight: '800', color: 'var(--color-text)'
                 }}>Users ({users.length})</div>
                 <input
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   placeholder="Search users..."
                   style={{
-                    background: '#fff', border: '1.5px solid #E2E0FF',
+                    background: 'var(--color-surface)', border: '1.5px solid var(--color-border)',
                     borderRadius: '10px', padding: '8px 14px',
-                    fontSize: '13px', color: '#14123A',
+                    fontSize: '13px', color: 'var(--color-text)',
                     fontFamily: 'inherit', outline: 'none', width: '220px'
                   }}
                 />
               </div>
 
               <div style={{
-                background: '#fff', borderRadius: '16px',
-                border: '1.5px solid #E2E0FF', overflow: 'hidden'
+                background: 'var(--color-surface)', borderRadius: '16px',
+                border: '1.5px solid var(--color-border)', overflow: 'hidden'
               }}>
                 {/* Table Header */}
                 <div style={{
                   display: 'grid',
                   gridTemplateColumns: '2fr 2fr 1fr 1fr 1fr 1fr 1fr',
                   padding: '12px 16px',
-                  background: '#F8F7FF',
-                  borderBottom: '1px solid #E2E0FF',
-                  fontSize: '10px', fontWeight: '700',
-                  color: '#A09DC8', textTransform: 'uppercase',
+                  background: 'var(--color-surface-tint)',
+                  borderBottom: '1px solid var(--color-border)',
+                  fontSize: '12px', fontWeight: '700',
+                  color: 'var(--color-text-subtle)', textTransform: 'uppercase',
                   letterSpacing: '0.8px', gap: '8px'
                 }}>
                   <span>Name</span>
@@ -618,7 +685,7 @@ export default function Admin() {
                 {loadingData ? (
                   <div style={{
                     padding: '32px', textAlign: 'center',
-                    color: '#A09DC8'
+                    color: 'var(--color-text-subtle)'
                   }}>Loading...</div>
                 ) : filteredUsers.map((u, i) => (
                   <div key={u.id} style={{
@@ -626,17 +693,17 @@ export default function Admin() {
                     gridTemplateColumns: '2fr 2fr 1fr 1fr 1fr 1fr 1fr',
                     padding: '12px 16px',
                     borderBottom: i < filteredUsers.length - 1
-                      ? '1px solid #F5F4FF' : 'none',
+                      ? '1px solid var(--color-page)' : 'none',
                     alignItems: 'center', gap: '8px',
-                    background: u.is_banned ? '#FFF5F5' : '#fff'
+                    background: u.is_banned ? 'var(--color-surface-danger)' : 'var(--color-surface)'
                   }}>
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                       <div style={{
                         width: '30px', height: '30px', borderRadius: '8px',
-                        background: '#EEE9FF', display: 'flex',
+                        background: 'var(--color-brand-soft)', display: 'flex',
                         alignItems: 'center', justifyContent: 'center',
                         fontSize: '12px', fontWeight: '800',
-                        color: '#6C47FF', overflow: 'hidden', flexShrink: 0
+                        color: 'var(--color-brand)', overflow: 'hidden', flexShrink: 0
                       }}>
                         {u.avatar_url ? (
                           <img src={u.avatar_url} alt=""
@@ -646,7 +713,7 @@ export default function Admin() {
                       <div>
                         <div style={{
                           fontSize: '12px', fontWeight: '600',
-                          color: '#14123A'
+                          color: 'var(--color-text)'
                         }}>{u.full_name || '—'}</div>
                         <div style={{ display: 'flex', gap: '4px' }}>
                           {u.is_verified && (
@@ -654,15 +721,15 @@ export default function Admin() {
                           )}
                           {u.is_admin && (
                             <span style={{
-                              fontSize: '8px', background: '#FFE8EE',
-                              color: '#FF3366', borderRadius: '3px',
+                              fontSize: '12px', background: 'var(--color-danger-soft)',
+                              color: 'var(--color-danger)', borderRadius: '3px',
                               padding: '1px 4px', fontWeight: '700'
                             }}>ADMIN</span>
                           )}
                           {u.is_banned && (
                             <span style={{
-                              fontSize: '8px', background: '#FFE8EE',
-                              color: '#FF3366', borderRadius: '3px',
+                              fontSize: '12px', background: 'var(--color-danger-soft)',
+                              color: 'var(--color-danger)', borderRadius: '3px',
                               padding: '1px 4px', fontWeight: '700'
                             }}>BANNED</span>
                           )}
@@ -670,22 +737,22 @@ export default function Admin() {
                       </div>
                     </div>
                     <div style={{
-                      fontSize: '11px', color: '#8B8FAF',
+                      fontSize: '12px', color: 'var(--color-text-muted)',
                       overflow: 'hidden', textOverflow: 'ellipsis',
                       whiteSpace: 'nowrap'
                     }}>{u.email || '—'}</div>
                     <div style={{
                       fontSize: '12px', fontWeight: '700',
-                      color: u.trust_score >= 80 ? '#00C48C' : '#FF3366'
+                      color: u.trust_score >= 80 ? 'var(--color-success)' : 'var(--color-danger)'
                     }}>{u.trust_score || 100}%</div>
                     <div style={{
-                      fontSize: '12px', color: '#14123A', fontWeight: '600'
+                      fontSize: '12px', color: 'var(--color-text)', fontWeight: '600'
                     }}>{u.gigs_completed || 0}</div>
                     <div style={{
-                      fontSize: '11px', color: '#8B8FAF',
+                      fontSize: '12px', color: 'var(--color-text-muted)',
                       textTransform: 'capitalize'
                     }}>{u.level || 'new'}</div>
-                    <div style={{ fontSize: '10px', color: '#A09DC8' }}>
+                    <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)' }}>
                       {timeAgo(u.joined_at)}
                     </div>
                     <div style={{ display: 'flex', gap: '4px' }}>
@@ -694,11 +761,11 @@ export default function Admin() {
                           onClick={() => verifyUser(u.id)}
                           title="Verify User"
                           style={{
-                            background: '#DFFDF4',
-                            border: '1px solid #7EECD2',
+                            background: 'var(--color-success-soft)',
+                            border: '1px solid var(--color-success-border)',
                             borderRadius: '6px', padding: '4px 7px',
-                            fontSize: '10px', fontWeight: '700',
-                            color: '#00C48C', cursor: 'pointer',
+                            fontSize: '12px', fontWeight: '700',
+                            color: 'var(--color-success)', cursor: 'pointer',
                             fontFamily: 'inherit'
                           }}>✓</button>
                       )}
@@ -707,11 +774,11 @@ export default function Admin() {
                           onClick={() => banUser(u.id)}
                           title="Ban User"
                           style={{
-                            background: '#FFE8EE',
-                            border: '1px solid #FF99B3',
+                            background: 'var(--color-danger-soft)',
+                            border: '1px solid var(--color-danger-border)',
                             borderRadius: '6px', padding: '4px 7px',
-                            fontSize: '10px', fontWeight: '700',
-                            color: '#FF3366', cursor: 'pointer',
+                            fontSize: '12px', fontWeight: '700',
+                            color: 'var(--color-danger)', cursor: 'pointer',
                             fontFamily: 'inherit'
                           }}>🚫</button>
                       )}
@@ -725,11 +792,11 @@ export default function Admin() {
                             fetchTabData('users')
                           }}
                           style={{
-                            background: '#EEE9FF',
-                            border: '1px solid #B8A5FF',
+                            background: 'var(--color-brand-soft)',
+                            border: '1px solid var(--color-brand-border-strong)',
                             borderRadius: '6px', padding: '4px 7px',
-                            fontSize: '10px', fontWeight: '700',
-                            color: '#6C47FF', cursor: 'pointer',
+                            fontSize: '12px', fontWeight: '700',
+                            color: 'var(--color-brand)', cursor: 'pointer',
                             fontFamily: 'inherit'
                           }}>Unban</button>
                       )}
@@ -748,16 +815,16 @@ export default function Admin() {
                 alignItems: 'center', marginBottom: '16px'
               }}>
                 <div style={{
-                  fontSize: '20px', fontWeight: '800', color: '#14123A'
+                  fontSize: '20px', fontWeight: '800', color: 'var(--color-text)'
                 }}>Gigs ({gigs.length})</div>
                 <input
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   placeholder="Search gigs..."
                   style={{
-                    background: '#fff', border: '1.5px solid #E2E0FF',
+                    background: 'var(--color-surface)', border: '1.5px solid var(--color-border)',
                     borderRadius: '10px', padding: '8px 14px',
-                    fontSize: '13px', color: '#14123A',
+                    fontSize: '13px', color: 'var(--color-text)',
                     fontFamily: 'inherit', outline: 'none', width: '220px'
                   }}
                 />
@@ -768,7 +835,7 @@ export default function Admin() {
               }}>
                 {filteredGigs.map(gig => (
                   <div key={gig.id} style={{
-                    background: '#fff', border: '1.5px solid #E2E0FF',
+                    background: 'var(--color-surface)', border: '1.5px solid var(--color-border)',
                     borderRadius: '14px', padding: '14px 16px',
                     display: 'flex', justifyContent: 'space-between',
                     alignItems: 'center', gap: '12px'
@@ -776,10 +843,10 @@ export default function Admin() {
                     <div style={{ flex: 1 }}>
                       <div style={{
                         fontSize: '14px', fontWeight: '700',
-                        color: '#14123A', marginBottom: '3px'
+                        color: 'var(--color-text)', marginBottom: '3px'
                       }}>{gig.title}</div>
                       <div style={{
-                        fontSize: '11px', color: '#8B8FAF'
+                        fontSize: '12px', color: 'var(--color-text-muted)'
                       }}>
                         By {gig.users?.full_name || '—'} ·{' '}
                         ${gig.pay_min}–${gig.pay_max} ·{' '}
@@ -788,29 +855,29 @@ export default function Admin() {
                     </div>
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                       <span style={{
-                        background: gig.status === 'open' ? '#DFFDF4'
-                          : gig.status === 'completed' ? '#EEE9FF'
-                            : '#FFF0E8',
-                        border: `1px solid ${gig.status === 'open' ? '#7EECD2'
-                          : gig.status === 'completed' ? '#B8A5FF'
-                            : '#FFBC99'}`,
+                        background: gig.status === 'open' ? 'var(--color-success-soft)'
+                          : gig.status === 'completed' ? 'var(--color-brand-soft)'
+                            : 'var(--color-warning-soft)',
+                        border: `1px solid ${gig.status === 'open' ? 'var(--color-success-border)'
+                          : gig.status === 'completed' ? 'var(--color-brand-border-strong)'
+                            : 'var(--color-warning-border)'}`,
                         borderRadius: '6px', padding: '3px 9px',
-                        fontSize: '10px', fontWeight: '700',
-                        color: gig.status === 'open' ? '#00C48C'
-                          : gig.status === 'completed' ? '#6C47FF'
-                            : '#FF6B2B',
+                        fontSize: '12px', fontWeight: '700',
+                        color: gig.status === 'open' ? 'var(--color-success)'
+                          : gig.status === 'completed' ? 'var(--color-brand)'
+                            : 'var(--color-warning)',
                         textTransform: 'capitalize'
                       }}>{gig.status}</span>
                       <div style={{
-                        fontSize: '10px', color: '#A09DC8'
+                        fontSize: '12px', color: 'var(--color-text-subtle)'
                       }}>{timeAgo(gig.created_at)}</div>
                       <button
                         onClick={() => deleteGig(gig.id)}
                         style={{
-                          background: '#FFE8EE', border: '1px solid #FF99B3',
+                          background: 'var(--color-danger-soft)', border: '1px solid var(--color-danger-border)',
                           borderRadius: '7px', padding: '5px 9px',
-                          fontSize: '11px', fontWeight: '700',
-                          color: '#FF3366', cursor: 'pointer',
+                          fontSize: '12px', fontWeight: '700',
+                          color: 'var(--color-danger)', cursor: 'pointer',
                           fontFamily: 'inherit'
                         }}>🗑 Delete</button>
                     </div>
@@ -826,7 +893,7 @@ export default function Admin() {
               {/* ── Active Boosts panel ── */}
               {boosts.length > 0 && (
                 <div style={{ marginBottom: '28px' }}>
-                  <div style={{ fontSize: '16px', fontWeight: '800', color: '#FFB800', marginBottom: '12px' }}>
+                  <div style={{ fontSize: '16px', fontWeight: '800', color: 'var(--color-warning-gold)', marginBottom: '12px' }}>
                     ⚡ Boost Transactions ({boosts.length})
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -836,30 +903,30 @@ export default function Admin() {
                       const daysLeft = until ? Math.ceil((new Date(until) - Date.now()) / 86400000) : 0
                       return (
                         <div key={b.id} style={{
-                          background: '#fff', border: `1.5px solid ${b.status === 'completed' ? '#FFD966' : '#E2E0FF'}`,
+                          background: 'var(--color-surface)', border: `1.5px solid ${b.status === 'completed' ? 'var(--color-warning-gold-border)' : 'var(--color-border)'}`,
                           borderRadius: '12px', padding: '12px 14px',
                           display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px',
                         }}>
                           <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: '13px', fontWeight: '700', color: '#14123A' }}>
+                            <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--color-text)' }}>
                               {b.services?.title || 'Unknown service'}
                             </div>
-                            <div style={{ fontSize: '11px', color: '#8B8FAF', marginTop: '2px' }}>
+                            <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: '2px' }}>
                               By {b.users?.full_name || '—'} · {b.currency} {Number(b.amount).toLocaleString()} · {b.description}
                             </div>
                           </div>
                           <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
                             <span style={{
-                              background: b.status === 'completed' ? '#FFF8E0' : '#F5F4FF',
-                              border: `1px solid ${b.status === 'completed' ? '#FFD966' : '#E2E0FF'}`,
+                              background: b.status === 'completed' ? 'var(--color-warning-gold-soft)' : 'var(--color-page)',
+                              border: `1px solid ${b.status === 'completed' ? 'var(--color-warning-gold-border)' : 'var(--color-border)'}`,
                               borderRadius: '6px', padding: '3px 9px',
-                              fontSize: '10px', fontWeight: '700',
-                              color: b.status === 'completed' ? '#FFB800' : '#8B8FAF',
+                              fontSize: '12px', fontWeight: '700',
+                              color: b.status === 'completed' ? 'var(--color-warning-gold)' : 'var(--color-text-muted)',
                             }}>{b.status}</span>
                             {daysLeft > 0 && (
-                              <span style={{ fontSize: '11px', color: '#00C48C', fontWeight: '700' }}>{daysLeft}d left</span>
+                              <span style={{ fontSize: '12px', color: 'var(--color-success)', fontWeight: '700' }}>{daysLeft}d left</span>
                             )}
-                            <div style={{ fontSize: '10px', color: '#A09DC8' }}>{timeAgo(b.created_at)}</div>
+                            <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)' }}>{timeAgo(b.created_at)}</div>
                           </div>
                         </div>
                       )
@@ -869,7 +936,7 @@ export default function Admin() {
               )}
 
               {/* ── Services list ── */}
-              <div style={{ fontSize: '16px', fontWeight: '800', color: '#14123A', marginBottom: '12px' }}>
+              <div style={{ fontSize: '16px', fontWeight: '800', color: 'var(--color-text)', marginBottom: '12px' }}>
                 All Services ({services.length})
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -882,37 +949,37 @@ export default function Admin() {
 
                   return (
                     <div key={service.id} style={{
-                      background: '#fff',
-                      border: `1.5px solid ${isFeatured || isPermanent ? '#FFD966' : '#E2E0FF'}`,
+                      background: 'var(--color-surface)',
+                      border: `1.5px solid ${isFeatured || isPermanent ? 'var(--color-warning-gold-border)' : 'var(--color-border)'}`,
                       borderRadius: '14px', padding: '14px 16px',
                       display: 'flex', justifyContent: 'space-between',
                       alignItems: 'center', gap: '12px',
                     }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '3px' }}>
-                          <div style={{ fontSize: '14px', fontWeight: '700', color: '#14123A' }}>{service.title}</div>
+                          <div style={{ fontSize: '14px', fontWeight: '700', color: 'var(--color-text)' }}>{service.title}</div>
                           {(isFeatured || isPermanent) && (
                             <span style={{
-                              background: 'linear-gradient(135deg, #FFB800, #FF6B2B)',
+                              background: 'linear-gradient(135deg, var(--color-warning-gold), var(--color-warning))',
                               borderRadius: '5px', padding: '2px 7px',
-                              fontSize: '9px', fontWeight: '800', color: '#fff',
+                              fontSize: '12px', fontWeight: '800', color: 'var(--color-surface)',
                             }}>⚡ {isPermanent ? 'Pinned' : `${daysLeft}d left`}</span>
                           )}
                           {service.avg_rating > 0 && (
-                            <span style={{ fontSize: '10px', color: '#FFB800' }}>⭐ {Number(service.avg_rating).toFixed(1)} ({service.review_count})</span>
+                            <span style={{ fontSize: '12px', color: 'var(--color-warning-gold)' }}>⭐ {Number(service.avg_rating).toFixed(1)} ({service.review_count})</span>
                           )}
                         </div>
-                        <div style={{ fontSize: '11px', color: '#8B8FAF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           By {service.users?.full_name || '—'} · From {service.basic_price} · {service.field || '—'} · {service.type}
                         </div>
                       </div>
                       <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexShrink: 0 }}>
                         <span style={{
-                          background: service.is_active ? '#DFFDF4' : '#FFE8EE',
-                          border: `1px solid ${service.is_active ? '#7EECD2' : '#FF99B3'}`,
+                          background: service.is_active ? 'var(--color-success-soft)' : 'var(--color-danger-soft)',
+                          border: `1px solid ${service.is_active ? 'var(--color-success-border)' : 'var(--color-danger-border)'}`,
                           borderRadius: '6px', padding: '3px 9px',
-                          fontSize: '10px', fontWeight: '700',
-                          color: service.is_active ? '#00C48C' : '#FF3366',
+                          fontSize: '12px', fontWeight: '700',
+                          color: service.is_active ? 'var(--color-success)' : 'var(--color-danger)',
                         }}>{service.is_active ? 'Active' : 'Inactive'}</span>
 
                         {/* Feature / Unfeature toggle */}
@@ -930,11 +997,11 @@ export default function Admin() {
                             fetchTabData('services')
                           }}
                           style={{
-                            background: service.is_featured ? '#FFF8E0' : '#F5F4FF',
-                            border: `1px solid ${service.is_featured ? '#FFD966' : '#E2E0FF'}`,
+                            background: service.is_featured ? 'var(--color-warning-gold-soft)' : 'var(--color-page)',
+                            border: `1px solid ${service.is_featured ? 'var(--color-warning-gold-border)' : 'var(--color-border)'}`,
                             borderRadius: '7px', padding: '5px 9px',
-                            fontSize: '11px', fontWeight: '700',
-                            color: service.is_featured ? '#FFB800' : '#8B8FAF',
+                            fontSize: '12px', fontWeight: '700',
+                            color: service.is_featured ? 'var(--color-warning-gold)' : 'var(--color-text-muted)',
                             cursor: 'pointer', fontFamily: 'inherit',
                           }}>
                           {service.is_featured ? '⚡ Unpin' : '⚡ Pin'}
@@ -948,25 +1015,24 @@ export default function Admin() {
                             fetchTabData('services')
                           }}
                           style={{
-                            background: '#EEE9FF', border: '1px solid #B8A5FF',
+                            background: 'var(--color-brand-soft)', border: '1px solid var(--color-brand-border-strong)',
                             borderRadius: '7px', padding: '5px 9px',
-                            fontSize: '11px', fontWeight: '700',
-                            color: '#6C47FF', cursor: 'pointer', fontFamily: 'inherit',
+                            fontSize: '12px', fontWeight: '700',
+                            color: 'var(--color-brand)', cursor: 'pointer', fontFamily: 'inherit',
                           }}>
                           {service.is_active ? 'Deactivate' : 'Activate'}
                         </button>
 
                         <button
-                          onClick={async () => {
-                            if (!window.confirm('Delete this service?')) return
-                            await supabase.from('services').delete().eq('id', service.id)
-                            fetchTabData('services')
-                          }}
+                          onClick={() => setConfirmDialog({
+                            title: 'Delete this service?', message: 'This service will be permanently removed.', confirmLabel: 'Delete service',
+                            action: async () => { await supabase.from('services').delete().eq('id', service.id); fetchTabData('services') }
+                          })}
                           style={{
-                            background: '#FFE8EE', border: '1px solid #FF99B3',
+                            background: 'var(--color-danger-soft)', border: '1px solid var(--color-danger-border)',
                             borderRadius: '7px', padding: '5px 9px',
-                            fontSize: '11px', fontWeight: '700',
-                            color: '#FF3366', cursor: 'pointer', fontFamily: 'inherit',
+                            fontSize: '12px', fontWeight: '700',
+                            color: 'var(--color-danger)', cursor: 'pointer', fontFamily: 'inherit',
                           }}>🗑</button>
                       </div>
                     </div>
@@ -981,7 +1047,7 @@ export default function Admin() {
             <div>
               <div style={{
                 fontSize: '20px', fontWeight: '800',
-                color: '#14123A', marginBottom: '16px'
+                color: 'var(--color-text)', marginBottom: '16px'
               }}>
                 Open Disputes ({disputes.length})
               </div>
@@ -989,20 +1055,20 @@ export default function Admin() {
               {disputes.length === 0 ? (
                 <div style={{
                   textAlign: 'center', padding: '48px',
-                  background: '#fff', borderRadius: '16px',
-                  border: '1.5px solid #E2E0FF'
+                  background: 'var(--color-surface)', borderRadius: '16px',
+                  border: '1.5px solid var(--color-border)'
                 }}>
                   <div style={{ fontSize: '40px', marginBottom: '12px' }}>✅</div>
                   <div style={{
-                    fontSize: '16px', fontWeight: '700', color: '#14123A'
+                    fontSize: '16px', fontWeight: '700', color: 'var(--color-text)'
                   }}>No open disputes</div>
-                  <div style={{ fontSize: '13px', color: '#A09DC8', marginTop: '6px' }}>
+                  <div style={{ fontSize: '13px', color: 'var(--color-text-subtle)', marginTop: '6px' }}>
                     All transactions are clean
                   </div>
                 </div>
               ) : disputes.map(dispute => (
                 <div key={dispute.id} style={{
-                  background: '#fff', border: '1.5px solid #FF99B3',
+                  background: 'var(--color-surface)', border: '1.5px solid var(--color-danger-border)',
                   borderRadius: '16px', padding: '18px',
                   marginBottom: '12px'
                 }}>
@@ -1013,24 +1079,24 @@ export default function Admin() {
                     <div>
                       <div style={{
                         fontSize: '15px', fontWeight: '700',
-                        color: '#14123A', marginBottom: '4px'
+                        color: 'var(--color-text)', marginBottom: '4px'
                       }}>{dispute.gigs?.title || 'Deleted Gig'}</div>
-                      <div style={{ fontSize: '12px', color: '#8B8FAF' }}>
+                      <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
                         Amount: ${dispute.amount || '?'} ·{' '}
                         {timeAgo(dispute.created_at)}
                       </div>
                     </div>
                     <span style={{
-                      background: '#FFE8EE', border: '1px solid #FF99B3',
+                      background: 'var(--color-danger-soft)', border: '1px solid var(--color-danger-border)',
                       borderRadius: '7px', padding: '4px 10px',
-                      fontSize: '10px', fontWeight: '800', color: '#FF3366'
+                      fontSize: '12px', fontWeight: '800', color: 'var(--color-danger)'
                     }}>⚠️ DISPUTED</span>
                   </div>
 
                   <div style={{
-                    background: '#FFF5F5', borderRadius: '10px',
+                    background: 'var(--color-surface-danger)', borderRadius: '10px',
                     padding: '12px', marginBottom: '14px',
-                    fontSize: '12px', color: '#FF3366', lineHeight: '1.5'
+                    fontSize: '12px', color: 'var(--color-danger)', lineHeight: '1.5'
                   }}>
                     <strong>Dispute Reason:</strong>{' '}
                     {dispute.dispute_reason || 'No reason provided'}
@@ -1041,16 +1107,16 @@ export default function Admin() {
                     gap: '10px', marginBottom: '14px'
                   }}>
                     <div style={{
-                      background: '#F5F4FF', borderRadius: '10px', padding: '12px'
+                      background: 'var(--color-page)', borderRadius: '10px', padding: '12px'
                     }}>
                       <div style={{
-                        fontSize: '10px', color: '#A09DC8', fontWeight: '700',
+                        fontSize: '12px', color: 'var(--color-text-subtle)', fontWeight: '700',
                         textTransform: 'uppercase', marginBottom: '4px'
                       }}>Poster (Client)</div>
                       <div style={{
-                        fontSize: '13px', fontWeight: '600', color: '#14123A'
+                        fontSize: '13px', fontWeight: '600', color: 'var(--color-text)'
                       }}>{dispute.poster?.full_name || '—'}</div>
-                      <div style={{ fontSize: '11px', color: '#8B8FAF' }}>
+                      <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
                         {dispute.poster?.email}
                       </div>
                       {dispute.poster_receipt_url && (
@@ -1058,22 +1124,22 @@ export default function Admin() {
                           target="_blank" rel="noreferrer"
                           style={{
                             display: 'inline-block', marginTop: '6px',
-                            fontSize: '11px', color: '#6C47FF',
+                            fontSize: '12px', color: 'var(--color-brand)',
                             fontWeight: '600'
                           }}>View Receipt →</a>
                       )}
                     </div>
                     <div style={{
-                      background: '#F5F4FF', borderRadius: '10px', padding: '12px'
+                      background: 'var(--color-page)', borderRadius: '10px', padding: '12px'
                     }}>
                       <div style={{
-                        fontSize: '10px', color: '#A09DC8', fontWeight: '700',
+                        fontSize: '12px', color: 'var(--color-text-subtle)', fontWeight: '700',
                         textTransform: 'uppercase', marginBottom: '4px'
                       }}>Worker</div>
                       <div style={{
-                        fontSize: '13px', fontWeight: '600', color: '#14123A'
+                        fontSize: '13px', fontWeight: '600', color: 'var(--color-text)'
                       }}>{dispute.worker?.full_name || '—'}</div>
-                      <div style={{ fontSize: '11px', color: '#8B8FAF' }}>
+                      <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
                         {dispute.worker?.email}
                       </div>
                       {dispute.worker_receipt_url && (
@@ -1081,7 +1147,7 @@ export default function Admin() {
                           target="_blank" rel="noreferrer"
                           style={{
                             display: 'inline-block', marginTop: '6px',
-                            fontSize: '11px', color: '#6C47FF',
+                            fontSize: '12px', color: 'var(--color-brand)',
                             fontWeight: '600'
                           }}>View Receipt →</a>
                       )}
@@ -1092,31 +1158,31 @@ export default function Admin() {
                     <button
                       onClick={() => resolveDispute(dispute.id, 'poster')}
                       style={{
-                        flex: 1, background: '#EEE9FF',
-                        border: '1.5px solid #B8A5FF',
+                        flex: 1, background: 'var(--color-brand-soft)',
+                        border: '1.5px solid var(--color-brand-border-strong)',
                         borderRadius: '10px', padding: '11px',
                         fontSize: '12px', fontWeight: '700',
-                        color: '#6C47FF', cursor: 'pointer',
+                        color: 'var(--color-brand)', cursor: 'pointer',
                         fontFamily: 'inherit'
                       }}>✓ Favor Poster</button>
                     <button
                       onClick={() => resolveDispute(dispute.id, 'worker')}
                       style={{
-                        flex: 1, background: '#DFFDF4',
-                        border: '1.5px solid #7EECD2',
+                        flex: 1, background: 'var(--color-success-soft)',
+                        border: '1.5px solid var(--color-success-border)',
                         borderRadius: '10px', padding: '11px',
                         fontSize: '12px', fontWeight: '700',
-                        color: '#00C48C', cursor: 'pointer',
+                        color: 'var(--color-success)', cursor: 'pointer',
                         fontFamily: 'inherit'
                       }}>✓ Favor Worker</button>
                     <button
                       onClick={() => dismissDispute(dispute.id)}
                       style={{
-                        background: '#F5F4FF',
-                        border: '1.5px solid #E2E0FF',
+                        background: 'var(--color-page)',
+                        border: '1.5px solid var(--color-border)',
                         borderRadius: '10px', padding: '11px 14px',
                         fontSize: '12px', fontWeight: '700',
-                        color: '#8B8FAF', cursor: 'pointer',
+                        color: 'var(--color-text-muted)', cursor: 'pointer',
                         fontFamily: 'inherit'
                       }}>Dismiss</button>
                   </div>
@@ -1130,16 +1196,16 @@ export default function Admin() {
             <div>
               <div style={{
                 fontSize: '20px', fontWeight: '800',
-                color: '#14123A', marginBottom: '16px'
+                color: 'var(--color-text)', marginBottom: '16px'
               }}>Withdrawal Requests ({withdrawals.length})</div>
               {withdrawals.length === 0 ? (
                 <div style={{
                   textAlign: 'center', padding: '48px',
-                  color: '#A09DC8', fontSize: '14px'
+                  color: 'var(--color-text-subtle)', fontSize: '14px'
                 }}>No withdrawal requests yet</div>
               ) : withdrawals.map(w => (
                 <div key={w.id} style={{
-                  background: '#fff', border: '1.5px solid #E2E0FF',
+                  background: 'var(--color-surface)', border: '1.5px solid var(--color-border)',
                   borderRadius: '14px', padding: '16px',
                   marginBottom: '10px'
                 }}>
@@ -1149,17 +1215,17 @@ export default function Admin() {
                   }}>
                     <div>
                       <div style={{
-                        fontSize: '14px', fontWeight: '700', color: '#14123A'
+                        fontSize: '14px', fontWeight: '700', color: 'var(--color-text)'
                       }}>{w.users?.full_name || 'Unknown'}</div>
-                      <div style={{ fontSize: '11px', color: '#8B8FAF' }}>
+                      <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
                         {w.users?.email}
                       </div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
                       <div style={{
-                        fontSize: '16px', fontWeight: '800', color: '#00C48C'
+                        fontSize: '16px', fontWeight: '800', color: 'var(--color-success)'
                       }}>${w.dollar_amount?.toFixed(2)}</div>
-                      <div style={{ fontSize: '11px', color: '#A09DC8' }}>
+                      <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)' }}>
                         {w.credits_amount} credits
                       </div>
                     </div>
@@ -1169,36 +1235,36 @@ export default function Admin() {
                     marginBottom: '10px'
                   }}>
                     <span style={{
-                      background: '#EEE9FF', border: '1px solid #B8A5FF',
+                      background: 'var(--color-brand-soft)', border: '1px solid var(--color-brand-border-strong)',
                       borderRadius: '6px', padding: '3px 8px',
-                      fontSize: '11px', fontWeight: '700', color: '#6C47FF'
+                      fontSize: '12px', fontWeight: '700', color: 'var(--color-brand)'
                     }}>{w.method?.toUpperCase()}</span>
                     <span style={{
-                      background: w.status === 'pending' ? '#FFF8E0' : w.status === 'paid' ? '#DFFDF4' : '#FFE8EE',
-                      border: `1px solid ${w.status === 'pending' ? '#FFD966' : w.status === 'paid' ? '#7EECD2' : '#FF99B3'}`,
+                      background: w.status === 'pending' ? 'var(--color-warning-gold-soft)' : w.status === 'paid' ? 'var(--color-success-soft)' : 'var(--color-danger-soft)',
+                      border: `1px solid ${w.status === 'pending' ? 'var(--color-warning-gold-border)' : w.status === 'paid' ? 'var(--color-success-border)' : 'var(--color-danger-border)'}`,
                       borderRadius: '6px', padding: '3px 8px',
-                      fontSize: '11px', fontWeight: '700',
-                      color: w.status === 'pending' ? '#FFB800' : w.status === 'paid' ? '#00C48C' : '#FF3366'
+                      fontSize: '12px', fontWeight: '700',
+                      color: w.status === 'pending' ? 'var(--color-warning-gold)' : w.status === 'paid' ? 'var(--color-success)' : 'var(--color-danger)'
                     }}>{w.status?.toUpperCase()}</span>
-                    <span style={{ fontSize: '11px', color: '#A09DC8' }}>
+                    <span style={{ fontSize: '12px', color: 'var(--color-text-subtle)' }}>
                       {new Date(w.created_at).toLocaleDateString()}
                     </span>
                   </div>
                   <div style={{
-                    background: '#F5F4FF', borderRadius: '8px',
+                    background: 'var(--color-page)', borderRadius: '8px',
                     padding: '8px 12px', fontSize: '12px',
-                    color: '#5B5887', marginBottom: '10px'
+                    color: 'var(--color-text-muted)', marginBottom: '10px'
                   }}>
                     <strong>Account:</strong> {w.account_details}
                   </div>
                   {w.status === 'pending' && (
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <button
-                        onClick={async () => {
-                          const confirmed = window.confirm(
-                            `Confirm payment of $${w.dollar_amount?.toFixed(2)} to ${w.users?.full_name || 'user'}?\n\nMake sure you have already sent this payment via Fincra or directly before confirming.`
-                          )
-                          if (!confirmed) return
+                        onClick={() => setConfirmDialog({
+                          title: `Confirm payment of $${w.dollar_amount?.toFixed(2)}?`,
+                          message: `This marks the withdrawal to ${w.users?.full_name || 'this user'} as paid. Confirm only after you have sent the payment via Fincra or directly.`,
+                          confirmLabel: 'Mark as paid',
+                          action: async () => {
 
                           await supabase
                             .from('withdrawals')
@@ -1216,13 +1282,14 @@ export default function Admin() {
                           })
 
                           fetchTabData('withdrawals')
-                        }}
+                          }
+                        })}
                         style={{
-                          flex: 2, background: '#DFFDF4',
-                          border: '1.5px solid #7EECD2',
+                          flex: 2, background: 'var(--color-success-soft)',
+                          border: '1.5px solid var(--color-success-border)',
                           borderRadius: '10px', padding: '10px',
                           fontSize: '13px', fontWeight: '700',
-                          color: '#00C48C', cursor: 'pointer',
+                          color: 'var(--color-success)', cursor: 'pointer',
                           fontFamily: 'inherit'
                         }}>✓ Confirm Paid</button>
                       <button
@@ -1246,11 +1313,11 @@ export default function Admin() {
                           fetchTabData('withdrawals')
                         }}
                         style={{
-                          flex: 1, background: '#FFE8EE',
-                          border: '1.5px solid #FF99B3',
+                          flex: 1, background: 'var(--color-danger-soft)',
+                          border: '1.5px solid var(--color-danger-border)',
                           borderRadius: '8px', padding: '8px',
                           fontSize: '12px', fontWeight: '700',
-                          color: '#FF3366', cursor: 'pointer',
+                          color: 'var(--color-danger)', cursor: 'pointer',
                           fontFamily: 'inherit'
                         }}>✕ Reject & Refund</button>
                     </div>
@@ -1265,20 +1332,20 @@ export default function Admin() {
             <div>
               <div style={{
                 fontSize: '20px', fontWeight: '800',
-                color: '#14123A', marginBottom: '16px'
+                color: 'var(--color-text)', marginBottom: '16px'
               }}>All Receipts ({receipts.length})</div>
 
               <div style={{
-                background: '#fff', borderRadius: '16px',
-                border: '1.5px solid #E2E0FF', overflow: 'hidden'
+                background: 'var(--color-surface)', borderRadius: '16px',
+                border: '1.5px solid var(--color-border)', overflow: 'hidden'
               }}>
                 <div style={{
                   display: 'grid',
                   gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr',
-                  padding: '12px 16px', background: '#F8F7FF',
-                  borderBottom: '1px solid #E2E0FF',
-                  fontSize: '10px', fontWeight: '700',
-                  color: '#A09DC8', textTransform: 'uppercase',
+                  padding: '12px 16px', background: 'var(--color-surface-tint)',
+                  borderBottom: '1px solid var(--color-border)',
+                  fontSize: '12px', fontWeight: '700',
+                  color: 'var(--color-text-subtle)', textTransform: 'uppercase',
                   letterSpacing: '0.8px', gap: '8px'
                 }}>
                   <span>Gig</span>
@@ -1294,32 +1361,32 @@ export default function Admin() {
                     gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr',
                     padding: '12px 16px',
                     borderBottom: i < receipts.length - 1
-                      ? '1px solid #F5F4FF' : 'none',
+                      ? '1px solid var(--color-page)' : 'none',
                     alignItems: 'center', gap: '8px'
                   }}>
                     <div style={{
                       fontSize: '12px', fontWeight: '600',
-                      color: '#14123A', overflow: 'hidden',
+                      color: 'var(--color-text)', overflow: 'hidden',
                       textOverflow: 'ellipsis', whiteSpace: 'nowrap'
                     }}>{receipt.gigs?.title || 'Deleted'}</div>
                     <div style={{
-                      fontSize: '11px', color: '#8B8FAF'
+                      fontSize: '12px', color: 'var(--color-text-muted)'
                     }}>{receipt.poster?.full_name || '—'}</div>
                     <div style={{
-                      fontSize: '11px', color: '#8B8FAF'
+                      fontSize: '12px', color: 'var(--color-text-muted)'
                     }}>{receipt.worker?.full_name || '—'}</div>
                     <div style={{
-                      fontSize: '12px', fontWeight: '700', color: '#00C48C'
+                      fontSize: '12px', fontWeight: '700', color: 'var(--color-success)'
                     }}>${receipt.amount || '—'}</div>
                     <span style={{
-                      background: receipt.completed ? '#DFFDF4'
-                        : receipt.disputed ? '#FFE8EE' : '#FFF0E8',
-                      border: `1px solid ${receipt.completed ? '#7EECD2'
-                        : receipt.disputed ? '#FF99B3' : '#FFBC99'}`,
+                      background: receipt.completed ? 'var(--color-success-soft)'
+                        : receipt.disputed ? 'var(--color-danger-soft)' : 'var(--color-warning-soft)',
+                      border: `1px solid ${receipt.completed ? 'var(--color-success-border)'
+                        : receipt.disputed ? 'var(--color-danger-border)' : 'var(--color-warning-border)'}`,
                       borderRadius: '5px', padding: '2px 7px',
-                      fontSize: '9px', fontWeight: '700',
-                      color: receipt.completed ? '#00C48C'
-                        : receipt.disputed ? '#FF3366' : '#FF6B2B',
+                      fontSize: '12px', fontWeight: '700',
+                      color: receipt.completed ? 'var(--color-success)'
+                        : receipt.disputed ? 'var(--color-danger)' : 'var(--color-warning)',
                       display: 'inline-block'
                     }}>
                       {receipt.completed ? 'Complete'
@@ -1334,86 +1401,109 @@ export default function Admin() {
           {/* REPORTS TAB */}
           {activeTab === 'reports' && (
             <div>
-              <div style={{ fontSize: '20px', fontWeight: '800', color: '#14123A', marginBottom: '16px' }}>
+              <div style={{ fontSize: '20px', fontWeight: '800', color: 'var(--color-text)', marginBottom: '16px' }}>
                 Reports ({reports.length})
               </div>
-              {reports.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '48px', background: '#fff', borderRadius: '16px', border: '1.5px solid #E2E0FF' }}>
+              {reportsError && <div role="alert" style={{ background: 'var(--color-danger-soft)', borderRadius: '12px', padding: '12px 14px', color: 'var(--color-danger)', fontSize: '13px', marginBottom: '12px' }}>
+                Could not load reports: {reportsError} <button onClick={() => fetchTabData('reports')} style={{ marginLeft: '8px', color: 'inherit', border: 0, background: 'none', font: 'inherit', fontWeight: '800', textDecoration: 'underline', cursor: 'pointer' }}>Try again</button>
+              </div>}
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
+                {['pending', 'reviewed', 'actioned', 'dismissed', 'all'].map(status => {
+                  const count = status === 'all' ? reports.length : reports.filter(report => report.status === status).length
+                  const selected = reportStatusFilter === status
+                  return <button key={status} onClick={() => setReportStatusFilter(status)} style={{
+                    border: selected ? '1px solid var(--color-brand-border-strong)' : '1px solid var(--color-border)',
+                    borderRadius: '999px', padding: '8px 13px', cursor: 'pointer', font: 'inherit', fontSize: '13px', fontWeight: '700',
+                    background: selected ? 'var(--color-brand-soft)' : 'var(--color-surface)',
+                    color: selected ? 'var(--color-brand)' : 'var(--color-text-muted)', textTransform: 'capitalize'
+                  }}>{status} ({count})</button>
+                })}
+              </div>
+              {visibleReports.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '48px', background: 'var(--color-surface)', borderRadius: '16px', border: '1.5px solid var(--color-border)' }}>
                   <div style={{ fontSize: '40px', marginBottom: '12px' }}>✅</div>
-                  <div style={{ fontSize: '16px', fontWeight: '700', color: '#14123A' }}>No reports</div>
+                  <div style={{ fontSize: '16px', fontWeight: '700', color: 'var(--color-text)' }}>No reports</div>
                 </div>
-              ) : reports.map(report => (
-                <div key={report.id} style={{ background: '#fff', border: '1.5px solid #E2E0FF', borderRadius: '16px', padding: '18px', marginBottom: '12px' }}>
+              ) : visibleReports.map(report => (
+                <div key={report.id} style={{ background: 'var(--color-surface)', border: '1.5px solid var(--color-border)', borderRadius: '16px', padding: '18px', marginBottom: '12px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
                     <div>
-                      <div style={{ fontSize: '14px', fontWeight: '700', color: '#14123A', marginBottom: '3px' }}>
+                      <div style={{ fontSize: '14px', fontWeight: '700', color: 'var(--color-text)', marginBottom: '3px' }}>
                         {report.reason.replace(/_/g, ' ').toUpperCase()}
                       </div>
-                      <div style={{ fontSize: '11px', color: '#8B8FAF' }}>
+                      <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
                         {report.type} report · {timeAgo(report.created_at)}
                       </div>
                     </div>
                     <span style={{
-                      background: report.status === 'pending' ? '#FFF8E0' : report.status === 'actioned' ? '#DFFDF4' : '#F5F4FF',
-                      border: `1px solid ${report.status === 'pending' ? '#FFD966' : report.status === 'actioned' ? '#7EECD2' : '#E2E0FF'}`,
+                      background: report.status === 'pending' ? 'var(--color-warning-gold-soft)' : report.status === 'actioned' ? 'var(--color-success-soft)' : 'var(--color-page)',
+                      border: `1px solid ${report.status === 'pending' ? 'var(--color-warning-gold-border)' : report.status === 'actioned' ? 'var(--color-success-border)' : 'var(--color-border)'}`,
                       borderRadius: '6px', padding: '3px 9px',
-                      fontSize: '10px', fontWeight: '700',
-                      color: report.status === 'pending' ? '#FFB800' : report.status === 'actioned' ? '#00C48C' : '#8B8FAF',
+                      fontSize: '12px', fontWeight: '700',
+                      color: report.status === 'pending' ? 'var(--color-warning-gold)' : report.status === 'actioned' ? 'var(--color-success)' : 'var(--color-text-muted)',
                       textTransform: 'capitalize'
                     }}>{report.status}</span>
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '14px' }}>
-                    <div style={{ background: '#F5F4FF', borderRadius: '10px', padding: '12px' }}>
-                      <div style={{ fontSize: '10px', color: '#A09DC8', fontWeight: '700', marginBottom: '6px', textTransform: 'uppercase' }}>Reporter (Anonymous)</div>
-                      <div style={{ fontSize: '12px', fontWeight: '600', color: '#14123A' }}>Hidden from reported user</div>
+                    <div style={{ background: 'var(--color-page)', borderRadius: '10px', padding: '12px' }}>
+                      <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)', fontWeight: '700', marginBottom: '6px', textTransform: 'uppercase' }}>Reporter · private to admins</div>
+                      <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--color-text)' }}>{report.reporter?.full_name || 'Account unavailable'}</div>
+                      <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', overflowWrap: 'anywhere' }}>{report.reporter?.email || report.reporter_id}</div>
                     </div>
-                    <div style={{ background: '#FFE8EE', borderRadius: '10px', padding: '12px' }}>
-                      <div style={{ fontSize: '10px', color: '#FF3366', fontWeight: '700', marginBottom: '6px', textTransform: 'uppercase' }}>Reported User</div>
-                      <div style={{ fontSize: '13px', fontWeight: '700', color: '#14123A' }}>{report.reported?.full_name || '—'}</div>
-                      <div style={{ fontSize: '11px', color: '#8B8FAF' }}>{report.reported?.email}</div>
+                    <div style={{ background: 'var(--color-danger-soft)', borderRadius: '10px', padding: '12px' }}>
+                      <div style={{ fontSize: '12px', color: 'var(--color-danger)', fontWeight: '700', marginBottom: '6px', textTransform: 'uppercase' }}>Reported User</div>
+                      <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--color-text)' }}>{report.reported?.full_name || '—'}</div>
+                      <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', overflowWrap: 'anywhere' }}>{report.reported?.email || report.reported_user_id || 'Account unavailable'}</div>
+                      {report.reported?.phone && <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>{report.reported.phone}</div>}
+                      {report.reported?.location && <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>{report.reported.location}</div>}
+                      {report.reported && <div style={{ fontSize: '11px', color: 'var(--color-text-subtle)', marginTop: '4px' }}>Trust {report.reported.trust_score ?? '—'}% · {report.reported.is_verified ? 'Verified' : 'Not verified'} · {report.reported.is_banned ? 'Banned' : 'Active'}</div>}
                     </div>
                   </div>
 
+                  {(report.reported_gig_id || report.reported_service_id) && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
+                      {report.reported_gig_id && <span style={{ background: 'var(--color-surface-tint)', borderRadius: '8px', padding: '7px 10px', fontSize: '12px', color: 'var(--color-text-muted)' }}>Gig ID: {report.reported_gig_id}</span>}
+                      {report.reported_service_id && <span style={{ background: 'var(--color-surface-tint)', borderRadius: '8px', padding: '7px 10px', fontSize: '12px', color: 'var(--color-text-muted)' }}>Service ID: {report.reported_service_id}</span>}
+                    </div>
+                  )}
+
                   {report.details && (
-                    <div style={{ background: '#F5F4FF', borderRadius: '10px', padding: '12px', marginBottom: '14px', fontSize: '12px', color: '#5B5887', lineHeight: '1.6' }}>
+                    <div style={{ background: 'var(--color-page)', borderRadius: '10px', padding: '12px', marginBottom: '14px', fontSize: '12px', color: 'var(--color-text-muted)', lineHeight: '1.6', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
                       {report.details}
                     </div>
                   )}
 
                   {report.reported?.selfie_url && (
                     <div style={{ marginBottom: '14px' }}>
-                      <div style={{ fontSize: '10px', color: '#A09DC8', fontWeight: '700', textTransform: 'uppercase', marginBottom: '8px' }}>Reported User Selfie</div>
+                      <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)', fontWeight: '700', textTransform: 'uppercase', marginBottom: '8px' }}>Reported User Selfie</div>
                       <img src={report.reported.selfie_url} alt="Reported user selfie"
-                        style={{ width: '80px', height: '80px', borderRadius: '12px', objectFit: 'cover', border: '2px solid #E2E0FF' }} />
+                        style={{ width: '80px', height: '80px', borderRadius: '12px', objectFit: 'cover', border: '2px solid var(--color-border)' }} />
                     </div>
                   )}
 
-                  {report.status === 'pending' && (
+                  {!['actioned', 'dismissed'].includes(report.status) && (
                     <div style={{ display: 'flex', gap: '8px' }}>
-                      <button onClick={async () => {
-                        await supabase.from('reports').update({ status: 'reviewed' }).eq('id', report.id)
+                      {report.status === 'pending' && <button onClick={async () => {
+                        const { error } = await supabase.from('reports').update({ status: 'reviewed' }).eq('id', report.id)
+                        if (error) { showToast('Could not update report: ' + error.message, 'error'); return }
+                        showToast('Report marked as reviewed', 'success')
                         fetchTabData('reports')
-                      }} style={{ flex: 1, background: '#EEE9FF', border: '1.5px solid #B8A5FF', borderRadius: '10px', padding: '10px', fontSize: '12px', fontWeight: '700', color: '#6C47FF', cursor: 'pointer', fontFamily: 'inherit' }}>
+                      }} style={{ flex: 1, background: 'var(--color-brand-soft)', border: '1.5px solid var(--color-brand-border-strong)', borderRadius: '10px', padding: '10px', fontSize: '12px', fontWeight: '700', color: 'var(--color-brand)', cursor: 'pointer', fontFamily: 'inherit' }}>
                         Mark Reviewed
-                      </button>
-                      <button onClick={async () => {
-                        await supabase.from('users').update({ reverification_required: true }).eq('id', report.reported_user_id)
-                        await supabase.from('reports').update({ status: 'actioned' }).eq('id', report.id)
-                        await supabase.from('notifications').insert({
-                          user_id: report.reported_user_id,
-                          title: '⚠️ Verification Required',
-                          message: 'Your account requires re-verification. Please update your selfie to continue using Prima.',
-                          type: 'general'
-                        })
-                        fetchTabData('reports')
-                      }} style={{ flex: 1, background: '#FFF0E8', border: '1.5px solid #FFBC99', borderRadius: '10px', padding: '10px', fontSize: '12px', fontWeight: '700', color: '#FF6B2B', cursor: 'pointer', fontFamily: 'inherit' }}>
+                      </button>}
+                      {report.reported_user_id && !report.reported?.is_banned && <button onClick={() => requestReportAction(report, 'require_reverification', 'Require re-verification?', 'The user will be asked to verify their identity again. This report will be marked actioned.', 'Require re-verification')} style={{ flex: 1, background: 'var(--color-warning-soft)', border: '1.5px solid var(--color-warning-border)', borderRadius: '10px', padding: '10px', fontSize: '12px', fontWeight: '700', color: 'var(--color-warning)', cursor: 'pointer', fontFamily: 'inherit' }}>
                         Require Re-verify
-                      </button>
+                      </button>}
+                      {report.reported_user_id && !report.reported?.is_banned && <button onClick={() => requestReportAction(report, 'ban_user', 'Suspend this account?', 'The user will lose access to Prima. This report will be marked actioned.', 'Suspend account')} style={{ flex: 1, background: 'var(--color-danger-soft)', border: '1px solid var(--color-danger-border)', borderRadius: '10px', padding: '10px', fontSize: '12px', fontWeight: '700', color: 'var(--color-danger)', cursor: 'pointer', fontFamily: 'inherit' }}>Suspend account</button>}
+                      {report.reported_gig_id && <button onClick={() => requestReportAction(report, 'remove_gig', 'Remove this gig?', 'The gig will be hidden from the marketplace. This report will be marked actioned.', 'Remove gig')} style={{ flex: 1, background: 'var(--color-danger-soft)', border: '1px solid var(--color-danger-border)', borderRadius: '10px', padding: '10px', fontSize: '12px', fontWeight: '700', color: 'var(--color-danger)', cursor: 'pointer', fontFamily: 'inherit' }}>Remove gig</button>}
+                      {report.reported_service_id && <button onClick={() => requestReportAction(report, 'deactivate_service', 'Deactivate this service?', 'The service will be hidden from the marketplace. This report will be marked actioned.', 'Deactivate service')} style={{ flex: 1, background: 'var(--color-danger-soft)', border: '1px solid var(--color-danger-border)', borderRadius: '10px', padding: '10px', fontSize: '12px', fontWeight: '700', color: 'var(--color-danger)', cursor: 'pointer', fontFamily: 'inherit' }}>Deactivate service</button>}
                       <button onClick={async () => {
-                        await supabase.from('reports').update({ status: 'dismissed' }).eq('id', report.id)
+                        const { error } = await supabase.from('reports').update({ status: 'dismissed' }).eq('id', report.id)
+                        if (error) { showToast('Could not dismiss report: ' + error.message, 'error'); return }
+                        showToast('Report dismissed', 'success')
                         fetchTabData('reports')
-                      }} style={{ flex: 1, background: '#F5F4FF', border: '1.5px solid #E2E0FF', borderRadius: '10px', padding: '10px', fontSize: '12px', fontWeight: '700', color: '#8B8FAF', cursor: 'pointer', fontFamily: 'inherit' }}>
+                      }} style={{ flex: 1, background: 'var(--color-page)', border: '1.5px solid var(--color-border)', borderRadius: '10px', padding: '10px', fontSize: '12px', fontWeight: '700', color: 'var(--color-text-muted)', cursor: 'pointer', fontFamily: 'inherit' }}>
                         Dismiss
                       </button>
                     </div>
@@ -1426,66 +1516,66 @@ export default function Admin() {
           {/* EMERGENCY TAB */}
           {activeTab === 'emergency' && (
             <div>
-              <div style={{ fontSize: '20px', fontWeight: '800', color: '#14123A', marginBottom: '16px' }}>
+              <div style={{ fontSize: '20px', fontWeight: '800', color: 'var(--color-text)', marginBottom: '16px' }}>
                 Emergency Reports ({emergencyReports.length})
               </div>
               {emergencyReports.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '48px', background: '#fff', borderRadius: '16px', border: '1.5px solid #E2E0FF' }}>
+                <div style={{ textAlign: 'center', padding: '48px', background: 'var(--color-surface)', borderRadius: '16px', border: '1.5px solid var(--color-border)' }}>
                   <div style={{ fontSize: '40px', marginBottom: '12px' }}>✅</div>
-                  <div style={{ fontSize: '16px', fontWeight: '700', color: '#14123A' }}>No emergency reports</div>
+                  <div style={{ fontSize: '16px', fontWeight: '700', color: 'var(--color-text)' }}>No emergency reports</div>
                 </div>
               ) : emergencyReports.map(report => (
-                <div key={report.id} style={{ background: '#fff', border: `1.5px solid ${report.status === 'pending' ? '#FF99B3' : '#E2E0FF'}`, borderRadius: '16px', padding: '18px', marginBottom: '12px' }}>
+                <div key={report.id} style={{ background: 'var(--color-surface)', border: `1.5px solid ${report.status === 'pending' ? 'var(--color-danger-border)' : 'var(--color-border)'}`, borderRadius: '16px', padding: '18px', marginBottom: '12px' }}>
                   {report.status === 'pending' && (
-                    <div style={{ background: '#FF3366', color: '#fff', borderRadius: '8px', padding: '8px 12px', fontSize: '12px', fontWeight: '700', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ background: 'var(--color-danger)', color: 'var(--color-surface)', borderRadius: '8px', padding: '8px 12px', fontSize: '12px', fontWeight: '700', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                       🆘 URGENT — Requires Immediate Attention
                     </div>
                   )}
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '14px' }}>
-                    <div style={{ background: '#F5F4FF', borderRadius: '10px', padding: '12px' }}>
-                      <div style={{ fontSize: '10px', color: '#A09DC8', fontWeight: '700', marginBottom: '6px', textTransform: 'uppercase' }}>Filed by</div>
-                      <div style={{ fontSize: '13px', fontWeight: '700', color: '#14123A', marginBottom: '3px' }}>{report.reporter?.full_name}</div>
-                      <div style={{ fontSize: '11px', color: '#8B8FAF' }}>{report.reporter?.email}</div>
-                      <div style={{ fontSize: '11px', color: '#8B8FAF' }}>{report.reporter?.phone}</div>
+                    <div style={{ background: 'var(--color-page)', borderRadius: '10px', padding: '12px' }}>
+                      <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)', fontWeight: '700', marginBottom: '6px', textTransform: 'uppercase' }}>Filed by</div>
+                      <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--color-text)', marginBottom: '3px' }}>{report.reporter?.full_name}</div>
+                      <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>{report.reporter?.email}</div>
+                      <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>{report.reporter?.phone}</div>
                     </div>
                     {report.reported && (
-                      <div style={{ background: '#FFE8EE', borderRadius: '10px', padding: '12px' }}>
-                        <div style={{ fontSize: '10px', color: '#FF3366', fontWeight: '700', marginBottom: '6px', textTransform: 'uppercase' }}>Reported Person</div>
-                        <div style={{ fontSize: '13px', fontWeight: '700', color: '#14123A', marginBottom: '3px' }}>{report.reported?.full_name}</div>
-                        <div style={{ fontSize: '11px', color: '#8B8FAF' }}>{report.reported?.email}</div>
+                      <div style={{ background: 'var(--color-danger-soft)', borderRadius: '10px', padding: '12px' }}>
+                        <div style={{ fontSize: '12px', color: 'var(--color-danger)', fontWeight: '700', marginBottom: '6px', textTransform: 'uppercase' }}>Reported Person</div>
+                        <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--color-text)', marginBottom: '3px' }}>{report.reported?.full_name}</div>
+                        <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>{report.reported?.email}</div>
                       </div>
                     )}
                   </div>
 
                   {report.location_lat && (
-                    <div style={{ background: '#DFFDF4', border: '1px solid #7EECD2', borderRadius: '10px', padding: '10px 12px', marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '12px', color: '#00C48C', fontWeight: '600' }}>
+                    <div style={{ background: 'var(--color-success-soft)', border: '1px solid var(--color-success-border)', borderRadius: '10px', padding: '10px 12px', marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '12px', color: 'var(--color-success)', fontWeight: '600' }}>
                         📍 {report.location_lat.toFixed(6)}, {report.location_lng.toFixed(6)}
                       </span>
                       <a href={`https://maps.google.com/?q=${report.location_lat},${report.location_lng}`}
                         target="_blank" rel="noreferrer"
-                        style={{ fontSize: '11px', color: '#6C47FF', fontWeight: '700', textDecoration: 'none' }}>
+                        style={{ fontSize: '12px', color: 'var(--color-brand)', fontWeight: '700', textDecoration: 'none' }}>
                         Open in Maps →
                       </a>
                     </div>
                   )}
 
-                  <div style={{ background: '#FFF5F5', border: '1px solid #FFD0D0', borderRadius: '10px', padding: '12px', marginBottom: '14px', fontSize: '13px', color: '#14123A', lineHeight: '1.6' }}>
+                  <div style={{ background: 'var(--color-surface-danger)', border: '1px solid var(--color-border-danger)', borderRadius: '10px', padding: '12px', marginBottom: '14px', fontSize: '13px', color: 'var(--color-text)', lineHeight: '1.6' }}>
                     {report.description}
                   </div>
 
                   <div style={{ display: 'flex', gap: '12px', marginBottom: '14px' }}>
                     {report.reporter?.selfie_url && (
                       <div>
-                        <div style={{ fontSize: '10px', color: '#A09DC8', fontWeight: '700', textTransform: 'uppercase', marginBottom: '6px' }}>Reporter Selfie</div>
-                        <img src={report.reporter.selfie_url} alt="" style={{ width: '70px', height: '70px', borderRadius: '10px', objectFit: 'cover', border: '2px solid #E2E0FF' }} />
+                        <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)', fontWeight: '700', textTransform: 'uppercase', marginBottom: '6px' }}>Reporter Selfie</div>
+                        <img src={report.reporter.selfie_url} alt="" style={{ width: '70px', height: '70px', borderRadius: '10px', objectFit: 'cover', border: '2px solid var(--color-border)' }} />
                       </div>
                     )}
                     {report.reported?.selfie_url && (
                       <div>
-                        <div style={{ fontSize: '10px', color: '#FF3366', fontWeight: '700', textTransform: 'uppercase', marginBottom: '6px' }}>Reported Selfie</div>
-                        <img src={report.reported.selfie_url} alt="" style={{ width: '70px', height: '70px', borderRadius: '10px', objectFit: 'cover', border: '2px solid #FF99B3' }} />
+                        <div style={{ fontSize: '12px', color: 'var(--color-danger)', fontWeight: '700', textTransform: 'uppercase', marginBottom: '6px' }}>Reported Selfie</div>
+                        <img src={report.reported.selfie_url} alt="" style={{ width: '70px', height: '70px', borderRadius: '10px', objectFit: 'cover', border: '2px solid var(--color-danger-border)' }} />
                       </div>
                     )}
                   </div>
@@ -1548,13 +1638,13 @@ export default function Admin() {
                         status: 'actioned'
                       }).eq('id', report.id)
                       fetchTabData('emergency')
-                    }} style={{ flex: 2, background: '#14123A', border: 'none', borderRadius: '10px', padding: '12px', fontSize: '13px', fontWeight: '700', color: '#fff', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                    }} style={{ flex: 2, background: 'var(--color-text)', border: 'none', borderRadius: '10px', padding: '12px', fontSize: '13px', fontWeight: '700', color: 'var(--color-surface)', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
                       📋 Generate Police Package
                     </button>
                     <button onClick={async () => {
                       await supabase.from('emergency_reports').update({ status: 'dismissed' }).eq('id', report.id)
                       fetchTabData('emergency')
-                    }} style={{ flex: 1, background: '#F5F4FF', border: '1.5px solid #E2E0FF', borderRadius: '10px', padding: '12px', fontSize: '12px', fontWeight: '700', color: '#8B8FAF', cursor: 'pointer', fontFamily: 'inherit' }}>
+                    }} style={{ flex: 1, background: 'var(--color-page)', border: '1.5px solid var(--color-border)', borderRadius: '10px', padding: '12px', fontSize: '12px', fontWeight: '700', color: 'var(--color-text-muted)', cursor: 'pointer', fontFamily: 'inherit' }}>
                       Dismiss
                     </button>
                   </div>
@@ -1564,6 +1654,15 @@ export default function Admin() {
           )}
         </div>
       </div>
+      {confirmDialog && (
+        <ConfirmDialog
+          title={confirmDialog.title}
+          message={confirmDialog.message}
+          confirmLabel={confirmDialog.confirmLabel}
+          onCancel={() => setConfirmDialog(null)}
+          onConfirm={() => { const action = confirmDialog.action; setConfirmDialog(null); action() }}
+        />
+      )}
     </div>
   )
 }

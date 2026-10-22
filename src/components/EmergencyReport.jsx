@@ -76,9 +76,9 @@ export default function EmergencyReport({ onClose, gigId, reportedUserId }) {
       fontFamily: "'Plus Jakarta Sans', sans-serif"
     }} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} style={{
-        background: '#fff', borderRadius: '24px',
+        background: 'var(--color-surface)', borderRadius: '24px',
         width: '100%', maxWidth: '420px',
-        border: '2px solid #FF99B3',
+        border: '2px solid var(--color-danger-border)',
         boxShadow: '0 20px 60px rgba(255,51,102,0.3)',
         overflow: 'hidden',
         animation: 'slideUp 0.3s cubic-bezier(0.16,1,0.3,1)'
@@ -87,55 +87,55 @@ export default function EmergencyReport({ onClose, gigId, reportedUserId }) {
           <div style={{ padding: '48px 28px', textAlign: 'center' }}>
             <div style={{
               width: '72px', height: '72px', borderRadius: '50%',
-              background: '#FFE8EE', border: '3px solid #FF99B3',
+              background: 'var(--color-danger-soft)', border: '3px solid var(--color-danger-border)',
               display: 'flex', alignItems: 'center',
               justifyContent: 'center', fontSize: '32px',
               margin: '0 auto 20px'
             }}>🆘</div>
-            <div style={{ fontSize: '20px', fontWeight: '800', color: '#14123A', marginBottom: '8px' }}>
+            <div style={{ fontSize: '20px', fontWeight: '800', color: 'var(--color-text)', marginBottom: '8px' }}>
               Report Received
             </div>
-            <div style={{ fontSize: '13px', color: '#8B8FAF', lineHeight: '1.7', marginBottom: '20px' }}>
+            <div style={{ fontSize: '13px', color: 'var(--color-text-muted)', lineHeight: '1.7', marginBottom: '20px' }}>
               Our team has been notified immediately. We will review your report and take action.
               If this is a life-threatening emergency, please call your local emergency services
               (Nigeria: 112 or 199).
             </div>
             <button onClick={onClose} style={{
               width: '100%',
-              background: 'linear-gradient(135deg, #FF3366, #FF6B9B)',
+              background: 'linear-gradient(135deg, var(--color-danger), #FF6B9B)',
               border: 'none', borderRadius: '12px', padding: '14px',
-              fontSize: '14px', fontWeight: '700', color: '#fff',
+              fontSize: '14px', fontWeight: '700', color: 'var(--color-surface)',
               cursor: 'pointer', fontFamily: 'inherit'
             }}>Close</button>
           </div>
         ) : (
           <>
             <div style={{
-              background: 'linear-gradient(135deg, #FF3366, #FF6B9B)',
+              background: 'linear-gradient(135deg, var(--color-danger), #FF6B9B)',
               padding: '24px 28px',
               display: 'flex', justifyContent: 'space-between', alignItems: 'center'
             }}>
               <div>
-                <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.8)', fontWeight: '700', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '4px' }}>Emergency</div>
-                <div style={{ fontSize: '20px', fontWeight: '800', color: '#fff' }}>🆘 Report Incident</div>
+                <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.8)', fontWeight: '700', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '4px' }}>Emergency</div>
+                <div style={{ fontSize: '20px', fontWeight: '800', color: 'var(--color-surface)' }}>🆘 Report Incident</div>
               </div>
-              <button onClick={onClose} style={{
+              <button  onClick={onClose} style={{
                 background: 'rgba(255,255,255,0.2)', border: 'none',
                 borderRadius: '10px', width: '36px', height: '36px',
-                fontSize: '18px', color: '#fff', cursor: 'pointer',
+                fontSize: '18px', color: 'var(--color-surface)', cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'inherit'
               }}>×</button>
             </div>
 
             <div style={{ padding: '24px 28px' }}>
               <div style={{
-                background: location ? '#DFFDF4' : '#FFF8E0',
-                border: `1px solid ${location ? '#7EECD2' : '#FFD966'}`,
+                background: location ? 'var(--color-success-soft)' : 'var(--color-warning-gold-soft)',
+                border: `1px solid ${location ? 'var(--color-success-border)' : 'var(--color-warning-gold-border)'}`,
                 borderRadius: '10px', padding: '10px 14px',
                 marginBottom: '16px',
                 display: 'flex', gap: '8px', alignItems: 'center',
                 fontSize: '12px', fontWeight: '600',
-                color: location ? '#00C48C' : '#FFB800'
+                color: location ? 'var(--color-success)' : 'var(--color-warning-gold)'
               }}>
                 <span>{location ? '📍' : '⏳'}</span>
                 <span>
@@ -146,7 +146,7 @@ export default function EmergencyReport({ onClose, gigId, reportedUserId }) {
               </div>
 
               <div style={{ marginBottom: '20px' }}>
-                <div style={{ fontSize: '11px', fontWeight: '700', color: '#A09DC8', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px' }}>
+                <div style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-text-subtle)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px' }}>
                   What happened?
                 </div>
                 <textarea
@@ -154,23 +154,23 @@ export default function EmergencyReport({ onClose, gigId, reportedUserId }) {
                   onChange={e => setDescription(e.target.value)}
                   placeholder="Describe the incident in detail — who was involved, what happened, when and where..."
                   style={{
-                    width: '100%', background: '#F5F4FF',
-                    border: '1.5px solid #E2E0FF', borderRadius: '12px',
+                    width: '100%', background: 'var(--color-page)',
+                    border: '1.5px solid var(--color-border)', borderRadius: '12px',
                     padding: '12px 14px', fontSize: '13px',
-                    color: '#14123A', fontFamily: 'inherit',
+                    color: 'var(--color-text)', fontFamily: 'inherit',
                     outline: 'none', resize: 'vertical',
                     minHeight: '120px', boxSizing: 'border-box'
                   }}
-                  onFocus={e => e.target.style.borderColor = '#FF99B3'}
-                  onBlur={e => e.target.style.borderColor = '#E2E0FF'}
+                  onFocus={e => e.target.style.borderColor = 'var(--color-danger-border)'}
+                  onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
                   autoFocus
                 />
               </div>
 
               <div style={{
-                background: '#FFE8EE', borderRadius: '10px',
+                background: 'var(--color-danger-soft)', borderRadius: '10px',
                 padding: '12px 14px', marginBottom: '20px',
-                fontSize: '12px', color: '#FF3366', lineHeight: '1.5'
+                fontSize: '12px', color: 'var(--color-danger)', lineHeight: '1.5'
               }}>
                 ⚠️ False emergency reports are a serious violation of Prima's terms and may result in permanent account suspension.
               </div>
@@ -180,10 +180,10 @@ export default function EmergencyReport({ onClose, gigId, reportedUserId }) {
                 disabled={!description.trim() || submitting}
                 style={{
                   width: '100%',
-                  background: !description.trim() || submitting ? '#E2E0FF' : 'linear-gradient(135deg, #FF3366, #FF6B9B)',
+                  background: !description.trim() || submitting ? 'var(--color-border)' : 'linear-gradient(135deg, var(--color-danger), #FF6B9B)',
                   border: 'none', borderRadius: '12px', padding: '16px',
                   fontSize: '14px', fontWeight: '700',
-                  color: !description.trim() || submitting ? '#A09DC8' : '#fff',
+                  color: !description.trim() || submitting ? 'var(--color-text-subtle)' : 'var(--color-surface)',
                   cursor: !description.trim() || submitting ? 'not-allowed' : 'pointer',
                   fontFamily: 'inherit',
                   boxShadow: description.trim() && !submitting ? '0 4px 20px rgba(255,51,102,0.4)' : 'none'

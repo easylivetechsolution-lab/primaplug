@@ -45,16 +45,16 @@ export default function SettingsScreen({ onLogout }) {
     <div style={{
       display: 'flex', justifyContent: 'space-between',
       alignItems: 'center', padding: '14px 0',
-      borderBottom: '1px solid #F5F4FF'
+      borderBottom: '1px solid var(--color-page)'
     }}>
       <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
         <BrandIcon name={icon} size={34} active={notifications[settingKey]} />
         <div>
-          <div style={{ fontSize: '13px', fontWeight: '600', color: '#14123A' }}>
+          <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--color-text)' }}>
             {label}
           </div>
           {subLabel && (
-            <div style={{ fontSize: '11px', color: '#A09DC8', marginTop: '1px' }}>
+            <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)', marginTop: '1px' }}>
               {subLabel}
             </div>
           )}
@@ -64,13 +64,13 @@ export default function SettingsScreen({ onLogout }) {
         onClick={() => toggle(settingKey)}
         style={{
           width: '44px', height: '24px', borderRadius: '12px',
-          background: notifications[settingKey] ? '#6C47FF' : '#E2E0FF',
+          background: notifications[settingKey] ? 'var(--color-brand)' : 'var(--color-border)',
           position: 'relative', cursor: 'pointer',
           transition: 'background 0.2s', flexShrink: 0
         }}>
         <div style={{
           width: '18px', height: '18px', borderRadius: '50%',
-          background: '#fff', position: 'absolute',
+          background: 'var(--color-surface)', position: 'absolute',
           top: '3px', transition: 'left 0.2s',
           left: notifications[settingKey] ? '23px' : '3px',
           boxShadow: '0 1px 4px rgba(0,0,0,0.2)'
@@ -84,18 +84,18 @@ export default function SettingsScreen({ onLogout }) {
       padding: '24px 20px 100px',
       fontFamily: "'Plus Jakarta Sans', sans-serif"
     }}>
-      <div style={{ fontSize: '22px', fontWeight: '800', color: '#14123A', marginBottom: '4px' }}>
+      <div style={{ fontSize: '22px', fontWeight: '800', color: 'var(--color-text)', marginBottom: '4px' }}>
         Settings
       </div>
-      <div style={{ fontSize: '13px', color: '#8B8FAF', marginBottom: '24px' }}>
+      <div style={{ fontSize: '13px', color: 'var(--color-text-muted)', marginBottom: '24px' }}>
         Manage your Prima preferences
       </div>
 
       {/* Prima Credits Card */}
       <div style={{
-        background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+        background: 'var(--color-brand-gradient)',
         borderRadius: '16px', padding: '18px',
-        marginBottom: '14px', color: '#fff'
+        marginBottom: '14px', color: 'var(--color-surface)'
       }}>
         <div style={{
           display: 'flex', justifyContent: 'space-between',
@@ -103,7 +103,7 @@ export default function SettingsScreen({ onLogout }) {
         }}>
           <div>
             <div style={{
-              fontSize: '11px', opacity: 0.8,
+              fontSize: '12px', opacity: 0.8,
               textTransform: 'uppercase', letterSpacing: '1px',
               marginBottom: '4px'
             }}>Prima Credits Balance</div>
@@ -113,12 +113,12 @@ export default function SettingsScreen({ onLogout }) {
             }}>
               {credits?.balance?.toFixed(0) || 0}
             </div>
-            <div style={{ fontSize: '11px', opacity: 0.7 }}>
+            <div style={{ fontSize: '12px', opacity: 0.7 }}>
               ≈ ${((credits?.balance || 0) / CREDITS_PER_DOLLAR).toFixed(2)} value · {CREDITS_PER_DOLLAR} credits = $1
             </div>
           </div>
           <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: '11px', opacity: 0.7, marginBottom: '4px' }}>
+            <div style={{ fontSize: '12px', opacity: 0.7, marginBottom: '4px' }}>
               Lifetime earned
             </div>
             <div style={{ fontSize: '18px', fontWeight: '800' }}>
@@ -134,7 +134,7 @@ export default function SettingsScreen({ onLogout }) {
               border: '1px solid rgba(255,255,255,0.3)',
               borderRadius: '10px', padding: '9px',
               fontSize: '12px', fontWeight: '700',
-              color: '#fff', cursor: 'pointer', fontFamily: 'inherit'
+              color: 'var(--color-surface)', cursor: 'pointer', fontFamily: 'inherit'
             }}>🎁 Refer & Earn</button>
           <button
             onClick={() => window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'commission' }))}
@@ -143,19 +143,19 @@ export default function SettingsScreen({ onLogout }) {
               border: '1px solid rgba(255,255,255,0.3)',
               borderRadius: '10px', padding: '9px',
               fontSize: '12px', fontWeight: '700',
-              color: '#fff', cursor: 'pointer', fontFamily: 'inherit'
+              color: 'var(--color-surface)', cursor: 'pointer', fontFamily: 'inherit'
             }}>💰 Commission</button>
         </div>
       </div>
 
       {/* Emergency Report */}
       <div style={{
-        background: '#FFE8EE', border: '1.5px solid #FF99B3',
+        background: 'var(--color-danger-soft)', border: '1.5px solid var(--color-danger-border)',
         borderRadius: '16px', padding: '16px',
         marginBottom: '14px'
       }}>
         <div style={{
-          fontSize: '11px', fontWeight: '700', color: '#FF3366',
+          fontSize: '12px', fontWeight: '700', color: 'var(--color-danger)',
           textTransform: 'uppercase', letterSpacing: '1px',
           marginBottom: '14px'
         }}>Safety</div>
@@ -164,30 +164,30 @@ export default function SettingsScreen({ onLogout }) {
           style={{ display: 'flex', gap: '12px', alignItems: 'center', cursor: 'pointer' }}>
           <div style={{
             width: '44px', height: '44px', borderRadius: '12px',
-            background: '#FF3366', display: 'flex',
+            background: 'var(--color-danger)', display: 'flex',
             alignItems: 'center', justifyContent: 'center',
             fontSize: '22px', flexShrink: 0
           }}>🆘</div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: '14px', fontWeight: '700', color: '#FF3366', marginBottom: '2px' }}>
+            <div style={{ fontSize: '14px', fontWeight: '700', color: 'var(--color-danger)', marginBottom: '2px' }}>
               Emergency Report
             </div>
-            <div style={{ fontSize: '11px', color: '#FF3366', opacity: 0.8 }}>
+            <div style={{ fontSize: '12px', color: 'var(--color-danger)', opacity: 0.8 }}>
               Report a serious incident to Prima and authorities
             </div>
           </div>
-          <span style={{ color: '#FF3366', fontSize: '18px' }}>→</span>
+          <span style={{ color: 'var(--color-danger)', fontSize: '18px' }}>→</span>
         </div>
       </div>
 
       {/* Account */}
       <div style={{
-        background: '#fff', border: '1.5px solid #E2E0FF',
+        background: 'var(--color-surface)', border: '1.5px solid var(--color-border)',
         borderRadius: '16px', padding: '16px 18px',
         marginBottom: '14px'
       }}>
         <div style={{
-          fontSize: '11px', fontWeight: '700', color: '#A09DC8',
+          fontSize: '12px', fontWeight: '700', color: 'var(--color-text-subtle)',
           textTransform: 'uppercase', letterSpacing: '1px',
           marginBottom: '14px'
         }}>Account</div>
@@ -197,17 +197,17 @@ export default function SettingsScreen({ onLogout }) {
         }}>
           <div style={{
             width: '44px', height: '44px', borderRadius: '12px',
-            background: '#EEE9FF', display: 'flex',
+            background: 'var(--color-brand-soft)', display: 'flex',
             alignItems: 'center', justifyContent: 'center',
-            fontSize: '20px', fontWeight: '800', color: '#6C47FF'
+            fontSize: '20px', fontWeight: '800', color: 'var(--color-brand)'
           }}>
             {user?.email?.charAt(0).toUpperCase()}
           </div>
           <div>
-            <div style={{ fontSize: '14px', fontWeight: '700', color: '#14123A' }}>
+            <div style={{ fontSize: '14px', fontWeight: '700', color: 'var(--color-text)' }}>
               {user?.email}
             </div>
-            <div style={{ fontSize: '11px', color: '#A09DC8', marginTop: '2px' }}>
+            <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)', marginTop: '2px' }}>
               Prima Member
             </div>
           </div>
@@ -216,12 +216,12 @@ export default function SettingsScreen({ onLogout }) {
 
       {/* Notifications */}
       <div style={{
-        background: '#fff', border: '1.5px solid #E2E0FF',
+        background: 'var(--color-surface)', border: '1.5px solid var(--color-border)',
         borderRadius: '16px', padding: '16px 18px',
         marginBottom: '14px'
       }}>
         <div style={{
-          fontSize: '11px', fontWeight: '700', color: '#A09DC8',
+          fontSize: '12px', fontWeight: '700', color: 'var(--color-text-subtle)',
           textTransform: 'uppercase', letterSpacing: '1px',
           marginBottom: '4px'
         }}>Notifications</div>
@@ -266,12 +266,12 @@ export default function SettingsScreen({ onLogout }) {
 
       {/* Privacy */}
       <div style={{
-        background: '#fff', border: '1.5px solid #E2E0FF',
+        background: 'var(--color-surface)', border: '1.5px solid var(--color-border)',
         borderRadius: '16px', padding: '16px 18px',
         marginBottom: '14px'
       }}>
         <div style={{
-          fontSize: '11px', fontWeight: '700', color: '#A09DC8',
+          fontSize: '12px', fontWeight: '700', color: 'var(--color-text-subtle)',
           textTransform: 'uppercase', letterSpacing: '1px',
           marginBottom: '14px'
         }}>Privacy</div>
@@ -283,26 +283,26 @@ export default function SettingsScreen({ onLogout }) {
           <div key={label} style={{
             display: 'flex', justifyContent: 'space-between',
             alignItems: 'center', padding: '12px 0',
-            borderBottom: '1px solid #F5F4FF'
+            borderBottom: '1px solid var(--color-page)'
           }}>
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
               <BrandIcon name={icon} size={34} />
               <div>
-                <div style={{ fontSize: '13px', fontWeight: '600', color: '#14123A' }}>
+                <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--color-text)' }}>
                   {label}
                 </div>
-                <div style={{ fontSize: '11px', color: '#A09DC8', marginTop: '1px' }}>
+                <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)', marginTop: '1px' }}>
                   {sub}
                 </div>
               </div>
             </div>
             <div style={{
               width: '44px', height: '24px', borderRadius: '12px',
-              background: '#6C47FF', position: 'relative', cursor: 'pointer'
+              background: 'var(--color-brand)', position: 'relative', cursor: 'pointer'
             }}>
               <div style={{
                 width: '18px', height: '18px', borderRadius: '50%',
-                background: '#fff', position: 'absolute',
+                background: 'var(--color-surface)', position: 'absolute',
                 top: '3px', left: '23px',
                 boxShadow: '0 1px 4px rgba(0,0,0,0.2)'
               }} />
@@ -313,12 +313,12 @@ export default function SettingsScreen({ onLogout }) {
 
       {/* Language & Currency */}
       <div style={{
-        background: '#fff', border: '1.5px solid #E2E0FF',
+        background: 'var(--color-surface)', border: '1.5px solid var(--color-border)',
         borderRadius: '16px', padding: '16px 18px',
         marginBottom: '14px'
       }}>
         <div style={{
-          fontSize: '11px', fontWeight: '700', color: '#A09DC8',
+          fontSize: '12px', fontWeight: '700', color: 'var(--color-text-subtle)',
           textTransform: 'uppercase', letterSpacing: '1px',
           marginBottom: '14px'
         }}>Language & Currency</div>
@@ -327,36 +327,36 @@ export default function SettingsScreen({ onLogout }) {
         <div style={{
           display: 'flex', justifyContent: 'space-between',
           alignItems: 'center', padding: '12px 0',
-          borderBottom: '1px solid #F5F4FF',
+          borderBottom: '1px solid var(--color-page)',
           position: 'relative'
         }}>
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
             <span style={{ fontSize: '20px' }}>🌍</span>
             <div>
-              <div style={{ fontSize: '13px', fontWeight: '600', color: '#14123A' }}>
+              <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--color-text)' }}>
                 {t('language')}
               </div>
-              <div style={{ fontSize: '11px', color: '#A09DC8' }}>App display language</div>
+              <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)' }}>App display language</div>
             </div>
           </div>
           <button
             onClick={() => { setShowLangPicker(s => !s); setShowCurrencyPicker(false) }}
             style={{
-              background: '#F5F4FF', border: '1.5px solid #E2E0FF',
+              background: 'var(--color-page)', border: '1.5px solid var(--color-border)',
               borderRadius: '10px', padding: '7px 12px',
-              fontSize: '13px', fontWeight: '600', color: '#14123A',
+              fontSize: '13px', fontWeight: '600', color: 'var(--color-text)',
               cursor: 'pointer', fontFamily: 'inherit',
               display: 'flex', alignItems: 'center', gap: '7px'
             }}>
             <span>{SUPPORTED_LANGUAGES.find(l => l.code === language)?.flag}</span>
             <span>{SUPPORTED_LANGUAGES.find(l => l.code === language)?.native}</span>
-            <span style={{ fontSize: '10px', color: '#A09DC8' }}>▼</span>
+            <span style={{ fontSize: '12px', color: 'var(--color-text-subtle)' }}>▼</span>
           </button>
 
           {showLangPicker && (
             <div style={{
               position: 'absolute', top: '50px', right: 0,
-              background: '#fff', border: '1.5px solid #E2E0FF',
+              background: 'var(--color-surface)', border: '1.5px solid var(--color-border)',
               borderRadius: '14px', padding: '8px',
               zIndex: 100, minWidth: '220px',
               boxShadow: '0 8px 32px rgba(108,71,255,0.15)',
@@ -370,22 +370,22 @@ export default function SettingsScreen({ onLogout }) {
                     display: 'flex', gap: '10px', alignItems: 'center',
                     padding: '10px 12px', borderRadius: '10px',
                     cursor: 'pointer',
-                    background: language === lang.code ? '#EEE9FF' : 'transparent'
+                    background: language === lang.code ? 'var(--color-brand-soft)' : 'transparent'
                   }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#F5F4FF'}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--color-page)'}
                   onMouseLeave={e => e.currentTarget.style.background =
-                    language === lang.code ? '#EEE9FF' : 'transparent'}
+                    language === lang.code ? 'var(--color-brand-soft)' : 'transparent'}
                 >
                   <span style={{ fontSize: '20px' }}>{lang.flag}</span>
                   <div style={{ flex: 1 }}>
                     <div style={{
                       fontSize: '13px', fontWeight: language === lang.code ? '700' : '500',
-                      color: language === lang.code ? '#6C47FF' : '#14123A'
+                      color: language === lang.code ? 'var(--color-brand)' : 'var(--color-text)'
                     }}>{lang.native}</div>
-                    <div style={{ fontSize: '10px', color: '#A09DC8' }}>{lang.name}</div>
+                    <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)' }}>{lang.name}</div>
                   </div>
                   {language === lang.code && (
-                    <span style={{ color: '#6C47FF', fontSize: '14px' }}>✓</span>
+                    <span style={{ color: 'var(--color-brand)', fontSize: '14px' }}>✓</span>
                   )}
                 </div>
               ))}
@@ -402,30 +402,30 @@ export default function SettingsScreen({ onLogout }) {
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
             <span style={{ fontSize: '20px' }}>💱</span>
             <div>
-              <div style={{ fontSize: '13px', fontWeight: '600', color: '#14123A' }}>
+              <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--color-text)' }}>
                 {t('currency')}
               </div>
-              <div style={{ fontSize: '11px', color: '#A09DC8' }}>Default display currency</div>
+              <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)' }}>Default display currency</div>
             </div>
           </div>
           <button
             onClick={() => { setShowCurrencyPicker(s => !s); setShowLangPicker(false) }}
             style={{
-              background: '#F5F4FF', border: '1.5px solid #E2E0FF',
+              background: 'var(--color-page)', border: '1.5px solid var(--color-border)',
               borderRadius: '10px', padding: '7px 12px',
-              fontSize: '13px', fontWeight: '600', color: '#14123A',
+              fontSize: '13px', fontWeight: '600', color: 'var(--color-text)',
               cursor: 'pointer', fontFamily: 'inherit',
               display: 'flex', alignItems: 'center', gap: '7px'
             }}>
             <span>{CURRENCIES.find(c => c.code === currency)?.flag}</span>
             <span>{currency}</span>
-            <span style={{ fontSize: '10px', color: '#A09DC8' }}>▼</span>
+            <span style={{ fontSize: '12px', color: 'var(--color-text-subtle)' }}>▼</span>
           </button>
 
           {showCurrencyPicker && (
             <div style={{
               position: 'absolute', top: '50px', right: 0,
-              background: '#fff', border: '1.5px solid #E2E0FF',
+              background: 'var(--color-surface)', border: '1.5px solid var(--color-border)',
               borderRadius: '14px', padding: '8px',
               zIndex: 100, minWidth: '240px',
               boxShadow: '0 8px 32px rgba(108,71,255,0.15)',
@@ -439,22 +439,22 @@ export default function SettingsScreen({ onLogout }) {
                     display: 'flex', gap: '10px', alignItems: 'center',
                     padding: '10px 12px', borderRadius: '10px',
                     cursor: 'pointer',
-                    background: currency === curr.code ? '#EEE9FF' : 'transparent'
+                    background: currency === curr.code ? 'var(--color-brand-soft)' : 'transparent'
                   }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#F5F4FF'}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--color-page)'}
                   onMouseLeave={e => e.currentTarget.style.background =
-                    currency === curr.code ? '#EEE9FF' : 'transparent'}
+                    currency === curr.code ? 'var(--color-brand-soft)' : 'transparent'}
                 >
                   <span style={{ fontSize: '20px' }}>{curr.flag}</span>
                   <div style={{ flex: 1 }}>
                     <div style={{
                       fontSize: '13px', fontWeight: currency === curr.code ? '700' : '500',
-                      color: currency === curr.code ? '#6C47FF' : '#14123A'
+                      color: currency === curr.code ? 'var(--color-brand)' : 'var(--color-text)'
                     }}>{curr.code} — {curr.symbol}</div>
-                    <div style={{ fontSize: '10px', color: '#A09DC8' }}>{curr.name}</div>
+                    <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)' }}>{curr.name}</div>
                   </div>
                   {currency === curr.code && (
-                    <span style={{ color: '#6C47FF', fontSize: '14px' }}>✓</span>
+                    <span style={{ color: 'var(--color-brand)', fontSize: '14px' }}>✓</span>
                   )}
                 </div>
               ))}
@@ -465,12 +465,12 @@ export default function SettingsScreen({ onLogout }) {
 
       {/* Legal */}
       <div style={{
-        background: '#fff', border: '1.5px solid #E2E0FF',
+        background: 'var(--color-surface)', border: '1.5px solid var(--color-border)',
         borderRadius: '16px', padding: '16px 18px',
         marginBottom: '14px'
       }}>
         <div style={{
-          fontSize: '11px', fontWeight: '700', color: '#A09DC8',
+          fontSize: '12px', fontWeight: '700', color: 'var(--color-text-subtle)',
           textTransform: 'uppercase', letterSpacing: '1px',
           marginBottom: '4px'
         }}>Legal</div>
@@ -485,27 +485,27 @@ export default function SettingsScreen({ onLogout }) {
             style={{
               display: 'flex', justifyContent: 'space-between',
               alignItems: 'center', padding: '13px 0',
-              borderBottom: i < arr.length - 1 ? '1px solid #F5F4FF' : 'none',
+              borderBottom: i < arr.length - 1 ? '1px solid var(--color-page)' : 'none',
               textDecoration: 'none'
             }}
           >
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
               <div style={{
                 width: '34px', height: '34px', borderRadius: '10px',
-                background: '#F5F4FF', display: 'flex',
+                background: 'var(--color-page)', display: 'flex',
                 alignItems: 'center', justifyContent: 'center',
                 fontSize: '16px', flexShrink: 0
               }}>{icon}</div>
               <div>
-                <div style={{ fontSize: '13px', fontWeight: '600', color: '#14123A' }}>
+                <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--color-text)' }}>
                   {label}
                 </div>
-                <div style={{ fontSize: '11px', color: '#A09DC8', marginTop: '1px' }}>
+                <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)', marginTop: '1px' }}>
                   {sub}
                 </div>
               </div>
             </div>
-            <span style={{ color: '#A09DC8', fontSize: '16px' }}>›</span>
+            <span style={{ color: 'var(--color-text-subtle)', fontSize: '16px' }}>›</span>
           </Link>
         ))}
       </div>
@@ -517,14 +517,14 @@ export default function SettingsScreen({ onLogout }) {
         style={{
           width: '100%',
           background: saved
-            ? '#DFFDF4'
+            ? 'var(--color-success-soft)'
             : saving
-              ? '#B8A5FF'
-              : 'linear-gradient(135deg, #6C47FF, #9B59FF)',
-          border: saved ? '1.5px solid #7EECD2' : 'none',
+              ? 'var(--color-brand-border-strong)'
+              : 'var(--color-brand-gradient)',
+          border: saved ? '1.5px solid var(--color-success-border)' : 'none',
           borderRadius: '12px', padding: '14px',
           fontSize: '14px', fontWeight: '700',
-          color: saved ? '#00C48C' : '#fff',
+          color: saved ? 'var(--color-success)' : 'var(--color-surface)',
           cursor: saving ? 'not-allowed' : 'pointer',
           boxShadow: saved || saving ? 'none' : '0 4px 20px rgba(108,71,255,0.35)',
           fontFamily: 'inherit', marginBottom: '12px',
@@ -535,10 +535,10 @@ export default function SettingsScreen({ onLogout }) {
 
       {/* Logout */}
       <button onClick={onLogout} style={{
-        width: '100%', background: '#FFE8EE',
-        border: '1.5px solid #FF99B3', borderRadius: '12px',
+        width: '100%', background: 'var(--color-danger-soft)',
+        border: '1.5px solid var(--color-danger-border)', borderRadius: '12px',
         padding: '14px', fontSize: '14px', fontWeight: '700',
-        color: '#FF3366', cursor: 'pointer', fontFamily: 'inherit'
+        color: 'var(--color-danger)', cursor: 'pointer', fontFamily: 'inherit'
       }}>Log Out of Prima</button>
 
       {showEmergency && (

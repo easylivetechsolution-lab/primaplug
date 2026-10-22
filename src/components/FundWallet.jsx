@@ -62,22 +62,22 @@ export default function FundWallet({ onClose, initialCurrency }) {
       fontFamily: "'Plus Jakarta Sans', sans-serif"
     }} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} style={{
-        background: '#fff', borderRadius: '22px 22px 0 0',
+        background: 'var(--color-surface)', borderRadius: '22px 22px 0 0',
         width: '100%', maxWidth: '540px',
         padding: '20px', paddingBottom: '32px'
       }}>
         <div style={{
           width: '40px', height: '4px',
-          background: '#E2E0FF', borderRadius: '2px',
+          background: 'var(--color-border)', borderRadius: '2px',
           margin: '0 auto 20px'
         }} />
 
         <div style={{
           fontSize: '18px', fontWeight: '800',
-          color: '#14123A', marginBottom: '4px'
+          color: 'var(--color-text)', marginBottom: '4px'
         }}>Fund Your Wallet</div>
         <div style={{
-          fontSize: '13px', color: '#8B8FAF', marginBottom: '20px'
+          fontSize: '13px', color: 'var(--color-text-muted)', marginBottom: '20px'
         }}>
           Add money to pay workers instantly through Prima
         </div>
@@ -85,7 +85,7 @@ export default function FundWallet({ onClose, initialCurrency }) {
         {/* Currency selector */}
         <div style={{ marginBottom: '16px' }}>
           <label style={{
-            fontSize: '11px', fontWeight: '700', color: '#8B8FAF',
+            fontSize: '12px', fontWeight: '700', color: 'var(--color-text-muted)',
             textTransform: 'uppercase', letterSpacing: '0.5px',
             display: 'block', marginBottom: '6px'
           }}>Currency</label>
@@ -94,10 +94,10 @@ export default function FundWallet({ onClose, initialCurrency }) {
             onChange={(e) => setCurrency(e.target.value)}
             style={{
               width: '100%', padding: '12px',
-              borderRadius: '10px', border: '1.5px solid #E2E0FF',
+              borderRadius: '10px', border: '1.5px solid var(--color-border)',
               fontSize: '14px', fontFamily: 'inherit',
-              background: '#fff',
-              color: '#14123A'
+              background: 'var(--color-surface)',
+              color: 'var(--color-text)'
             }}>
             {SUPPORTED_CURRENCIES.map(c => (
               <option key={c.code} value={c.code}>
@@ -110,7 +110,7 @@ export default function FundWallet({ onClose, initialCurrency }) {
         {/* Amount input */}
         <div style={{ marginBottom: '16px' }}>
           <label style={{
-            fontSize: '11px', fontWeight: '700', color: '#8B8FAF',
+            fontSize: '12px', fontWeight: '700', color: 'var(--color-text-muted)',
             textTransform: 'uppercase', letterSpacing: '0.5px',
             display: 'block', marginBottom: '6px'
           }}>Amount</label>
@@ -121,18 +121,18 @@ export default function FundWallet({ onClose, initialCurrency }) {
             placeholder="0.00"
             style={{
               width: '100%', padding: '12px',
-              borderRadius: '10px', border: '1.5px solid #E2E0FF',
+              borderRadius: '10px', border: '1.5px solid var(--color-border)',
               fontSize: '20px', fontWeight: '700', fontFamily: 'inherit',
-              color: '#14123A'
+              color: 'var(--color-text)'
             }}
           />
         </div>
 
         {error && (
           <div style={{
-            background: '#FFE8EE', border: '1.5px solid #FF99B3',
+            background: 'var(--color-danger-soft)', border: '1.5px solid var(--color-danger-border)',
             borderRadius: '10px', padding: '10px 12px',
-            fontSize: '12px', color: '#FF3366',
+            fontSize: '12px', color: 'var(--color-danger)',
             fontWeight: '600', marginBottom: '14px'
           }}>{error}</div>
         )}
@@ -142,9 +142,9 @@ export default function FundWallet({ onClose, initialCurrency }) {
           disabled={loading}
           style={{
             width: '100%',
-            background: loading ? '#B8A5FF' : 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+            background: loading ? 'var(--color-brand-border-strong)' : 'var(--color-brand-gradient)',
             border: 'none', borderRadius: '12px', padding: '14px',
-            fontSize: '14px', fontWeight: '700', color: '#fff',
+            fontSize: '14px', fontWeight: '700', color: 'var(--color-surface)',
             cursor: loading ? 'not-allowed' : 'pointer',
             fontFamily: 'inherit',
             boxShadow: loading ? 'none' : '0 4px 16px rgba(108,71,255,0.35)'
@@ -153,7 +153,7 @@ export default function FundWallet({ onClose, initialCurrency }) {
         </button>
 
         <div style={{
-          fontSize: '11px', color: '#A09DC8', textAlign: 'center',
+          fontSize: '12px', color: 'var(--color-text-subtle)', textAlign: 'center',
           marginTop: '12px'
         }}>
           🔒 Secured by Fincra

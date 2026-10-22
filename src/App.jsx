@@ -16,13 +16,13 @@ function AppLoader({ message }) {
     <div style={{
       minHeight: '100vh', display: 'flex', alignItems: 'center',
       justifyContent: 'center', flexDirection: 'column', gap: '24px',
-      background: '#F8F7FF', fontFamily: "'Plus Jakarta Sans', sans-serif"
+      background: 'var(--color-surface-tint)', fontFamily: "'Plus Jakarta Sans', sans-serif"
     }}>
       <div style={{ position: 'relative', width: '96px', height: '96px' }}>
         <div style={{
           position: 'absolute', inset: 0,
-          border: '4px solid #E2E0FF',
-          borderTop: '4px solid #6C47FF',
+          border: '4px solid var(--color-border)',
+          borderTop: '4px solid var(--color-brand)',
           borderRadius: '50%',
           animation: 'primaspin 0.8s linear infinite',
           boxSizing: 'border-box',
@@ -36,7 +36,7 @@ function AppLoader({ message }) {
         }} />
       </div>
       {message && (
-        <div style={{ fontSize: '13px', color: '#A09DC8', fontWeight: '600', textAlign: 'center', maxWidth: '220px', lineHeight: '1.5' }}>
+        <div style={{ fontSize: '13px', color: 'var(--color-text-subtle)', fontWeight: '600', textAlign: 'center', maxWidth: '220px', lineHeight: '1.5' }}>
           {message}
         </div>
       )}

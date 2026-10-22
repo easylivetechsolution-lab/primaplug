@@ -4,7 +4,6 @@ import { useAuth } from '../context/AuthContext'
 import ReportModal from './ReportModal'
 import BrandIcon from './BrandIcon'
 import VerificationBadge from './VerificationBadge'
-import { parseTimestamp } from '../utils/time'
 
 export default function PublicProfile({ userId, onClose }) {
   const { user: currentUser } = useAuth()
@@ -104,7 +103,7 @@ export default function PublicProfile({ userId, onClose }) {
       setTimeout(() => {
         onClose()
         window.dispatchEvent(new CustomEvent('openChatWithUser', {
-          detail: { userId }
+          detail: { userId, gigId: null }
         }))
       }, 600)
     } catch (e) {
@@ -119,7 +118,6 @@ export default function PublicProfile({ userId, onClose }) {
       .select('*')
       .eq('poster_id', userId)
       .eq('status', 'open')
-      .is('deleted_at', null)
       .order('created_at', { ascending: false })
       .limit(5)
     if (data) setGigs(data)
@@ -130,7 +128,7 @@ export default function PublicProfile({ userId, onClose }) {
   return (
     <div style={{
       position: 'fixed', inset: 0,
-      background: 'rgba(20,18,58,0.75)',
+      background: 'rgba(20,18,58,0.52)',
       backdropFilter: 'blur(4px)',
       zIndex: 10000,
       display: 'flex', alignItems: 'flex-end',
@@ -138,22 +136,18 @@ export default function PublicProfile({ userId, onClose }) {
       fontFamily: "'Plus Jakarta Sans', sans-serif"
     }} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} style={{
-        background: '#fff',
+        background: 'var(--color-brand-surface-gradient)',
         borderRadius: '22px 22px 0 0',
         width: '100%', maxWidth: '640px',
         maxHeight: '90vh', overflowY: 'auto',
         animation: 'slideUp 0.3s cubic-bezier(0.16,1,0.3,1)',
-        border: '1.5px solid #E2E0FF'
+        border: 'none', boxShadow: 'var(--shadow-glass)', backdropFilter: 'blur(14px) saturate(1.08)'
       }}>
         <div style={{
           display: 'flex', alignItems: 'center',
           justifyContent: 'center', position: 'relative',
           padding: '14px 16px 0'
         }}>
-          <div style={{
-            width: '40px', height: '4px',
-            background: '#E2E0FF', borderRadius: '2px'
-          }} />
           <button
             onClick={onClose}
             style={{
@@ -239,7 +233,7 @@ export default function PublicProfile({ userId, onClose }) {
                   textAlign: 'center', flexShrink: 0
                 }}>
                   <div style={{ fontSize: '20px', fontWeight: '800' }}>
-                    {profile.trust_score ?? 0}%
+                    {profile.trust_score || 100}%
                   </div>
                   <div style={{
                     fontSize: '8px', opacity: 0.7,
@@ -320,9 +314,9 @@ export default function PublicProfile({ userId, onClose }) {
               gap: '8px', marginBottom: '16px'
             }}>
               {[
-                ['Trust', `${profile.trust_score ?? 0}%`, '#6C47FF'],
+                ['Trust', `${profile.trust_score || 100}%`, '#6C47FF'],
                 ['Done', `${profile.gigs_completed || 0}`, '#00C48C'],
-                ['Rating', (profile.reviews_count || 0) > 0 ? `${Number(profile.rating || 0).toFixed(1)}★` : '0.0★', '#FFB800'],
+                ['Rating', `${profile.rating || 5.0}★`, '#FFB800'],
                 ['Reviews', `${profile.reviews_count || 0}`, '#FF6B2B'],
               ].map(([label, val, color]) => (
                 <div key={label} style={{
@@ -460,7 +454,7 @@ export default function PublicProfile({ userId, onClose }) {
                               {review.users?.full_name || 'Anonymous'}
                             </div>
                             <div style={{ fontSize: '10px', color: '#A09DC8' }}>
-                              {parseTimestamp(review.created_at).toLocaleDateString('en-US', {
+                              {new Date(review.created_at).toLocaleDateString('en-US', {
                                 month: 'short', day: 'numeric', year: 'numeric'
                               })}
                             </div>
@@ -503,66 +497,7 @@ export default function PublicProfile({ userId, onClose }) {
             )}
 
             {/* Contact Buttons */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {profile.phone && (
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <a href={`tel:${profile.phone}`} style={{
-                    flex: 1, background: '#EEE9FF',
-                    border: '1.5px solid #B8A5FF',
-                    borderRadius: '12px', padding: '13px',
-                    fontSize: '13px', fontWeight: '700',
-                    color: '#6C47FF', textDecoration: 'none',
-                    textAlign: 'center'
-                  }}>📞 Call</a>
-                  <a
-                    href={`https://wa.me/${profile.phone.replace(/\D/g, '')}`}
-                    target="_blank" rel="noreferrer"
-                    style={{
-                      flex: 2, background: '#25D366',
-                      border: 'none', borderRadius: '12px',
-                      padding: '13px', fontSize: '13px',
-                      fontWeight: '700', color: '#fff',
-                      textDecoration: 'none', textAlign: 'center'
-                    }}>💬 WhatsApp</a>
-                </div>
-              )}
-
-              {/* Links */}
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                {profile.portfolio_url && (
-                  <a href={profile.portfolio_url.startsWith('http')
-                    ? profile.portfolio_url
-                    : `https://${profile.portfolio_url}`}
-                    target="_blank" rel="noreferrer"
-                    style={{
-                      background: '#F5F4FF', border: '1.5px solid #E2E0FF',
-                      borderRadius: '10px', padding: '8px 14px',
-                      fontSize: '12px', fontWeight: '600',
-                      color: '#6C47FF', textDecoration: 'none'
-                    }}>🌐 Portfolio</a>
-                )}
-                {profile.social_linkedin && (
-                  <a href={`https://${profile.social_linkedin}`}
-                    target="_blank" rel="noreferrer"
-                    style={{
-                      background: '#F5F4FF', border: '1.5px solid #E2E0FF',
-                      borderRadius: '10px', padding: '8px 14px',
-                      fontSize: '12px', fontWeight: '600',
-                      color: '#0077B5', textDecoration: 'none'
-                    }}>💼 LinkedIn</a>
-                )}
-                {profile.social_twitter && (
-                  <a href={`https://${profile.social_twitter}`}
-                    target="_blank" rel="noreferrer"
-                    style={{
-                      background: '#F5F4FF', border: '1.5px solid #E2E0FF',
-                      borderRadius: '10px', padding: '8px 14px',
-                      fontSize: '12px', fontWeight: '600',
-                      color: '#14123A', textDecoration: 'none'
-                    }}>🐦 Twitter</a>
-                )}
-              </div>
-            </div>
+            
           </div>
         )}
 

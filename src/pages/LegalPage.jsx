@@ -142,22 +142,22 @@ export default function LegalPage({ type }) {
   return (
     <div style={{
       minHeight: '100vh',
-      background: '#F8F7FF',
-      color: '#14123A',
+      background: 'var(--color-surface-tint)',
+      color: 'var(--color-text)',
       fontFamily: "'Plus Jakarta Sans', sans-serif",
       padding: '28px 18px 48px'
     }}>
       <main style={{
         maxWidth: '880px',
         margin: '0 auto',
-        background: '#fff',
-        border: '1.5px solid #E2E0FF',
+        background: 'var(--color-surface)',
+        border: '1.5px solid var(--color-border)',
         borderRadius: '16px',
         padding: '24px',
         boxShadow: '0 12px 36px rgba(108,71,255,0.08)'
       }}>
         <Link to="/" style={{
-          color: '#6C47FF',
+          color: 'var(--color-brand)',
           textDecoration: 'none',
           fontWeight: '800',
           fontSize: '13px'
@@ -172,15 +172,15 @@ export default function LegalPage({ type }) {
         }}>
           {title}
         </h1>
-        <p style={{ margin: '0 0 18px', color: '#8B8FAF', fontSize: '13px' }}>
+        <p style={{ margin: '0 0 18px', color: 'var(--color-text-muted)', fontSize: '13px' }}>
           Last updated: {UPDATED_AT}
         </p>
         <div style={{
-          background: '#F5F4FF',
-          border: '1.5px solid #E2E0FF',
+          background: 'var(--color-page)',
+          border: '1.5px solid var(--color-border)',
           borderRadius: '12px',
           padding: '14px 16px',
-          color: '#4E4A78',
+          color: 'var(--color-text-muted)',
           fontSize: '13px',
           lineHeight: 1.7,
           marginBottom: '20px'
@@ -199,7 +199,7 @@ export default function LegalPage({ type }) {
             </h2>
             <p style={{
               margin: 0,
-              color: '#4E4A78',
+              color: 'var(--color-text-muted)',
               fontSize: '14px',
               lineHeight: 1.75
             }}>

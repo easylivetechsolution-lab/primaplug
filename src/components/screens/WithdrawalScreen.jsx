@@ -66,16 +66,16 @@ export default function WithdrawalScreen() {
   }
 
   const labelStyle = {
-    fontSize: '11px', fontWeight: '700',
-    color: '#8B8FAF', textTransform: 'uppercase',
+    fontSize: '12px', fontWeight: '700',
+    color: 'var(--color-text-muted)', textTransform: 'uppercase',
     letterSpacing: '0.8px', display: 'block', marginBottom: '6px'
   }
 
   const inputStyle = {
-    width: '100%', background: '#F5F4FF',
-    border: '1.5px solid #E2E0FF', borderRadius: '10px',
+    width: '100%', background: 'var(--color-page)',
+    border: '1.5px solid var(--color-border)', borderRadius: '10px',
     padding: '11px 14px', fontSize: '13px',
-    color: '#14123A', fontFamily: 'inherit',
+    color: 'var(--color-text)', fontFamily: 'inherit',
     outline: 'none', boxSizing: 'border-box'
   }
 
@@ -146,10 +146,10 @@ export default function WithdrawalScreen() {
         <div style={{ fontSize: '64px', marginBottom: '16px' }}>🎉</div>
         <div style={{
           fontSize: '22px', fontWeight: '800',
-          color: '#14123A', marginBottom: '8px'
+          color: 'var(--color-text)', marginBottom: '8px'
         }}>Withdrawal Sent!</div>
         <div style={{
-          fontSize: '14px', color: '#8B8FAF',
+          fontSize: '14px', color: 'var(--color-text-muted)',
           lineHeight: '1.6', marginBottom: '24px',
           maxWidth: '280px', margin: '0 auto 24px'
         }}>
@@ -161,10 +161,10 @@ export default function WithdrawalScreen() {
             setAccountNumber(''); setVerifiedName('')
           }}
           style={{
-            background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+            background: 'var(--color-brand-gradient)',
             border: 'none', borderRadius: '14px',
             padding: '14px 32px', fontSize: '14px',
-            fontWeight: '700', color: '#fff',
+            fontWeight: '700', color: 'var(--color-surface)',
             cursor: 'pointer', fontFamily: 'inherit'
           }}>
           Make Another Withdrawal
@@ -180,20 +180,20 @@ export default function WithdrawalScreen() {
     }}>
       <div style={{
         fontSize: '22px', fontWeight: '800',
-        color: '#14123A', marginBottom: '4px'
+        color: 'var(--color-text)', marginBottom: '4px'
       }}>Withdraw Credits</div>
       <div style={{
-        fontSize: '13px', color: '#8B8FAF', marginBottom: '24px'
+        fontSize: '13px', color: 'var(--color-text-muted)', marginBottom: '24px'
       }}>Convert Prima Credits to cash</div>
 
       {/* Balance Card */}
       <div style={{
-        background: 'linear-gradient(135deg, #6C47FF 0%, #9B59FF 50%, #FF4DCF 100%)',
+        background: 'linear-gradient(135deg, var(--color-brand) 0%, var(--color-brand-mid) 50%, var(--color-brand-highlight) 100%)',
         borderRadius: '20px', padding: '20px',
-        color: '#fff', marginBottom: '24px', textAlign: 'center'
+        color: 'var(--color-surface)', marginBottom: '24px', textAlign: 'center'
       }}>
         <div style={{
-          fontSize: '11px', opacity: 0.8,
+          fontSize: '12px', opacity: 0.8,
           letterSpacing: '1.5px', textTransform: 'uppercase',
           marginBottom: '6px'
         }}>Available Balance</div>
@@ -208,13 +208,13 @@ export default function WithdrawalScreen() {
 
       {/* Rate Info */}
       <div style={{
-        background: '#F5F4FF', border: '1.5px solid #E2E0FF',
+        background: 'var(--color-page)', border: '1.5px solid var(--color-border)',
         borderRadius: '14px', padding: '14px',
         marginBottom: '20px', display: 'flex',
         gap: '10px', alignItems: 'center'
       }}>
         <span style={{ fontSize: '20px', flexShrink: 0 }}>ℹ️</span>
-        <div style={{ fontSize: '12px', color: '#6C47FF', lineHeight: '1.6' }}>
+        <div style={{ fontSize: '12px', color: 'var(--color-brand)', lineHeight: '1.6' }}>
           <strong>{CREDITS_PER_DOLLAR} Credits = $1 USD.</strong> Minimum withdrawal is {MIN_CREDITS} credits (${(MIN_CREDITS / CREDITS_PER_DOLLAR).toFixed(2)}). Sent automatically via Fincra.
         </div>
       </div>
@@ -227,17 +227,17 @@ export default function WithdrawalScreen() {
           style={{
             ...inputStyle, display: 'flex', alignItems: 'center',
             gap: '8px', cursor: 'pointer',
-            border: bankCode ? '1.5px solid #6C47FF' : '1.5px solid #E2E0FF',
+            border: bankCode ? '1.5px solid var(--color-brand)' : '1.5px solid var(--color-border)',
           }}
         >
           <span style={{ fontSize: '14px', flexShrink: 0 }}>🏦</span>
-          <span style={{ flex: 1, fontSize: '13px', color: bankCode ? '#14123A' : '#8B8FAF' }}>
+          <span style={{ flex: 1, fontSize: '13px', color: bankCode ? 'var(--color-text)' : 'var(--color-text-muted)' }}>
             {banks.find(b => b.code === bankCode)?.name || 'Search and select your bank'}
           </span>
           {bankCode
-            ? <span style={{ fontSize: '11px', color: '#6C47FF', fontWeight: '700', cursor: 'pointer' }}
+            ? <span style={{ fontSize: '12px', color: 'var(--color-brand)', fontWeight: '700', cursor: 'pointer' }}
                 onClick={e => { e.stopPropagation(); setBankCode(''); setBankSearch(''); setVerifiedName('') }}>✕</span>
-            : <span style={{ fontSize: '16px', color: '#8B8FAF' }}>›</span>
+            : <span style={{ fontSize: '16px', color: 'var(--color-text-muted)' }}>›</span>
           }
         </div>
       </div>
@@ -251,16 +251,16 @@ export default function WithdrawalScreen() {
           fontFamily: "'Plus Jakarta Sans', sans-serif",
         }} onClick={() => { setShowBankList(false); setBankSearch('') }}>
           <div onClick={e => e.stopPropagation()} style={{
-            background: '#fff', borderRadius: '20px 20px 0 0',
+            background: 'var(--color-surface)', borderRadius: '20px 20px 0 0',
             width: '100%', maxWidth: '540px',
             height: '75vh', display: 'flex', flexDirection: 'column',
             padding: '0 0 20px',
           }}>
             {/* Handle */}
             <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 8px' }}>
-              <div style={{ width: '40px', height: '4px', background: '#E2E0FF', borderRadius: '2px' }} />
+              <div style={{ width: '40px', height: '4px', background: 'var(--color-border)', borderRadius: '2px' }} />
             </div>
-            <div style={{ textAlign: 'center', fontSize: '16px', fontWeight: '800', color: '#14123A', marginBottom: '14px' }}>
+            <div style={{ textAlign: 'center', fontSize: '16px', fontWeight: '800', color: 'var(--color-text)', marginBottom: '14px' }}>
               Select Bank
             </div>
 
@@ -268,7 +268,7 @@ export default function WithdrawalScreen() {
             <div style={{ padding: '0 16px 12px' }}>
               <div style={{
                 display: 'flex', alignItems: 'center', gap: '8px',
-                background: '#F5F4FF', border: '1.5px solid #E2E0FF',
+                background: 'var(--color-page)', border: '1.5px solid var(--color-border)',
                 borderRadius: '12px', padding: '10px 14px',
               }}>
                 <span style={{ fontSize: '16px' }}>🔍</span>
@@ -280,12 +280,12 @@ export default function WithdrawalScreen() {
                   style={{
                     flex: 1, border: 'none', outline: 'none',
                     background: 'transparent', fontSize: '14px',
-                    color: '#14123A', fontFamily: 'inherit',
+                    color: 'var(--color-text)', fontFamily: 'inherit',
                   }}
                 />
                 {bankSearch && (
                   <span onClick={() => setBankSearch('')}
-                    style={{ fontSize: '12px', color: '#8B8FAF', cursor: 'pointer', fontWeight: '700' }}>✕</span>
+                    style={{ fontSize: '12px', color: 'var(--color-text-muted)', cursor: 'pointer', fontWeight: '700' }}>✕</span>
                 )}
               </div>
             </div>
@@ -300,21 +300,21 @@ export default function WithdrawalScreen() {
                     onClick={() => { setBankCode(b.code); setBankSearch(''); setShowBankList(false); setVerifiedName('') }}
                     style={{
                       padding: '13px 20px', fontSize: '14px',
-                      color: b.code === bankCode ? '#6C47FF' : '#14123A',
-                      background: b.code === bankCode ? '#F5F4FF' : 'transparent',
+                      color: b.code === bankCode ? 'var(--color-brand)' : 'var(--color-text)',
+                      background: b.code === bankCode ? 'var(--color-page)' : 'transparent',
                       fontWeight: b.code === bankCode ? '700' : '500',
                       cursor: 'pointer',
-                      borderBottom: '1px solid #F5F4FF',
+                      borderBottom: '1px solid var(--color-page)',
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     }}
                   >
                     <span>{b.name}</span>
-                    {b.code === bankCode && <span style={{ fontSize: '16px', color: '#6C47FF' }}>✓</span>}
+                    {b.code === bankCode && <span style={{ fontSize: '16px', color: 'var(--color-brand)' }}>✓</span>}
                   </div>
                 ))
               }
               {banks.filter(b => b.name?.toLowerCase().includes(bankSearch.toLowerCase())).length === 0 && (
-                <div style={{ padding: '40px 20px', textAlign: 'center', color: '#8B8FAF', fontSize: '13px' }}>
+                <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '13px' }}>
                   No bank found for "{bankSearch}"
                 </div>
               )}
@@ -337,7 +337,7 @@ export default function WithdrawalScreen() {
             onClick={verifyAccount}
             disabled={verifying}
             style={{
-              padding: '0 16px', background: '#6C47FF', color: '#fff',
+              padding: '0 16px', background: 'var(--color-brand)', color: 'var(--color-surface)',
               border: 'none', borderRadius: '10px', fontSize: '12px',
               fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit',
               whiteSpace: 'nowrap'
@@ -349,9 +349,9 @@ export default function WithdrawalScreen() {
 
       {verifiedName && (
         <div style={{
-          background: '#DFFDF4', border: '1.5px solid #7EECD2',
+          background: 'var(--color-success-soft)', border: '1.5px solid var(--color-success-border)',
           borderRadius: '10px', padding: '10px 12px',
-          fontSize: '13px', color: '#00A878', fontWeight: '700',
+          fontSize: '13px', color: 'var(--color-success)', fontWeight: '700',
           marginBottom: '20px'
         }}>✓ {verifiedName}</div>
       )}
@@ -360,7 +360,7 @@ export default function WithdrawalScreen() {
       <div style={{ marginBottom: '20px' }}>
         <div style={{
           fontSize: '12px', fontWeight: '700',
-          color: '#14123A', marginBottom: '8px'
+          color: 'var(--color-text)', marginBottom: '8px'
         }}>Credits to Withdraw</div>
         <input
           type="number"
@@ -371,16 +371,16 @@ export default function WithdrawalScreen() {
           max={balance}
           style={{
             width: '100%', boxSizing: 'border-box',
-            background: '#F5F4FF', border: '1.5px solid #E2E0FF',
+            background: 'var(--color-page)', border: '1.5px solid var(--color-border)',
             borderRadius: '12px', padding: '14px 16px',
             fontSize: '16px', fontWeight: '700',
-            color: '#14123A', fontFamily: 'inherit',
+            color: 'var(--color-text)', fontFamily: 'inherit',
             outline: 'none'
           }}
         />
         {creditsToWithdraw > 0 && (
           <div style={{
-            fontSize: '12px', color: '#00C48C',
+            fontSize: '12px', color: 'var(--color-success)',
             fontWeight: '600', marginTop: '6px'
           }}>
             ≈ ${dollarPayout.toFixed(2)} USD payout
@@ -390,9 +390,9 @@ export default function WithdrawalScreen() {
 
       {error && (
         <div style={{
-          background: '#FFE8EE', border: '1.5px solid #FF99B3',
+          background: 'var(--color-danger-soft)', border: '1.5px solid var(--color-danger-border)',
           borderRadius: '12px', padding: '12px 14px',
-          fontSize: '13px', color: '#FF3366',
+          fontSize: '13px', color: 'var(--color-danger)',
           marginBottom: '16px', fontWeight: '600'
         }}>{error}</div>
       )}
@@ -403,11 +403,11 @@ export default function WithdrawalScreen() {
         style={{
           width: '100%',
           background: (submitting || !verifiedName)
-            ? '#B8A5FF'
-            : 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+            ? 'var(--color-brand-border-strong)'
+            : 'var(--color-brand-gradient)',
           border: 'none', borderRadius: '14px',
           padding: '16px', fontSize: '15px',
-          fontWeight: '700', color: '#fff',
+          fontWeight: '700', color: 'var(--color-surface)',
           cursor: (submitting || !verifiedName) ? 'not-allowed' : 'pointer',
           fontFamily: 'inherit',
           boxShadow: (submitting || !verifiedName) ? 'none' : '0 4px 20px rgba(108,71,255,0.35)',
@@ -417,9 +417,9 @@ export default function WithdrawalScreen() {
       </button>
 
       <div style={{
-        fontSize: '11px', color: '#A09DC8',
+        fontSize: '12px', color: 'var(--color-text-subtle)',
         textAlign: 'center', marginTop: '10px',
-        lineHeight: '1.6', background: '#F5F4FF',
+        lineHeight: '1.6', background: 'var(--color-page)',
         borderRadius: '10px', padding: '10px 14px'
       }}>
         💸 Credits deducted immediately on request.<br/>

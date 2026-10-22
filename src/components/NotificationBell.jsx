@@ -3,9 +3,7 @@ import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 import PublicProfile from './PublicProfile'
 import BrandIcon from './BrandIcon'
-import { showToast } from '../utils/toast'
 import { ensureGigConversation } from '../utils/gigApplications'
-import { parseTimestamp } from '../utils/time'
 import {
   playNotification,
   playAccepted,
@@ -26,22 +24,9 @@ export default function NotificationBell({ onNavigate }) {
   const [actionDone, setActionDone] = useState(null)
   const ref = useRef()
 
-  async function fetchNotifications() {
-    const { data } = await supabase
-      .from('notifications')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(20)
-    if (data) {
-      setNotifications(data)
-      setUnread(data.filter(n => !n.read).length)
-    }
-  }
-
   useEffect(() => {
     if (!user) return
-    Promise.resolve().then(fetchNotifications)
+    fetchNotifications()
 
     const channel = supabase
       .channel('notifications-' + user.id)
@@ -87,6 +72,19 @@ export default function NotificationBell({ onNavigate }) {
     return () => window.removeEventListener('popstate', handleBack)
   }, [!!notifDetail])
 
+  const fetchNotifications = async () => {
+    const { data } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(20)
+    if (data) {
+      setNotifications(data)
+      setUnread(data.filter(n => !n.read).length)
+    }
+  }
+
   const markAllRead = async () => {
     await supabase
       .from('notifications')
@@ -121,7 +119,7 @@ export default function NotificationBell({ onNavigate }) {
   }
 
   const timeAgo = (date) => {
-    const seconds = Math.floor((new Date() - parseTimestamp(date)) / 1000)
+    const seconds = Math.floor((new Date() - new Date(date)) / 1000)
     if (seconds < 60) return 'just now'
     if (seconds < 3600) return `${Math.floor(seconds/60)}m ago`
     if (seconds < 86400) return `${Math.floor(seconds/3600)}h ago`
@@ -130,18 +128,6 @@ export default function NotificationBell({ onNavigate }) {
 
   const openMessageNotification = async (notif) => {
     if (!user) return
-
-    if (notif.conversation_id) {
-      onNavigate && onNavigate('chat')
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          window.dispatchEvent(new CustomEvent('openChat', {
-            detail: { convoId: notif.conversation_id }
-          }))
-        })
-      })
-      return
-    }
 
     let query = supabase
       .from('conversations')
@@ -295,11 +281,6 @@ export default function NotificationBell({ onNavigate }) {
                       return
                     }
 
-                    if (notif.type === 'wallet') {
-                      onNavigate && onNavigate('wallet')
-                      return
-                    }
-
                     if (!notif.gig_id) {
                       setNotifDetail({ type: 'info', notif })
                       return
@@ -320,7 +301,7 @@ export default function NotificationBell({ onNavigate }) {
                         .eq('gig_id', notif.gig_id)
                         .order('created_at', { ascending: false })
 
-                      setNotifDetail({ type: 'application', notif, gig_id: notif.gig_id, gig, applications: apps || [] })
+                      setNotifDetail({ type: 'application', gig, applications: apps || [] })
                     } else if (notif.type === 'accepted' || notif.type === 'rejected') {
                       const { data: gig } = await supabase
                         .from('gigs')
@@ -330,12 +311,9 @@ export default function NotificationBell({ onNavigate }) {
 
                       setNotifDetail({ type: notif.type, gig })
                     } else if (notif.type === 'receipt' || notif.type === 'review') {
-                      const { data: gig } = await supabase
-                        .from('gigs')
-                        .select('*, users(id, full_name, avatar_url, phone, trust_score, rating, location, bio, gigs_completed)')
-                        .eq('id', notif.gig_id)
-                        .single()
-                      setNotifDetail({ type: notif.type, gig, notif })
+                      setLoadingDetail(false)
+                      onNavigate && onNavigate('mygigs')
+                      return
                     } else {
                       const { data: gig } = await supabase
                         .from('gigs')
@@ -343,7 +321,7 @@ export default function NotificationBell({ onNavigate }) {
                         .eq('id', notif.gig_id)
                         .single()
 
-                      setNotifDetail({ type: 'general', gig, notif })
+                      setNotifDetail({ type: 'general', gig })
                     }
 
                     setLoadingDetail(false)
@@ -552,17 +530,17 @@ export default function NotificationBell({ onNavigate }) {
                           </div>
                           <div style={{
                             background: app.status === 'accepted' ? '#DFFDF4'
-                              : app.status === 'rejected' ? '#FFE8EE' : '#EEE9FF',
+                              : ['rejected', 'declined'].includes(app.status) ? '#FFE8EE' : '#EEE9FF',
                             border: `1px solid ${app.status === 'accepted' ? '#7EECD2'
-                              : app.status === 'rejected' ? '#FF99B3' : '#B8A5FF'}`,
+                              : ['rejected', 'declined'].includes(app.status) ? '#FF99B3' : '#B8A5FF'}`,
                             borderRadius: '7px', padding: '4px 10px',
                             fontSize: '10px', fontWeight: '700',
                             color: app.status === 'accepted' ? '#00C48C'
-                              : app.status === 'rejected' ? '#FF3366' : '#6C47FF',
+                              : ['rejected', 'declined'].includes(app.status) ? '#FF3366' : '#6C47FF',
                             flexShrink: 0
                           }}>
                             {app.status === 'accepted' ? '✓ Accepted'
-                              : app.status === 'rejected' ? '✗ Declined' : '⏳ Pending'}
+                              : ['rejected', 'declined'].includes(app.status) ? '✗ Declined' : '⏳ Pending'}
                           </div>
                         </div>
 
@@ -604,7 +582,7 @@ export default function NotificationBell({ onNavigate }) {
                               requestAnimationFrame(() => {
                                 setTimeout(() => {
                                   window.dispatchEvent(new CustomEvent('openChatWithUser', {
-                                    detail: { userId: targetUserId }
+                                    detail: { userId: targetUserId, gigId: gigId || null }
                                   }))
                                 }, 100)
                               })
@@ -624,102 +602,57 @@ export default function NotificationBell({ onNavigate }) {
                           💬 Message {app.users?.full_name?.split(' ')[0]}
                         </button>
 
-                        {app.status === 'pending' && notifDetail.gig?.poster_id === user?.id && (
+                        {app.status === 'pending' && (
                           <div style={{ display: 'flex', gap: '8px' }}>
                             <button
                               onClick={async () => {
-                                const detail = notifDetail
-                                let gig = detail?.gig
-                                const gigId = gig?.id || detail?.gig_id || detail?.notif?.gig_id || app.gig_id
-                                if (!gigId) {
-                                  showToast('Could not find this gig. Please reopen the notification and try again.', 'error')
-                                  return
-                                }
-
-                                if (!gig?.slots || !gig?.poster_id || !gig?.title) {
-                                  const { data: latestGig } = await supabase
-                                    .from('gigs')
-                                    .select('id, title, slots, poster_id')
-                                    .eq('id', gigId)
-                                    .single()
-
-                                  gig = latestGig || gig
-                                }
-
-                                const gigTitle = gig?.title || detail?.notif?.message?.match(/"([^"]+)"/)?.[1] || 'this gig'
-                                const posterId = gig?.poster_id || user?.id
-
                                 const acceptedAt = new Date().toISOString()
 
-                                const { error: acceptError } = await supabase
+                                await supabase
                                   .from('applications')
                                   .update({
                                     status: 'accepted',
                                     accepted_at: acceptedAt
                                   })
                                   .eq('id', app.id)
-                                if (acceptError) {
-                                  showToast('Error accepting: ' + acceptError.message, 'error')
-                                  return
-                                }
+                                  .eq('status', 'pending')
 
-                                const { data: acceptedApps } = await supabase
-                                  .from('applications')
-                                  .select('id')
-                                  .eq('gig_id', gigId)
-                                  .eq('status', 'accepted')
-
-                                const filled = acceptedApps?.length || 1
-                                const slots = Number(gig?.slots || 0)
-                                const slotsFull = slots > 0 && filled >= slots
-
-                                const { error: gigError } = await supabase
+                                await supabase
                                   .from('gigs')
                                   .update({
-                                    status: slotsFull ? 'in_progress' : 'open',
+                                    status: 'in_progress',
                                     worker_id: app.worker_id,
                                     worker_name: app.users?.full_name,
                                     accepted_at: acceptedAt,
-                                    slots_filled: filled
+                                    slots_filled: 1
                                   })
-                                  .eq('id', gigId)
-                                if (gigError) {
-                                  showToast('Error updating gig: ' + gigError.message, 'error')
-                                  return
-                                }
+                                  .eq('id', notifDetail.gig.id)
 
-                                if (slotsFull) {
-                                  await supabase
-                                    .from('applications')
-                                    .update({ status: 'declined' })
-                                    .eq('gig_id', gigId)
-                                    .neq('id', app.id)
-                                    .eq('status', 'pending')
-                                }
+                                await supabase
+                                  .from('applications')
+                                  .update({ status: 'declined' })
+                                  .eq('gig_id', notifDetail.gig.id)
+                                  .neq('id', app.id)
+                                  .eq('status', 'pending')
 
-                                if (posterId) {
-                                  await ensureGigConversation({
-                                    gigId,
-                                    posterId,
-                                    workerId: app.worker_id
-                                  })
-                                }
+                                await ensureGigConversation({
+                                  gigId: notifDetail.gig.id,
+                                  posterId: notifDetail.gig.poster_id,
+                                  workerId: app.worker_id
+                                })
 
-                                const { error: notifError } = await supabase.from('notifications').insert({
+                                await supabase.from('notifications').insert({
                                   user_id: app.worker_id,
                                   title: 'You Got The Job!',
-                                  message: `Your application for "${gigTitle}" was accepted! Contact the poster and get started.`,
+                                  message: `Your application for "${notifDetail.gig.title}" was accepted! Contact the poster and get started.`,
                                   type: 'accepted',
-                                  gig_id: gigId
+                                  gig_id: notifDetail.gig.id
                                 })
-                                if (notifError) {
-                                  showToast('Accepted, but notification failed: ' + notifError.message)
-                                }
 
                                 const { data: apps } = await supabase
                                   .from('applications')
                                   .select('*, users(id, full_name, avatar_url, trust_score, rating, gigs_completed, bio, skills, location, phone)')
-                                  .eq('gig_id', gigId)
+                                  .eq('gig_id', notifDetail.gig.id)
                                   .order('created_at', { ascending: false })
 
                                 setNotifDetail(prev => ({ ...prev, applications: apps || [] }))
@@ -734,15 +667,6 @@ export default function NotificationBell({ onNavigate }) {
                               }}>✓ Accept</button>
                             <button
                               onClick={async () => {
-                                const detail = notifDetail
-                                const gig = detail?.gig
-                                const gigId = gig?.id || detail?.gig_id || detail?.notif?.gig_id || app.gig_id
-                                const gigTitle = gig?.title || detail?.notif?.message?.match(/"([^"]+)"/)?.[1] || 'this gig'
-                                if (!gigId) {
-                                  showToast('Could not find this gig. Please reopen the notification and try again.', 'error')
-                                  return
-                                }
-
                                 await supabase
                                   .from('applications')
                                   .update({ status: 'declined', declined_at: new Date().toISOString() })
@@ -751,15 +675,15 @@ export default function NotificationBell({ onNavigate }) {
                                 await supabase.from('notifications').insert({
                                   user_id: app.worker_id,
                                   title: 'Application Update',
-                                  message: `Your application for "${gigTitle}" was not selected`,
+                                  message: `Your application for "${notifDetail.gig.title}" was not selected`,
                                   type: 'rejected',
-                                  gig_id: gigId
+                                  gig_id: notifDetail.gig.id
                                 })
 
                                 const { data: apps } = await supabase
                                   .from('applications')
                                   .select('*, users(id, full_name, avatar_url, trust_score, rating, gigs_completed, bio, skills, location, phone)')
-                                  .eq('gig_id', gigId)
+                                  .eq('gig_id', notifDetail.gig.id)
                                   .order('created_at', { ascending: false })
 
                                 setNotifDetail(prev => ({ ...prev, applications: apps || [] }))
@@ -793,16 +717,6 @@ export default function NotificationBell({ onNavigate }) {
                       : '✗ Application declined. Worker has been notified.'}
                   </div>
                 )}
-
-                <button
-                  onClick={() => { setNotifDetail(null); setOpen(false); onNavigate && onNavigate('mygigs') }}
-                  style={{
-                    width: '100%', padding: '13px', borderRadius: '14px',
-                    background: 'linear-gradient(135deg,#6C47FF,#9B59FF)',
-                    color: '#fff', fontWeight: '800', fontSize: '14px',
-                    border: 'none', cursor: 'pointer', marginTop: '4px'
-                  }}
-                >View in My Gigs →</button>
               </>
             )}
 
@@ -953,86 +867,45 @@ export default function NotificationBell({ onNavigate }) {
                 )}
 
                 {/* Phone + WhatsApp — if accepted */}
-                {notifDetail.type === 'accepted' && notifDetail.gig?.users?.phone && (
-                  <div style={{
-                    background: '#F5F4FF', border: '1.5px solid #E2E0FF',
-                    borderRadius: '12px', padding: '12px 14px',
-                    marginBottom: '12px',
-                    display: 'flex', justifyContent: 'space-between',
-                    alignItems: 'center'
-                  }}>
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                      <span style={{ fontSize: '16px' }}>📱</span>
-                      <div>
-                        <div style={{
-                          fontSize: '10px', color: '#A09DC8', fontWeight: '600',
-                          textTransform: 'uppercase', letterSpacing: '0.5px',
-                          marginBottom: '2px'
-                        }}>Contact Client</div>
-                        <div style={{
-                          fontSize: '14px', fontWeight: '700', color: '#14123A'
-                        }}>{notifDetail.gig.users.phone}</div>
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <a href={`tel:${notifDetail.gig.users.phone}`} style={{
-                        background: '#EEE9FF', border: '1.5px solid #B8A5FF',
-                        borderRadius: '9px', padding: '8px 12px',
-                        fontSize: '12px', fontWeight: '700',
-                        color: '#6C47FF', textDecoration: 'none'
-                      }}>📞 Call</a>
-                      <a
-                        href={`https://wa.me/${notifDetail.gig.users.phone.replace(/\D/g, '')}?text=Hi, my application for "${notifDetail.gig.title}" on Prima was accepted!`}
-                        target="_blank" rel="noreferrer"
-                        style={{
-                          background: '#25D366', borderRadius: '9px',
-                          padding: '8px 12px', fontSize: '12px',
-                          fontWeight: '700', color: '#fff', textDecoration: 'none'
-                        }}>💬 WhatsApp</a>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
+                {notifDetail.type === 'accepted' && notifDetail.gig?.poster_id && (
+                  <button
+                    onClick={() => {
+                      const targetUserId = notifDetail.gig.poster_id
+                      const gigId = notifDetail.gig.id
 
-            {/* RECEIPT / REVIEW TYPE */}
-            {(notifDetail.type === 'receipt' || notifDetail.type === 'review') && (
-              <div>
-                <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                  <div style={{ fontSize: '48px', marginBottom: '12px' }}>
-                    {notifDetail.type === 'receipt' ? '🧾' : '⭐'}
-                  </div>
-                  <div style={{
-                    fontSize: '17px', fontWeight: '800',
-                    color: '#14123A', marginBottom: '8px', lineHeight: '1.3'
-                  }}>{notifDetail.notif?.title}</div>
-                  <div style={{ fontSize: '13px', color: '#8B8FAF', lineHeight: '1.6' }}>
-                    {notifDetail.notif?.message}
-                  </div>
-                </div>
-                {notifDetail.gig && (
-                  <div style={{
-                    background: '#F5F4FF', borderRadius: '14px',
-                    padding: '14px', border: '1.5px solid #E2E0FF', marginBottom: '20px'
-                  }}>
-                    <div style={{
-                      fontSize: '10px', color: '#A09DC8', fontWeight: '700',
-                      textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px'
-                    }}>Gig</div>
-                    <div style={{ fontSize: '15px', fontWeight: '700', color: '#14123A' }}>
-                      {notifDetail.gig.title}
-                    </div>
-                  </div>
+                      setActionDone(null)
+                      setNotifDetail(null)
+                      setOpen(false)
+
+                      requestAnimationFrame(() => {
+                        window.dispatchEvent(new CustomEvent('openChatWithUser', {
+                          detail: { userId: targetUserId, gigId: gigId || null }
+                        }))
+                      })
+                    }}
+                    style={{
+                      width: '100%',
+                      background: 'linear-gradient(135deg, #6C47FF 0%, #9B59FF 100%)',
+                      border: 'none',
+                      borderRadius: '12px',
+                      padding: '12px 14px',
+                      marginBottom: '12px',
+                      fontSize: '13px',
+                      fontWeight: '800',
+                      color: '#fff',
+                      cursor: 'pointer',
+                      fontFamily: 'inherit',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      boxShadow: '0 4px 16px rgba(108,71,255,0.28)'
+                    }}>
+                    <BrandIcon name="chat" size={18} active /> Message Client
+                  </button>
                 )}
-                <button
-                  onClick={() => { setNotifDetail(null); setOpen(false); onNavigate && onNavigate('mygigs') }}
-                  style={{
-                    width: '100%', padding: '14px', borderRadius: '14px',
-                    background: 'linear-gradient(135deg,#6C47FF,#9B59FF)',
-                    color: '#fff', fontWeight: '800', fontSize: '15px',
-                    border: 'none', cursor: 'pointer'
-                  }}
-                >View Receipt in My Gigs →</button>
+
+                
               </div>
             )}
 
@@ -1058,60 +931,32 @@ export default function NotificationBell({ onNavigate }) {
             )}
 
             {/* GENERAL TYPE — misc notifications with a gig_id */}
-            {notifDetail.type === 'general' && (
-              notifDetail.gig ? (
-                <div>
+            {notifDetail.type === 'general' && notifDetail.gig && (
+              <div style={{ marginBottom: '16px' }}>
+                <div style={{
+                  background: '#F5F4FF', borderRadius: '14px',
+                  padding: '14px', border: '1.5px solid #E2E0FF'
+                }}>
                   <div style={{
-                    background: '#F5F4FF', borderRadius: '14px',
-                    padding: '14px', border: '1.5px solid #E2E0FF', marginBottom: '20px'
-                  }}>
-                    <div style={{
-                      fontSize: '10px', color: '#A09DC8', fontWeight: '700',
-                      textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px'
-                    }}>Related Gig</div>
-                    <div style={{
-                      fontSize: '15px', fontWeight: '700',
-                      color: '#14123A', marginBottom: '6px'
-                    }}>{notifDetail.gig.title}</div>
-                    {notifDetail.gig.pay_min && (
-                      <div style={{ fontSize: '13px', fontWeight: '700', color: '#00C48C' }}>
-                        ${notifDetail.gig.pay_min}–${notifDetail.gig.pay_max}
-                      </div>
-                    )}
-                    {notifDetail.gig.location && (
-                      <div style={{ fontSize: '12px', color: '#FF6B2B', marginTop: '4px' }}>
-                        📍 {notifDetail.gig.location}
-                      </div>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => { setNotifDetail(null); setOpen(false); onNavigate && onNavigate('mygigs') }}
-                    style={{
-                      width: '100%', padding: '14px', borderRadius: '14px',
-                      background: 'linear-gradient(135deg,#6C47FF,#9B59FF)',
-                      color: '#fff', fontWeight: '800', fontSize: '15px',
-                      border: 'none', cursor: 'pointer'
-                    }}
-                  >View in My Gigs →</button>
+                    fontSize: '10px', color: '#A09DC8', fontWeight: '700',
+                    textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px'
+                  }}>Related Gig</div>
+                  <div style={{
+                    fontSize: '15px', fontWeight: '700',
+                    color: '#14123A', marginBottom: '6px'
+                  }}>{notifDetail.gig.title}</div>
+                  {notifDetail.gig.pay_min && (
+                    <div style={{ fontSize: '13px', fontWeight: '700', color: '#00C48C' }}>
+                      ${notifDetail.gig.pay_min}–${notifDetail.gig.pay_max}
+                    </div>
+                  )}
+                  {notifDetail.gig.location && (
+                    <div style={{ fontSize: '12px', color: '#FF6B2B', marginTop: '4px' }}>
+                      📍 {notifDetail.gig.location}
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div style={{ textAlign: 'center', padding: '16px 8px 28px' }}>
-                  <div style={{
-                    width: '72px', height: '72px', borderRadius: '50%',
-                    background: '#F5F4FF', border: '3px solid #E2E0FF',
-                    display: 'flex', alignItems: 'center',
-                    justifyContent: 'center', fontSize: '32px',
-                    margin: '0 auto 20px'
-                  }}>🔔</div>
-                  <div style={{
-                    fontSize: '20px', fontWeight: '800',
-                    color: '#14123A', marginBottom: '12px', lineHeight: '1.3'
-                  }}>{notifDetail.notif?.title}</div>
-                  <div style={{
-                    fontSize: '14px', color: '#8B8FAF', lineHeight: '1.7'
-                  }}>{notifDetail.notif?.message}</div>
-                </div>
-              )
+              </div>
             )}
 
             {/* Close */}

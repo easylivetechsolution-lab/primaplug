@@ -18,24 +18,17 @@ const createWorkerPin = (avatarUrl, initial) => L.divIcon({
       align-items: center;
     ">
       <div style="
-        position: absolute;
-        inset: -10px;
-        border-radius: 50%;
-        background: rgba(108,71,255,0.15);
-        animation: workerPulse 1.5s ease-out infinite;
-      "></div>
-      <div style="
         width: 48px; height: 48px;
         border-radius: 50%;
         background: #fff;
-        border: 3px solid #6C47FF;
+        border: 3px solid var(--color-brand);
         box-shadow: 0 4px 20px rgba(108,71,255,0.5);
         display: flex; align-items: center;
         justify-content: center;
         overflow: hidden;
         position: relative; z-index: 2;
         font-size: 18px; font-weight: 800;
-        color: #6C47FF;
+        color: var(--color-brand);
       ">
         ${avatarUrl
           ? `<img src="${avatarUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`
@@ -43,9 +36,9 @@ const createWorkerPin = (avatarUrl, initial) => L.divIcon({
         }
       </div>
       <div style="
-        background: #6C47FF;
+        background: var(--color-brand);
         color: #fff;
-        font-size: 9px;
+        font-size: 12px;
         font-weight: 700;
         padding: 2px 7px;
         border-radius: 10px;
@@ -57,16 +50,10 @@ const createWorkerPin = (avatarUrl, initial) => L.divIcon({
         width: 0; height: 0;
         border-left: 6px solid transparent;
         border-right: 6px solid transparent;
-        border-top: 8px solid #6C47FF;
+        border-top: 8px solid var(--color-brand);
         margin-top: -1px;
       "></div>
     </div>
-    <style>
-      @keyframes workerPulse {
-        0% { transform: scale(1); opacity: 0.6; }
-        100% { transform: scale(2.5); opacity: 0; }
-      }
-    </style>
   `,
   iconSize: [48, 80],
   iconAnchor: [24, 80],
@@ -84,33 +71,17 @@ const createDestinationPin = (avatarUrl, initial) => L.divIcon({
       align-items: center;
     ">
       <div style="
-        position: absolute;
-        inset: -8px;
-        border-radius: 50%;
-        border: 3px solid #FF3366;
-        opacity: 0.5;
-        animation: destPulse 2s ease-out infinite;
-      "></div>
-      <div style="
-        position: absolute;
-        inset: -16px;
-        border-radius: 50%;
-        border: 2px solid #FF3366;
-        opacity: 0.25;
-        animation: destPulse 2s ease-out infinite 0.5s;
-      "></div>
-      <div style="
         width: 48px; height: 48px;
         border-radius: 50%;
         background: #fff;
-        border: 3px solid #FF3366;
+        border: 3px solid var(--color-danger);
         box-shadow: 0 4px 20px rgba(255,51,102,0.5);
         display: flex; align-items: center;
         justify-content: center;
         overflow: hidden;
         position: relative; z-index: 2;
         font-size: 18px; font-weight: 800;
-        color: #FF3366;
+        color: var(--color-danger);
       ">
         ${avatarUrl
           ? `<img src="${avatarUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`
@@ -118,9 +89,9 @@ const createDestinationPin = (avatarUrl, initial) => L.divIcon({
         }
       </div>
       <div style="
-        background: #FF3366;
+        background: var(--color-danger);
         color: #fff;
-        font-size: 9px;
+        font-size: 12px;
         font-weight: 700;
         padding: 2px 7px;
         border-radius: 10px;
@@ -132,16 +103,10 @@ const createDestinationPin = (avatarUrl, initial) => L.divIcon({
         width: 0; height: 0;
         border-left: 6px solid transparent;
         border-right: 6px solid transparent;
-        border-top: 8px solid #FF3366;
+        border-top: 8px solid var(--color-danger);
         margin-top: -1px;
       "></div>
     </div>
-    <style>
-      @keyframes destPulse {
-        0% { transform: scale(1); opacity: 0.5; }
-        100% { transform: scale(2); opacity: 0; }
-      }
-    </style>
   `,
   iconSize: [48, 80],
   iconAnchor: [24, 80],
@@ -412,14 +377,14 @@ export default function LiveTracking({ gig, role, workerInfo, posterInfo, onClos
   return (
     <div style={{
       position: 'fixed', inset: 0,
-      background: '#fff',
+      background: 'var(--color-surface)',
       zIndex: 9999,
       display: 'flex', flexDirection: 'column',
       fontFamily: "'Plus Jakarta Sans', sans-serif",
       touchAction: 'none'
     }}>
       <div style={{
-        background: '#fff',
+        background: 'var(--color-surface)',
         borderRadius: '0 0 20px 20px',
         padding: '14px 20px',
         display: 'flex', justifyContent: 'space-between',
@@ -428,19 +393,19 @@ export default function LiveTracking({ gig, role, workerInfo, posterInfo, onClos
       }}>
         <div>
           <div style={{
-            fontSize: '10px', color: '#6C47FF', fontWeight: '700',
+            fontSize: '12px', color: 'var(--color-brand)', fontWeight: '700',
             textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '2px'
           }}>
             {role === 'worker' ? '🧭 Navigation' : '📍 Live Tracking'}
           </div>
           <div style={{
-            fontSize: '15px', fontWeight: '800', color: '#14123A'
+            fontSize: '15px', fontWeight: '800', color: 'var(--color-text)'
           }}>{gig.title}</div>
         </div>
-        <button onClick={onClose} style={{
-          background: '#F5F4FF', border: '1.5px solid #E2E0FF',
+        <button  onClick={onClose} style={{
+          background: 'var(--color-page)', border: '1.5px solid var(--color-border)',
           borderRadius: '10px', width: '36px', height: '36px',
-          fontSize: '18px', color: '#8B8FAF', cursor: 'pointer',
+          fontSize: '18px', color: 'var(--color-text-muted)', cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontFamily: 'inherit'
         }}>×</button>
@@ -449,58 +414,58 @@ export default function LiveTracking({ gig, role, workerInfo, posterInfo, onClos
       {/* Stats Bar */}
       {(eta || distance) && (
         <div className="prima-eta-panel" style={{
-          background: 'linear-gradient(135deg, #FFFFFF, #F8F7FF)',
+          background: 'linear-gradient(135deg, var(--color-surface), var(--color-surface-tint))',
           padding: '12px 20px',
           display: 'flex', gap: '12px',
-          borderBottom: '1px solid #E2E0FF', flexShrink: 0,
+          borderBottom: '1px solid var(--color-border)', flexShrink: 0,
           boxShadow: '0 8px 22px rgba(20,18,58,0.08)',
           position: 'relative', zIndex: 3
         }}>
           {eta && (
             <div style={{
-              background: '#EEE9FF', borderRadius: '12px',
+              background: 'var(--color-brand-soft)', borderRadius: '12px',
               padding: '9px 15px', textAlign: 'center',
-              border: '1px solid #D7CFFF',
+              border: '1px solid var(--color-border-soft)',
               boxShadow: '0 6px 16px rgba(108,71,255,0.12)'
             }}>
               <div style={{
-                fontSize: '16px', fontWeight: '800', color: '#6C47FF'
+                fontSize: '16px', fontWeight: '800', color: 'var(--color-brand)'
               }}>{formatEta(eta)}</div>
               <div style={{
-                fontSize: '9px', color: '#A09DC8',
+                fontSize: '12px', color: 'var(--color-text-subtle)',
                 fontWeight: '600', textTransform: 'uppercase'
               }}>ETA</div>
             </div>
           )}
           {distance && (
             <div style={{
-              background: '#fff', borderRadius: '12px',
+              background: 'var(--color-surface)', borderRadius: '12px',
               padding: '9px 15px', textAlign: 'center',
-              border: '1px solid #E2E0FF',
+              border: '1px solid var(--color-border)',
               boxShadow: '0 6px 16px rgba(20,18,58,0.06)'
             }}>
               <div style={{
-                fontSize: '16px', fontWeight: '800', color: '#14123A'
+                fontSize: '16px', fontWeight: '800', color: 'var(--color-text)'
               }}>
                 {distance < 1
                   ? `${Math.round(distance * 1000)}m`
                   : `${distance.toFixed(1)}km`}
               </div>
               <div style={{
-                fontSize: '9px', color: '#A09DC8',
+                fontSize: '12px', color: 'var(--color-text-subtle)',
                 fontWeight: '600', textTransform: 'uppercase'
               }}>Distance</div>
             </div>
           )}
           {arrived && (
             <div style={{
-              background: '#DFFDF4', border: '1.5px solid #7EECD2',
+              background: 'var(--color-success-soft)', border: '1.5px solid var(--color-success-border)',
               borderRadius: '10px', padding: '8px 14px',
               display: 'flex', alignItems: 'center', gap: '6px'
             }}>
               <span style={{ fontSize: '16px' }}>✅</span>
               <div style={{
-                fontSize: '13px', fontWeight: '700', color: '#00C48C'
+                fontSize: '13px', fontWeight: '700', color: 'var(--color-success)'
               }}>Arrived!</div>
             </div>
           )}
@@ -576,7 +541,7 @@ export default function LiveTracking({ gig, role, workerInfo, posterInfo, onClos
               {/* Main route line */}
               <Polyline
                 positions={route}
-                color="#6C47FF"
+                color="var(--color-brand)"
                 weight={5}
                 opacity={0.9}
                 dashArray="12 12"
@@ -601,7 +566,7 @@ export default function LiveTracking({ gig, role, workerInfo, posterInfo, onClos
           <div style={{
             position: 'absolute', top: '50%', left: '50%',
             transform: 'translate(-50%, -50%)',
-            background: '#fff', borderRadius: '16px',
+            background: 'var(--color-surface)', borderRadius: '16px',
             padding: '20px 24px', textAlign: 'center',
             boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
             zIndex: 1000, maxWidth: '280px'
@@ -609,9 +574,9 @@ export default function LiveTracking({ gig, role, workerInfo, posterInfo, onClos
             <div style={{ fontSize: '32px', marginBottom: '8px' }}>⚠️</div>
             <div style={{
               fontSize: '14px', fontWeight: '700',
-              color: '#14123A', marginBottom: '4px'
+              color: 'var(--color-text)', marginBottom: '4px'
             }}>No exact location set</div>
-            <div style={{ fontSize: '12px', color: '#A09DC8', lineHeight: '1.5' }}>
+            <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)', lineHeight: '1.5' }}>
               The poster didn't set an exact address for this gig.
             </div>
           </div>
@@ -620,8 +585,8 @@ export default function LiveTracking({ gig, role, workerInfo, posterInfo, onClos
 
       {/* Bottom Actions */}
       <div style={{
-        background: '#fff',
-        borderTop: '1.5px solid #E2E0FF',
+        background: 'var(--color-surface)',
+        borderTop: '1.5px solid var(--color-border)',
         padding: '16px 20px',
         flexShrink: 0
       }}>
@@ -632,9 +597,9 @@ export default function LiveTracking({ gig, role, workerInfo, posterInfo, onClos
                 onClick={startTracking}
                 style={{
                   width: '100%',
-                  background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+                  background: 'var(--color-brand-gradient)',
                   border: 'none', borderRadius: '14px', padding: '15px',
-                  fontSize: '15px', fontWeight: '700', color: '#fff',
+                  fontSize: '15px', fontWeight: '700', color: 'var(--color-surface)',
                   cursor: 'pointer', fontFamily: 'inherit',
                   boxShadow: '0 4px 20px rgba(108,71,255,0.4)',
                   display: 'flex', alignItems: 'center',
@@ -646,19 +611,19 @@ export default function LiveTracking({ gig, role, workerInfo, posterInfo, onClos
               <>
                 {(eta || distance) && (
                   <div style={{
-                    background: 'linear-gradient(135deg, #14123A, #1E1B4B)',
+                    background: 'linear-gradient(135deg, var(--color-text), var(--color-brand-deep))',
                     borderRadius: '14px', padding: '14px 18px',
                     display: 'flex', alignItems: 'center', gap: '16px'
                   }}>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: '10px', color: '#C9C6FF', fontWeight: '700', letterSpacing: '1px', marginBottom: '2px' }}>
+                      <div style={{ fontSize: '12px', color: '#C9C6FF', fontWeight: '700', letterSpacing: '1px', marginBottom: '2px' }}>
                         ETA TO JOB SITE
                       </div>
-                      <div style={{ fontSize: '28px', fontWeight: '900', color: '#fff', lineHeight: 1 }}>
+                      <div style={{ fontSize: '28px', fontWeight: '900', color: 'var(--color-surface)', lineHeight: 1 }}>
                         {eta ? formatEta(eta) : '—'}
                       </div>
                       {distance && (
-                        <div style={{ fontSize: '12px', color: '#A09DC8', marginTop: '3px' }}>
+                        <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)', marginTop: '3px' }}>
                           {distance < 1
                             ? `${Math.round(distance * 1000)}m remaining`
                             : `${distance.toFixed(1)}km remaining`}
@@ -666,33 +631,25 @@ export default function LiveTracking({ gig, role, workerInfo, posterInfo, onClos
                       )}
                     </div>
                     <div style={{
-                      background: '#DFFDF4', border: '1px solid #7EECD2',
+                      background: 'var(--color-success-soft)', border: '1px solid var(--color-success-border)',
                       borderRadius: '10px', padding: '6px 10px',
-                      fontSize: '10px', fontWeight: '700', color: '#00C48C',
+                      fontSize: '12px', fontWeight: '700', color: 'var(--color-success)',
                       display: 'flex', alignItems: 'center', gap: '5px'
                     }}>
-                      <span style={{
-                        width: '7px', height: '7px', borderRadius: '50%',
-                        background: '#00C48C', display: 'inline-block'
-                      }} />
                       LIVE
                     </div>
                   </div>
                 )}
                 <div style={{
-                  background: '#DFFDF4', border: '1.5px solid #7EECD2',
+                  background: 'var(--color-success-soft)', border: '1.5px solid var(--color-success-border)',
                   borderRadius: '12px', padding: '12px 16px',
                   display: 'flex', alignItems: 'center', gap: '10px'
                 }}>
-                  <div style={{
-                    width: '10px', height: '10px', borderRadius: '50%',
-                    background: '#00C48C', animation: 'blink 1s infinite'
-                  }} />
                   <div>
-                    <div style={{ fontSize: '13px', fontWeight: '700', color: '#00C48C' }}>
+                    <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--color-success)' }}>
                       Live tracking active
                     </div>
-                    <div style={{ fontSize: '11px', color: '#8B8FAF' }}>
+                    <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
                       Client can see your location
                     </div>
                   </div>
@@ -702,9 +659,9 @@ export default function LiveTracking({ gig, role, workerInfo, posterInfo, onClos
                     onClick={markArrived}
                     style={{
                       flex: 2,
-                      background: 'linear-gradient(135deg, #00C48C, #00A878)',
+                      background: 'linear-gradient(135deg, var(--color-success-accent), var(--color-success))',
                       border: 'none', borderRadius: '12px', padding: '13px',
-                      fontSize: '14px', fontWeight: '700', color: '#fff',
+                      fontSize: '14px', fontWeight: '700', color: 'var(--color-surface)',
                       cursor: 'pointer', fontFamily: 'inherit',
                       display: 'flex', alignItems: 'center',
                       justifyContent: 'center', gap: '8px'
@@ -714,11 +671,11 @@ export default function LiveTracking({ gig, role, workerInfo, posterInfo, onClos
                   <button
                     onClick={stopTracking}
                     style={{
-                      flex: 1, background: '#FFE8EE',
-                      border: '1.5px solid #FF99B3',
+                      flex: 1, background: 'var(--color-danger-soft)',
+                      border: '1.5px solid var(--color-danger-border)',
                       borderRadius: '12px', padding: '13px',
                       fontSize: '13px', fontWeight: '700',
-                      color: '#FF3366', cursor: 'pointer',
+                      color: 'var(--color-danger)', cursor: 'pointer',
                       fontFamily: 'inherit'
                     }}>Stop</button>
                 </div>
@@ -737,44 +694,39 @@ export default function LiveTracking({ gig, role, workerInfo, posterInfo, onClos
               }}>
                 <div style={{
                   width: '8px', height: '8px', borderRadius: '50%',
-                  background: '#A09DC8'
+                  background: 'var(--color-text-subtle)'
                 }} />
                 <span style={{
-                  fontSize: '13px', color: '#A09DC8', fontWeight: '500'
+                  fontSize: '13px', color: 'var(--color-text-subtle)', fontWeight: '500'
                 }}>
                   Waiting for worker to start navigation...
                 </span>
               </div>
             ) : arrived ? (
               <div style={{
-                background: '#DFFDF4', border: '1.5px solid #7EECD2',
+                background: 'var(--color-success-soft)', border: '1.5px solid var(--color-success-border)',
                 borderRadius: '12px', padding: '14px',
                 textAlign: 'center'
               }}>
                 <div style={{ fontSize: '24px', marginBottom: '6px' }}>✅</div>
                 <div style={{
-                  fontSize: '14px', fontWeight: '700', color: '#00C48C'
+                  fontSize: '14px', fontWeight: '700', color: 'var(--color-success)'
                 }}>Worker has arrived!</div>
               </div>
             ) : (
               <div style={{
-                background: '#EEE9FF', border: '1.5px solid #B8A5FF',
+                background: 'var(--color-brand-soft)', border: '1.5px solid var(--color-brand-border-strong)',
                 borderRadius: '12px', padding: '14px',
                 display: 'flex', alignItems: 'center', gap: '12px'
               }}>
-                <div style={{
-                  width: '10px', height: '10px', borderRadius: '50%',
-                  background: '#6C47FF', animation: 'blink 1s infinite',
-                  flexShrink: 0
-                }} />
                 <div>
                   <div style={{
-                    fontSize: '13px', fontWeight: '700', color: '#6C47FF'
+                    fontSize: '13px', fontWeight: '700', color: 'var(--color-brand)'
                   }}>
                     {workerInfo?.full_name?.split(' ')[0] || 'Worker'} is on the way
                   </div>
                   {eta && (
-                    <div style={{ fontSize: '11px', color: '#8B8FAF' }}>
+                    <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
                       Arrives in about {formatEta(eta)}
                     </div>
                   )}
@@ -786,15 +738,15 @@ export default function LiveTracking({ gig, role, workerInfo, posterInfo, onClos
 
         {arrived && role === 'worker' && (
           <div style={{
-            background: '#DFFDF4', border: '1.5px solid #7EECD2',
+            background: 'var(--color-success-soft)', border: '1.5px solid var(--color-success-border)',
             borderRadius: '12px', padding: '14px', textAlign: 'center'
           }}>
             <div style={{ fontSize: '28px', marginBottom: '8px' }}>✅</div>
             <div style={{
               fontSize: '15px', fontWeight: '700',
-              color: '#00C48C', marginBottom: '4px'
+              color: 'var(--color-success)', marginBottom: '4px'
             }}>You've arrived!</div>
-            <div style={{ fontSize: '12px', color: '#8B8FAF' }}>
+            <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
               Client has been notified. Start the work!
             </div>
           </div>
@@ -802,10 +754,6 @@ export default function LiveTracking({ gig, role, workerInfo, posterInfo, onClos
       </div>
 
       <style>{`
-        @keyframes blink {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.3; }
-        }
         .leaflet-container {
           touch-action: pan-x pan-y pinch-zoom !important;
         }

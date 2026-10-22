@@ -5,7 +5,9 @@ import PostService from '../PostService'
 import ServiceDetail from '../ServiceDetail'
 import EditService from '../EditService'
 import PublicProfile from '../PublicProfile'
+import ReportModal from '../ReportModal'
 import { CATEGORIES } from '../../data/categories'
+import CategoryIcon from '../CategoryIcon'
 import ScreenLoader from '../ScreenLoader'
 import { parseTimestamp } from '../../utils/time'
 
@@ -66,6 +68,7 @@ export default function ServicesScreen() {
   const [viewingProfile,   setViewingProfile]   = useState(null)
   const [editingService,   setEditingService]   = useState(null)
   const [boostingService,  setBoostingService]  = useState(null)
+  const [reportingService, setReportingService] = useState(null)
 
   const observerRef  = useRef(null)
   const sentinelRef  = useRef(null)
@@ -214,14 +217,14 @@ export default function ServicesScreen() {
   }
 
   // ── styles ──────────────────────────────────────────────────────────────────
-  const chip = (active, color = '#6C47FF', bg = '#EEE9FF') => ({
-    border:       `1.5px solid ${active ? color : '#E2E0FF'}`,
+  const chip = (active, color = 'var(--color-brand)', bg = 'var(--color-brand-soft)') => ({
+    border:       `1.5px solid ${active ? color : 'var(--color-border)'}`,
     background:   active ? color : 'transparent',
     borderRadius: '20px',
     padding:      '5px 13px',
     fontSize:     '12px',
     fontWeight:   '600',
-    color:        active ? '#fff' : '#8B8FAF',
+    color:        active ? 'var(--color-surface)' : 'var(--color-text-muted)',
     cursor:       'pointer',
     whiteSpace:   'nowrap',
     fontFamily:   'inherit',
@@ -233,24 +236,24 @@ export default function ServicesScreen() {
       display: 'flex', flexDirection: 'column',
       height: '100%', overflow: 'hidden',
       fontFamily: "'Plus Jakarta Sans', sans-serif",
-      background: '#F8F7FF',
+      background: 'var(--color-surface-tint)',
     }}>
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div style={{
-        background: '#fff', borderBottom: '1.5px solid #E2E0FF',
+        background: 'var(--color-surface)', borderBottom: '1.5px solid var(--color-border)',
         flexShrink: 0, padding: '16px 20px 0',
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
           <div>
-            <div style={{ fontSize: '20px', fontWeight: '800', color: '#14123A' }}>Services</div>
-            <div style={{ fontSize: '12px', color: '#8B8FAF' }}>Find talent or offer your skills</div>
+            <div style={{ fontSize: '20px', fontWeight: '800', color: 'var(--color-text)' }}>Services</div>
+            <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>Find talent or offer your skills</div>
           </div>
           <button onClick={() => setShowPost(true)} style={{
-            background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+            background: 'var(--color-brand-gradient)',
             border: 'none', borderRadius: '12px',
             padding: '10px 16px', fontSize: '13px',
-            fontWeight: '700', color: '#fff', cursor: 'pointer',
+            fontWeight: '700', color: 'var(--color-surface)', cursor: 'pointer',
             fontFamily: 'inherit', boxShadow: '0 4px 16px rgba(108,71,255,0.35)',
           }}>+ Offer Service</button>
         </div>
@@ -263,15 +266,15 @@ export default function ServicesScreen() {
               onChange={e => handleSearchChange(e.target.value)}
               placeholder="Search services, skills..."
               style={{
-                width: '100%', background: '#F5F4FF',
-                border: '1.5px solid #E2E0FF', borderRadius: '12px',
+                width: '100%', background: 'var(--color-page)',
+                border: '1.5px solid var(--color-border)', borderRadius: '12px',
                 padding: '10px 14px 10px 36px',
-                fontSize: '13px', color: '#14123A',
+                fontSize: '13px', color: 'var(--color-text)',
                 fontFamily: 'inherit', outline: 'none',
                 boxSizing: 'border-box',
               }}
-              onFocus={e => e.target.style.borderColor = '#B8A5FF'}
-              onBlur={e => e.target.style.borderColor = '#E2E0FF'}
+              onFocus={e => e.target.style.borderColor = 'var(--color-brand-border-strong)'}
+              onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
             />
             <span style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)', fontSize: '15px', pointerEvents: 'none' }}>🔍</span>
           </div>
@@ -280,19 +283,19 @@ export default function ServicesScreen() {
             <button
               onClick={() => setShowSort(v => !v)}
               style={{
-                background: showSort ? '#EEE9FF' : '#F5F4FF',
-                border: `1.5px solid ${showSort ? '#6C47FF' : '#E2E0FF'}`,
+                background: showSort ? 'var(--color-brand-soft)' : 'var(--color-page)',
+                border: `1.5px solid ${showSort ? 'var(--color-brand)' : 'var(--color-border)'}`,
                 borderRadius: '10px', padding: '9px 12px',
                 fontSize: '13px', cursor: 'pointer',
-                fontFamily: 'inherit', color: '#14123A',
+                fontFamily: 'inherit', color: 'var(--color-text)',
                 display: 'flex', alignItems: 'center', gap: '4px',
               }}>
-              ⇅ <span style={{ fontSize: '11px', color: '#8B8FAF' }}>{SORT_OPTIONS.find(o => o.key === sort)?.label.split(':')[0] || 'Sort'}</span>
+              ⇅ <span style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>{SORT_OPTIONS.find(o => o.key === sort)?.label.split(':')[0] || 'Sort'}</span>
             </button>
             {showSort && (
               <div style={{
                 position: 'absolute', top: '40px', right: 0,
-                background: '#fff', border: '1.5px solid #E2E0FF',
+                background: 'var(--color-surface)', border: '1.5px solid var(--color-border)',
                 borderRadius: '12px', zIndex: 100,
                 boxShadow: '0 8px 24px rgba(20,18,58,0.12)',
                 overflow: 'hidden', minWidth: '170px',
@@ -301,8 +304,8 @@ export default function ServicesScreen() {
                   <button key={o.key} onClick={() => setAndApplySort(o.key)} style={{
                     display: 'block', width: '100%', textAlign: 'left',
                     padding: '10px 14px', fontSize: '13px',
-                    background: sort === o.key ? '#EEE9FF' : 'transparent',
-                    color: sort === o.key ? '#6C47FF' : '#14123A',
+                    background: sort === o.key ? 'var(--color-brand-soft)' : 'transparent',
+                    color: sort === o.key ? 'var(--color-brand)' : 'var(--color-text)',
                     fontWeight: sort === o.key ? '700' : '500',
                     border: 'none', cursor: 'pointer', fontFamily: 'inherit',
                   }}>{o.label}</button>
@@ -344,8 +347,8 @@ export default function ServicesScreen() {
             {featured.length > 0 && !searchQuery && !activeCategory && (
               <div style={{ padding: '16px 0 0' }}>
                 <div style={{ padding: '0 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                  <div style={{ fontSize: '13px', fontWeight: '800', color: '#14123A' }}>⚡ Featured</div>
-                  <div style={{ fontSize: '11px', color: '#8B8FAF' }}>{featured.length} boosted</div>
+                  <div style={{ fontSize: '13px', fontWeight: '800', color: 'var(--color-text)' }}>⚡ Featured</div>
+                  <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>{featured.length} boosted</div>
                 </div>
                 <div style={{ display: 'flex', gap: '12px', overflowX: 'auto', padding: '0 20px 12px', scrollbarWidth: 'none' }}>
                   {featured.map(svc => (
@@ -389,9 +392,9 @@ export default function ServicesScreen() {
 
             {/* Infinite scroll sentinel */}
             <div ref={sentinelRef} style={{ height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {loadingMore && <div style={{ fontSize: '12px', color: '#8B8FAF' }}>Loading more...</div>}
+              {loadingMore && <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>Loading more...</div>}
               {!hasMore && services.length > 0 && (
-                <div style={{ fontSize: '11px', color: '#C0BDDA', padding: '8px' }}>You've seen it all</div>
+                <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)', padding: '8px' }}>You've seen it all</div>
               )}
             </div>
           </>
@@ -413,6 +416,16 @@ export default function ServicesScreen() {
           savedIds={savedIds}
           toggleSave={toggleSave}
           onBoost={() => { setSelectedService(null); setBoostingService(selectedService) }}
+          onReport={service => { setSelectedService(null); setReportingService(service) }}
+        />
+      )}
+      {reportingService && (
+        <ReportModal
+          onClose={() => setReportingService(null)}
+          reportedUserId={reportingService.worker_id}
+          reportedServiceId={reportingService.id}
+          type="service"
+          name={`“${reportingService.title}”`}
         />
       )}
       {viewingProfile && (
@@ -451,30 +464,32 @@ function CategoryDropdown({ categories, activeCategory, onSelect }) {
   }, [])
 
   const selected = activeCategory ? categories.find(c => c.group === activeCategory) : null
-  const label = selected ? `${selected.icon} ${selected.group}` : '✦ All Categories'
 
   return (
-    <div ref={ref} style={{ background: '#fff', padding: '10px 20px', borderBottom: '1.5px solid #F0EEFF', position: 'relative', zIndex: 50 }}>
+    <div ref={ref} style={{ background: 'var(--color-surface)', padding: '10px 20px', borderBottom: '1.5px solid #F0EEFF', position: 'relative', zIndex: 50 }}>
       <button
         onClick={() => setOpen(v => !v)}
         style={{
           width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          background: open ? '#EEE9FF' : '#F8F7FF',
-          border: `1.5px solid ${activeCategory ? '#6C47FF' : '#E2E0FF'}`,
+          background: open ? 'var(--color-brand-soft)' : 'var(--color-surface-tint)',
+          border: `1.5px solid ${activeCategory ? 'var(--color-brand)' : 'var(--color-border)'}`,
           borderRadius: '12px', padding: '9px 14px',
           fontSize: '13px', fontWeight: '600',
-          color: activeCategory ? '#6C47FF' : '#14123A',
+          color: activeCategory ? 'var(--color-brand)' : 'var(--color-text)',
           cursor: 'pointer', fontFamily: 'inherit',
           transition: 'all 0.15s',
         }}>
-        <span>{label}</span>
-        <span style={{ fontSize: '11px', color: '#A09DC8', transition: 'transform 0.2s', transform: open ? 'rotate(180deg)' : 'none' }}>▼</span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <CategoryIcon category={selected?.group || 'Other'} size={18} color={selected?.color || 'var(--color-text-muted)'} />
+          {selected?.group || 'All Categories'}
+        </span>
+        <span style={{ fontSize: '12px', color: 'var(--color-text-subtle)', transition: 'transform 0.2s', transform: open ? 'rotate(180deg)' : 'none' }}>▼</span>
       </button>
 
       {open && (
         <div style={{
           position: 'absolute', top: '100%', left: '20px', right: '20px',
-          background: '#fff', border: '1.5px solid #E2E0FF',
+          background: 'var(--color-surface)', border: '1.5px solid var(--color-border)',
           borderRadius: '14px', boxShadow: '0 8px 24px rgba(20,18,58,0.12)',
           overflow: 'hidden', zIndex: 200, marginTop: '2px',
           maxHeight: '280px', overflowY: 'auto',
@@ -485,15 +500,15 @@ function CategoryDropdown({ categories, activeCategory, onSelect }) {
             style={{
               width: '100%', display: 'flex', alignItems: 'center', gap: '10px',
               padding: '10px 14px', border: 'none', cursor: 'pointer',
-              background: activeCategory === null ? '#EEE9FF' : 'transparent',
+              background: activeCategory === null ? 'var(--color-brand-soft)' : 'transparent',
               fontFamily: 'inherit', fontSize: '13px',
               fontWeight: activeCategory === null ? '700' : '500',
-              color: activeCategory === null ? '#6C47FF' : '#14123A',
-              borderBottom: '1px solid #F5F4FF',
+              color: activeCategory === null ? 'var(--color-brand)' : 'var(--color-text)',
+              borderBottom: '1px solid var(--color-page)',
             }}
-            onMouseEnter={e => { if (activeCategory !== null) e.currentTarget.style.background = '#F8F7FF' }}
+            onMouseEnter={e => { if (activeCategory !== null) e.currentTarget.style.background = 'var(--color-surface-tint)' }}
             onMouseLeave={e => { if (activeCategory !== null) e.currentTarget.style.background = 'transparent' }}>
-            <span style={{ fontSize: '18px', width: '26px', textAlign: 'center' }}>✦</span>
+            <CategoryIcon category="Other" size={18} color="var(--color-text-muted)" />
             All Categories
           </button>
           {categories.map(cat => (
@@ -506,12 +521,12 @@ function CategoryDropdown({ categories, activeCategory, onSelect }) {
                 background: activeCategory === cat.group ? cat.bg : 'transparent',
                 fontFamily: 'inherit', fontSize: '13px',
                 fontWeight: activeCategory === cat.group ? '700' : '500',
-                color: activeCategory === cat.group ? cat.color : '#14123A',
-                borderBottom: '1px solid #F5F4FF',
+                color: activeCategory === cat.group ? cat.color : 'var(--color-text)',
+                borderBottom: '1px solid var(--color-page)',
               }}
-              onMouseEnter={e => { if (activeCategory !== cat.group) e.currentTarget.style.background = '#F8F7FF' }}
+              onMouseEnter={e => { if (activeCategory !== cat.group) e.currentTarget.style.background = 'var(--color-surface-tint)' }}
               onMouseLeave={e => { if (activeCategory !== cat.group) e.currentTarget.style.background = 'transparent' }}>
-              <span style={{ fontSize: '18px', width: '26px', textAlign: 'center' }}>{cat.icon}</span>
+              <CategoryIcon category={cat.group} size={18} color={activeCategory === cat.group ? cat.color : 'var(--color-text-muted)'} />
               {cat.group}
             </button>
           ))}
@@ -532,8 +547,8 @@ function FeaturedCard({ svc, savedIds, toggleSave, onOpen, user, onBoost }) {
   return (
     <div onClick={onOpen} style={{
       width: '200px', flexShrink: 0,
-      background: '#fff', borderRadius: '14px',
-      border: '1.5px solid #E2E0FF',
+      background: 'var(--color-surface)', borderRadius: '14px',
+      border: '1.5px solid var(--color-border)',
       overflow: 'hidden', cursor: 'pointer',
       boxShadow: '0 2px 12px rgba(108,71,255,0.08)',
       position: 'relative',
@@ -541,9 +556,9 @@ function FeaturedCard({ svc, savedIds, toggleSave, onOpen, user, onBoost }) {
       {/* Featured badge */}
       <div style={{
         position: 'absolute', top: '8px', left: '8px',
-        background: 'linear-gradient(135deg, #FFB800, #FF6B2B)',
+        background: 'linear-gradient(135deg, var(--color-warning-gold), var(--color-warning))',
         borderRadius: '6px', padding: '2px 7px',
-        fontSize: '9px', fontWeight: '800', color: '#fff', zIndex: 2,
+        fontSize: '12px', fontWeight: '800', color: 'var(--color-surface)', zIndex: 2,
       }}>⚡ Featured</div>
 
       {/* Save heart */}
@@ -559,20 +574,22 @@ function FeaturedCard({ svc, savedIds, toggleSave, onOpen, user, onBoost }) {
       <div style={{ height: '110px', background: cat.bg, overflow: 'hidden' }}>
         {svc.images?.[0]
           ? <img src={svc.images[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          : <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px' }}>{cat.icon}</div>
+          : <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <CategoryIcon category={cat.group} size={36} color={cat.color} strokeWidth={1.6} />
+            </div>
         }
       </div>
 
       <div style={{ padding: '10px' }}>
-        <div style={{ fontSize: '12px', fontWeight: '700', color: '#14123A', lineHeight: '1.3', marginBottom: '4px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+        <div style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-text)', lineHeight: '1.3', marginBottom: '4px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
           {svc.title}
         </div>
         {price != null && (
-          <div style={{ fontSize: '13px', fontWeight: '800', color: '#6C47FF' }}>
+          <div style={{ fontSize: '13px', fontWeight: '800', color: 'var(--color-brand)' }}>
             From {price.toLocaleString()}
           </div>
         )}
-        <div style={{ fontSize: '10px', color: '#A09DC8', marginTop: '4px' }}>
+        <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)', marginTop: '4px' }}>
           ⭐ {svc.avg_rating > 0 ? Number(svc.avg_rating).toFixed(1) : (svc.users?.rating || 5.0)} · {svc.users?.full_name?.split(' ')[0]}
         </div>
       </div>
@@ -591,8 +608,8 @@ function ServiceCard({ svc, savedIds, toggleSave, onOpen, onEdit, onBoost, user 
 
   return (
     <div onClick={onOpen} style={{
-      background: '#fff', borderRadius: '14px',
-      border: `1.5px solid ${isFeatured ? '#FFD966' : '#E2E0FF'}`,
+      background: 'var(--color-surface)', borderRadius: '14px',
+      border: `1.5px solid ${isFeatured ? 'var(--color-warning-gold-border)' : 'var(--color-border)'}`,
       overflow: 'hidden', cursor: 'pointer',
       boxShadow: isFeatured
         ? '0 4px 16px rgba(255,184,0,0.15)'
@@ -603,9 +620,9 @@ function ServiceCard({ svc, savedIds, toggleSave, onOpen, onEdit, onBoost, user 
       {isFeatured && (
         <div style={{
           position: 'absolute', top: '7px', left: '7px',
-          background: 'linear-gradient(135deg, #FFB800, #FF6B2B)',
+          background: 'linear-gradient(135deg, var(--color-warning-gold), var(--color-warning))',
           borderRadius: '5px', padding: '2px 6px',
-          fontSize: '8px', fontWeight: '800', color: '#fff', zIndex: 2,
+          fontSize: '12px', fontWeight: '800', color: 'var(--color-surface)', zIndex: 2,
         }}>⚡ Featured</div>
       )}
 
@@ -619,7 +636,7 @@ function ServiceCard({ svc, savedIds, toggleSave, onOpen, onEdit, onBoost, user 
       }}>{isSaved ? '❤️' : '🤍'}</button>
 
       {/* Image / gradient header */}
-      <div style={{ height: '110px', background: cat?.bg || '#EEE9FF', overflow: 'hidden', position: 'relative' }}>
+      <div style={{ height: '110px', background: cat?.bg || 'var(--color-brand-soft)', overflow: 'hidden', position: 'relative' }}>
         {svc.images?.[0]
           ? <img src={svc.images[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           : <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '34px' }}>{cat?.icon || '🛠'}</div>
@@ -629,14 +646,14 @@ function ServiceCard({ svc, savedIds, toggleSave, onOpen, onEdit, onBoost, user 
           position: 'absolute', bottom: '6px', left: '6px',
           background: svc.type === 'digital' ? 'rgba(108,71,255,0.85)' : 'rgba(255,107,43,0.85)',
           borderRadius: '4px', padding: '2px 6px',
-          fontSize: '8px', fontWeight: '700', color: '#fff',
+          fontSize: '12px', fontWeight: '700', color: 'var(--color-surface)',
         }}>{svc.type === 'digital' ? '💻' : '📌'} {svc.type === 'digital' ? 'Digital' : 'Physical'}</div>
       </div>
 
       <div style={{ padding: '10px' }}>
         {/* Title */}
         <div style={{
-          fontSize: '12px', fontWeight: '700', color: '#14123A',
+          fontSize: '12px', fontWeight: '700', color: 'var(--color-text)',
           lineHeight: '1.35', marginBottom: '5px',
           display: '-webkit-box', WebkitLineClamp: 2,
           WebkitBoxOrient: 'vertical', overflow: 'hidden',
@@ -644,38 +661,38 @@ function ServiceCard({ svc, savedIds, toggleSave, onOpen, onEdit, onBoost, user 
 
         {/* Price */}
         {price != null && (
-          <div style={{ fontSize: '14px', fontWeight: '800', color: '#6C47FF', marginBottom: '6px' }}>
+          <div style={{ fontSize: '14px', fontWeight: '800', color: 'var(--color-brand)', marginBottom: '6px' }}>
             From {price.toLocaleString()}
           </div>
         )}
 
         {/* Rating */}
         {(svc.avg_rating > 0 || svc.review_count > 0) && (
-          <div style={{ fontSize: '10px', color: '#FFB800', marginBottom: '4px' }}>
+          <div style={{ fontSize: '12px', color: 'var(--color-warning-gold)', marginBottom: '4px' }}>
             ⭐ {Number(svc.avg_rating || 0).toFixed(1)}
-            <span style={{ color: '#A09DC8' }}> ({svc.review_count})</span>
+            <span style={{ color: 'var(--color-text-subtle)' }}> ({svc.review_count})</span>
           </div>
         )}
 
         {/* Seller + time */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '6px', paddingTop: '6px', borderTop: '1px solid #F5F4FF' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '6px', paddingTop: '6px', borderTop: '1px solid var(--color-page)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '5px', minWidth: 0 }}>
             <div style={{
               width: '20px', height: '20px', borderRadius: '5px',
-              background: '#EEE9FF', overflow: 'hidden', flexShrink: 0,
+              background: 'var(--color-brand-soft)', overflow: 'hidden', flexShrink: 0,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '9px', fontWeight: '800', color: '#6C47FF',
+              fontSize: '12px', fontWeight: '800', color: 'var(--color-brand)',
             }}>
               {svc.users?.avatar_url
                 ? <img src={svc.users.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 : svc.users?.full_name?.charAt(0) || '?'
               }
             </div>
-            <div style={{ fontSize: '10px', color: '#8B8FAF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {svc.users?.full_name?.split(' ')[0] || 'Unknown'}
             </div>
           </div>
-          <div style={{ fontSize: '9px', color: '#C0BDDA', flexShrink: 0 }}>
+          <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)', flexShrink: 0 }}>
             {svc.location ? `📍 ${svc.location.split(',')[0]}` : timeAgo(svc.created_at)}
           </div>
         </div>
@@ -684,14 +701,14 @@ function ServiceCard({ svc, savedIds, toggleSave, onOpen, onEdit, onBoost, user 
         {isOwn && (
           <div style={{ display: 'flex', gap: '5px', marginTop: '8px' }}>
             <button onClick={e => { e.stopPropagation(); onEdit() }} style={{
-              flex: 1, background: '#F5F4FF', border: '1.5px solid #E2E0FF',
-              borderRadius: '7px', padding: '5px', fontSize: '10px',
-              fontWeight: '700', color: '#6C47FF', cursor: 'pointer', fontFamily: 'inherit',
+              flex: 1, background: 'var(--color-page)', border: '1.5px solid var(--color-border)',
+              borderRadius: '7px', padding: '5px', fontSize: '12px',
+              fontWeight: '700', color: 'var(--color-brand)', cursor: 'pointer', fontFamily: 'inherit',
             }}>✏️ Edit</button>
             <button onClick={e => { e.stopPropagation(); onBoost() }} style={{
-              flex: 1, background: '#FFF8E0', border: '1.5px solid #FFD966',
-              borderRadius: '7px', padding: '5px', fontSize: '10px',
-              fontWeight: '700', color: '#FFB800', cursor: 'pointer', fontFamily: 'inherit',
+              flex: 1, background: 'var(--color-warning-gold-soft)', border: '1.5px solid var(--color-warning-gold-border)',
+              borderRadius: '7px', padding: '5px', fontSize: '12px',
+              fontWeight: '700', color: 'var(--color-warning-gold)', cursor: 'pointer', fontFamily: 'inherit',
             }}>⚡ Boost</button>
           </div>
         )}
@@ -706,18 +723,18 @@ function EmptyState({ hasFilters, onClear, onPost }) {
   return (
     <div style={{ textAlign: 'center', padding: '60px 32px' }}>
       <div style={{ fontSize: '48px', marginBottom: '12px' }}>{hasFilters ? '🔍' : '🛠'}</div>
-      <div style={{ fontSize: '16px', fontWeight: '800', color: '#14123A', marginBottom: '6px' }}>
+      <div style={{ fontSize: '16px', fontWeight: '800', color: 'var(--color-text)', marginBottom: '6px' }}>
         {hasFilters ? 'No services found' : 'No services yet'}
       </div>
-      <div style={{ fontSize: '13px', color: '#8B8FAF', marginBottom: '20px', lineHeight: '1.6' }}>
+      <div style={{ fontSize: '13px', color: 'var(--color-text-muted)', marginBottom: '20px', lineHeight: '1.6' }}>
         {hasFilters
           ? 'Try a different search or clear your filters.'
           : 'Be the first to offer a service others can book.'}
       </div>
       <button onClick={hasFilters ? onClear : onPost} style={{
-        background: 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+        background: 'var(--color-brand-gradient)',
         border: 'none', borderRadius: '12px', padding: '12px 24px',
-        fontSize: '13px', fontWeight: '700', color: '#fff',
+        fontSize: '13px', fontWeight: '700', color: 'var(--color-surface)',
         cursor: 'pointer', fontFamily: 'inherit',
       }}>{hasFilters ? 'Clear Filters' : 'Offer a Service'}</button>
     </div>
@@ -799,39 +816,39 @@ function BoostSheet({ service, wallets, onClose, onBoosted, user }) {
       fontFamily: "'Plus Jakarta Sans', sans-serif",
     }} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} style={{
-        background: '#fff', borderRadius: '22px 22px 0 0',
+        background: 'var(--color-surface)', borderRadius: '22px 22px 0 0',
         width: '100%', maxWidth: '540px',
         padding: '20px', paddingBottom: '36px',
         maxHeight: '85vh', overflowY: 'auto',
       }}>
-        <div style={{ width: '40px', height: '4px', background: '#E2E0FF', borderRadius: '2px', margin: '0 auto 20px' }} />
+        <div style={{ width: '40px', height: '4px', background: 'var(--color-border)', borderRadius: '2px', margin: '0 auto 20px' }} />
 
         {success ? (
           <div style={{ textAlign: 'center', padding: '24px 0' }}>
             <div style={{ fontSize: '48px', marginBottom: '12px' }}>⚡</div>
-            <div style={{ fontSize: '18px', fontWeight: '800', color: '#FFB800', marginBottom: '6px' }}>Service Boosted!</div>
-            <div style={{ fontSize: '13px', color: '#8B8FAF' }}>Your service is now featured for {selectedDays} days.</div>
+            <div style={{ fontSize: '18px', fontWeight: '800', color: 'var(--color-warning-gold)', marginBottom: '6px' }}>Service Boosted!</div>
+            <div style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>Your service is now featured for {selectedDays} days.</div>
           </div>
         ) : (
           <>
-            <div style={{ fontSize: '18px', fontWeight: '800', color: '#14123A', marginBottom: '4px' }}>⚡ Boost Service</div>
-            <div style={{ fontSize: '13px', color: '#8B8FAF', marginBottom: '20px' }}>
+            <div style={{ fontSize: '18px', fontWeight: '800', color: 'var(--color-text)', marginBottom: '4px' }}>⚡ Boost Service</div>
+            <div style={{ fontSize: '13px', color: 'var(--color-text-muted)', marginBottom: '20px' }}>
               Feature <strong>"{service.title}"</strong> at the top of the marketplace
             </div>
 
             {/* Duration picker */}
-            <div style={{ fontSize: '11px', fontWeight: '700', color: '#8B8FAF', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Duration</div>
+            <div style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Duration</div>
             <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
               {BOOST_PLANS.map(plan => (
                 <button key={plan.days} onClick={() => setSelectedDays(plan.days)} style={{
                   flex: 1, padding: '12px 6px',
-                  background: selectedDays === plan.days ? '#FFF8E0' : '#F5F4FF',
-                  border: `1.5px solid ${selectedDays === plan.days ? '#FFB800' : '#E2E0FF'}`,
+                  background: selectedDays === plan.days ? 'var(--color-warning-gold-soft)' : 'var(--color-page)',
+                  border: `1.5px solid ${selectedDays === plan.days ? 'var(--color-warning-gold)' : 'var(--color-border)'}`,
                   borderRadius: '12px', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'center',
                 }}>
-                  <div style={{ fontSize: '13px', fontWeight: '800', color: selectedDays === plan.days ? '#FFB800' : '#14123A' }}>{plan.label}</div>
-                  <div style={{ fontSize: '10px', color: '#A09DC8', marginTop: '2px' }}>{plan.desc}</div>
-                  <div style={{ fontSize: '12px', fontWeight: '700', color: selectedDays === plan.days ? '#FFB800' : '#6C47FF', marginTop: '4px' }}>
+                  <div style={{ fontSize: '13px', fontWeight: '800', color: selectedDays === plan.days ? 'var(--color-warning-gold)' : 'var(--color-text)' }}>{plan.label}</div>
+                  <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)', marginTop: '2px' }}>{plan.desc}</div>
+                  <div style={{ fontSize: '12px', fontWeight: '700', color: selectedDays === plan.days ? 'var(--color-warning-gold)' : 'var(--color-brand)', marginTop: '4px' }}>
                     {selectedCur} {(BOOST_PRICES[selectedCur]?.[plan.days] || 0).toLocaleString()}
                   </div>
                 </button>
@@ -841,18 +858,18 @@ function BoostSheet({ service, wallets, onClose, onBoosted, user }) {
             {/* Currency picker (only if multiple wallets) */}
             {wallets.length > 0 && (
               <>
-                <div style={{ fontSize: '11px', fontWeight: '700', color: '#8B8FAF', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Pay Currency</div>
+                <div style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Pay Currency</div>
                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '20px' }}>
                   {['NGN', 'USD', 'GHS', 'KES'].filter(c => BOOST_PRICES[c]).map(c => {
                     const w = wallets.find(w => w.currency === c)
                     return (
                       <button key={c} onClick={() => setSelectedCur(c)} style={{
                         padding: '7px 12px',
-                        background: selectedCur === c ? '#EEE9FF' : '#F5F4FF',
-                        border: `1.5px solid ${selectedCur === c ? '#6C47FF' : '#E2E0FF'}`,
+                        background: selectedCur === c ? 'var(--color-brand-soft)' : 'var(--color-page)',
+                        border: `1.5px solid ${selectedCur === c ? 'var(--color-brand)' : 'var(--color-border)'}`,
                         borderRadius: '10px', cursor: 'pointer', fontFamily: 'inherit',
                         fontSize: '12px', fontWeight: '700',
-                        color: selectedCur === c ? '#6C47FF' : '#8B8FAF',
+                        color: selectedCur === c ? 'var(--color-brand)' : 'var(--color-text-muted)',
                       }}>
                         {c}{w ? ` (${Number(w.balance).toLocaleString()})` : ''}
                       </button>
@@ -864,19 +881,19 @@ function BoostSheet({ service, wallets, onClose, onBoosted, user }) {
 
             {/* Price summary */}
             <div style={{
-              background: '#F8F7FF', border: '1.5px solid #E2E0FF',
+              background: 'var(--color-surface-tint)', border: '1.5px solid var(--color-border)',
               borderRadius: '12px', padding: '14px', marginBottom: '16px',
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
             }}>
               <div>
-                <div style={{ fontSize: '12px', color: '#8B8FAF' }}>Total cost</div>
-                <div style={{ fontSize: '20px', fontWeight: '800', color: '#14123A' }}>
+                <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>Total cost</div>
+                <div style={{ fontSize: '20px', fontWeight: '800', color: 'var(--color-text)' }}>
                   {selectedCur} {price.toLocaleString()}
                 </div>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '12px', color: '#8B8FAF' }}>Your wallet</div>
-                <div style={{ fontSize: '14px', fontWeight: '700', color: canPayWallet ? '#00C48C' : '#FF3366' }}>
+                <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>Your wallet</div>
+                <div style={{ fontSize: '14px', fontWeight: '700', color: canPayWallet ? 'var(--color-success)' : 'var(--color-danger)' }}>
                   {selectedCur} {walletBal.toLocaleString()}
                 </div>
               </div>
@@ -884,9 +901,9 @@ function BoostSheet({ service, wallets, onClose, onBoosted, user }) {
 
             {error && (
               <div style={{
-                background: '#FFE8EE', border: '1.5px solid #FF99B3',
+                background: 'var(--color-danger-soft)', border: '1.5px solid var(--color-danger-border)',
                 borderRadius: '10px', padding: '10px 12px',
-                fontSize: '12px', color: '#FF3366', fontWeight: '600', marginBottom: '14px',
+                fontSize: '12px', color: 'var(--color-danger)', fontWeight: '600', marginBottom: '14px',
               }}>{error}</div>
             )}
 
@@ -894,9 +911,9 @@ function BoostSheet({ service, wallets, onClose, onBoosted, user }) {
             {canPayWallet && (
               <button onClick={payWithWallet} disabled={loading} style={{
                 width: '100%', marginBottom: '10px',
-                background: loading ? '#B8A5FF' : 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+                background: loading ? 'var(--color-brand-border-strong)' : 'var(--color-brand-gradient)',
                 border: 'none', borderRadius: '12px', padding: '14px',
-                fontSize: '14px', fontWeight: '700', color: '#fff',
+                fontSize: '14px', fontWeight: '700', color: 'var(--color-surface)',
                 cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
               }}>
                 {loading ? 'Activating...' : `⚡ Pay from Wallet — ${selectedCur} ${price.toLocaleString()}`}
@@ -906,15 +923,15 @@ function BoostSheet({ service, wallets, onClose, onBoosted, user }) {
             <button onClick={payWithFincra} disabled={loading} style={{
               width: '100%',
               background: 'transparent',
-              border: '1.5px solid #6C47FF',
+              border: '1.5px solid var(--color-brand)',
               borderRadius: '12px', padding: '13px',
-              fontSize: '13px', fontWeight: '700', color: '#6C47FF',
+              fontSize: '13px', fontWeight: '700', color: 'var(--color-brand)',
               cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
             }}>
               {canPayWallet ? 'Pay with Fincra instead →' : `Pay with Fincra — ${selectedCur} ${price.toLocaleString()} →`}
             </button>
 
-            <div style={{ fontSize: '11px', color: '#A09DC8', textAlign: 'center', marginTop: '10px' }}>
+            <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)', textAlign: 'center', marginTop: '10px' }}>
               🔒 Your service will appear at the top of the marketplace during the boost period
             </div>
           </>

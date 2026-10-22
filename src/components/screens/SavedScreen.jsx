@@ -117,10 +117,10 @@ export default function SavedScreen() {
   }
 
   const URGENCY_COLORS = {
-    now: '#FF3366',
-    today: '#FF6B2B',
-    scheduled: '#6C47FF',
-    flexible: '#A09DC8'
+    now: 'var(--color-danger)',
+    today: 'var(--color-warning)',
+    scheduled: 'var(--color-brand)',
+    flexible: 'var(--color-text-subtle)'
   }
 
   return (
@@ -132,9 +132,9 @@ export default function SavedScreen() {
       <div style={{ marginBottom: '20px' }}>
         <div style={{
           fontSize: '22px', fontWeight: '800',
-          color: '#14123A', marginBottom: '4px'
+          color: 'var(--color-text)', marginBottom: '4px'
         }}>Saved Gigs</div>
-        <div style={{ fontSize: '13px', color: '#8B8FAF' }}>
+        <div style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>
           {savedGigs.length > 0
             ? `${savedGigs.length} gig${savedGigs.length !== 1 ? 's' : ''} saved`
             : 'Gigs you bookmarked for later'}
@@ -155,14 +155,14 @@ export default function SavedScreen() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {savedGigs.map(saved => {
             const gig = saved.gigs
-            const color = URGENCY_COLORS[gig.urgency] || '#6C47FF'
+            const color = URGENCY_COLORS[gig.urgency] || 'var(--color-brand)'
             const isApplied = applied === gig.id
             const isOwnGig = gig.poster_id === user?.id
 
             return (
               <div key={saved.id} style={{
-                background: '#fff',
-                border: '1.5px solid #E2E0FF',
+                background: 'var(--color-surface)',
+                border: '1.5px solid var(--color-border)',
                 borderRadius: '16px', overflow: 'hidden',
                 transition: 'all 0.15s'
               }}>
@@ -186,39 +186,31 @@ export default function SavedScreen() {
                           background: color + '18',
                           border: `1px solid ${color}44`,
                           borderRadius: '5px', padding: '2px 8px',
-                          fontSize: '9px', fontWeight: '800',
+                          fontSize: '12px', fontWeight: '800',
                           color, letterSpacing: '0.8px',
                           display: 'flex', alignItems: 'center', gap: '3px'
                         }}>
-                          {gig.urgency === 'now' && (
-                            <span style={{
-                              width: '5px', height: '5px',
-                              borderRadius: '50%', background: color,
-                              display: 'inline-block',
-                              animation: 'blink 0.9s infinite'
-                            }} />
-                          )}
                           {gig.urgency?.toUpperCase()}
                         </span>
                         <span style={{
-                          background: gig.type === 'physical' ? '#FFF0E8' : '#EEE9FF',
-                          border: `1px solid ${gig.type === 'physical' ? '#FFBC99' : '#B8A5FF'}`,
+                          background: gig.type === 'physical' ? 'var(--color-warning-soft)' : 'var(--color-brand-soft)',
+                          border: `1px solid ${gig.type === 'physical' ? 'var(--color-warning-border)' : 'var(--color-brand-border-strong)'}`,
                           borderRadius: '5px', padding: '2px 8px',
-                          fontSize: '9px', fontWeight: '700',
-                          color: gig.type === 'physical' ? '#FF6B2B' : '#6C47FF'
+                          fontSize: '12px', fontWeight: '700',
+                          color: gig.type === 'physical' ? 'var(--color-warning)' : 'var(--color-brand)'
                         }}>
                           {gig.type === 'physical' ? '📌 LOCAL' : '💻 REMOTE'}
                         </span>
                         {gig.field && (
                           <span style={{
-                            background: '#F5F4FF', border: '1px solid #E2E0FF',
+                            background: 'var(--color-page)', border: '1px solid var(--color-border)',
                             borderRadius: '5px', padding: '2px 8px',
-                            fontSize: '9px', fontWeight: '600', color: '#8B8FAF'
+                            fontSize: '12px', fontWeight: '600', color: 'var(--color-text-muted)'
                           }}>{gig.field}</span>
                         )}
                       </div>
                       <div style={{
-                        fontSize: '15px', fontWeight: '700', color: '#14123A'
+                        fontSize: '15px', fontWeight: '700', color: 'var(--color-text)'
                       }}>{gig.title}</div>
                     </div>
 
@@ -227,7 +219,7 @@ export default function SavedScreen() {
                       alignItems: 'flex-end', gap: '6px', flexShrink: 0
                     }}>
                       <div style={{
-                        fontSize: '16px', fontWeight: '800', color: '#00C48C'
+                        fontSize: '16px', fontWeight: '800', color: 'var(--color-success)'
                       }}>{getCurrencySymbol(gig.currency)}{gig.pay_min}–{getCurrencySymbol(gig.currency)}{gig.pay_max}</div>
                       <button
                         onClick={(e) => {
@@ -235,10 +227,10 @@ export default function SavedScreen() {
                           unsaveGig(gig.id)
                         }}
                         style={{
-                          background: '#FFE8EE', border: '1.5px solid #FF99B3',
+                          background: 'var(--color-danger-soft)', border: '1.5px solid var(--color-danger-border)',
                           borderRadius: '8px', padding: '4px 8px',
-                          fontSize: '11px', fontWeight: '700',
-                          color: '#FF3366', cursor: 'pointer',
+                          fontSize: '12px', fontWeight: '700',
+                          color: 'var(--color-danger)', cursor: 'pointer',
                           fontFamily: 'inherit',
                           display: 'flex', alignItems: 'center', gap: '5px'
                         }}>
@@ -257,23 +249,23 @@ export default function SavedScreen() {
                       }}
                       style={{
                         width: '28px', height: '28px', borderRadius: '8px',
-                        background: '#EEE9FF', display: 'flex',
+                        background: 'var(--color-brand-soft)', display: 'flex',
                         alignItems: 'center', justifyContent: 'center',
-                        fontSize: '11px', fontWeight: '800',
-                        color: '#6C47FF', overflow: 'hidden',
+                        fontSize: '12px', fontWeight: '800',
+                        color: 'var(--color-brand)', overflow: 'hidden',
                         flexShrink: 0, cursor: 'pointer',
-                        border: '1.5px solid #B8A5FF'
+                        border: '1.5px solid var(--color-brand-border-strong)'
                       }}>
                       {gig.poster?.avatar_url ? (
                         <img src={gig.poster.avatar_url} alt=""
                           style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       ) : gig.poster?.full_name?.charAt(0) || '?'}
                     </div>
-                    <span style={{ fontSize: '12px', color: '#8B8FAF' }}>
+                    <span style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
                       {gig.poster?.full_name || 'Anonymous'}
                     </span>
                     {gig.location && (
-                      <span style={{ fontSize: '11px', color: '#FF6B2B' }}>
+                      <span style={{ fontSize: '12px', color: 'var(--color-warning)' }}>
                         📍 {gig.location}
                       </span>
                     )}
@@ -283,26 +275,26 @@ export default function SavedScreen() {
                 {/* Expanded Detail */}
                 {selectedGig?.id === gig.id && (
                   <div style={{
-                    borderTop: '1px solid #F5F4FF',
-                    padding: '14px 18px', background: '#F8F7FF'
+                    borderTop: '1px solid var(--color-page)',
+                    padding: '14px 18px', background: 'var(--color-surface-tint)'
                   }}>
                     {/* Poster info */}
                     <div style={{
                       display: 'flex', gap: '10px',
                       alignItems: 'center', marginBottom: '14px',
-                      padding: '12px', background: '#fff',
-                      borderRadius: '12px', border: '1px solid #E2E0FF'
+                      padding: '12px', background: 'var(--color-surface)',
+                      borderRadius: '12px', border: '1px solid var(--color-border)'
                     }}>
                       <div
                         onClick={() => setViewingProfile(gig.poster?.id)}
                         style={{
                           width: '44px', height: '44px', borderRadius: '12px',
-                          background: '#EEE9FF', display: 'flex',
+                          background: 'var(--color-brand-soft)', display: 'flex',
                           alignItems: 'center', justifyContent: 'center',
                           fontSize: '16px', fontWeight: '800',
-                          color: '#6C47FF', overflow: 'hidden',
+                          color: 'var(--color-brand)', overflow: 'hidden',
                           flexShrink: 0, cursor: 'pointer',
-                          border: '2px solid #B8A5FF'
+                          border: '2px solid var(--color-brand-border-strong)'
                         }}>
                         {gig.poster?.avatar_url ? (
                           <img src={gig.poster.avatar_url} alt=""
@@ -314,12 +306,12 @@ export default function SavedScreen() {
                           onClick={() => setViewingProfile(gig.poster?.id)}
                           style={{
                             fontSize: '14px', fontWeight: '700',
-                            color: '#6C47FF', cursor: 'pointer',
+                            color: 'var(--color-brand)', cursor: 'pointer',
                             marginBottom: '2px'
                           }}>
                           {gig.poster?.full_name || 'Anonymous'} →
                         </div>
-                        <div style={{ fontSize: '11px', color: '#8B8FAF' }}>
+                        <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
                           ⭐ {gig.poster?.rating || 5.0} ·{' '}
                           {gig.poster?.gigs_completed || 0} gigs ·{' '}
                           Trust {gig.poster?.trust_score || 100}%
@@ -333,32 +325,32 @@ export default function SavedScreen() {
                       gap: '8px', marginBottom: '10px'
                     }}>
                       <div style={{
-                        background: '#DFFDF4', border: '1.5px solid #7EECD2',
+                        background: 'var(--color-success-soft)', border: '1.5px solid var(--color-success-border)',
                         borderRadius: '12px', padding: '12px'
                       }}>
                         <div style={{
-                          fontSize: '9px', color: '#00C48C', fontWeight: '700',
+                          fontSize: '12px', color: 'var(--color-success)', fontWeight: '700',
                           textTransform: 'uppercase', letterSpacing: '0.8px',
                           marginBottom: '3px'
                         }}>Pay Range</div>
                         <div style={{
-                          fontSize: '18px', fontWeight: '800', color: '#00C48C'
+                          fontSize: '18px', fontWeight: '800', color: 'var(--color-success)'
                         }}>{getCurrencySymbol(gig.currency)}{gig.pay_min}</div>
-                        <div style={{ fontSize: '10px', color: '#00C48C', opacity: 0.7 }}>
+                        <div style={{ fontSize: '12px', color: 'var(--color-success)', opacity: 0.7 }}>
                           up to {getCurrencySymbol(gig.currency)}{gig.pay_max}
                         </div>
                       </div>
                       <div style={{
-                        background: '#FFF0E8', border: '1.5px solid #FFBC99',
+                        background: 'var(--color-warning-soft)', border: '1.5px solid var(--color-warning-border)',
                         borderRadius: '12px', padding: '12px'
                       }}>
                         <div style={{
-                          fontSize: '9px', color: '#FF6B2B', fontWeight: '700',
+                          fontSize: '12px', color: 'var(--color-warning)', fontWeight: '700',
                           textTransform: 'uppercase', letterSpacing: '0.8px',
                           marginBottom: '3px'
                         }}>Location</div>
                         <div style={{
-                          fontSize: '12px', fontWeight: '700', color: '#14123A'
+                          fontSize: '12px', fontWeight: '700', color: 'var(--color-text)'
                         }}>{gig.location || 'Remote'}</div>
                       </div>
                     </div>
@@ -366,16 +358,16 @@ export default function SavedScreen() {
                     {/* Description */}
                     {gig.description && (
                       <div style={{
-                        background: '#fff', borderRadius: '10px',
+                        background: 'var(--color-surface)', borderRadius: '10px',
                         padding: '12px', marginBottom: '12px',
-                        fontSize: '12px', color: '#5B5887',
-                        lineHeight: '1.6', border: '1px solid #E2E0FF'
+                        fontSize: '12px', color: 'var(--color-text-muted)',
+                        lineHeight: '1.6', border: '1px solid var(--color-border)'
                       }}>{gig.description}</div>
                     )}
 
                     {/* Saved date */}
                     <div style={{
-                      fontSize: '10px', color: '#A09DC8',
+                      fontSize: '12px', color: 'var(--color-text-subtle)',
                       marginBottom: '12px',
                       display: 'flex', alignItems: 'center', gap: '6px'
                     }}>
@@ -390,11 +382,11 @@ export default function SavedScreen() {
                       <button
                         onClick={() => setSharingGig(gig)}
                         style={{
-                          width: '100%', background: '#F5F4FF',
-                          border: '1.5px solid #B8A5FF',
+                          width: '100%', background: 'var(--color-page)',
+                          border: '1.5px solid var(--color-brand-border-strong)',
                           borderRadius: '10px', padding: '11px',
                           fontSize: '13px', fontWeight: '700',
-                          color: '#6C47FF', cursor: 'pointer',
+                          color: 'var(--color-brand)', cursor: 'pointer',
                           fontFamily: 'inherit',
                           display: 'flex', alignItems: 'center',
                           justifyContent: 'center', gap: '6px'
@@ -412,11 +404,11 @@ export default function SavedScreen() {
                         }}
                         disabled={isOwnGig}
                         style={{
-                          flex: 1, background: '#F5F4FF',
-                          border: `1.5px solid ${isOwnGig ? '#E2E0FF' : '#B8A5FF'}`,
+                          flex: 1, background: 'var(--color-page)',
+                          border: `1.5px solid ${isOwnGig ? 'var(--color-border)' : 'var(--color-brand-border-strong)'}`,
                           borderRadius: '10px', padding: '11px',
                           fontSize: '12px', fontWeight: '700',
-                          color: isOwnGig ? '#A09DC8' : '#6C47FF',
+                          color: isOwnGig ? 'var(--color-text-subtle)' : 'var(--color-brand)',
                           cursor: isOwnGig ? 'default' : 'pointer',
                           fontFamily: 'inherit',
                           display: 'flex', alignItems: 'center',
@@ -431,16 +423,16 @@ export default function SavedScreen() {
                         style={{
                           flex: 2,
                           background: isOwnGig
-                            ? '#F5F4FF'
+                            ? 'var(--color-page)'
                             : isApplied
-                            ? '#DFFDF4'
+                            ? 'var(--color-success-soft)'
                             : applying
-                              ? '#B8A5FF'
-                              : 'linear-gradient(135deg, #6C47FF, #9B59FF)',
-                          border: isOwnGig ? '1.5px solid #E2E0FF' : isApplied ? '1.5px solid #7EECD2' : 'none',
+                              ? 'var(--color-brand-border-strong)'
+                              : 'var(--color-brand-gradient)',
+                          border: isOwnGig ? '1.5px solid var(--color-border)' : isApplied ? '1.5px solid var(--color-success-border)' : 'none',
                           borderRadius: '10px', padding: '11px',
                           fontSize: '13px', fontWeight: '700',
-                          color: isOwnGig ? '#A09DC8' : isApplied ? '#00C48C' : '#fff',
+                          color: isOwnGig ? 'var(--color-text-subtle)' : isApplied ? 'var(--color-success)' : 'var(--color-surface)',
                           cursor: applying || isApplied || isOwnGig ? 'default' : 'pointer',
                           fontFamily: 'inherit',
                           display: 'flex', alignItems: 'center',
@@ -497,8 +489,8 @@ export default function SavedScreen() {
           bottom: '92px',
           transform: 'translateX(-50%)',
           zIndex: 12000,
-          background: '#14123A',
-          color: '#fff',
+          background: 'var(--color-text)',
+          color: 'var(--color-surface)',
           borderRadius: '12px',
           padding: '10px 14px',
           fontSize: '13px',
@@ -514,10 +506,6 @@ export default function SavedScreen() {
       )}
 
       <style>{`
-        @keyframes blink {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.2; }
-        }
       `}</style>
     </div>
   )
