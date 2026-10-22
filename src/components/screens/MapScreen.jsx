@@ -1,5 +1,6 @@
 ﻿import { useEffect, useState, useRef, useMemo, useCallback } from 'react'
-import { MapContainer, Marker, useMap, useMapEvents } from 'react-leaflet'
+import { MapContainer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet'
+import { Building2, MapPin } from 'lucide-react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { supabase } from '../../supabase'
@@ -17,6 +18,7 @@ import ProfilePrompt from '../ProfilePrompt'
 import BrandIcon from '../BrandIcon'
 import { applyToGig } from '../../utils/gigApplications'
 import PrimaBasemap from '../maps/PrimaBasemap'
+import CategoryIcon from '../CategoryIcon'
 
 const getCurrencySymbol = (code) => getCurrency(code || 'USD').symbol
 
@@ -60,9 +62,9 @@ const ExpiryBadge = ({ expiresAt }) => {
   if (!remaining) return null
   const isUrgent = parseTimestamp(expiresAt) - Date.now() < 24 * 60 * 60 * 1000
   const isWarning = parseTimestamp(expiresAt) - Date.now() < 3 * 24 * 60 * 60 * 1000
-  const color = isUrgent ? '#FF3366' : isWarning ? '#FF6B2B' : '#A09DC8'
-  const bg = isUrgent ? '#FFE8EE' : isWarning ? '#FFF0E8' : '#F5F4FF'
-  const border = isUrgent ? '#FF99B3' : isWarning ? '#FFBC99' : '#E2E0FF'
+  const color = isUrgent ? 'var(--color-danger)' : isWarning ? 'var(--color-warning)' : 'var(--color-text-subtle)'
+  const bg = isUrgent ? 'var(--color-danger-soft)' : isWarning ? 'var(--color-warning-soft)' : 'var(--color-page)'
+  const border = isUrgent ? 'var(--color-danger-border)' : isWarning ? 'var(--color-warning-border)' : 'var(--color-border)'
   return (
     <span style={{
       fontSize: '11px', fontWeight: '700', color,
@@ -83,15 +85,14 @@ L.Icon.Default.mergeOptions({
 })
 
 const URGENCY_COLORS = {
-  now: '#FF3366',
-  today: '#FF6B2B',
-  scheduled: '#6C47FF',
-  flexible: '#A09DC8'
+  now: 'var(--color-danger)',
+  today: 'var(--color-warning)',
+  scheduled: 'var(--color-brand)',
+  flexible: 'var(--color-text-subtle)'
 }
 
 // Create custom pin with profile photo
 const createProfilePin = (avatarUrl, initial, color, urgency) => {
-
   const avatar = avatarUrl
     ? `<img src="${avatarUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`
     : `<span style="font-size:16px;font-weight:800;color:${color};">${initial}</span>`
@@ -141,10 +142,22 @@ const createUserPin = () => L.divIcon({
   iconAnchor: [23, 23],
 })
 
-// Zoom-aware clustering — groups pins that are too close at the current zoom level
+// Zoom-aware clustering groups pins that are too close at the current zoom level
 const ClusterLayer = ({ gigs, onSelect, selectedGigId }) => {
   const map = useMap()
   const [zoom, setZoom] = useState(map.getZoom())
+  const hoverCloseTimer = useRef(null)
+  const clearHoverClose = () => {
+    if (hoverCloseTimer.current) clearTimeout(hoverCloseTimer.current)
+    hoverCloseTimer.current = null
+  }
+  const schedulePopupClose = (popup) => {
+    clearHoverClose()
+    hoverCloseTimer.current = setTimeout(() => {
+      const popupElement = popup?.getElement?.()
+      if (!popupElement?.matches(':hover')) popup?.close?.()
+    }, 220)
+  }
   useMapEvents({ zoomend: e => setZoom(e.target.getZoom()) })
 
   const clusters = useMemo(() => {
@@ -170,20 +183,21 @@ const ClusterLayer = ({ gigs, onSelect, selectedGigId }) => {
     if (cluster.gigs.length === 1) {
       const gig = cluster.gigs[0]
       const isDigital = gig.type === 'digital'
-      const pinColor = isDigital ? '#0EA5E9'
-        : gig.urgency === 'now' ? '#FF3366'
-        : gig.urgency === 'today' ? '#FF6B2B' : '#6C47FF'
-      const pinBg = isDigital ? '#E0F2FE' : '#EEE9FF'
       const isUrgent = gig.urgency === 'now' || gig.urgency === 'today'
       const isSelected = selectedGigId === gig.id
       const gigIcon = L.divIcon({
         className: 'custom-gig-pin',
         html: `
-          <div class="prima-gig-pin ${isSelected ? 'is-selected' : ''}" style="--pin-color:${pinColor};">
-            <div class="prima-gig-avatar" style="border-color:${pinColor};background:${pinBg};color:${pinColor};">
-              ${gig.poster?.avatar_url ? `<img src="${gig.poster.avatar_url}" style="width:100%;height:100%;object-fit:cover"/>` : gig.poster?.full_name?.charAt(0) || '?'}
+          <div class="prima-gig-pin ${isSelected ? 'is-selected' : ''}">
+            <div class="prima-gig-avatar">
+              <div class="prima-gig-avatar-inner">
+                ${gig.poster?.avatar_url ? `<img src="${gig.poster.avatar_url}" alt=""/>` : `<span>${gig.poster?.full_name?.charAt(0) || '?'}</span>`}
+              </div>
             </div>
-            ${isDigital ? `<div style="position:absolute;top:-4px;right:-4px;background:#0EA5E9;border-radius:6px;padding:1px 4px;font-size:8px;font-weight:800;color:#fff;border:1.5px solid #fff;">WEB</div>` : ''}
+            <span class="prima-gig-location-badge" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></svg>
+            </span>
+            ${isDigital ? `<div style="position:absolute;top:-4px;right:-4px;background:var(--color-info);border-radius:6px;padding:1px 4px;font-size:8px;font-weight:800;color:#fff;border:1.5px solid #fff;">WEB</div>` : ''}
             <div class="prima-gig-label">
               ${isDigital ? `Remote · ${gig.title?.substring(0, 14) || 'Digital'}` : gig.street ? gig.street : gig.location ? gig.location.split(',')[0] : gig.title?.substring(0, 20)}
             </div>
@@ -194,7 +208,52 @@ const ClusterLayer = ({ gigs, onSelect, selectedGigId }) => {
       return (
         <Marker key={gig.id} position={[gig.latitude, gig.longitude]} icon={gigIcon}
           zIndexOffset={isSelected ? 1200 : isUrgent ? 800 : 400}
-          eventHandlers={{ click: () => onSelect(gig) }} />
+          eventHandlers={{
+            mouseover: (event) => {
+              clearHoverClose()
+              event.target.openPopup()
+            },
+            mouseout: (event) => schedulePopupClose(event.target.getPopup()),
+            click: (event) => {
+              onSelect(gig)
+              setTimeout(() => event.target.closePopup(), 0)
+            }
+          }}>
+          <Popup className="prima-work-popup" minWidth={230} maxWidth={280}
+            closeButton={false} autoPan={false}
+            eventHandlers={{
+              mouseover: clearHoverClose,
+              mouseout: (event) => schedulePopupClose(event.target)
+            }}>
+            <div className="prima-map-work-card">
+              {(gig.street || gig.location) && (
+                <div className="prima-map-work-address">
+                  {gig.street && (
+                    <div className="prima-map-work-address-row">
+                      <Building2 size={14} strokeWidth={1.8} />
+                      <span>{gig.street}</span>
+                    </div>
+                  )}
+                  {gig.location && (
+                    <div className="prima-map-work-address-row">
+                      <MapPin size={14} strokeWidth={1.8} />
+                      <span>{gig.location.split(',').slice(0, 2).join(',').trim()}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="prima-map-work-title">{gig.title}</div>
+              <div className="prima-map-work-pay">
+                {gig.pay_min != null ? `${getCurrencySymbol(gig.currency)}${gig.pay_min}` : 'Pay negotiable'}
+                {gig.pay_max != null ? `–${getCurrencySymbol(gig.currency)}${gig.pay_max}` : ''}
+              </div>
+              <div className="prima-map-work-poster">
+                Posted by {gig.poster?.full_name || 'Anonymous'}
+              </div>
+            </div>
+          </Popup>
+        </Marker>
       )
     }
 
@@ -236,6 +295,25 @@ const MapReady = ({ onReady }) => {
   useEffect(() => {
     map.whenReady(onReady)
   }, [map, onReady])
+  return null
+}
+
+const MapCoverageGuard = () => {
+  const map = useMap()
+  useEffect(() => {
+    const updateMinZoom = () => {
+      const size = map.getSize()
+      if (!size.x || !size.y) return
+
+      const minZoom = Math.max(0, Math.ceil(Math.log2(Math.max(size.x, size.y) / 256)))
+      map.setMinZoom(minZoom)
+      if (map.getZoom() < minZoom) map.setZoom(minZoom)
+    }
+
+    map.whenReady(updateMinZoom)
+    map.on('resize', updateMinZoom)
+    return () => map.off('resize', updateMinZoom)
+  }, [map])
   return null
 }
 
@@ -392,24 +470,6 @@ export default function MapScreen() {
     }
   }, [])
 
-  const zoomMap = (delta) => {
-    const map = mapRef.current
-    if (!map) return
-    map.flyTo(map.getCenter(), map.getZoom() + delta, {
-      animate: true,
-      duration: 0.35,
-    })
-  }
-
-  const recenterOnUser = () => {
-    const map = mapRef.current
-    if (!map || !userPos) return
-    map.flyTo(userPos, Math.max(map.getZoom(), 15), {
-      animate: true,
-      duration: 0.75,
-    })
-  }
-
   const startCategoryDrag = (e) => {
     const row = categoryScrollRef.current
     if (!row) return
@@ -491,13 +551,14 @@ export default function MapScreen() {
         <MapContainer
           center={[6.5244, 3.3792]}
           zoom={15}
-          maxZoom={19}
+          maxZoom={20}
           style={{ height: '100%', width: '100%', zIndex: 0 }}
           zoomControl={false}
           ref={mapRef}
         >
           <PrimaBasemap mode={darkMap ? 'dark' : 'light'} />
           <MapReady onReady={() => setMapReady(true)} />
+          <MapCoverageGuard />
           <SetView coords={userPos} />
           {flyToCoords && <FlyToGig coords={flyToCoords} />}
           <MapBoundsTracker onBoundsChange={handleBoundsChange} />
@@ -531,14 +592,14 @@ export default function MapScreen() {
             position: 'absolute', top: '14px', right: '14px', zIndex: 40,
             background: darkMap ? 'rgba(108,71,255,0.92)' : 'rgba(255,255,255,0.92)',
             backdropFilter: 'blur(10px)',
-            border: `1.5px solid ${darkMap ? '#9B59FF' : 'rgba(108,71,255,0.2)'}`,
+            border: `1.5px solid ${darkMap ? 'var(--color-brand-mid)' : 'rgba(108,71,255,0.2)'}`,
             borderRadius: '20px', padding: '5px 12px',
             fontSize: '11px', fontWeight: '700',
-            color: darkMap ? '#fff' : '#8B8FAF',
+            color: darkMap ? 'var(--color-surface)' : 'var(--color-text-muted)',
             cursor: 'pointer', fontFamily: 'inherit',
             boxShadow: '0 2px 10px rgba(0,0,0,0.12)'
           }}>
-          {darkMap ? '☀️ Light' : '🌙 Dark'}
+          {darkMap ? 'Light' : 'Dark'}
         </button>
 
         {/* Live Stats Overlay */}
@@ -547,14 +608,16 @@ export default function MapScreen() {
           display: 'flex', gap: '8px', zIndex: 40
         }}>
           <div style={{
-            background: 'rgba(13,27,62,0.88)',
-            backdropFilter: 'blur(8px)',
+            background: 'var(--color-glass-surface)',
+            backdropFilter: 'blur(12px) saturate(1.08)',
             borderRadius: '20px', padding: '6px 13px',
             display: 'flex', alignItems: 'center', gap: '6px',
-            border: '1px solid rgba(255,255,255,0.1)'
+            border: 'none',
+            boxShadow: 'var(--shadow-glass)'
           }}>
+            <span className="live-indicator-dot" aria-hidden="true" />
             <span style={{
-              fontSize: '11px', fontWeight: '700', color: '#fff'
+              fontSize: '11px', fontWeight: '700', color: 'var(--color-text)'
             }}>{liveCount} live</span>
           </div>
         </div>
@@ -581,8 +644,8 @@ export default function MapScreen() {
           <button
             onClick={() => setCategoryFilter('All')}
             style={{
-              background: '#fff',
-              border: `1px solid ${categoryFilter === 'All' ? '#14123A' : 'rgba(20,18,58,0.12)'}`,
+              background: 'var(--color-surface)',
+              border: '1px solid transparent',
               borderRadius: '999px', padding: '8px 15px',
               fontSize: '14px', fontWeight: '700',
               color: '#202124', cursor: 'pointer',
@@ -594,7 +657,7 @@ export default function MapScreen() {
               lineHeight: 1,
               transform: categoryFilter === 'All' ? 'translateY(-1px)' : 'none',
               transition: 'transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease'
-            }}>✦ All</button>
+            }}>All</button>
           {CATEGORIES.map(cat => (
             <button
               key={cat.group}
@@ -602,8 +665,8 @@ export default function MapScreen() {
                 categoryFilter === cat.group ? 'All' : cat.group
               )}
               style={{
-                background: '#fff',
-                border: `1px solid ${categoryFilter === cat.group ? '#14123A' : 'rgba(20,18,58,0.12)'}`,
+                background: 'var(--color-surface)',
+                border: `1px solid ${categoryFilter === cat.group ? 'var(--color-text)' : 'rgba(20,18,58,0.12)'}`,
                 borderRadius: '999px', padding: '8px 15px',
                 fontSize: '14px', fontWeight: '700',
                 color: '#202124', cursor: 'pointer',
@@ -616,7 +679,7 @@ export default function MapScreen() {
                 transform: categoryFilter === cat.group ? 'translateY(-1px)' : 'none',
                 transition: 'transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease'
               }}>
-              <span style={{ fontSize: '16px', lineHeight: 1 }}>{cat.icon}</span>
+              <CategoryIcon category={cat.group} size={16} color="var(--color-text-muted)" />
               {cat.group}
             </button>
           ))}
@@ -624,7 +687,7 @@ export default function MapScreen() {
 
         {/* Radius Filter Chips */}
         <div style={{
-          position: 'absolute', top: '96px', left: '14px',
+          position: 'absolute', top: '130px', left: '14px',
           zIndex: 40, display: 'flex', gap: '6px',
           pointerEvents: 'all'
         }}>
@@ -636,10 +699,10 @@ export default function MapScreen() {
                 background: radiusKm === km
                   ? 'rgba(0,196,140,0.9)' : 'rgba(13,27,62,0.82)',
                 backdropFilter: 'blur(8px)',
-                border: `1.5px solid ${radiusKm === km ? '#00C48C' : 'rgba(255,255,255,0.15)'}`,
+                border: `1.5px solid ${radiusKm === km ? 'var(--color-success)' : 'rgba(255,255,255,0.15)'}`,
                 borderRadius: '20px', padding: '4px 11px',
                 fontSize: '10px', fontWeight: '700',
-                color: '#fff', cursor: 'pointer',
+                color: 'var(--color-surface)', cursor: 'pointer',
                 whiteSpace: 'nowrap', fontFamily: 'inherit'
               }}>
               {km ? `${km}km` : 'Any distance'}
@@ -651,8 +714,8 @@ export default function MapScreen() {
 
       {/* Happening Now Strip */}
       <div style={{
-        background: '#fff',
-        borderTop: '1.5px solid #E2E0FF',
+        background: 'var(--color-surface)',
+        borderTop: '1.5px solid var(--color-border)',
         flexShrink: 0
       }}>
         <div style={{
@@ -662,24 +725,24 @@ export default function MapScreen() {
         }}>
           <span style={{
             fontSize: '11px', fontWeight: '700',
-            color: '#A09DC8', letterSpacing: '1px'
+            color: 'var(--color-text-subtle)', letterSpacing: '1px'
           }}>HAPPENING NOW</span>
           <span
             onClick={() => setShowAllGigs(true)}
             style={{
-              fontSize: '11px', color: '#6C47FF',
+              fontSize: '11px', color: 'var(--color-brand)',
               fontWeight: '600', cursor: 'pointer'
-            }}>See all ({filteredGigs.length}) →</span>
+            }}>See all ({filteredGigs.length}) <span aria-hidden="true">→</span></span>
         </div>
 
         {filteredGigs.length === 0 ? (
           <div style={{
             padding: '12px 16px 16px',
             textAlign: 'center',
-            color: '#A09DC8', fontSize: '13px'
+            color: 'var(--color-text-subtle)', fontSize: '13px'
           }}>
             {gigs.length === 0
-              ? 'No live gigs yet — be the first to post one! 🚀'
+              ? 'No live gigs yet. Be the first to post one!'
               : 'No gigs in this category nearby'}
           </div>
         ) : (
@@ -693,10 +756,10 @@ export default function MapScreen() {
                 onClick={() => openGig(gig)}
                 className={selectedGig?.id === gig.id ? 'prima-now-card is-active' : 'prima-now-card'}
                 style={{
-                  background: selectedGig?.id === gig.id ? '#EEE9FF' : '#F5F4FF',
+                  background: selectedGig?.id === gig.id ? 'var(--color-brand-soft)' : 'var(--color-page)',
                   borderRadius: '12px', padding: '9px 12px',
                   minWidth: '174px',
-                  border: `1.5px solid ${selectedGig?.id === gig.id ? '#6C47FF' : '#E2E0FF'}`,
+                  border: `1.5px solid ${selectedGig?.id === gig.id ? 'var(--color-brand)' : 'var(--color-border)'}`,
                   cursor: 'pointer', flexShrink: 0,
                   transition: 'transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease',
                   boxShadow: selectedGig?.id === gig.id
@@ -704,11 +767,11 @@ export default function MapScreen() {
                     : '0 4px 14px rgba(20,18,58,0.06)'
                 }}
                 onMouseEnter={e => {
-                  e.currentTarget.style.borderColor = '#B8A5FF'
+                  e.currentTarget.style.borderColor = 'var(--color-brand-border-strong)'
                   e.currentTarget.style.transform = 'translateY(-2px)'
                 }}
                 onMouseLeave={e => {
-                  e.currentTarget.style.borderColor = selectedGig?.id === gig.id ? '#6C47FF' : '#E2E0FF'
+                  e.currentTarget.style.borderColor = selectedGig?.id === gig.id ? 'var(--color-brand)' : 'var(--color-border)'
                   e.currentTarget.style.transform = 'translateY(0)'
                 }}>
                 <div style={{
@@ -717,11 +780,11 @@ export default function MapScreen() {
                 }}>
                   <span style={{
                     display: 'inline-flex', alignItems: 'center', gap: '3px',
-                    background: gig.urgency === 'now' ? '#FFE8EE' : '#FFF0E8',
-                    border: `1px solid ${gig.urgency === 'now' ? '#FF99B3' : '#FFBC99'}`,
+                    background: gig.urgency === 'now' ? 'var(--color-danger-soft)' : 'var(--color-warning-soft)',
+                    border: `1px solid ${gig.urgency === 'now' ? 'var(--color-danger-border)' : 'var(--color-warning-border)'}`,
                     borderRadius: '4px', padding: '2px 6px',
                     fontSize: '8px', fontWeight: '800',
-                    color: gig.urgency === 'now' ? '#FF3366' : '#FF6B2B',
+                    color: gig.urgency === 'now' ? 'var(--color-danger)' : 'var(--color-warning)',
                     letterSpacing: '0.8px'
                   }}>
                     {gig.urgency?.toUpperCase()}
@@ -729,18 +792,18 @@ export default function MapScreen() {
                   {gig.type === 'digital' ? (
                     <span style={{
                       fontSize: '8px', fontWeight: '800',
-                      color: '#0EA5E9', letterSpacing: '0.5px'
+                      color: 'var(--color-info)', letterSpacing: '0.5px'
                     }}>REMOTE</span>
                   ) : null}
                 </div>
                 <div style={{
                   fontSize: '12px', fontWeight: '700',
-                  color: '#14123A', marginBottom: '5px', lineHeight: '1.3'
+                  color: 'var(--color-text)', marginBottom: '5px', lineHeight: '1.3'
                 }}>{gig.title}</div>
                 <div style={{
-                  fontSize: '14px', fontWeight: '800', color: '#00C48C'
+                  fontSize: '14px', fontWeight: '800', color: 'var(--color-success)'
                 }}>{getCurrencySymbol(gig.currency)}{gig.pay_min}–{getCurrencySymbol(gig.currency)}{gig.pay_max}</div>
-                <div style={{ fontSize: '10px', color: '#A09DC8', marginTop: '4px' }}>
+                <div style={{ fontSize: '10px', color: 'var(--color-text-subtle)', marginTop: '4px' }}>
                   {formatDist(calcDistance(userPos[0], userPos[1], gig.latitude, gig.longitude))} away
                 </div>
               </div>
@@ -763,7 +826,7 @@ export default function MapScreen() {
           setApplied(false)
         }}>
           <div className="prima-bottom-sheet" onClick={e => e.stopPropagation()} style={{
-            background: '#fff',
+            background: 'var(--color-surface)',
             borderRadius: '22px 22px 0 0',
             padding: '24px', width: '100%',
             maxWidth: '640px', maxHeight: '88vh',
@@ -778,16 +841,16 @@ export default function MapScreen() {
             }}>
               <div style={{
                 width: '40px', height: '4px',
-                background: '#E2E0FF', borderRadius: '2px'
+                background: 'var(--color-border)', borderRadius: '2px'
               }} />
               <button
                 onClick={() => { setSelectedGig(null); setApplied(false) }}
                 style={{
                   position: 'absolute', right: 0,
                   width: '32px', height: '32px',
-                  background: '#F5F4FF', border: '1.5px solid #E2E0FF',
+                  background: 'var(--color-page)', border: '1.5px solid var(--color-border)',
                   borderRadius: '50%', fontSize: '16px',
-                  color: '#8B8FAF', cursor: 'pointer',
+                  color: 'var(--color-text-muted)', cursor: 'pointer',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontFamily: 'inherit', lineHeight: 1
                 }}>×</button>
@@ -801,10 +864,10 @@ export default function MapScreen() {
                   </div>
                   <div style={{
                     fontSize: '22px', fontWeight: '800',
-                    color: '#6C47FF', marginBottom: '8px'
+                    color: 'var(--color-brand)', marginBottom: '8px'
                   }}>Application Sent!</div>
                   <div style={{
-                    fontSize: '13px', color: '#8B8FAF',
+                    fontSize: '13px', color: 'var(--color-text-muted)',
                     lineHeight: '1.6', marginBottom: '20px'
                   }}>
                     The client will review and confirm your application.
@@ -815,8 +878,8 @@ export default function MapScreen() {
                 {/* Exact address revealed after apply */}
                 {(selectedGig.house_number || selectedGig.street || selectedGig.landmark) && (
                   <div style={{
-                    background: 'linear-gradient(135deg, #EEE9FF, #F8F5FF)',
-                    border: '1.5px solid #B8A5FF',
+                    background: 'linear-gradient(135deg, var(--color-brand-soft), var(--color-brand-pale))',
+                    border: '1.5px solid var(--color-brand-border-strong)',
                     borderRadius: '16px', padding: '16px', marginBottom: '16px'
                   }}>
                     <div style={{
@@ -825,7 +888,7 @@ export default function MapScreen() {
                     }}>
                       <BrandIcon name="location" size={28} active />
                       <div style={{
-                        fontSize: '12px', fontWeight: '700', color: '#6C47FF',
+                        fontSize: '12px', fontWeight: '700', color: 'var(--color-brand)',
                         textTransform: 'uppercase', letterSpacing: '0.8px'
                       }}>Exact Address</div>
                     </div>
@@ -834,44 +897,44 @@ export default function MapScreen() {
                       {selectedGig.house_number && (
                         <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
                           <span style={{
-                            fontSize: '10px', fontWeight: '700', color: '#A09DC8',
+                            fontSize: '10px', fontWeight: '700', color: 'var(--color-text-subtle)',
                             textTransform: 'uppercase', minWidth: '60px', paddingTop: '2px'
                           }}>Building</span>
                           <span style={{
-                            fontSize: '13px', fontWeight: '600', color: '#14123A'
+                            fontSize: '13px', fontWeight: '600', color: 'var(--color-text)'
                           }}>{selectedGig.house_number}</span>
                         </div>
                       )}
                       {selectedGig.street && (
                         <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
                           <span style={{
-                            fontSize: '10px', fontWeight: '700', color: '#A09DC8',
+                            fontSize: '10px', fontWeight: '700', color: 'var(--color-text-subtle)',
                             textTransform: 'uppercase', minWidth: '60px', paddingTop: '2px'
                           }}>Street</span>
                           <span style={{
-                            fontSize: '13px', fontWeight: '600', color: '#14123A'
+                            fontSize: '13px', fontWeight: '600', color: 'var(--color-text)'
                           }}>{selectedGig.street}</span>
                         </div>
                       )}
                       {selectedGig.landmark && (
                         <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
                           <span style={{
-                            fontSize: '10px', fontWeight: '700', color: '#A09DC8',
+                            fontSize: '10px', fontWeight: '700', color: 'var(--color-text-subtle)',
                             textTransform: 'uppercase', minWidth: '60px', paddingTop: '2px'
                           }}>Landmark</span>
                           <span style={{
-                            fontSize: '13px', fontWeight: '600', color: '#14123A'
+                            fontSize: '13px', fontWeight: '600', color: 'var(--color-text)'
                           }}>{selectedGig.landmark}</span>
                         </div>
                       )}
                       {selectedGig.directions && (
                         <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
                           <span style={{
-                            fontSize: '10px', fontWeight: '700', color: '#A09DC8',
+                            fontSize: '10px', fontWeight: '700', color: 'var(--color-text-subtle)',
                             textTransform: 'uppercase', minWidth: '60px', paddingTop: '2px'
                           }}>Directions</span>
                           <span style={{
-                            fontSize: '13px', color: '#5B5887', lineHeight: '1.5'
+                            fontSize: '13px', color: 'var(--color-text-muted)', lineHeight: '1.5'
                           }}>{selectedGig.directions}</span>
                         </div>
                       )}
@@ -888,10 +951,10 @@ export default function MapScreen() {
                             display: 'flex', alignItems: 'center',
                             justifyContent: 'center', gap: '8px',
                             width: '100%',
-                            background: '#fff', border: '1.5px solid #B8A5FF',
+                            background: 'var(--color-surface)', border: '1.5px solid var(--color-brand-border-strong)',
                             borderRadius: '10px', padding: '10px',
                             fontSize: '13px', fontWeight: '700',
-                            color: '#6C47FF', cursor: 'pointer', fontFamily: 'inherit'
+                            color: 'var(--color-brand)', cursor: 'pointer', fontFamily: 'inherit'
                           }}>
                           <BrandIcon name="map" size={22} active /> Show on Map
                         </button>
@@ -912,10 +975,10 @@ export default function MapScreen() {
                     onClick={() => setViewingProfile(selectedGig.poster_id)}
                     style={{
                     width: '52px', height: '52px', borderRadius: '14px',
-                    background: '#EEE9FF', display: 'flex',
+                    background: 'var(--color-brand-soft)', display: 'flex',
                     alignItems: 'center', justifyContent: 'center',
                     fontSize: '20px', fontWeight: '800',
-                    color: '#6C47FF', overflow: 'hidden', flexShrink: 0,
+                    color: 'var(--color-brand)', overflow: 'hidden', flexShrink: 0,
                     cursor: 'pointer'
                   }}>
                     {selectedGig.poster?.avatar_url ? (
@@ -929,12 +992,12 @@ export default function MapScreen() {
                     <div
                       onClick={() => setViewingProfile(selectedGig.poster_id)}
                       style={{
-                      fontSize: '14px', fontWeight: '700', color: '#14123A',
+                      fontSize: '14px', fontWeight: '700', color: 'var(--color-text)',
                       cursor: 'pointer'
                     }}>
                       {selectedGig.poster?.full_name || 'Anonymous'}
                     </div>
-                    <div style={{ fontSize: '11px', color: '#8B8FAF' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>
                       ⭐ {selectedGig.poster?.rating || 5.0} ·{' '}
                       {selectedGig.poster?.gigs_completed || 0} gigs ·{' '}
                       Trust {selectedGig.poster?.trust_score || 100}%
@@ -943,8 +1006,8 @@ export default function MapScreen() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
   <div style={{
     display: 'inline-flex', alignItems: 'center', gap: '4px',
-    background: URGENCY_COLORS[selectedGig.urgency] + '18',
-    border: `1px solid ${URGENCY_COLORS[selectedGig.urgency]}44`,
+    background: `color-mix(in srgb, ${URGENCY_COLORS[selectedGig.urgency]} 10%, transparent)`,
+    border: `1px solid color-mix(in srgb, ${URGENCY_COLORS[selectedGig.urgency]} 28%, transparent)`,
     borderRadius: '6px', padding: '4px 10px',
     fontSize: '10px', fontWeight: '800',
     color: URGENCY_COLORS[selectedGig.urgency], letterSpacing: '0.8px'
@@ -953,9 +1016,9 @@ export default function MapScreen() {
   </div>
   {selectedGig.slots > 1 && (
     <span style={{
-      background: '#DFFDF4', border: '1px solid #7EECD2',
+      background: 'var(--color-success-soft)', border: '1px solid var(--color-success-border)',
       borderRadius: '6px', padding: '3px 9px',
-      fontSize: '9px', fontWeight: '700', color: '#00C48C', whiteSpace: 'nowrap'
+      fontSize: '9px', fontWeight: '700', color: 'var(--color-success)', whiteSpace: 'nowrap'
     }}>{selectedGig.slots} OPEN SLOTS</span>
   )}
 </div>
@@ -964,17 +1027,17 @@ export default function MapScreen() {
                 {/* Title */}
                 <h2 style={{
                   fontSize: '20px', fontWeight: '800',
-                  color: '#14123A', lineHeight: '1.3', marginBottom: '8px'
+                  color: 'var(--color-text)', lineHeight: '1.3', marginBottom: '8px'
                 }}>{selectedGig.title}</h2>
 
                 {/* Posted / Expiry timing */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
-                  <span style={{ fontSize: '11px', color: '#A09DC8' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--color-text-subtle)' }}>
                     Posted {timeAgo(selectedGig.created_at)}
                   </span>
                   {selectedGig.expires_at
                     ? <ExpiryBadge expiresAt={selectedGig.expires_at} />
-                    : <span style={{ fontSize: '11px', color: '#A09DC8' }}>· Open-ended</span>
+                    : <span style={{ fontSize: '11px', color: 'var(--color-text-subtle)' }}>Open-ended</span>
                   }
                 </div>
 
@@ -984,43 +1047,45 @@ export default function MapScreen() {
                   gap: '10px', marginBottom: '14px'
                 }}>
                   <div style={{
-                    background: 'linear-gradient(135deg, #E8FFE4, #DFFDF4)',
-                    border: '1.5px solid #7EECD2',
-                    borderRadius: '14px', padding: '14px'
+                    background: 'linear-gradient(135deg, var(--color-success-tint), var(--color-success-soft))',
+                    border: 'none',
+                    borderRadius: '14px', padding: '14px',
+                    boxShadow: 'var(--shadow-glass)', backdropFilter: 'blur(12px) saturate(1.08)'
                   }}>
                     <div style={{
-                      fontSize: '9px', color: '#00C48C', fontWeight: '700',
+                      fontSize: '9px', color: 'var(--color-success)', fontWeight: '700',
                       textTransform: 'uppercase', letterSpacing: '0.8px',
                       marginBottom: '4px'
                     }}>Pay Range</div>
                     <div style={{
                       fontSize: '24px', fontWeight: '800',
-                      color: '#00C48C', letterSpacing: '-0.5px'
+                      color: 'var(--color-success)', letterSpacing: '-0.5px'
                     }}>{getCurrencySymbol(selectedGig.currency)}{selectedGig.pay_min}</div>
-                    <div style={{ fontSize: '11px', color: '#00C48C', opacity: 0.7 }}>
+                    <div style={{ fontSize: '11px', color: 'var(--color-success)', opacity: 0.7 }}>
                       up to {getCurrencySymbol(selectedGig.currency)}{selectedGig.pay_max}
                     </div>
                   </div>
                   <div style={{
-                    background: selectedGig.type === 'digital' ? '#E0F2FE' : '#FFF0E8',
-                    border: `1.5px solid ${selectedGig.type === 'digital' ? '#7DD3FC' : '#FFBC99'}`,
-                    borderRadius: '14px', padding: '14px'
+                    background: selectedGig.type === 'digital' ? '#E0F2FE' : 'var(--color-warning-soft)',
+                    border: 'none',
+                    borderRadius: '14px', padding: '14px',
+                    boxShadow: 'var(--shadow-glass)', backdropFilter: 'blur(12px) saturate(1.08)'
                   }}>
                     <div style={{
                       fontSize: '9px',
-                      color: selectedGig.type === 'digital' ? '#0EA5E9' : '#FF6B2B',
+                      color: selectedGig.type === 'digital' ? 'var(--color-info)' : 'var(--color-warning)',
                       fontWeight: '700', textTransform: 'uppercase',
                       letterSpacing: '0.8px', marginBottom: '4px'
                     }}>{selectedGig.type === 'digital' ? 'Remote Work' : 'Location'}</div>
                     <div style={{
                       fontSize: '13px', fontWeight: '700',
-                      color: '#14123A', lineHeight: '1.3'
+                      color: 'var(--color-text)', lineHeight: '1.3'
                     }}>{selectedGig.type === 'digital' ? 'Online / Remote' : (selectedGig.location || 'See details')}</div>
                     {selectedGig.latitude && (
                       <div style={{
                         display: 'flex', alignItems: 'center', gap: '3px',
                         fontSize: '10px',
-                        color: selectedGig.type === 'digital' ? '#0EA5E9' : '#FF6B2B',
+                        color: selectedGig.type === 'digital' ? 'var(--color-info)' : 'var(--color-warning)',
                         marginTop: '4px'
                       }}>
                         <BrandIcon name="location" size={14} />
@@ -1032,26 +1097,27 @@ export default function MapScreen() {
                   </div>
                 </div>
 
-                {/* Full address — visible before applying */}
+                {/* Full address visible before applying */}
                 {(selectedGig.house_number || selectedGig.street) && (
                   <div style={{
-                    background: '#FFF8F0', border: '1.5px solid #FFBC99',
+                    background: 'var(--color-warning-soft)', border: 'none',
                     borderRadius: '14px', padding: '14px', marginBottom: '14px',
-                    display: 'flex', gap: '10px', alignItems: 'flex-start'
+                    display: 'flex', gap: '10px', alignItems: 'flex-start',
+                    boxShadow: 'var(--shadow-glass)', backdropFilter: 'blur(12px) saturate(1.08)'
                   }}>
                     <BrandIcon name="physical" size={32} active />
                     <div>
                       <div style={{
-                        fontSize: '9px', fontWeight: '700', color: '#FF6B2B',
+                        fontSize: '9px', fontWeight: '700', color: 'var(--color-warning)',
                         textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '4px'
                       }}>Address</div>
                       {selectedGig.house_number && (
-                        <div style={{ fontSize: '13px', fontWeight: '700', color: '#14123A' }}>
+                        <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--color-text)' }}>
                           {selectedGig.house_number}
                         </div>
                       )}
                       {selectedGig.street && (
-                        <div style={{ fontSize: '13px', fontWeight: '600', color: '#5B5887' }}>
+                        <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--color-text-muted)' }}>
                           {selectedGig.street}
                         </div>
                       )}
@@ -1062,37 +1128,39 @@ export default function MapScreen() {
                 {/* Description */}
                 {selectedGig.description && (
                   <div style={{
-                    background: '#F5F4FF', borderRadius: '12px',
+                    background: 'var(--color-page)', borderRadius: '12px',
                     padding: '14px', marginBottom: '14px',
-                    fontSize: '13px', color: '#5B5887', lineHeight: '1.6'
+                    fontSize: '13px', color: 'var(--color-text-muted)', lineHeight: '1.6'
                   }}>{selectedGig.description}</div>
                 )}
 
                 {/* Receipt protection notice */}
                 {selectedGig.payment_method === 'wallet' ? (
   <div style={{
-    background: '#DFFDF4', border: '1.5px solid #7EECD2',
+    background: 'var(--color-success-soft)', border: 'none',
     borderRadius: '12px', padding: '14px',
-    display: 'flex', gap: '10px', marginBottom: '20px'
+    display: 'flex', gap: '10px', marginBottom: '20px',
+    boxShadow: 'var(--shadow-glass)', backdropFilter: 'blur(12px) saturate(1.08)'
   }}>
     <BrandIcon name="pay" size={32} />
     <div style={{
-      fontSize: '12px', color: '#00A878', lineHeight: '1.6'
+      fontSize: '12px', color: 'var(--color-success)', lineHeight: '1.6'
     }}>
-      Payment is already secured in escrow. You'll receive it automatically once the work is confirmed complete — no chasing payment needed.
+      Payment is already secured in escrow. You'll receive it automatically once the work is confirmed complete, with no chasing payment needed.
     </div>
   </div>
 ) : (
   <div style={{
-    background: '#EEE9FF', border: '1.5px solid #B8A5FF',
+    background: 'var(--color-brand-soft)', border: 'none',
     borderRadius: '12px', padding: '14px',
-    display: 'flex', gap: '10px', marginBottom: '20px'
+    display: 'flex', gap: '10px', marginBottom: '20px',
+    boxShadow: 'var(--shadow-glass)', backdropFilter: 'blur(12px) saturate(1.08)'
   }}>
     <BrandIcon name="lock" size={32} />
     <div style={{
-      fontSize: '12px', color: '#6C47FF', lineHeight: '1.6'
+      fontSize: '12px', color: 'var(--color-brand)', lineHeight: '1.6'
     }}>
-      Both parties confirm completion by uploading receipts with their names. No payment platform needed — direct and protected.
+      Both parties confirm completion by uploading receipts with their names. No payment platform needed; the process is direct and protected.
     </div>
   </div>
 )}
@@ -1105,13 +1173,13 @@ export default function MapScreen() {
                     onClick={(e) => toggleSave(e, selectedGig.id)}
                     style={{
                       flex: 1, background: savedGigIds.has(selectedGig?.id)
-                        ? '#EEE9FF' : '#F5F4FF',
+                        ? 'var(--color-brand-soft)' : 'var(--color-page)',
                       border: `1.5px solid ${savedGigIds.has(selectedGig?.id)
-                        ? '#B8A5FF' : '#E2E0FF'}`,
+                        ? 'var(--color-brand-border-strong)' : 'var(--color-border)'}`,
                       borderRadius: '12px', padding: '11px',
                       fontSize: '13px', fontWeight: '700',
                       color: savedGigIds.has(selectedGig?.id)
-                        ? '#6C47FF' : '#8B8FAF',
+                        ? 'var(--color-brand)' : 'var(--color-text-muted)',
                       cursor: 'pointer', fontFamily: 'inherit'
                     }}>
                     <BrandIcon
@@ -1125,11 +1193,11 @@ export default function MapScreen() {
                   <button
                     onClick={() => setSharingGig(selectedGig)}
                     style={{
-                      flex: 1, background: '#F5F4FF',
-                      border: '1.5px solid #E2E0FF',
+                      flex: 1, background: 'var(--color-page)',
+                      border: '1.5px solid var(--color-border)',
                       borderRadius: '12px', padding: '11px',
                       fontSize: '13px', fontWeight: '700',
-                      color: '#8B8FAF', cursor: 'pointer',
+                      color: 'var(--color-text-muted)', cursor: 'pointer',
                       fontFamily: 'inherit'
                     }}>
                     <BrandIcon name="open" size={20} /> Share
@@ -1140,29 +1208,29 @@ export default function MapScreen() {
   onClick={() => setReportingGig(selectedGig)}
   style={{
     width: '100%',
-    background: '#FFE8EE', border: '1.5px solid #FF99B3',
+    background: 'var(--color-danger-soft)', border: '1.5px solid var(--color-danger-border)',
     borderRadius: '12px', padding: '10px',
     fontSize: '12px', fontWeight: '700',
-    color: '#FF3366', cursor: 'pointer',
+    color: 'var(--color-danger)', cursor: 'pointer',
     fontFamily: 'inherit',
     display: 'flex', alignItems: 'center',
     justifyContent: 'center', gap: '6px',
     marginBottom: '8px'
   }}>
-  🚨 Report This Gig
+  Report This Gig
 </button>
 
                 {/* Action buttons */}
                 {selectedGig.poster_id === user?.id ? (
                   <div style={{
                     marginTop: '12px',
-                    background: '#F5F4FF',
-                    border: '1.5px solid #E2E0FF',
+                    background: 'var(--color-page)',
+                    border: '1.5px solid var(--color-border)',
                     borderRadius: '12px',
                     padding: '13px',
                     fontSize: '13px',
                     fontWeight: '700',
-                    color: '#8B8FAF',
+                    color: 'var(--color-text-muted)',
                     textAlign: 'center'
                   }}>
                     Your gig
@@ -1178,11 +1246,11 @@ export default function MapScreen() {
                       }))
                     }}
                     style={{
-                      flex: 1, background: '#F5F4FF',
-                      border: '1.5px solid #B8A5FF',
+                      flex: 1, background: 'var(--color-page)',
+                      border: '1.5px solid var(--color-brand-border-strong)',
                       borderRadius: '12px', padding: '13px',
                       fontSize: '13px', fontWeight: '700',
-                      color: '#6C47FF', cursor: 'pointer',
+                      color: 'var(--color-brand)', cursor: 'pointer',
                       fontFamily: 'inherit',
                       display: 'flex', alignItems: 'center',
                       justifyContent: 'center', gap: '6px'
@@ -1256,10 +1324,10 @@ export default function MapScreen() {
                     style={{
                       flex: 2,
                       background: applying
-                        ? '#B8A5FF'
-                        : 'linear-gradient(135deg, #6C47FF, #9B59FF)',
+                        ? 'var(--color-brand-border-strong)'
+                        : 'var(--color-brand-gradient)',
                       border: 'none', borderRadius: '12px', padding: '13px',
-                      fontSize: '14px', fontWeight: '700', color: '#fff',
+                      fontSize: '14px', fontWeight: '700', color: 'var(--color-surface)',
                       cursor: applying ? 'not-allowed' : 'pointer',
                       fontFamily: 'inherit',
                       display: 'flex', alignItems: 'center',
@@ -1287,7 +1355,7 @@ export default function MapScreen() {
     display: 'flex', alignItems: 'flex-end', justifyContent: 'center'
   }} onClick={() => setShowAllGigs(false)}>
     <div onClick={e => e.stopPropagation()} style={{
-      background: '#fff',
+      background: 'var(--color-surface)',
       borderRadius: '22px 22px 0 0',
       width: '100%', maxWidth: '640px',
       maxHeight: '80vh',
@@ -1298,66 +1366,66 @@ export default function MapScreen() {
       <div style={{
         padding: '16px 20px 12px',
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        borderBottom: '1px solid #F5F4FF', flexShrink: 0
+        borderBottom: '1px solid var(--color-page)', flexShrink: 0
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <div style={{ width: '36px', height: '4px', background: '#E2E0FF', borderRadius: '2px' }} />
+          <div style={{ width: '36px', height: '4px', background: 'var(--color-border)', borderRadius: '2px' }} />
         </div>
         <div style={{ textAlign: 'center', flex: 1 }}>
-          <div style={{ fontSize: '15px', fontWeight: '800', color: '#14123A' }}>All Nearby Gigs</div>
-          <div style={{ fontSize: '11px', color: '#A09DC8', marginTop: '1px' }}>
+          <div style={{ fontSize: '15px', fontWeight: '800', color: 'var(--color-text)' }}>All Nearby Gigs</div>
+          <div style={{ fontSize: '11px', color: 'var(--color-text-subtle)', marginTop: '1px' }}>
             {filteredGigs.length} gig{filteredGigs.length !== 1 ? 's' : ''} in view
           </div>
         </div>
         <button onClick={() => setShowAllGigs(false)} style={{
-          background: '#F5F4FF', border: '1.5px solid #E2E0FF',
+          background: 'var(--color-page)', border: '1.5px solid var(--color-border)',
           borderRadius: '50%', width: '32px', height: '32px',
-          fontSize: '16px', color: '#8B8FAF', cursor: 'pointer',
+          fontSize: '16px', color: 'var(--color-text-muted)', cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontFamily: 'inherit'
         }}>×</button>
       </div>
       <div style={{ overflowY: 'auto', flex: 1, padding: '12px 16px 24px' }}>
         {filteredGigs.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '40px 0', color: '#A09DC8', fontSize: '13px' }}>
+          <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--color-text-subtle)', fontSize: '13px' }}>
             No gigs match your filters
           </div>
         ) : filteredGigs.map(gig => (
           <div key={gig.id}
             onClick={() => { openGig(gig); setShowAllGigs(false) }}
             style={{
-              background: '#F5F4FF', borderRadius: '14px',
+              background: 'var(--color-page)', borderRadius: '14px',
               padding: '14px', marginBottom: '10px',
-              border: '1.5px solid #E2E0FF', cursor: 'pointer',
+              border: '1.5px solid var(--color-border)', cursor: 'pointer',
               transition: 'border-color 0.15s'
             }}
-            onMouseEnter={e => e.currentTarget.style.borderColor = '#B8A5FF'}
-            onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E0FF'}
+            onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--color-brand-border-strong)'}
+            onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--color-border)'}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
-              <div style={{ fontSize: '13px', fontWeight: '700', color: '#14123A', flex: 1, paddingRight: '10px', lineHeight: '1.3' }}>
+              <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--color-text)', flex: 1, paddingRight: '10px', lineHeight: '1.3' }}>
                 {gig.title}
               </div>
-              <div style={{ fontSize: '14px', fontWeight: '800', color: '#00C48C', flexShrink: 0 }}>
+              <div style={{ fontSize: '14px', fontWeight: '800', color: 'var(--color-success)', flexShrink: 0 }}>
                 {getCurrencySymbol(gig.currency)}{gig.pay_min}–{gig.pay_max}
               </div>
             </div>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
               <span style={{
-                background: gig.urgency === 'now' ? '#FFE8EE' : '#FFF0E8',
-                border: `1px solid ${gig.urgency === 'now' ? '#FF99B3' : '#FFBC99'}`,
+                background: gig.urgency === 'now' ? 'var(--color-danger-soft)' : 'var(--color-warning-soft)',
+                border: `1px solid ${gig.urgency === 'now' ? 'var(--color-danger-border)' : 'var(--color-warning-border)'}`,
                 borderRadius: '4px', padding: '2px 7px',
                 fontSize: '9px', fontWeight: '800',
-                color: gig.urgency === 'now' ? '#FF3366' : '#FF6B2B', letterSpacing: '0.8px'
+                color: gig.urgency === 'now' ? 'var(--color-danger)' : 'var(--color-warning)', letterSpacing: '0.8px'
               }}>{gig.urgency?.toUpperCase()}</span>
-              <span style={{ fontSize: '11px', color: '#A09DC8' }}>
+              <span style={{ fontSize: '11px', color: 'var(--color-text-subtle)' }}>
                 {formatDist(calcDistance(userPos[0], userPos[1], gig.latitude, gig.longitude))} away
               </span>
               {gig.type === 'digital' && (
-                <span style={{ fontSize: '9px', fontWeight: '800', color: '#0EA5E9', letterSpacing: '0.5px' }}>REMOTE</span>
+                <span style={{ fontSize: '9px', fontWeight: '800', color: 'var(--color-info)', letterSpacing: '0.5px' }}>REMOTE</span>
               )}
               {gig.field && (
-                <span style={{ fontSize: '10px', color: '#8B8FAF' }}>{gig.field}</span>
+                <span style={{ fontSize: '10px', color: 'var(--color-text-muted)' }}>{gig.field}</span>
               )}
             </div>
           </div>
@@ -1406,8 +1474,8 @@ export default function MapScreen() {
           bottom: '92px',
           transform: 'translateX(-50%)',
           zIndex: 12000,
-          background: '#14123A',
-          color: '#fff',
+          background: 'var(--color-text)',
+          color: 'var(--color-surface)',
           borderRadius: '12px',
           padding: '10px 14px',
           fontSize: '13px',
@@ -1423,9 +1491,19 @@ export default function MapScreen() {
       )}
 
       <style>{`
-        @keyframes blink {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.2; }
+        .live-indicator-dot {
+          width: 7px;
+          height: 7px;
+          flex: 0 0 7px;
+          border-radius: 50%;
+          background: var(--color-success-accent);
+          box-shadow: 0 0 0 0 rgba(0, 196, 140, 0.55);
+          animation: liveIndicatorPulse 1.8s ease-out infinite;
+        }
+        @keyframes liveIndicatorPulse {
+          0% { box-shadow: 0 0 0 0 rgba(0, 196, 140, 0.55); }
+          70% { box-shadow: 0 0 0 6px rgba(0, 196, 140, 0); }
+          100% { box-shadow: 0 0 0 0 rgba(0, 196, 140, 0); }
         }
         @keyframes slideUp {
           from { opacity: 0; transform: translateY(24px); }
@@ -1462,7 +1540,7 @@ export default function MapScreen() {
         .prima-shimmer {
           height: 12px;
           border-radius: 999px;
-          background: #E2E0FF;
+          background: var(--color-border);
           margin-top: 10px;
           position: relative;
           overflow: hidden;
@@ -1488,7 +1566,60 @@ export default function MapScreen() {
         .leaflet-popup-content-wrapper {
           border-radius: 14px !important;
           box-shadow: 0 8px 32px rgba(108,71,255,0.15) !important;
-          border: 1.5px solid #E2E0FF !important;
+          border: none !important;
+          background: var(--color-glass-surface) !important;
+          backdrop-filter: blur(14px) saturate(1.1);
+        }
+        .prima-work-popup .leaflet-popup-content { margin: 0; }
+        .prima-work-popup .leaflet-popup-tip {
+          background: var(--color-glass-surface) !important;
+          box-shadow: 0 4px 10px rgba(31,24,77,0.06);
+        }
+        .prima-map-work-card {
+          position: relative;
+          width: 100%;
+          box-sizing: border-box;
+          padding: 14px;
+          color: var(--color-text);
+          font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        .prima-map-work-address {
+          display: grid;
+          gap: 4px;
+          margin: 0 0 9px;
+          padding: 8px 10px;
+          border-radius: 10px;
+          background: rgba(108,71,255,0.07);
+          color: var(--color-text-muted);
+          font-size: 11px;
+          line-height: 1.35;
+        }
+        .prima-map-work-address-row {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+        .prima-map-work-address-row svg {
+          flex: 0 0 auto;
+          color: var(--color-brand);
+        }
+        .prima-map-work-title {
+          margin-bottom: 3px;
+          color: var(--color-text);
+          font-size: 14px;
+          font-weight: 800;
+          line-height: 1.35;
+        }
+        .prima-map-work-pay {
+          margin-bottom: 6px;
+          color: var(--color-success);
+          font-size: 14px;
+          font-weight: 800;
+        }
+        .prima-map-work-poster {
+          color: var(--color-text-subtle);
+          font-size: 11px;
+          line-height: 1.35;
         }
         .leaflet-popup-tip {
           background: #fff !important;
@@ -1540,8 +1671,10 @@ export default function MapScreen() {
         .prima-gig-avatar {
           width: 44px;
           height: 44px;
+          box-sizing: border-box;
           border-radius: 50%;
-          border: 3px solid;
+          padding: 0;
+          background: var(--color-brand-soft);
           overflow: hidden;
           box-shadow: 0 5px 14px rgba(20, 18, 58, 0.24);
           display: flex;
@@ -1553,6 +1686,63 @@ export default function MapScreen() {
           z-index: 2;
           transition: transform 0.18s ease, box-shadow 0.18s ease;
         }
+        .prima-gig-location-badge {
+          position: absolute;
+          top: 35px;
+          left: 50%;
+          z-index: 3;
+          width: 19px;
+          height: 19px;
+          display: grid;
+          place-items: center;
+          transform: translateX(-50%);
+          border: 2px solid #fff;
+          border-radius: 50%;
+          background: var(--color-brand-gradient);
+          color: #fff;
+          box-shadow: 0 2px 7px rgba(72, 42, 170, 0.3);
+        }
+        .prima-gig-location-badge svg {
+          width: 11px;
+          height: 11px;
+        }
+        .prima-gig-avatar::after {
+          content: '';
+          position: absolute;
+          inset: 0;
+          border-radius: 50%;
+          padding: 3px;
+          background: var(--color-brand-gradient);
+          -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+          -webkit-mask-composite: xor;
+          mask-composite: exclude;
+          pointer-events: none;
+          z-index: 2;
+        }
+        .prima-gig-avatar-inner {
+          width: 100%;
+          height: 100%;
+          border-radius: 50%;
+          overflow: hidden;
+          background: transparent;
+          position: relative;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .prima-gig-avatar-inner img {
+          position: absolute;
+          inset: 0;
+          width: 100% !important;
+          height: 100% !important;
+          max-width: none !important;
+          display: block;
+          border-radius: 50%;
+          object-fit: cover;
+        }
+        .prima-gig-avatar-inner span {
+          color: var(--color-brand);
+        }
         .custom-gig-pin:hover .prima-gig-avatar {
           transform: scale(1.05);
         }
@@ -1561,7 +1751,7 @@ export default function MapScreen() {
           box-shadow: 0 8px 22px rgba(108,71,255,0.32);
         }
         .prima-gig-pin.is-selected .prima-gig-label {
-          color: #6C47FF;
+          color: var(--color-brand);
         }
         .prima-gig-label {
           background: rgba(255, 255, 255, 0.96);
@@ -1569,9 +1759,9 @@ export default function MapScreen() {
           padding: 3px 7px;
           font-size: 10px;
           font-weight: 700;
-          color: #14123A;
+          color: var(--color-text);
           box-shadow: 0 2px 8px rgba(20, 18, 58, 0.14);
-          margin-top: 3px;
+          margin-top: 8px;
           white-space: nowrap;
           max-width: 120px;
           overflow: hidden;
@@ -1587,7 +1777,7 @@ export default function MapScreen() {
           width: 44px;
           height: 44px;
           border-radius: 50%;
-          background: #6C47FF;
+          background: var(--color-brand);
           border: 3px solid #fff;
           box-shadow: 0 5px 16px rgba(108, 71, 255, 0.45);
           display: flex;
@@ -1603,9 +1793,6 @@ export default function MapScreen() {
         .prima-cluster-marker:hover .prima-cluster-core {
           transform: scale(1.08);
         }
-        .prima-now-card.is-active {
-          animation: primaActiveCard 1.9s ease-in-out infinite;
-        }
         @keyframes primaPinDrop {
           0% { transform: translateY(-10px) scale(0.86); opacity: 0; }
           100% { transform: translateY(0) scale(1); opacity: 1; }
@@ -1613,10 +1800,6 @@ export default function MapScreen() {
         @keyframes primaPinFloat {
           0%, 100% { transform: translateY(0); }
           50% { transform: translateY(-2px); }
-        }
-        @keyframes primaActiveCard {
-          0%, 100% { box-shadow: 0 8px 24px rgba(108,71,255,0.18); }
-          50% { box-shadow: 0 10px 30px rgba(108,71,255,0.28); }
         }
         .leaflet-tile-pane { z-index: 1 !important; }
         .leaflet-overlay-pane { z-index: 2 !important; }

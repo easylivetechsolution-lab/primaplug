@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 import ReportModal from './ReportModal'
 import BrandIcon from './BrandIcon'
 import VerificationBadge from './VerificationBadge'
+import { parseTimestamp } from '../utils/time'
 
 export default function PublicProfile({ userId, onClose }) {
   const { user: currentUser } = useAuth()
@@ -103,7 +104,7 @@ export default function PublicProfile({ userId, onClose }) {
       setTimeout(() => {
         onClose()
         window.dispatchEvent(new CustomEvent('openChatWithUser', {
-          detail: { userId, gigId: null }
+          detail: { userId }
         }))
       }, 600)
     } catch (e) {
@@ -118,6 +119,7 @@ export default function PublicProfile({ userId, onClose }) {
       .select('*')
       .eq('poster_id', userId)
       .eq('status', 'open')
+      .is('deleted_at', null)
       .order('created_at', { ascending: false })
       .limit(5)
     if (data) setGigs(data)
@@ -128,7 +130,7 @@ export default function PublicProfile({ userId, onClose }) {
   return (
     <div style={{
       position: 'fixed', inset: 0,
-      background: 'rgba(20,18,58,0.52)',
+      background: 'rgba(20,18,58,0.75)',
       backdropFilter: 'blur(4px)',
       zIndex: 10000,
       display: 'flex', alignItems: 'flex-end',
@@ -136,28 +138,32 @@ export default function PublicProfile({ userId, onClose }) {
       fontFamily: "'Plus Jakarta Sans', sans-serif"
     }} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} style={{
-        background: 'var(--color-brand-surface-gradient)',
+        background: 'var(--color-surface)',
         borderRadius: '22px 22px 0 0',
         width: '100%', maxWidth: '640px',
         maxHeight: '90vh', overflowY: 'auto',
         animation: 'slideUp 0.3s cubic-bezier(0.16,1,0.3,1)',
-        border: 'none', boxShadow: 'var(--shadow-glass)', backdropFilter: 'blur(14px) saturate(1.08)'
+        border: '1.5px solid var(--color-border)'
       }}>
         <div style={{
           display: 'flex', alignItems: 'center',
           justifyContent: 'center', position: 'relative',
           padding: '14px 16px 0'
         }}>
+          <div style={{
+            width: '40px', height: '4px',
+            background: 'var(--color-border)', borderRadius: '2px'
+          }} />
           <button
             onClick={onClose}
             style={{
               position: 'absolute', right: '14px', top: '8px',
               width: '32px', height: '32px',
               borderRadius: '50%', border: 'none',
-              background: '#F5F4FF',
+              background: 'var(--color-page)',
               display: 'flex', alignItems: 'center',
               justifyContent: 'center', cursor: 'pointer',
-              fontSize: '18px', color: '#8B8FAF',
+              fontSize: '18px', color: 'var(--color-text-muted)',
               fontFamily: 'inherit', lineHeight: 1
             }}
             aria-label="Close">
@@ -168,21 +174,21 @@ export default function PublicProfile({ userId, onClose }) {
         {loading ? (
           <div style={{
             padding: '48px', textAlign: 'center',
-            color: '#A09DC8', fontSize: '14px'
+            color: 'var(--color-text-subtle)', fontSize: '14px'
           }}>Loading profile...</div>
         ) : !profile ? (
           <div style={{
             padding: '48px', textAlign: 'center',
-            color: '#A09DC8', fontSize: '14px'
+            color: 'var(--color-text-subtle)', fontSize: '14px'
           }}>Profile not found</div>
         ) : (
           <div style={{ padding: '20px 20px 40px' }}>
 
             {/* Hero */}
             <div style={{
-              background: 'linear-gradient(135deg, #6C47FF 0%, #9B59FF 50%, #FF4DCF 100%)',
+              background: 'linear-gradient(135deg, var(--color-brand) 0%, var(--color-brand-mid) 50%, var(--color-brand-highlight) 100%)',
               borderRadius: '20px', padding: '20px',
-              color: '#fff', marginBottom: '16px'
+              color: 'var(--color-surface)', marginBottom: '16px'
             }}>
               <div style={{
                 display: 'flex', gap: '14px',
@@ -215,7 +221,7 @@ export default function PublicProfile({ userId, onClose }) {
                     @{profile.username}
                   </div>
                   {profile.location && (
-                    <div style={{ fontSize: '11px', opacity: 0.7, marginBottom: '10px' }}>
+                    <div style={{ fontSize: '12px', opacity: 0.7, marginBottom: '10px' }}>
                       📍 {profile.location}
                     </div>
                   )}
@@ -233,10 +239,10 @@ export default function PublicProfile({ userId, onClose }) {
                   textAlign: 'center', flexShrink: 0
                 }}>
                   <div style={{ fontSize: '20px', fontWeight: '800' }}>
-                    {profile.trust_score || 100}%
+                    {profile.trust_score ?? 0}%
                   </div>
                   <div style={{
-                    fontSize: '8px', opacity: 0.7,
+                    fontSize: '12px', opacity: 0.7,
                     fontWeight: '700', letterSpacing: '.5px'
                   }}>TRUST</div>
                 </div>
@@ -259,11 +265,11 @@ export default function PublicProfile({ userId, onClose }) {
                 disabled={messaging || messageSent}
                 style={{
                   width: '100%',
-                  background: messageSent ? '#DFFDF4' : 'linear-gradient(135deg, #6C47FF 0%, #9B59FF 100%)',
+                  background: messageSent ? 'var(--color-success-soft)' : 'linear-gradient(135deg, var(--color-brand) 0%, var(--color-brand-mid) 100%)',
                   border: 'none',
                   borderRadius: '14px', padding: '14px',
                   fontSize: '15px', fontWeight: '700',
-                  color: messageSent ? '#00C48C' : '#fff',
+                  color: messageSent ? 'var(--color-success)' : 'var(--color-surface)',
                   cursor: messaging || messageSent ? 'default' : 'pointer',
                   fontFamily: 'inherit', transition: 'all 0.2s',
                   marginBottom: '16px',
@@ -286,10 +292,10 @@ export default function PublicProfile({ userId, onClose }) {
                 onClick={() => setShowReport(true)}
                 style={{
                   width: '100%',
-                  background: '#FFE8EE', border: '1.5px solid #FF99B3',
+                  background: 'var(--color-danger-soft)', border: '1.5px solid var(--color-danger-border)',
                   borderRadius: '14px', padding: '11px',
                   fontSize: '13px', fontWeight: '700',
-                  color: '#FF3366', cursor: 'pointer',
+                  color: 'var(--color-danger)', cursor: 'pointer',
                   fontFamily: 'inherit', marginBottom: '16px',
                   display: 'flex', alignItems: 'center',
                   justifyContent: 'center', gap: '6px'
@@ -299,10 +305,10 @@ export default function PublicProfile({ userId, onClose }) {
             )}
             {isOwnProfile && (
               <div style={{
-                background: '#F5F4FF', border: '1.5px solid #E2E0FF',
+                background: 'var(--color-page)', border: '1.5px solid var(--color-border)',
                 borderRadius: '14px', padding: '12px 14px',
                 marginBottom: '16px', textAlign: 'center',
-                fontSize: '13px', color: '#6C47FF', fontWeight: '600'
+                fontSize: '13px', color: 'var(--color-brand)', fontWeight: '600'
               }}>
                 This is your profile
               </div>
@@ -314,22 +320,22 @@ export default function PublicProfile({ userId, onClose }) {
               gap: '8px', marginBottom: '16px'
             }}>
               {[
-                ['Trust', `${profile.trust_score || 100}%`, '#6C47FF'],
-                ['Done', `${profile.gigs_completed || 0}`, '#00C48C'],
-                ['Rating', `${profile.rating || 5.0}★`, '#FFB800'],
-                ['Reviews', `${profile.reviews_count || 0}`, '#FF6B2B'],
+                ['Trust', `${profile.trust_score ?? 0}%`, 'var(--color-brand)'],
+                ['Done', `${profile.gigs_completed || 0}`, 'var(--color-success)'],
+                ['Rating', (profile.reviews_count || 0) > 0 ? `${Number(profile.rating || 0).toFixed(1)}★` : '0.0★', 'var(--color-warning-gold)'],
+                ['Reviews', `${profile.reviews_count || 0}`, 'var(--color-warning)'],
               ].map(([label, val, color]) => (
                 <div key={label} style={{
-                  background: '#F5F4FF', borderRadius: '10px',
+                  background: 'var(--color-page)', borderRadius: '10px',
                   padding: '10px 6px', textAlign: 'center',
-                  border: '1.5px solid #E2E0FF'
+                  border: '1.5px solid var(--color-border)'
                 }}>
                   <div style={{
                     fontSize: '16px', fontWeight: '800',
                     color, marginBottom: '2px'
                   }}>{val}</div>
                   <div style={{
-                    fontSize: '8px', color: '#A09DC8',
+                    fontSize: '12px', color: 'var(--color-text-subtle)',
                     fontWeight: '600', textTransform: 'uppercase',
                     letterSpacing: '0.5px'
                   }}>{label}</div>
@@ -341,16 +347,16 @@ export default function PublicProfile({ userId, onClose }) {
             {profile.skills && profile.skills.length > 0 && (
               <div style={{ marginBottom: '16px' }}>
                 <div style={{
-                  fontSize: '11px', fontWeight: '700', color: '#A09DC8',
+                  fontSize: '12px', fontWeight: '700', color: 'var(--color-text-subtle)',
                   textTransform: 'uppercase', letterSpacing: '1px',
                   marginBottom: '10px'
                 }}>Skills</div>
                 <div style={{ display: 'flex', gap: '7px', flexWrap: 'wrap' }}>
                   {profile.skills.map(skill => (
                     <span key={skill} style={{
-                      background: '#EEE9FF', border: '1.5px solid #B8A5FF',
+                      background: 'var(--color-brand-soft)', border: '1.5px solid var(--color-brand-border-strong)',
                       borderRadius: '20px', padding: '6px 13px',
-                      fontSize: '12px', fontWeight: '600', color: '#6C47FF'
+                      fontSize: '12px', fontWeight: '600', color: 'var(--color-brand)'
                     }}>{skill}</span>
                   ))}
                 </div>
@@ -361,15 +367,15 @@ export default function PublicProfile({ userId, onClose }) {
             {profile.work_experience && (
               <div style={{ marginBottom: '16px' }}>
                 <div style={{
-                  fontSize: '11px', fontWeight: '700', color: '#A09DC8',
+                  fontSize: '12px', fontWeight: '700', color: 'var(--color-text-subtle)',
                   textTransform: 'uppercase', letterSpacing: '1px',
                   marginBottom: '10px'
                 }}>Experience</div>
                 <div style={{
-                  background: '#F5F4FF', borderRadius: '12px',
+                  background: 'var(--color-page)', borderRadius: '12px',
                   padding: '14px', fontSize: '13px',
-                  color: '#5B5887', lineHeight: '1.7',
-                  border: '1.5px solid #E2E0FF'
+                  color: 'var(--color-text-muted)', lineHeight: '1.7',
+                  border: '1.5px solid var(--color-border)'
                 }}>{profile.work_experience}</div>
               </div>
             )}
@@ -378,7 +384,7 @@ export default function PublicProfile({ userId, onClose }) {
             {gigs.length > 0 && (
               <div style={{ marginBottom: '20px' }}>
                 <div style={{
-                  fontSize: '11px', fontWeight: '700', color: '#A09DC8',
+                  fontSize: '12px', fontWeight: '700', color: 'var(--color-text-subtle)',
                   textTransform: 'uppercase', letterSpacing: '1px',
                   marginBottom: '10px'
                 }}>Active Gigs ({gigs.length})</div>
@@ -387,22 +393,22 @@ export default function PublicProfile({ userId, onClose }) {
                 }}>
                   {gigs.map(gig => (
                     <div key={gig.id} style={{
-                      background: '#F5F4FF', borderRadius: '12px',
-                      padding: '12px 14px', border: '1.5px solid #E2E0FF',
+                      background: 'var(--color-page)', borderRadius: '12px',
+                      padding: '12px 14px', border: '1.5px solid var(--color-border)',
                       display: 'flex', justifyContent: 'space-between',
                       alignItems: 'center'
                     }}>
                       <div>
                         <div style={{
                           fontSize: '13px', fontWeight: '700',
-                          color: '#14123A', marginBottom: '3px'
+                          color: 'var(--color-text)', marginBottom: '3px'
                         }}>{gig.title}</div>
-                        <div style={{ fontSize: '11px', color: '#A09DC8' }}>
+                        <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)' }}>
                           {gig.field} · {gig.type === 'physical' ? '📌 Local' : '💻 Remote'}
                         </div>
                       </div>
                       <div style={{
-                        fontSize: '14px', fontWeight: '800', color: '#00C48C'
+                        fontSize: '14px', fontWeight: '800', color: 'var(--color-success)'
                       }}>
                         ${gig.pay_min}+
                       </div>
@@ -416,7 +422,7 @@ export default function PublicProfile({ userId, onClose }) {
             {reviews.length > 0 && (
               <div style={{ marginBottom: '20px' }}>
                 <div style={{
-                  fontSize: '11px', fontWeight: '700', color: '#A09DC8',
+                  fontSize: '12px', fontWeight: '700', color: 'var(--color-text-subtle)',
                   textTransform: 'uppercase', letterSpacing: '1px',
                   marginBottom: '12px'
                 }}>
@@ -425,8 +431,8 @@ export default function PublicProfile({ userId, onClose }) {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {reviews.map(review => (
                     <div key={review.id} style={{
-                      background: '#F5F4FF', borderRadius: '14px',
-                      padding: '14px', border: '1.5px solid #E2E0FF'
+                      background: 'var(--color-page)', borderRadius: '14px',
+                      padding: '14px', border: '1.5px solid var(--color-border)'
                     }}>
                       <div style={{
                         display: 'flex', justifyContent: 'space-between',
@@ -435,10 +441,10 @@ export default function PublicProfile({ userId, onClose }) {
                         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                           <div style={{
                             width: '32px', height: '32px', borderRadius: '8px',
-                            background: '#EEE9FF', display: 'flex',
+                            background: 'var(--color-brand-soft)', display: 'flex',
                             alignItems: 'center', justifyContent: 'center',
                             fontSize: '12px', fontWeight: '800',
-                            color: '#6C47FF', overflow: 'hidden', flexShrink: 0
+                            color: 'var(--color-brand)', overflow: 'hidden', flexShrink: 0
                           }}>
                             {review.users?.avatar_url ? (
                               <img src={review.users.avatar_url} alt=""
@@ -449,12 +455,12 @@ export default function PublicProfile({ userId, onClose }) {
                           </div>
                           <div>
                             <div style={{
-                              fontSize: '12px', fontWeight: '700', color: '#14123A'
+                              fontSize: '12px', fontWeight: '700', color: 'var(--color-text)'
                             }}>
                               {review.users?.full_name || 'Anonymous'}
                             </div>
-                            <div style={{ fontSize: '10px', color: '#A09DC8' }}>
-                              {new Date(review.created_at).toLocaleDateString('en-US', {
+                            <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)' }}>
+                              {parseTimestamp(review.created_at).toLocaleDateString('en-US', {
                                 month: 'short', day: 'numeric', year: 'numeric'
                               })}
                             </div>
@@ -477,9 +483,9 @@ export default function PublicProfile({ userId, onClose }) {
                         }}>
                           {review.tags.map(tag => (
                             <span key={tag} style={{
-                              background: '#EEE9FF', borderRadius: '20px',
-                              padding: '3px 9px', fontSize: '10px',
-                              fontWeight: '600', color: '#6C47FF'
+                              background: 'var(--color-brand-soft)', borderRadius: '20px',
+                              padding: '3px 9px', fontSize: '12px',
+                              fontWeight: '600', color: 'var(--color-brand)'
                             }}>{tag}</span>
                           ))}
                         </div>
@@ -487,7 +493,7 @@ export default function PublicProfile({ userId, onClose }) {
 
                       {review.comment && (
                         <div style={{
-                          fontSize: '12px', color: '#5B5887', lineHeight: '1.6'
+                          fontSize: '12px', color: 'var(--color-text-muted)', lineHeight: '1.6'
                         }}>{review.comment}</div>
                       )}
                     </div>
@@ -496,8 +502,6 @@ export default function PublicProfile({ userId, onClose }) {
               </div>
             )}
 
-            {/* Contact Buttons */}
-            
           </div>
         )}
 

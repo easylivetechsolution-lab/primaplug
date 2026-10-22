@@ -1,9 +1,11 @@
-import { useState, useEffect, useRef } from 'react'
+﻿import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 import PublicProfile from './PublicProfile'
 import BrandIcon from './BrandIcon'
+import { showToast } from '../utils/toast'
 import { ensureGigConversation } from '../utils/gigApplications'
+import { parseTimestamp } from '../utils/time'
 import {
   playNotification,
   playAccepted,
@@ -24,9 +26,22 @@ export default function NotificationBell({ onNavigate }) {
   const [actionDone, setActionDone] = useState(null)
   const ref = useRef()
 
+  async function fetchNotifications() {
+    const { data } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(20)
+    if (data) {
+      setNotifications(data)
+      setUnread(data.filter(n => !n.read).length)
+    }
+  }
+
   useEffect(() => {
     if (!user) return
-    fetchNotifications()
+    Promise.resolve().then(fetchNotifications)
 
     const channel = supabase
       .channel('notifications-' + user.id)
@@ -72,19 +87,6 @@ export default function NotificationBell({ onNavigate }) {
     return () => window.removeEventListener('popstate', handleBack)
   }, [!!notifDetail])
 
-  const fetchNotifications = async () => {
-    const { data } = await supabase
-      .from('notifications')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(20)
-    if (data) {
-      setNotifications(data)
-      setUnread(data.filter(n => !n.read).length)
-    }
-  }
-
   const markAllRead = async () => {
     await supabase
       .from('notifications')
@@ -119,7 +121,7 @@ export default function NotificationBell({ onNavigate }) {
   }
 
   const timeAgo = (date) => {
-    const seconds = Math.floor((new Date() - new Date(date)) / 1000)
+    const seconds = Math.floor((new Date() - parseTimestamp(date)) / 1000)
     if (seconds < 60) return 'just now'
     if (seconds < 3600) return `${Math.floor(seconds/60)}m ago`
     if (seconds < 86400) return `${Math.floor(seconds/3600)}h ago`
@@ -128,6 +130,18 @@ export default function NotificationBell({ onNavigate }) {
 
   const openMessageNotification = async (notif) => {
     if (!user) return
+
+    if (notif.conversation_id) {
+      onNavigate && onNavigate('chat')
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          window.dispatchEvent(new CustomEvent('openChat', {
+            detail: { convoId: notif.conversation_id }
+          }))
+        })
+      })
+      return
+    }
 
     let query = supabase
       .from('conversations')
@@ -169,9 +183,9 @@ export default function NotificationBell({ onNavigate }) {
           width: '48px', height: '48px',
           borderRadius: '14px',
           background: unread > 0
-            ? 'linear-gradient(135deg, #6C47FF 0%, #9B59FF 52%, #FF4DCF 100%)'
-            : '#F5F4FF',
-          border: `1.5px solid ${unread > 0 ? 'rgba(255,255,255,0.65)' : '#E2E0FF'}`,
+            ? 'linear-gradient(135deg, var(--color-brand) 0%, var(--color-brand-mid) 52%, var(--color-brand-highlight) 100%)'
+            : 'var(--color-page)',
+          border: `1.5px solid ${unread > 0 ? 'rgba(255,255,255,0.65)' : 'var(--color-border)'}`,
           display: 'flex', alignItems: 'center',
           justifyContent: 'center', cursor: 'pointer',
           position: 'relative', transition: 'all 0.15s',
@@ -187,17 +201,17 @@ export default function NotificationBell({ onNavigate }) {
           <svg width="30" height="30" viewBox="0 0 32 32" fill="none" aria-hidden="true">
             <path
               d="M10.2 20.2h11.6l-1.6-1.8v-5.1A4.2 4.2 0 0 0 16 9.1a4.2 4.2 0 0 0-4.2 4.2v5.1l-1.6 1.8Z"
-              fill={unread > 0 ? '#fff' : '#6C47FF'}
+              fill={unread > 0 ? 'var(--color-surface)' : 'var(--color-brand)'}
             />
             <path
               d="M13.8 22.2c.5.9 1.2 1.4 2.2 1.4s1.7-.5 2.2-1.4"
-              stroke={unread > 0 ? '#fff' : '#6C47FF'}
+              stroke={unread > 0 ? 'var(--color-surface)' : 'var(--color-brand)'}
               strokeWidth="2.2"
               strokeLinecap="round"
             />
             <path
               d="M12.7 11c.8-1 1.9-1.6 3.3-1.6s2.5.6 3.3 1.6"
-              stroke={unread > 0 ? 'rgba(255,255,255,0.72)' : '#B8A5FF'}
+              stroke={unread > 0 ? 'rgba(255,255,255,0.72)' : 'var(--color-brand-border-strong)'}
               strokeWidth="1.8"
               strokeLinecap="round"
             />
@@ -208,11 +222,11 @@ export default function NotificationBell({ onNavigate }) {
             position: 'absolute', top: '-5px', right: '-5px',
             width: unread > 9 ? '24px' : '20px',
             height: '20px', borderRadius: '50%',
-            background: 'linear-gradient(135deg, #FF3366, #FF4DCF)',
+            background: 'linear-gradient(135deg, var(--color-danger), var(--color-brand-highlight))',
             border: '2px solid #fff',
             display: 'flex', alignItems: 'center',
             justifyContent: 'center',
-            fontSize: '9px', fontWeight: '800', color: '#fff',
+            fontSize: '12px', fontWeight: '800', color: 'var(--color-surface)',
             boxShadow: '0 4px 10px rgba(255,51,102,0.35)'
           }}>
             {unread > 9 ? '9+' : unread}
@@ -222,10 +236,10 @@ export default function NotificationBell({ onNavigate }) {
 
       {/* Dropdown */}
       {open && (
-        <div style={{
-          position: 'fixed', top: '68px', right: '16px',
-          width: '320px', background: '#fff',
-          borderRadius: '16px', border: '1.5px solid #E2E0FF',
+        <div className="notification-dropdown" style={{
+          position: 'fixed', top: '68px', right: '12px',
+          width: 'min(360px, calc(100vw - 24px))', maxWidth: '360px', background: 'var(--color-surface)',
+          borderRadius: '16px', border: '1.5px solid var(--color-border)',
           boxShadow: '0 12px 40px rgba(108,71,255,0.18)',
           zIndex: 9000, overflow: 'hidden',
           animation: 'notifDrop 0.2s ease',
@@ -236,15 +250,16 @@ export default function NotificationBell({ onNavigate }) {
             padding: '14px 16px',
             display: 'flex', justifyContent: 'space-between',
             alignItems: 'center',
-            borderBottom: '1px solid #F5F4FF'
+            borderBottom: '1px solid var(--color-page)'
           }}>
             <div style={{
-              fontSize: '14px', fontWeight: '800', color: '#14123A'
+              fontSize: '16px', fontWeight: '800', color: 'var(--color-text)'
             }}>Notifications</div>
             {unread > 0 && (
               <button onClick={markAllRead} style={{
                 background: 'none', border: 'none',
-                fontSize: '11px', color: '#6C47FF',
+                minHeight: '40px', padding: '6px 8px',
+                fontSize: '13px', color: 'var(--color-brand)',
                 fontWeight: '600', cursor: 'pointer',
                 fontFamily: 'inherit'
               }}>Mark all read</button>
@@ -256,7 +271,7 @@ export default function NotificationBell({ onNavigate }) {
             {notifications.length === 0 ? (
               <div style={{
                 padding: '32px 16px', textAlign: 'center',
-                color: '#A09DC8', fontSize: '13px'
+                color: 'var(--color-text-subtle)', fontSize: '13px'
               }}>
                 <div style={{
                   display: 'flex',
@@ -281,6 +296,37 @@ export default function NotificationBell({ onNavigate }) {
                       return
                     }
 
+                    if (notif.type === 'wallet') {
+                      onNavigate && onNavigate('wallet')
+                      return
+                    }
+
+                    if (notif.type === 'commission') {
+                      onNavigate && onNavigate('commission')
+                      return
+                    }
+
+                    // Receipt and completion updates belong in the user's job
+                    // workspace, where they can continue the receipt/review flow.
+                    if (notif.type === 'receipt' || notif.type === 'review') {
+                      onNavigate && onNavigate('mygigs')
+                      return
+                    }
+
+                    // Job outcome notifications should open the actual gig in the
+                    // app's current gig detail view, rather than the legacy sheet.
+                    if (['accepted', 'rejected'].includes(notif.type) && notif.gig_id) {
+                      onNavigate && onNavigate('feed')
+                      requestAnimationFrame(() => {
+                        requestAnimationFrame(() => {
+                          window.dispatchEvent(new CustomEvent('openGigDetail', {
+                            detail: notif.gig_id
+                          }))
+                        })
+                      })
+                      return
+                    }
+
                     if (!notif.gig_id) {
                       setNotifDetail({ type: 'info', notif })
                       return
@@ -301,7 +347,7 @@ export default function NotificationBell({ onNavigate }) {
                         .eq('gig_id', notif.gig_id)
                         .order('created_at', { ascending: false })
 
-                      setNotifDetail({ type: 'application', gig, applications: apps || [] })
+                      setNotifDetail({ type: 'application', notif, gig_id: notif.gig_id, gig, applications: apps || [] })
                     } else if (notif.type === 'accepted' || notif.type === 'rejected') {
                       const { data: gig } = await supabase
                         .from('gigs')
@@ -311,9 +357,12 @@ export default function NotificationBell({ onNavigate }) {
 
                       setNotifDetail({ type: notif.type, gig })
                     } else if (notif.type === 'receipt' || notif.type === 'review') {
-                      setLoadingDetail(false)
-                      onNavigate && onNavigate('mygigs')
-                      return
+                      const { data: gig } = await supabase
+                        .from('gigs')
+                        .select('*, users(id, full_name, avatar_url, phone, trust_score, rating, location, bio, gigs_completed)')
+                        .eq('id', notif.gig_id)
+                        .single()
+                      setNotifDetail({ type: notif.type, gig, notif })
                     } else {
                       const { data: gig } = await supabase
                         .from('gigs')
@@ -321,40 +370,40 @@ export default function NotificationBell({ onNavigate }) {
                         .eq('id', notif.gig_id)
                         .single()
 
-                      setNotifDetail({ type: 'general', gig })
+                      setNotifDetail({ type: 'general', gig, notif })
                     }
 
                     setLoadingDetail(false)
                   }}
                   style={{
                     padding: '12px 16px',
-                    background: notif.read ? '#fff' : '#F8F7FF',
-                    borderBottom: '1px solid #F5F4FF',
+                    background: notif.read ? 'var(--color-surface)' : 'var(--color-surface-tint)',
+                    borderBottom: '1px solid var(--color-page)',
                     cursor: 'pointer', transition: 'background 0.1s',
                     display: 'flex', gap: '10px', alignItems: 'flex-start'
                   }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#F5F4FF'}
-                  onMouseLeave={e => e.currentTarget.style.background = notif.read ? '#fff' : '#F8F7FF'}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--color-page)'}
+                  onMouseLeave={e => e.currentTarget.style.background = notif.read ? 'var(--color-surface)' : 'var(--color-surface-tint)'}
                 >
                   <BrandIcon name={getIcon(notif.type)} size={42} active={!notif.read} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{
-                      fontSize: '13px', fontWeight: notif.read ? '500' : '700',
-                      color: '#14123A', marginBottom: '2px',
+                      fontSize: '15px', fontWeight: notif.read ? '500' : '700',
+                      color: 'var(--color-text)', marginBottom: '2px',
                       lineHeight: '1.3'
                     }}>{notif.title}</div>
                     <div style={{
-                      fontSize: '11px', color: '#8B8FAF',
+                      fontSize: '13px', color: 'var(--color-text-muted)',
                       lineHeight: '1.4', marginBottom: '3px'
                     }}>{notif.message}</div>
                     <div style={{
-                      fontSize: '10px', color: '#A09DC8', fontWeight: '500'
+                      fontSize: '12px', color: 'var(--color-text-muted)', fontWeight: '500'
                     }}>{timeAgo(notif.created_at)}</div>
                   </div>
                   {!notif.read && (
                     <div style={{
                       width: '8px', height: '8px', borderRadius: '50%',
-                      background: '#6C47FF', flexShrink: 0, marginTop: '4px'
+                      background: 'var(--color-brand)', flexShrink: 0, marginTop: '4px'
                     }} />
                   )}
                 </div>
@@ -365,7 +414,7 @@ export default function NotificationBell({ onNavigate }) {
           {/* Footer */}
           {notifications.length > 0 && (
             <div style={{
-              padding: '10px 16px', borderTop: '1px solid #F5F4FF',
+              padding: '10px 16px', borderTop: '1px solid var(--color-page)',
               textAlign: 'center'
             }}>
               <button
@@ -379,7 +428,8 @@ export default function NotificationBell({ onNavigate }) {
                 }}
                 style={{
                   background: 'none', border: 'none',
-                  fontSize: '11px', color: '#A09DC8',
+                  minHeight: '40px', padding: '6px 10px',
+                  fontSize: '13px', color: 'var(--color-text-muted)',
                   cursor: 'pointer', fontFamily: 'inherit'
                 }}>Clear all notifications</button>
             </div>
@@ -397,9 +447,9 @@ export default function NotificationBell({ onNavigate }) {
           fontFamily: "'Plus Jakarta Sans', sans-serif"
         }}>
           <div style={{
-            background: '#fff', borderRadius: '16px',
+            background: 'var(--color-surface)', borderRadius: '16px',
             padding: '24px 32px', textAlign: 'center',
-            fontSize: '14px', color: '#6C47FF', fontWeight: '700'
+            fontSize: '14px', color: 'var(--color-brand)', fontWeight: '700'
           }}>⏳ Loading...</div>
         </div>
       )}
@@ -416,17 +466,17 @@ export default function NotificationBell({ onNavigate }) {
           fontFamily: "'Plus Jakarta Sans', sans-serif"
         }} onClick={() => { setNotifDetail(null); setActionDone(null) }}>
           <div onClick={e => e.stopPropagation()} style={{
-            background: '#fff',
+            background: 'var(--color-surface)',
             borderRadius: '22px 22px 0 0',
             padding: '24px', width: '100%',
             maxWidth: '640px', maxHeight: '88vh',
             overflowY: 'auto',
             animation: 'slideUp 0.3s cubic-bezier(0.16,1,0.3,1)',
-            border: '1.5px solid #E2E0FF'
+            border: '1.5px solid var(--color-border)'
           }}>
             <div style={{
               width: '40px', height: '4px',
-              background: '#E2E0FF', borderRadius: '2px',
+              background: 'var(--color-border)', borderRadius: '2px',
               margin: '0 auto 20px'
             }} />
 
@@ -435,28 +485,28 @@ export default function NotificationBell({ onNavigate }) {
               <>
                 {/* Gig context */}
                 <div style={{
-                  background: '#F5F4FF', borderRadius: '12px',
+                  background: 'var(--color-page)', borderRadius: '12px',
                   padding: '12px 14px', marginBottom: '20px'
                 }}>
                   <div style={{
-                    fontSize: '10px', color: '#A09DC8', fontWeight: '700',
+                    fontSize: '12px', color: 'var(--color-text-subtle)', fontWeight: '700',
                     textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '4px'
                   }}>Gig</div>
                   <div style={{
-                    fontSize: '15px', fontWeight: '800', color: '#14123A', marginBottom: '4px'
+                    fontSize: '15px', fontWeight: '800', color: 'var(--color-text)', marginBottom: '4px'
                   }}>{notifDetail.gig?.title}</div>
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <span style={{
-                      background: '#DFFDF4', border: '1px solid #7EECD2',
+                      background: 'var(--color-success-soft)', border: '1px solid var(--color-success-border)',
                       borderRadius: '5px', padding: '2px 8px',
-                      fontSize: '9px', fontWeight: '700', color: '#00C48C'
+                      fontSize: '12px', fontWeight: '700', color: 'var(--color-success)'
                     }}>
                       ${notifDetail.gig?.pay_min}–${notifDetail.gig?.pay_max}
                     </span>
                     <span style={{
-                      background: '#EEE9FF', border: '1px solid #B8A5FF',
+                      background: 'var(--color-brand-soft)', border: '1px solid var(--color-brand-border-strong)',
                       borderRadius: '5px', padding: '2px 8px',
-                      fontSize: '9px', fontWeight: '700', color: '#6C47FF'
+                      fontSize: '12px', fontWeight: '700', color: 'var(--color-brand)'
                     }}>
                       {notifDetail.gig?.slots_filled || 0}/{notifDetail.gig?.slots} slots
                     </span>
@@ -464,7 +514,7 @@ export default function NotificationBell({ onNavigate }) {
                 </div>
 
                 <div style={{
-                  fontSize: '11px', fontWeight: '700', color: '#A09DC8',
+                  fontSize: '13px', fontWeight: '700', color: 'var(--color-text-subtle)',
                   textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px'
                 }}>
                   {notifDetail.applications.length} Applicant{notifDetail.applications.length !== 1 ? 's' : ''}
@@ -473,7 +523,7 @@ export default function NotificationBell({ onNavigate }) {
                 {notifDetail.applications.length === 0 ? (
                   <div style={{
                     textAlign: 'center', padding: '32px',
-                    color: '#A09DC8', fontSize: '13px'
+                    color: 'var(--color-text-subtle)', fontSize: '13px'
                   }}>No applications yet</div>
                 ) : (
                   <div style={{
@@ -481,8 +531,8 @@ export default function NotificationBell({ onNavigate }) {
                   }}>
                     {notifDetail.applications.map((app, i) => (
                       <div key={i} style={{
-                        background: '#F5F4FF', borderRadius: '16px',
-                        padding: '16px', border: '1.5px solid #E2E0FF'
+                        background: 'var(--color-page)', borderRadius: '16px',
+                        padding: '16px', border: '1.5px solid var(--color-border)'
                       }}>
                         <div style={{
                           display: 'flex', gap: '12px',
@@ -492,11 +542,11 @@ export default function NotificationBell({ onNavigate }) {
                             onClick={() => setViewingProfile(app.users?.id)}
                             style={{
                               width: '52px', height: '52px', borderRadius: '14px',
-                              background: '#EEE9FF', display: 'flex',
+                              background: 'var(--color-brand-soft)', display: 'flex',
                               alignItems: 'center', justifyContent: 'center',
-                              fontSize: '20px', fontWeight: '800', color: '#6C47FF',
+                              fontSize: '20px', fontWeight: '800', color: 'var(--color-brand)',
                               overflow: 'hidden', flexShrink: 0,
-                              cursor: 'pointer', border: '2px solid #B8A5FF'
+                              cursor: 'pointer', border: '2px solid var(--color-brand-border-strong)'
                             }}>
                             {app.users?.avatar_url ? (
                               <img src={app.users.avatar_url} alt=""
@@ -510,37 +560,37 @@ export default function NotificationBell({ onNavigate }) {
                               onClick={() => setViewingProfile(app.users?.id)}
                               style={{
                                 fontSize: '15px', fontWeight: '700',
-                                color: '#6C47FF', cursor: 'pointer',
+                                color: 'var(--color-brand)', cursor: 'pointer',
                                 marginBottom: '3px',
                                 textDecoration: 'underline',
                                 textDecorationStyle: 'dotted'
                               }}>
                               {app.users?.full_name || 'Unknown'} →
                             </div>
-                            <div style={{ fontSize: '11px', color: '#8B8FAF', marginBottom: '4px' }}>
+                            <div style={{ fontSize: '13px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>
                               ⭐ {app.users?.rating || 5.0} ·{' '}
                               {app.users?.gigs_completed || 0} gigs ·{' '}
                               Trust {app.users?.trust_score || 100}%
                             </div>
                             {app.users?.location && (
-                              <div style={{ fontSize: '11px', color: '#FF6B2B' }}>
+                              <div style={{ fontSize: '13px', color: 'var(--color-warning)' }}>
                                 📍 {app.users.location}
                               </div>
                             )}
                           </div>
                           <div style={{
-                            background: app.status === 'accepted' ? '#DFFDF4'
-                              : ['rejected', 'declined'].includes(app.status) ? '#FFE8EE' : '#EEE9FF',
-                            border: `1px solid ${app.status === 'accepted' ? '#7EECD2'
-                              : ['rejected', 'declined'].includes(app.status) ? '#FF99B3' : '#B8A5FF'}`,
+                            background: app.status === 'accepted' ? 'var(--color-success-soft)'
+                              : app.status === 'rejected' ? 'var(--color-danger-soft)' : 'var(--color-brand-soft)',
+                            border: `1px solid ${app.status === 'accepted' ? 'var(--color-success-border)'
+                              : app.status === 'rejected' ? 'var(--color-danger-border)' : 'var(--color-brand-border-strong)'}`,
                             borderRadius: '7px', padding: '4px 10px',
-                            fontSize: '10px', fontWeight: '700',
-                            color: app.status === 'accepted' ? '#00C48C'
-                              : ['rejected', 'declined'].includes(app.status) ? '#FF3366' : '#6C47FF',
+                            fontSize: '12px', fontWeight: '700',
+                            color: app.status === 'accepted' ? 'var(--color-success)'
+                              : app.status === 'rejected' ? 'var(--color-danger)' : 'var(--color-brand)',
                             flexShrink: 0
                           }}>
                             {app.status === 'accepted' ? '✓ Accepted'
-                              : ['rejected', 'declined'].includes(app.status) ? '✗ Declined' : '⏳ Pending'}
+                              : app.status === 'rejected' ? '✗ Declined' : '⏳ Pending'}
                           </div>
                         </div>
 
@@ -550,9 +600,9 @@ export default function NotificationBell({ onNavigate }) {
                           }}>
                             {app.users.skills.slice(0, 4).map(skill => (
                               <span key={skill} style={{
-                                background: '#EEE9FF', borderRadius: '20px',
-                                padding: '3px 9px', fontSize: '10px',
-                                fontWeight: '600', color: '#6C47FF'
+                                background: 'var(--color-brand-soft)', borderRadius: '20px',
+                                padding: '3px 9px', fontSize: '12px',
+                                fontWeight: '600', color: 'var(--color-brand)'
                               }}>{skill}</span>
                             ))}
                           </div>
@@ -560,7 +610,7 @@ export default function NotificationBell({ onNavigate }) {
 
                         {app.users?.bio && (
                           <div style={{
-                            fontSize: '12px', color: '#8B8FAF',
+                            fontSize: '12px', color: 'var(--color-text-muted)',
                             lineHeight: '1.5', marginBottom: '12px', fontStyle: 'italic'
                           }}>"{app.users.bio}"</div>
                         )}
@@ -582,7 +632,7 @@ export default function NotificationBell({ onNavigate }) {
                               requestAnimationFrame(() => {
                                 setTimeout(() => {
                                   window.dispatchEvent(new CustomEvent('openChatWithUser', {
-                                    detail: { userId: targetUserId, gigId: gigId || null }
+                                    detail: { userId: targetUserId }
                                   }))
                                 }, 100)
                               })
@@ -590,11 +640,11 @@ export default function NotificationBell({ onNavigate }) {
                           }}
                           style={{
                             width: '100%',
-                            background: '#F5F4FF',
-                            border: '1.5px solid #B8A5FF',
+                            background: 'var(--color-page)',
+                            border: '1.5px solid var(--color-brand-border-strong)',
                             borderRadius: '10px', padding: '10px',
                             fontSize: '12px', fontWeight: '700',
-                            color: '#6C47FF', cursor: 'pointer',
+                            color: 'var(--color-brand)', cursor: 'pointer',
                             fontFamily: 'inherit', marginTop: '8px',
                             display: 'flex', alignItems: 'center',
                             justifyContent: 'center', gap: '6px'
@@ -602,71 +652,125 @@ export default function NotificationBell({ onNavigate }) {
                           💬 Message {app.users?.full_name?.split(' ')[0]}
                         </button>
 
-                        {app.status === 'pending' && (
+                        {app.status === 'pending' && notifDetail.gig?.poster_id === user?.id && (
                           <div style={{ display: 'flex', gap: '8px' }}>
                             <button
                               onClick={async () => {
+                                const detail = notifDetail
+                                let gig = detail?.gig
+                                const gigId = gig?.id || detail?.gig_id || detail?.notif?.gig_id || app.gig_id
+                                if (!gigId) {
+                                  showToast('Could not find this gig. Please reopen the notification and try again.', 'error')
+                                  return
+                                }
+
+                                if (!gig?.slots || !gig?.poster_id || !gig?.title) {
+                                  const { data: latestGig } = await supabase
+                                    .from('gigs')
+                                    .select('id, title, slots, poster_id')
+                                    .eq('id', gigId)
+                                    .single()
+
+                                  gig = latestGig || gig
+                                }
+
+                                const gigTitle = gig?.title || detail?.notif?.message?.match(/"([^"]+)"/)?.[1] || 'this gig'
+                                const posterId = gig?.poster_id || user?.id
+
                                 const acceptedAt = new Date().toISOString()
 
-                                await supabase
+                                const { error: acceptError } = await supabase
                                   .from('applications')
                                   .update({
                                     status: 'accepted',
                                     accepted_at: acceptedAt
                                   })
                                   .eq('id', app.id)
-                                  .eq('status', 'pending')
+                                if (acceptError) {
+                                  showToast('Error accepting: ' + acceptError.message, 'error')
+                                  return
+                                }
 
-                                await supabase
+                                const { data: acceptedApps } = await supabase
+                                  .from('applications')
+                                  .select('id')
+                                  .eq('gig_id', gigId)
+                                  .eq('status', 'accepted')
+
+                                const filled = acceptedApps?.length || 1
+                                const slots = Number(gig?.slots || 0)
+                                const slotsFull = slots > 0 && filled >= slots
+
+                                const { error: gigError } = await supabase
                                   .from('gigs')
                                   .update({
-                                    status: 'in_progress',
+                                    status: slotsFull ? 'in_progress' : 'open',
                                     worker_id: app.worker_id,
                                     worker_name: app.users?.full_name,
                                     accepted_at: acceptedAt,
-                                    slots_filled: 1
+                                    slots_filled: filled
                                   })
-                                  .eq('id', notifDetail.gig.id)
+                                  .eq('id', gigId)
+                                if (gigError) {
+                                  showToast('Error updating gig: ' + gigError.message, 'error')
+                                  return
+                                }
 
-                                await supabase
-                                  .from('applications')
-                                  .update({ status: 'declined' })
-                                  .eq('gig_id', notifDetail.gig.id)
-                                  .neq('id', app.id)
-                                  .eq('status', 'pending')
+                                if (slotsFull) {
+                                  await supabase
+                                    .from('applications')
+                                    .update({ status: 'declined' })
+                                    .eq('gig_id', gigId)
+                                    .neq('id', app.id)
+                                    .eq('status', 'pending')
+                                }
 
-                                await ensureGigConversation({
-                                  gigId: notifDetail.gig.id,
-                                  posterId: notifDetail.gig.poster_id,
-                                  workerId: app.worker_id
-                                })
+                                if (posterId) {
+                                  await ensureGigConversation({
+                                    gigId,
+                                    posterId,
+                                    workerId: app.worker_id
+                                  })
+                                }
 
-                                await supabase.from('notifications').insert({
+                                const { error: notifError } = await supabase.from('notifications').insert({
                                   user_id: app.worker_id,
                                   title: 'You Got The Job!',
-                                  message: `Your application for "${notifDetail.gig.title}" was accepted! Contact the poster and get started.`,
+                                  message: `Your application for "${gigTitle}" was accepted! Contact the poster and get started.`,
                                   type: 'accepted',
-                                  gig_id: notifDetail.gig.id
+                                  gig_id: gigId
                                 })
+                                if (notifError) {
+                                  showToast('Accepted, but notification failed: ' + notifError.message)
+                                }
 
                                 const { data: apps } = await supabase
                                   .from('applications')
                                   .select('*, users(id, full_name, avatar_url, trust_score, rating, gigs_completed, bio, skills, location, phone)')
-                                  .eq('gig_id', notifDetail.gig.id)
+                                  .eq('gig_id', gigId)
                                   .order('created_at', { ascending: false })
 
                                 setNotifDetail(prev => ({ ...prev, applications: apps || [] }))
                                 setActionDone('accepted')
                               }}
                               style={{
-                                flex: 1, background: '#DFFDF4',
-                                border: '1.5px solid #7EECD2',
+                                flex: 1, background: 'var(--color-success-soft)',
+                                border: '1.5px solid var(--color-success-border)',
                                 borderRadius: '10px', padding: '12px',
                                 fontSize: '13px', fontWeight: '700',
-                                color: '#00C48C', cursor: 'pointer', fontFamily: 'inherit'
+                                color: 'var(--color-success)', cursor: 'pointer', fontFamily: 'inherit'
                               }}>✓ Accept</button>
                             <button
                               onClick={async () => {
+                                const detail = notifDetail
+                                const gig = detail?.gig
+                                const gigId = gig?.id || detail?.gig_id || detail?.notif?.gig_id || app.gig_id
+                                const gigTitle = gig?.title || detail?.notif?.message?.match(/"([^"]+)"/)?.[1] || 'this gig'
+                                if (!gigId) {
+                                  showToast('Could not find this gig. Please reopen the notification and try again.', 'error')
+                                  return
+                                }
+
                                 await supabase
                                   .from('applications')
                                   .update({ status: 'declined', declined_at: new Date().toISOString() })
@@ -675,26 +779,26 @@ export default function NotificationBell({ onNavigate }) {
                                 await supabase.from('notifications').insert({
                                   user_id: app.worker_id,
                                   title: 'Application Update',
-                                  message: `Your application for "${notifDetail.gig.title}" was not selected`,
+                                  message: `Your application for "${gigTitle}" was not selected`,
                                   type: 'rejected',
-                                  gig_id: notifDetail.gig.id
+                                  gig_id: gigId
                                 })
 
                                 const { data: apps } = await supabase
                                   .from('applications')
                                   .select('*, users(id, full_name, avatar_url, trust_score, rating, gigs_completed, bio, skills, location, phone)')
-                                  .eq('gig_id', notifDetail.gig.id)
+                                  .eq('gig_id', gigId)
                                   .order('created_at', { ascending: false })
 
                                 setNotifDetail(prev => ({ ...prev, applications: apps || [] }))
                                 setActionDone('declined')
                               }}
                               style={{
-                                flex: 1, background: '#FFE8EE',
-                                border: '1.5px solid #FF99B3',
+                                flex: 1, background: 'var(--color-danger-soft)',
+                                border: '1.5px solid var(--color-danger-border)',
                                 borderRadius: '10px', padding: '12px',
                                 fontSize: '13px', fontWeight: '700',
-                                color: '#FF3366', cursor: 'pointer', fontFamily: 'inherit'
+                                color: 'var(--color-danger)', cursor: 'pointer', fontFamily: 'inherit'
                               }}>✗ Decline</button>
                           </div>
                         )}
@@ -705,11 +809,11 @@ export default function NotificationBell({ onNavigate }) {
 
                 {actionDone && (
                   <div style={{
-                    background: actionDone === 'accepted' ? '#DFFDF4' : '#FFE8EE',
-                    border: `1.5px solid ${actionDone === 'accepted' ? '#7EECD2' : '#FF99B3'}`,
+                    background: actionDone === 'accepted' ? 'var(--color-success-soft)' : 'var(--color-danger-soft)',
+                    border: `1.5px solid ${actionDone === 'accepted' ? 'var(--color-success-border)' : 'var(--color-danger-border)'}`,
                     borderRadius: '12px', padding: '12px 16px',
                     fontSize: '13px', fontWeight: '700',
-                    color: actionDone === 'accepted' ? '#00C48C' : '#FF3366',
+                    color: actionDone === 'accepted' ? 'var(--color-success)' : 'var(--color-danger)',
                     textAlign: 'center', marginBottom: '16px'
                   }}>
                     {actionDone === 'accepted'
@@ -717,6 +821,16 @@ export default function NotificationBell({ onNavigate }) {
                       : '✗ Application declined. Worker has been notified.'}
                   </div>
                 )}
+
+                <button
+                  onClick={() => { setNotifDetail(null); setOpen(false); onNavigate && onNavigate('mygigs') }}
+                  style={{
+                    width: '100%', padding: '13px', borderRadius: '14px',
+                    background: 'var(--color-brand-gradient)',
+                    color: 'var(--color-surface)', fontWeight: '800', fontSize: '14px',
+                    border: 'none', cursor: 'pointer', marginTop: '4px'
+                  }}
+                >View in My Gigs →</button>
               </>
             )}
 
@@ -730,14 +844,14 @@ export default function NotificationBell({ onNavigate }) {
                   </div>
                   <div style={{
                     fontSize: '20px', fontWeight: '800',
-                    color: notifDetail.type === 'accepted' ? '#00C48C' : '#FF3366',
+                    color: notifDetail.type === 'accepted' ? 'var(--color-success)' : 'var(--color-danger)',
                     marginBottom: '8px'
                   }}>
                     {notifDetail.type === 'accepted'
                       ? 'You were accepted!'
                       : 'Not selected this time'}
                   </div>
-                  <div style={{ fontSize: '13px', color: '#8B8FAF', lineHeight: '1.6' }}>
+                  <div style={{ fontSize: '13px', color: 'var(--color-text-muted)', lineHeight: '1.6' }}>
                     {notifDetail.type === 'accepted'
                       ? 'The client accepted your application. Contact them to confirm details.'
                       : 'Keep applying — the right gig is coming.'}
@@ -747,13 +861,13 @@ export default function NotificationBell({ onNavigate }) {
                 {/* Client Profile Card */}
                 {notifDetail.gig?.users && (
                   <div style={{
-                    background: 'linear-gradient(135deg, #EEE9FF, #F8F5FF)',
-                    border: '1.5px solid #B8A5FF',
+                    background: 'linear-gradient(135deg, var(--color-brand-soft), var(--color-brand-pale))',
+                    border: '1.5px solid var(--color-brand-border-strong)',
                     borderRadius: '16px', padding: '16px',
                     marginBottom: '14px'
                   }}>
                     <div style={{
-                      fontSize: '10px', color: '#6C47FF', fontWeight: '700',
+                      fontSize: '12px', color: 'var(--color-brand)', fontWeight: '700',
                       textTransform: 'uppercase', letterSpacing: '0.8px',
                       marginBottom: '12px'
                     }}>Client Profile</div>
@@ -766,11 +880,11 @@ export default function NotificationBell({ onNavigate }) {
                         onClick={() => setViewingProfile(notifDetail.gig.poster_id)}
                         style={{
                           width: '56px', height: '56px', borderRadius: '14px',
-                          background: '#EEE9FF', display: 'flex',
+                          background: 'var(--color-brand-soft)', display: 'flex',
                           alignItems: 'center', justifyContent: 'center',
-                          fontSize: '22px', fontWeight: '800', color: '#6C47FF',
+                          fontSize: '22px', fontWeight: '800', color: 'var(--color-brand)',
                           overflow: 'hidden', flexShrink: 0,
-                          cursor: 'pointer', border: '2px solid #B8A5FF'
+                          cursor: 'pointer', border: '2px solid var(--color-brand-border-strong)'
                         }}>
                         {notifDetail.gig.users.avatar_url ? (
                           <img
@@ -788,7 +902,7 @@ export default function NotificationBell({ onNavigate }) {
                           onClick={() => setViewingProfile(notifDetail.gig.poster_id)}
                           style={{
                             fontSize: '16px', fontWeight: '700',
-                            color: '#6C47FF', cursor: 'pointer',
+                            color: 'var(--color-brand)', cursor: 'pointer',
                             marginBottom: '3px',
                             textDecoration: 'underline',
                             textDecorationStyle: 'dotted'
@@ -796,28 +910,28 @@ export default function NotificationBell({ onNavigate }) {
                           {notifDetail.gig.users.full_name || 'Client'} →
                         </div>
                         {notifDetail.gig.users.location && (
-                          <div style={{ fontSize: '11px', color: '#FF6B2B', marginBottom: '3px' }}>
+                          <div style={{ fontSize: '13px', color: 'var(--color-warning)', marginBottom: '3px' }}>
                             📍 {notifDetail.gig.users.location}
                           </div>
                         )}
-                        <div style={{ fontSize: '11px', color: '#8B8FAF' }}>
+                        <div style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>
                           ⭐ {notifDetail.gig.users.rating || 5.0} ·{' '}
                           Trust {notifDetail.gig.users.trust_score || 100}%
                         </div>
                       </div>
 
                       <div style={{
-                        background: '#EEE9FF', border: '1.5px solid #B8A5FF',
+                        background: 'var(--color-brand-soft)', border: '1.5px solid var(--color-brand-border-strong)',
                         borderRadius: '10px', padding: '8px 12px',
                         textAlign: 'center', flexShrink: 0
                       }}>
                         <div style={{
-                          fontSize: '16px', fontWeight: '800', color: '#6C47FF'
+                          fontSize: '16px', fontWeight: '800', color: 'var(--color-brand)'
                         }}>
                           {notifDetail.gig.users.trust_score || 100}%
                         </div>
                         <div style={{
-                          fontSize: '8px', color: '#A09DC8',
+                          fontSize: '12px', color: 'var(--color-text-subtle)',
                           fontWeight: '600', letterSpacing: '0.5px'
                         }}>TRUST</div>
                       </div>
@@ -826,10 +940,10 @@ export default function NotificationBell({ onNavigate }) {
                     <button
                       onClick={() => setViewingProfile(notifDetail.gig.poster_id)}
                       style={{
-                        width: '100%', background: '#EEE9FF',
-                        border: '1.5px solid #B8A5FF', borderRadius: '10px',
+                        width: '100%', background: 'var(--color-brand-soft)',
+                        border: '1.5px solid var(--color-brand-border-strong)', borderRadius: '10px',
                         padding: '10px', fontSize: '12px', fontWeight: '700',
-                        color: '#6C47FF', cursor: 'pointer', fontFamily: 'inherit'
+                        color: 'var(--color-brand)', cursor: 'pointer', fontFamily: 'inherit'
                       }}>
                       👤 View Full Profile
                     </button>
@@ -839,73 +953,74 @@ export default function NotificationBell({ onNavigate }) {
                 {/* Gig info */}
                 {notifDetail.gig && (
                   <div style={{
-                    background: '#F5F4FF', borderRadius: '14px',
-                    padding: '14px', border: '1.5px solid #E2E0FF',
+                    background: 'var(--color-page)', borderRadius: '14px',
+                    padding: '14px', border: '1.5px solid var(--color-border)',
                     marginBottom: '14px'
                   }}>
                     <div style={{
-                      fontSize: '10px', color: '#A09DC8', fontWeight: '700',
+                      fontSize: '12px', color: 'var(--color-text-subtle)', fontWeight: '700',
                       textTransform: 'uppercase', letterSpacing: '0.8px',
                       marginBottom: '8px'
                     }}>Gig Details</div>
                     <div style={{
                       fontSize: '15px', fontWeight: '700',
-                      color: '#14123A', marginBottom: '6px'
+                      color: 'var(--color-text)', marginBottom: '6px'
                     }}>{notifDetail.gig.title}</div>
                     <div style={{
-                      fontSize: '15px', fontWeight: '800', color: '#00C48C',
+                      fontSize: '15px', fontWeight: '800', color: 'var(--color-success)',
                       marginBottom: '4px'
                     }}>
                       ${notifDetail.gig.pay_min}–${notifDetail.gig.pay_max}
                     </div>
                     {notifDetail.gig.location && (
-                      <div style={{ fontSize: '12px', color: '#FF6B2B' }}>
+                      <div style={{ fontSize: '12px', color: 'var(--color-warning)' }}>
                         📍 {notifDetail.gig.location}
                       </div>
                     )}
                   </div>
                 )}
 
-                {/* Phone + WhatsApp — if accepted */}
-                {notifDetail.type === 'accepted' && notifDetail.gig?.poster_id && (
-                  <button
-                    onClick={() => {
-                      const targetUserId = notifDetail.gig.poster_id
-                      const gigId = notifDetail.gig.id
+              </div>
+            )}
 
-                      setActionDone(null)
-                      setNotifDetail(null)
-                      setOpen(false)
-
-                      requestAnimationFrame(() => {
-                        window.dispatchEvent(new CustomEvent('openChatWithUser', {
-                          detail: { userId: targetUserId, gigId: gigId || null }
-                        }))
-                      })
-                    }}
-                    style={{
-                      width: '100%',
-                      background: 'linear-gradient(135deg, #6C47FF 0%, #9B59FF 100%)',
-                      border: 'none',
-                      borderRadius: '12px',
-                      padding: '12px 14px',
-                      marginBottom: '12px',
-                      fontSize: '13px',
-                      fontWeight: '800',
-                      color: '#fff',
-                      cursor: 'pointer',
-                      fontFamily: 'inherit',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px',
-                      boxShadow: '0 4px 16px rgba(108,71,255,0.28)'
-                    }}>
-                    <BrandIcon name="chat" size={18} active /> Message Client
-                  </button>
+            {/* RECEIPT / REVIEW TYPE */}
+            {(notifDetail.type === 'receipt' || notifDetail.type === 'review') && (
+              <div>
+                <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                  <div style={{ fontSize: '48px', marginBottom: '12px' }}>
+                    {notifDetail.type === 'receipt' ? '🧾' : '⭐'}
+                  </div>
+                  <div style={{
+                    fontSize: '17px', fontWeight: '800',
+                    color: 'var(--color-text)', marginBottom: '8px', lineHeight: '1.3'
+                  }}>{notifDetail.notif?.title}</div>
+                  <div style={{ fontSize: '13px', color: 'var(--color-text-muted)', lineHeight: '1.6' }}>
+                    {notifDetail.notif?.message}
+                  </div>
+                </div>
+                {notifDetail.gig && (
+                  <div style={{
+                    background: 'var(--color-page)', borderRadius: '14px',
+                    padding: '14px', border: '1.5px solid var(--color-border)', marginBottom: '20px'
+                  }}>
+                    <div style={{
+                      fontSize: '12px', color: 'var(--color-text-subtle)', fontWeight: '700',
+                      textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px'
+                    }}>Gig</div>
+                    <div style={{ fontSize: '15px', fontWeight: '700', color: 'var(--color-text)' }}>
+                      {notifDetail.gig.title}
+                    </div>
+                  </div>
                 )}
-
-                
+                <button
+                  onClick={() => { setNotifDetail(null); setOpen(false); onNavigate && onNavigate('mygigs') }}
+                  style={{
+                    width: '100%', padding: '14px', borderRadius: '14px',
+                    background: 'var(--color-brand-gradient)',
+                    color: 'var(--color-surface)', fontWeight: '800', fontSize: '15px',
+                    border: 'none', cursor: 'pointer'
+                  }}
+                >View Receipt in My Gigs →</button>
               </div>
             )}
 
@@ -914,59 +1029,87 @@ export default function NotificationBell({ onNavigate }) {
               <div style={{ textAlign: 'center', padding: '16px 8px 28px' }}>
                 <div style={{
                   width: '72px', height: '72px', borderRadius: '50%',
-                  background: '#F5F4FF', border: '3px solid #E2E0FF',
+                  background: 'var(--color-page)', border: '3px solid var(--color-border)',
                   display: 'flex', alignItems: 'center',
                   justifyContent: 'center', fontSize: '32px',
                   margin: '0 auto 20px'
                 }}>🔔</div>
                 <div style={{
                   fontSize: '20px', fontWeight: '800',
-                  color: '#14123A', marginBottom: '12px', lineHeight: '1.3'
+                  color: 'var(--color-text)', marginBottom: '12px', lineHeight: '1.3'
                 }}>{notifDetail.notif?.title}</div>
                 <div style={{
-                  fontSize: '14px', color: '#8B8FAF',
+                  fontSize: '14px', color: 'var(--color-text-muted)',
                   lineHeight: '1.7'
                 }}>{notifDetail.notif?.message}</div>
               </div>
             )}
 
             {/* GENERAL TYPE — misc notifications with a gig_id */}
-            {notifDetail.type === 'general' && notifDetail.gig && (
-              <div style={{ marginBottom: '16px' }}>
-                <div style={{
-                  background: '#F5F4FF', borderRadius: '14px',
-                  padding: '14px', border: '1.5px solid #E2E0FF'
-                }}>
+            {notifDetail.type === 'general' && (
+              notifDetail.gig ? (
+                <div>
                   <div style={{
-                    fontSize: '10px', color: '#A09DC8', fontWeight: '700',
-                    textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px'
-                  }}>Related Gig</div>
-                  <div style={{
-                    fontSize: '15px', fontWeight: '700',
-                    color: '#14123A', marginBottom: '6px'
-                  }}>{notifDetail.gig.title}</div>
-                  {notifDetail.gig.pay_min && (
-                    <div style={{ fontSize: '13px', fontWeight: '700', color: '#00C48C' }}>
-                      ${notifDetail.gig.pay_min}–${notifDetail.gig.pay_max}
-                    </div>
-                  )}
-                  {notifDetail.gig.location && (
-                    <div style={{ fontSize: '12px', color: '#FF6B2B', marginTop: '4px' }}>
-                      📍 {notifDetail.gig.location}
-                    </div>
-                  )}
+                    background: 'var(--color-page)', borderRadius: '14px',
+                    padding: '14px', border: '1.5px solid var(--color-border)', marginBottom: '20px'
+                  }}>
+                    <div style={{
+                      fontSize: '12px', color: 'var(--color-text-subtle)', fontWeight: '700',
+                      textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px'
+                    }}>Related Gig</div>
+                    <div style={{
+                      fontSize: '15px', fontWeight: '700',
+                      color: 'var(--color-text)', marginBottom: '6px'
+                    }}>{notifDetail.gig.title}</div>
+                    {notifDetail.gig.pay_min && (
+                      <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--color-success)' }}>
+                        ${notifDetail.gig.pay_min}–${notifDetail.gig.pay_max}
+                      </div>
+                    )}
+                    {notifDetail.gig.location && (
+                      <div style={{ fontSize: '12px', color: 'var(--color-warning)', marginTop: '4px' }}>
+                        📍 {notifDetail.gig.location}
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => { setNotifDetail(null); setOpen(false); onNavigate && onNavigate('mygigs') }}
+                    style={{
+                      width: '100%', padding: '14px', borderRadius: '14px',
+                      background: 'var(--color-brand-gradient)',
+                      color: 'var(--color-surface)', fontWeight: '800', fontSize: '15px',
+                      border: 'none', cursor: 'pointer'
+                    }}
+                  >View in My Gigs →</button>
                 </div>
-              </div>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '16px 8px 28px' }}>
+                  <div style={{
+                    width: '72px', height: '72px', borderRadius: '50%',
+                    background: 'var(--color-page)', border: '3px solid var(--color-border)',
+                    display: 'flex', alignItems: 'center',
+                    justifyContent: 'center', fontSize: '32px',
+                    margin: '0 auto 20px'
+                  }}>🔔</div>
+                  <div style={{
+                    fontSize: '20px', fontWeight: '800',
+                    color: 'var(--color-text)', marginBottom: '12px', lineHeight: '1.3'
+                  }}>{notifDetail.notif?.title}</div>
+                  <div style={{
+                    fontSize: '14px', color: 'var(--color-text-muted)', lineHeight: '1.7'
+                  }}>{notifDetail.notif?.message}</div>
+                </div>
+              )
             )}
 
             {/* Close */}
             <button
               onClick={() => { setNotifDetail(null); setActionDone(null) }}
               style={{
-                width: '100%', background: '#F5F4FF',
-                border: '1.5px solid #E2E0FF', borderRadius: '12px',
+                width: '100%', background: 'var(--color-page)',
+                border: '1.5px solid var(--color-border)', borderRadius: '12px',
                 padding: '13px', fontSize: '13px', fontWeight: '600',
-                color: '#8B8FAF', cursor: 'pointer', fontFamily: 'inherit'
+                color: 'var(--color-text-muted)', cursor: 'pointer', fontFamily: 'inherit'
               }}>Close</button>
           </div>
         </div>
