@@ -83,6 +83,7 @@ export default function MyGigsScreen() {
   const [actions, setActions] = useState([])
   const [loading, setLoading] = useState(true)
   const [showActions, setShowActions] = useState(false)
+  const [pendingNotificationTarget, setPendingNotificationTarget] = useState(null)
 
   // Modals
   const [receiptGig, setReceiptGig] = useState(null)
@@ -99,6 +100,35 @@ export default function MyGigsScreen() {
       return subscribeToUpdates()
     }
   }, [user])
+
+  useEffect(() => {
+    const handleNotificationTarget = (event) => setPendingNotificationTarget(event.detail || null)
+    window.addEventListener('openMyGigNotification', handleNotificationTarget)
+    return () => window.removeEventListener('openMyGigNotification', handleNotificationTarget)
+  }, [])
+
+  useEffect(() => {
+    if (!pendingNotificationTarget || loading) return
+    const { gigId, action, side } = pendingNotificationTarget
+    const postedGig = postedGigs.find(gig => gig.id === gigId)
+    const workingApplication = workingGigs.find(application => application.gigs?.id === gigId)
+    const workingGig = workingApplication?.gigs
+
+    setStatusFilter(action === 'applicants' ? 'action' : 'all')
+    if (action === 'applicants' && postedGig) {
+      setTab('myposts')
+      setApplicantsGig(postedGig)
+    } else if (action === 'receipt' && side === 'worker' && workingGig) {
+      setTab('myjobs')
+      setReceiptGig(workingGig)
+    } else if (action === 'receipt' && postedGig) {
+      setTab('myposts')
+      setReceiptGig(postedGig)
+    } else if (postedGig || workingGig) {
+      setTab(postedGig ? 'myposts' : 'myjobs')
+    }
+    setPendingNotificationTarget(null)
+  }, [pendingNotificationTarget, loading, postedGigs, workingGigs])
 
   const fetchAll = async () => {
     setLoading(true)

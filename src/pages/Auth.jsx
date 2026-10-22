@@ -92,21 +92,9 @@ export default function Auth() {
       }}>
         {/* Language Selector */}
         <div style={{
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          display: 'flex', justifyContent: 'flex-end', alignItems: 'center',
           marginBottom: '10px', position: 'relative'
         }}>
-          <div style={{
-            width: 'clamp(44px, 12vw, 56px)', height: 'clamp(44px, 12vw, 56px)', borderRadius: '50%',
-            background: 'var(--color-brand-soft)', border: '1.5px solid var(--color-border)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0
-          }}>
-            <img
-              src="/prima-logo.png"
-              alt="PrimaPlug"
-              style={{ width: 'clamp(32px, 9vw, 42px)', height: 'clamp(32px, 9vw, 42px)', borderRadius: '10px', objectFit: 'contain' }}
-            />
-          </div>
           <button
             onClick={() => setShowLangPicker(s => !s)}
             style={{
@@ -173,19 +161,15 @@ export default function Auth() {
 
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: 'clamp(10px, 4vw, 20px)' }}>
-          <div style={{ marginBottom: '4px', lineHeight: 1, textAlign: 'center' }}>
+          <div style={{ marginBottom: '4px', lineHeight: 1, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '9px' }}>
+            <img src="/prima-logo.png" alt="" aria-hidden="true" style={{ width: '34px', height: '34px', objectFit: 'contain', borderRadius: '9px' }} />
             <span style={{
-              fontSize: 'clamp(18px, 5vw, 24px)',
+              fontSize: 'clamp(22px, 5vw, 28px)',
               fontWeight: '900',
               color: 'var(--color-text)',
-              letterSpacing: '-1.5px',
-              fontFamily: 'Georgia, "Times New Roman", serif',
-              fontStyle: 'italic',
+              letterSpacing: '-1px',
               lineHeight: 1,
-            }}>Prima</span>
-          </div>
-          <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)', letterSpacing: '1.5px', textTransform: 'uppercase' }}>
-            Real-Time Workforce Network
+            }}>PrimaPlug</span>
           </div>
         </div>
 

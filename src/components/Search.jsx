@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../supabase'
 import PublicProfile from './PublicProfile'
 import BrandIcon from './BrandIcon'
-import { parseTimestamp } from '../utils/time'
+import { getCurrency } from '../data/currencies'
 
 const RECENT_KEY = 'prima_recent_searches'
 
@@ -29,6 +29,7 @@ export default function Search({ onClose }) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState({ gigs: [], users: [] })
   const [loading, setLoading] = useState(false)
+  const [searchError, setSearchError] = useState('')
   const [activeTab, setActiveTab] = useState('all')
   const [activeFilters, setActiveFilters] = useState({})
   const [recentSearches, setRecentSearches] = useState([])
@@ -36,6 +37,7 @@ export default function Search({ onClose }) {
   const [selectedGig, setSelectedGig] = useState(null)
   const inputRef = useRef()
   const debounceRef = useRef()
+  const searchRunRef = useRef(0)
 
   useEffect(() => {
     // Focus input on open
@@ -48,56 +50,66 @@ export default function Search({ onClose }) {
   }, [])
 
   useEffect(() => {
-    if (query.length < 2) {
+    const runId = ++searchRunRef.current
+    if (query.trim().length < 2) {
       setResults({ gigs: [], users: [] })
+      setSearchError('')
+      setLoading(false)
       return
     }
     clearTimeout(debounceRef.current)
+    setLoading(true)
+    setSearchError('')
     debounceRef.current = setTimeout(() => {
-      performSearch(query)
+      performSearch(query, activeFilters, runId)
     }, 300)
     return () => clearTimeout(debounceRef.current)
   }, [query, activeFilters])
 
-  const performSearch = async (q) => {
-    setLoading(true)
+  const performSearch = async (q, filters, runId) => {
     try {
       // Build gigs query
       let gigsQuery = supabase
         .from('gigs')
         .select('*, users(full_name, avatar_url, trust_score, rating)')
-        .in('status', ['open', 'completed'])
+        .eq('status', 'open')
         .is('deleted_at', null)
-        .textSearch('search_vector', q.trim().split(' ').join(' & '), {
-          type: 'websearch'
+        .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
+        .textSearch('search_vector', q.trim(), {
+          type: 'websearch', config: 'simple'
         })
-        .limit(20)
 
-      if (activeFilters.type) gigsQuery = gigsQuery.eq('type', activeFilters.type)
-      if (activeFilters.urgency) gigsQuery = gigsQuery.eq('urgency', activeFilters.urgency)
-      if (activeFilters.pay === 'high') gigsQuery = gigsQuery.gte('pay_min', 100)
+      if (filters.type) gigsQuery = gigsQuery.eq('type', filters.type)
+      if (filters.urgency) gigsQuery = gigsQuery.eq('urgency', filters.urgency)
+      if (filters.pay === 'high') gigsQuery = gigsQuery.order('pay_min', { ascending: false })
+      gigsQuery = gigsQuery.order('created_at', { ascending: false }).limit(20)
 
       // Build users query
       let usersQuery = supabase
         .from('users')
-        .select('*')
-        .textSearch('search_vector', q.trim().split(' ').join(' & '), {
-          type: 'websearch'
+        .select('id, full_name, username, avatar_url, rating, trust_score, skills')
+        .textSearch('search_vector', q.trim(), {
+          type: 'websearch', config: 'simple'
         })
         .limit(10)
 
       const [gigsResult, usersResult] = await Promise.all([gigsQuery, usersQuery])
+      if (gigsResult.error) throw gigsResult.error
+      if (usersResult.error) throw usersResult.error
 
-      setResults({
-        gigs: (gigsResult.data || []).filter(gig =>
-          !gig.expires_at || parseTimestamp(gig.expires_at) >= new Date()
-        ),
-        users: usersResult.data || [],
-      })
+      if (runId === searchRunRef.current) {
+        setResults({ gigs: gigsResult.data || [], users: usersResult.data || [] })
+        setSearchError('')
+      }
     } catch (e) {
       console.log('Search error:', e)
+      if (runId === searchRunRef.current) {
+        setResults({ gigs: [], users: [] })
+        setSearchError('Search is temporarily unavailable. Please try again.')
+      }
+    } finally {
+      if (runId === searchRunRef.current) setLoading(false)
     }
-    setLoading(false)
   }
 
   const saveRecentSearch = (q) => {
@@ -169,13 +181,13 @@ export default function Search({ onClose }) {
               borderRadius: '14px', padding: '10px 14px',
               transition: 'border-color 0.15s'
             }}
-              onFocus={() => {}}
             >
               <span style={{ flexShrink: 0, display: 'inline-flex' }}>
                 <BrandIcon name="search" size={32} />
               </span>
               <input
                 ref={inputRef}
+                className="search-input"
                 value={query}
                 onChange={e => setQuery(e.target.value)}
                 onKeyDown={e => {
@@ -241,7 +253,7 @@ export default function Search({ onClose }) {
           </div>
 
           {/* No query — show recent + trending */}
-          {!query && (
+          {!query.trim() && (
             <div style={{ padding: '20px' }}>
               {recentSearches.length > 0 && (
                 <div style={{ marginBottom: '24px' }}>
@@ -335,8 +347,14 @@ export default function Search({ onClose }) {
             </div>
           )}
 
+          {query.trim().length === 1 && (
+            <div style={{ padding: '18px 20px', color: 'var(--color-text-subtle)', fontSize: '13px' }}>
+              Type at least 2 characters to search.
+            </div>
+          )}
+
           {/* Has query — show results */}
-          {query.length >= 2 && (
+          {query.trim().length >= 2 && (
             <div style={{ padding: '0 20px 20px' }}>
 
               {/* Result count + tabs */}
@@ -385,8 +403,14 @@ export default function Search({ onClose }) {
                 </div>
               )}
 
+              {!loading && searchError && (
+                <div role="alert" style={{ textAlign: 'center', padding: '36px 20px', color: 'var(--color-danger)', fontSize: '14px' }}>
+                  {searchError}
+                </div>
+              )}
+
               {/* No results */}
-              {!loading && query.length >= 2 && totalResults === 0 && (
+              {!loading && !searchError && query.trim().length >= 2 && totalResults === 0 && (
                 <div style={{
                   textAlign: 'center', padding: '48px 20px'
                 }}>
@@ -421,6 +445,17 @@ export default function Search({ onClose }) {
                         }}>{t}</button>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {!loading && !searchError && activeTab === 'gigs' && results.gigs.length === 0 && totalResults > 0 && (
+                <div style={{ padding: '28px 16px', color: 'var(--color-text-subtle)', fontSize: '13px', textAlign: 'center' }}>
+                  No matching gigs. Try the People tab or adjust your filters.
+                </div>
+              )}
+              {!loading && !searchError && activeTab === 'people' && results.users.length === 0 && totalResults > 0 && (
+                <div style={{ padding: '28px 16px', color: 'var(--color-text-subtle)', fontSize: '13px', textAlign: 'center' }}>
+                  No matching people. Try the Gigs tab or adjust your filters.
                 </div>
               )}
 
@@ -505,9 +540,9 @@ export default function Search({ onClose }) {
                           <div style={{ textAlign: 'right', flexShrink: 0 }}>
                             <div style={{
                               fontSize: '16px', fontWeight: '800', color: 'var(--color-success)'
-                            }}>${gig.pay_min}</div>
+                            }}>{getCurrency(gig.currency || 'USD').symbol}{gig.pay_min}</div>
                             <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)' }}>
-                              –${gig.pay_max}
+                              –{getCurrency(gig.currency || 'USD').symbol}{gig.pay_max}
                             </div>
                           </div>
                         </div>
@@ -700,9 +735,9 @@ export default function Search({ onClose }) {
                 }}>Pay Range</div>
                 <div style={{
                   fontSize: '22px', fontWeight: '800', color: 'var(--color-success)'
-                }}>${selectedGig.pay_min}</div>
+                }}>{getCurrency(selectedGig.currency || 'USD').symbol}{selectedGig.pay_min}</div>
                 <div style={{ fontSize: '12px', color: 'var(--color-success)', opacity: 0.7 }}>
-                  up to ${selectedGig.pay_max}
+                  up to {getCurrency(selectedGig.currency || 'USD').symbol}{selectedGig.pay_max}
                 </div>
               </div>
               <div style={{
@@ -737,14 +772,23 @@ export default function Search({ onClose }) {
                   fontSize: '13px', fontWeight: '600',
                   color: 'var(--color-text-muted)', cursor: 'pointer', fontFamily: 'inherit'
                 }}>Close</button>
-              <button style={{
+              <button onClick={() => {
+                const gigId = selectedGig.id
+                saveRecentSearch(query)
+                setSelectedGig(null)
+                onClose?.()
+                window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'feed' }))
+                requestAnimationFrame(() => requestAnimationFrame(() => {
+                  window.dispatchEvent(new CustomEvent('openGigDetail', { detail: gigId }))
+                }))
+              }} style={{
                 flex: 2,
                 background: 'var(--color-brand-gradient)',
                 border: 'none', borderRadius: '12px', padding: '14px',
                 fontSize: '14px', fontWeight: '700', color: 'var(--color-surface)',
                 cursor: 'pointer', fontFamily: 'inherit',
                 boxShadow: '0 4px 20px rgba(108,71,255,0.35)'
-              }}>⚡ Apply for This Gig</button>
+              }}>View Gig &amp; Apply</button>
             </div>
           </div>
         </div>

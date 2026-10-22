@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../supabase'
 import { useAuth } from '../../context/AuthContext'
 import { uploadToR2 } from '../../utils/r2upload'
@@ -121,7 +122,7 @@ const LocationSearch = ({ value, onSelect, inputStyle }) => {
 // ─────────────────────────────────────────────
 // ANIMATED AVATAR RING - the one signature motion piece
 // ─────────────────────────────────────────────
-const AvatarRing = ({ size = 96, avatarUrl, initial, onAvatarClick, uploading, ringColor = 'var(--color-success)' }) => {
+const AvatarRing = ({ size = 96, avatarUrl, initial, onAvatarClick, uploading, ringColor = 'var(--color-success-accent)' }) => {
   const [animatedScore, setAnimatedScore] = useState(0)
   const radius = (size - 8) / 2
   const circumference = 2 * Math.PI * radius
@@ -247,6 +248,7 @@ const ComingSoonCard = ({ icon, title, desc, gradient }) => (
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════
 export default function ProfileScreen({ onLogout }) {
+  const navigate = useNavigate()
   const { user, refreshProfile } = useAuth()
   const { credits, hasUnpaidCommissions, totalOwed, pendingCommissions } = useCredits()
   const isOwnProfile = true
@@ -643,7 +645,7 @@ export default function ProfileScreen({ onLogout }) {
                 initial={profile?.full_name?.charAt(0)?.toUpperCase()}
                 onAvatarClick={() => fileRef.current.click()}
                 uploading={uploadingAvatar}
-                ringColor="var(--color-success)"
+                ringColor="var(--color-success-accent)"
               />
               <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatarUpload} />
 
@@ -656,11 +658,19 @@ export default function ProfileScreen({ onLogout }) {
                   <BrandIcon name="location" size={18} /> {profile.location}
                 </div>
               )}
-              {profile?.is_verified && (
-                <div style={{ display: 'flex', gap: '6px', marginTop: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
-                  <VerificationBadge onDark />
-                </div>
-              )}
+              <div style={{ display: 'flex', gap: '8px', marginTop: '8px', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center' }}>
+                {profile?.is_verified && <VerificationBadge onDark />}
+                <button
+                  onClick={() => navigate(`/profile/${encodeURIComponent(user.id)}`, { state: { from: '/dashboard?screen=profile' } })}
+                  style={{
+                    minHeight: '34px', padding: '7px 11px', flexShrink: 0,
+                    border: '1px solid rgba(255,255,255,0.9)', borderRadius: '10px',
+                    background: 'var(--color-surface)', color: 'var(--color-brand)',
+                    boxShadow: '0 3px 10px rgba(30,27,75,0.16)',
+                    fontFamily: 'inherit', fontSize: '12px', fontWeight: '800', cursor: 'pointer'
+                  }}
+                >View public profile ↗</button>
+              </div>
             </div>
 
             {profile?.bio && (
@@ -684,6 +694,7 @@ export default function ProfileScreen({ onLogout }) {
                 </button>
               ))}
             </div>
+
           </div>
 
           {/* PROFILE COMPLETION */}

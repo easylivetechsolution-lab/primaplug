@@ -24,6 +24,7 @@ import ReferralScreen from './screens/ReferralScreen'
 import CommissionScreen from './screens/CommissionScreen'
 import WithdrawalScreen from './screens/WithdrawalScreen'
 import WalletScreen from './screens/WalletScreen'
+import NotificationsScreen from './screens/NotificationsScreen'
 import { initPushNotifications } from '../utils/pushNotifications'
 import { useCredits } from '../context/CreditsContext'
 import { useLanguage } from '../context/LanguageContext'
@@ -422,6 +423,7 @@ useEffect(() => {
     wallet: <WalletScreen />,
     commission: <CommissionScreen />,
     withdrawal: <WithdrawalScreen />,
+    notifications: <NotificationsScreen onNavigate={navigateTo} />,
   }
 
   return (
@@ -450,23 +452,8 @@ useEffect(() => {
         zIndex: 9500
       }} className="app-topbar">
         {/* Logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <img
-            src="/prima-logo.png?v=3"
-            alt="Prima"
-            className="app-logo-img"
-            style={{
-              width: '48px', height: '48px',
-              objectFit: 'contain',
-              flexShrink: 0,
-              display: 'block',
-              filter: 'drop-shadow(0 2px 12px rgba(108,71,255,0.45))'
-            }}
-          />
-          <div>
-            <div className="app-logo-text" style={{ fontSize: '20px', fontWeight: '800', color: 'var(--color-text)', letterSpacing: '-0.5px' }}>PrimaPlug</div>
-            <div className="brand-subtitle" style={{ fontSize: '12px', color: 'var(--color-text-subtle)', letterSpacing: '1.5px', textTransform: 'uppercase' }}>Real-Time Workforce Network</div>
-          </div>
+        <div className="topbar-brand" style={{ display: 'flex', alignItems: 'center' }}>
+          <div className="app-logo-text" style={{ fontSize: '20px', fontWeight: '800', color: 'var(--color-text)', letterSpacing: '-0.5px' }}>PrimaPlug</div>
         </div>
 
         {/* Desktop Nav */}
@@ -506,8 +493,8 @@ useEffect(() => {
         </div>
 
         {/* Right Actions */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {/* Mobile search icon — hidden on desktop */}
+        <div className="topbar-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {/* Expanded mobile search control */}
           <button
             onClick={() => setShowSearch(true)}
             className="mobile-search-btn"
@@ -518,13 +505,22 @@ useEffect(() => {
               width: '40px', height: '40px',
               display: 'none',
               alignItems: 'center',
-              justifyContent: 'center',
+              justifyContent: 'flex-start',
+              gap: '9px',
+              padding: '0 10px',
               cursor: 'pointer',
-              flexShrink: 0
+              flexShrink: 0,
+              fontFamily: 'inherit',
+              fontSize: '13px',
+              fontWeight: '600',
+              color: 'var(--color-text-subtle)',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden'
             }}>
             <BrandIcon name="search" size={26} active={false} />
+            <span>Search gigs, people...</span>
           </button>
-          <NotificationBell onNavigate={(screen) => navigateTo(screen)} />
+          <NotificationBell onNavigate={(screen) => navigateTo(screen)} active={screen === 'notifications'} />
           <button
             onClick={() => setShowSearch(true)}
             className="desktop-action"
@@ -673,32 +669,6 @@ useEffect(() => {
           gap: '4px',
           flexShrink: 0
         }} className="desktop-sidebar">
-
-          {/* Search */}
-          <button
-            onClick={() => setShowSearch(true)}
-            title="Search Gigs"
-            style={{
-              width: '56px', height: '58px',
-              borderRadius: '12px',
-              background: 'transparent',
-              border: '1.5px solid transparent',
-              display: 'flex', flexDirection: 'column',
-              alignItems: 'center', justifyContent: 'center',
-              gap: '3px', cursor: 'pointer',
-              transition: 'all 0.15s', fontFamily: 'inherit'
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.background = 'var(--color-brand-soft)'
-              e.currentTarget.style.borderColor = 'var(--color-brand-border-strong)'
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.background = 'transparent'
-              e.currentTarget.style.borderColor = 'transparent'
-            }}>
-            <BrandIcon name="search" size={36} />
-            <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--color-text-subtle)' }}>Search</span>
-          </button>
 
           {/* Saved Gigs */}
           <button
@@ -1175,18 +1145,9 @@ useEffect(() => {
             height: 58px !important;
             padding: 0 12px !important;
           }
-          .app-logo-img {
-            display: none !important;
-          }
-          .app-logo-text {
-            font-size: 17px !important;
-          }
-          .brand-subtitle {
-            display: block !important;
-            font-size: 12px !important;
-            letter-spacing: 1.2px !important;
-          }
-          .mobile-search-btn { display: flex !important; }
+          .topbar-brand { display: none !important; }
+          .topbar-actions { flex: 1 1 auto !important; min-width: 0 !important; }
+          .mobile-search-btn { display: flex !important; flex: 1 1 auto !important; width: auto !important; min-width: 0 !important; }
           .desktop-nav { display: none !important; }
           .desktop-sidebar { display: none !important; }
           .desktop-action { display: none !important; }

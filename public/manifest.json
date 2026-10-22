@@ -1,7 +1,7 @@
 {
   "name": "PrimaPlug",
   "short_name": "PrimaPlug",
-  "description": "Real-Time Workforce Network",
+  "description": "Find work and hire skilled people with PrimaPlug.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#F5F4FF",

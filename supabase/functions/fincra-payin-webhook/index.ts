@@ -137,6 +137,7 @@ serve(async (req) => {
           title: '💰 Wallet Funded',
           message: `Your wallet has been credited with ${resolvedTx.currency} ${Number(resolvedTx.amount).toLocaleString()}`,
           type: 'wallet',
+          wallet_transaction_id: resolvedTx.id,
         })
 
         console.log('=== WALLET UPDATED SUCCESSFULLY ===')

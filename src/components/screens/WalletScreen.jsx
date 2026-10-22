@@ -148,6 +148,50 @@ export default function WalletScreen() {
     return () => { cancelled = true; window.removeEventListener('walletPaymentReturn', handleReturn) }
   }, [user])
 
+  useEffect(() => {
+    const handleOpenWalletTransaction = async (event) => {
+      const target = event.detail || {}
+      const text = `${target.title || ''} ${target.message || ''}`.toLowerCase()
+      const isWithdrawal = text.includes('withdrawal')
+      setHistoryTab(isWithdrawal ? 'withdraw' : 'fund')
+
+      let transaction = null
+      if (target.id) {
+        const { data } = await supabase
+          .from('wallet_transactions')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('id', target.id)
+          .maybeSingle()
+        transaction = data
+      } else {
+        const amountMatch = text.match(/(?:ngn|usd|gbp|eur|\$|₦|£|€)\s*([\d,]+(?:\.\d+)?)/i)
+        if (amountMatch) {
+          const amount = Number(amountMatch[1].replace(/,/g, ''))
+          const types = isWithdrawal ? WITHDRAW_TYPES : FUND_TYPES
+          const { data } = await supabase
+            .from('wallet_transactions')
+            .select('*')
+            .eq('user_id', user.id)
+            .in('type', types)
+            .order('created_at', { ascending: false })
+            .limit(80)
+          transaction = data?.find(row => Math.abs(Number(row.amount) - amount) < 0.01) || null
+        }
+      }
+
+      if (transaction) {
+        setTransactions(previous => [transaction, ...previous.filter(row => row.id !== transaction.id)])
+        setExpandedTx(transaction.id)
+        requestAnimationFrame(() => {
+          document.querySelector(`[data-wallet-transaction-id="${transaction.id}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        })
+      }
+    }
+    window.addEventListener('openWalletTransaction', handleOpenWalletTransaction)
+    return () => window.removeEventListener('openWalletTransaction', handleOpenWalletTransaction)
+  }, [user])
+
   const fundHistory     = transactions.filter(tx => FUND_TYPES.includes(tx.type))
   const withdrawHistory = transactions.filter(tx => WITHDRAW_TYPES.includes(tx.type))
   const activeHistory   = historyTab === 'fund' ? fundHistory : withdrawHistory
@@ -572,6 +616,7 @@ export default function WalletScreen() {
         return (
           <div
             key={tx.id}
+            data-wallet-transaction-id={tx.id}
             onClick={() => setExpandedTx(isExpanded ? null : tx.id)}
             style={{
               background: 'var(--color-surface)', border: `1.5px solid ${isExpanded ? 'var(--color-brand-border-strong)' : 'var(--color-border)'}`,

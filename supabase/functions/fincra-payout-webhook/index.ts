@@ -135,6 +135,7 @@ serve(async (req) => {
           title: '💰 Wallet Funded',
           message: `Your ${currency} wallet has been credited with ${currency} ${creditAmount.toLocaleString()}`,
           type: 'wallet',
+          wallet_transaction_id: fundTx.id,
         })
         console.log('=== WALLET FUNDED SUCCESSFULLY ===')
       } else {
@@ -172,6 +173,7 @@ serve(async (req) => {
         title: '✅ Withdrawal Successful',
         message: `Your withdrawal of ${txRow.currency} ${Number(txRow.amount).toLocaleString()} has been sent to your bank account.`,
         type: 'wallet',
+        wallet_transaction_id: txRow.id,
       })
 
       console.log('=== PAYOUT CONFIRMED SUCCESSFUL ===')
@@ -211,6 +213,7 @@ serve(async (req) => {
         title: '❌ Withdrawal Failed',
         message: `Your withdrawal of ${txRow.currency} ${Number(txRow.amount).toLocaleString()} failed and has been refunded to your balance.`,
         type: 'wallet',
+        wallet_transaction_id: txRow.id,
       })
 
       console.log('=== PAYOUT FAILED - REFUNDED USER ===')

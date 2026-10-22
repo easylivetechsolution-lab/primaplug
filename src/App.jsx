@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { supabase } from './supabase'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import Auth from './pages/Auth'
@@ -7,6 +7,7 @@ import Onboarding from './pages/Onboarding'
 import Dashboard from './pages/Dashboard'
 import Admin from './pages/Admin'
 import LegalPage from './pages/LegalPage'
+import PublicProfile from './components/PublicProfile'
 import { LanguageProvider } from './context/LanguageContext'
 import { CreditsProvider } from './context/CreditsContext'
 import { captureReferralCode, captureGigReferral } from './utils/referral'
@@ -134,6 +135,11 @@ function ProtectedRoute({ children }) {
   return user ? children : <Navigate to="/" replace />
 }
 
+function PublicProfileRoute() {
+  const { userId } = useParams()
+  return <PublicProfile userId={userId} standalone />
+}
+
 function AppRoutes() {
   const { user, loading } = useAuth()
 
@@ -153,6 +159,7 @@ function AppRoutes() {
       <Route path="/auth/confirm" element={<AuthCallback />} />
       <Route path="/privacy" element={<LegalPage type="privacy" />} />
       <Route path="/terms" element={<LegalPage type="terms" />} />
+      <Route path="/profile/:userId" element={<PublicProfileRoute />} />
       <Route path="/onboarding" element={
         <ProtectedRoute><Onboarding /></ProtectedRoute>
       } />

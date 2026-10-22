@@ -1,12 +1,17 @@
 ﻿import { useState, useEffect } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
+import { uploadToR2 } from '../utils/r2upload'
 import { useAuth } from '../context/AuthContext'
 import ReportModal from './ReportModal'
 import BrandIcon from './BrandIcon'
 import VerificationBadge from './VerificationBadge'
 import { parseTimestamp } from '../utils/time'
+import { showToast } from '../utils/toast'
 
-export default function PublicProfile({ userId, onClose }) {
+export default function PublicProfile({ userId, onClose, standalone = false }) {
+  const navigate = useNavigate()
+  const location = useLocation()
   const { user: currentUser } = useAuth()
   const [profile, setProfile] = useState(null)
   const [gigs, setGigs] = useState([])
@@ -15,24 +20,62 @@ export default function PublicProfile({ userId, onClose }) {
   const [messaging, setMessaging] = useState(false)
   const [messageSent, setMessageSent] = useState(false)
   const [existingConvo, setExistingConvo] = useState(false)
+  const [activeTab, setActiveTab] = useState('about')
+  const [workItems, setWorkItems] = useState([])
+  const [workFormOpen, setWorkFormOpen] = useState(false)
+  const [editingWork, setEditingWork] = useState(null)
+  const [workTitle, setWorkTitle] = useState('')
+  const [workDescription, setWorkDescription] = useState('')
+  const [workTags, setWorkTags] = useState('')
+  const [workFile, setWorkFile] = useState(null)
+  const [workPreview, setWorkPreview] = useState('')
+  const [savingWork, setSavingWork] = useState(false)
+  const [deletingWorkId, setDeletingWorkId] = useState(null)
+  const [profileEditing, setProfileEditing] = useState(false)
+  const [profileEditForm, setProfileEditForm] = useState({})
+  const [profileAvatarFile, setProfileAvatarFile] = useState(null)
+  const [savingProfile, setSavingProfile] = useState(false)
 
   const isOwnProfile = currentUser?.id === userId
   const [showReport, setShowReport] = useState(false)
 
   useEffect(() => {
-    if (userId) {
+    if (userId && standalone) {
       fetchProfile()
       fetchUserGigs()
       fetchReviews()
+      fetchWorkItems()
     }
-  }, [userId])
+  }, [userId, standalone])
 
   useEffect(() => {
-    window.history.pushState({ modal: 'open' }, '', '')
-    const handleBack = () => onClose()
-    window.addEventListener('popstate', handleBack)
-    return () => window.removeEventListener('popstate', handleBack)
-  }, [])
+    if (!userId || standalone) return
+    navigate(`/profile/${encodeURIComponent(userId)}`, {
+      state: { from: `${location.pathname}${location.search}` }
+    })
+  }, [userId, standalone, navigate, location.pathname, location.search])
+
+  const handleClose = () => {
+    if (!standalone) {
+      onClose?.()
+      return
+    }
+    if (location.state?.from) navigate(location.state.from)
+    else navigate(currentUser ? '/dashboard' : '/', { replace: true })
+  }
+
+  const shareProfile = async () => {
+    const url = `${window.location.origin}/profile/${encodeURIComponent(userId)}`
+    try {
+      if (navigator.share) await navigator.share({ title: `${profile?.full_name || 'Prima'} on PrimaPlug`, url })
+      else {
+        await navigator.clipboard.writeText(url)
+        showToast('Profile link copied', 'success')
+      }
+    } catch (error) {
+      if (error?.name !== 'AbortError') showToast('Could not share profile link', 'error')
+    }
+  }
 
   useEffect(() => {
     if (userId && currentUser && !isOwnProfile) {
@@ -54,8 +97,64 @@ export default function PublicProfile({ userId, onClose }) {
       .select('*')
       .eq('id', userId)
       .maybeSingle()
-    if (data) setProfile(data)
+    if (data) {
+      setProfile(data)
+      setProfileEditForm({
+        full_name: data.full_name || '',
+        username: data.username || '',
+        location: data.location || '',
+        bio: data.bio || '',
+        work_experience: data.work_experience || '',
+        skills: Array.isArray(data.skills) ? data.skills.join(', ') : '',
+        portfolio_url: data.portfolio_url || '',
+        social_linkedin: data.social_linkedin || '',
+        social_twitter: data.social_twitter || '',
+      })
+    }
     setLoading(false)
+  }
+
+  const saveProfileDetails = async (event) => {
+    event.preventDefault()
+    if (!currentUser || !isOwnProfile) return
+    const fullName = profileEditForm.full_name?.trim()
+    const username = profileEditForm.username?.trim().toLowerCase().replace(/\s/g, '')
+    if (!fullName || !username) return showToast('Name and username are required', 'error')
+    if (profileAvatarFile && !['image/jpeg', 'image/png', 'image/webp'].includes(profileAvatarFile.type)) {
+      return showToast('Choose a JPG, PNG, or WebP profile photo', 'error')
+    }
+    if (profileAvatarFile && profileAvatarFile.size > 10 * 1024 * 1024) {
+      return showToast('Profile photos must be 10 MB or smaller', 'error')
+    }
+    setSavingProfile(true)
+    try {
+      let avatarUrl = profile.avatar_url
+      if (profileAvatarFile) avatarUrl = await uploadToR2(profileAvatarFile, 'avatars')
+      const payload = {
+        full_name: fullName,
+        username,
+        location: profileEditForm.location?.trim() || '',
+        bio: profileEditForm.bio?.trim() || '',
+        work_experience: profileEditForm.work_experience?.trim() || '',
+        skills: [...new Set(profileEditForm.skills.split(',').map(skill => skill.trim()).filter(Boolean))].slice(0, 30),
+        portfolio_url: profileEditForm.portfolio_url?.trim() || '',
+        social_linkedin: profileEditForm.social_linkedin?.trim() || '',
+        social_twitter: profileEditForm.social_twitter?.trim() || '',
+        avatar_url: avatarUrl,
+      }
+      const { data, error } = await supabase.from('users').update(payload).eq('id', userId).select('*').maybeSingle()
+      if (error) throw error
+      if (!data) throw new Error('No profile was updated. Please refresh and try again.')
+      setProfile(data)
+      setProfileEditForm({ ...payload, skills: payload.skills.join(', ') })
+      setProfileAvatarFile(null)
+      setProfileEditing(false)
+      showToast('Public profile updated', 'success')
+    } catch (error) {
+      showToast(`Could not update profile: ${error.message}`, 'error')
+    } finally {
+      setSavingProfile(false)
+    }
   }
 
   const fetchReviews = async () => {
@@ -67,6 +166,107 @@ export default function PublicProfile({ userId, onClose }) {
     .limit(10)
   if (data) setReviews(data)
 }
+
+  const fetchWorkItems = async () => {
+    const { data, error } = await supabase
+      .from('profile_work_items')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+    if (error) {
+      console.error('Could not load profile work:', error.message)
+      return
+    }
+    setWorkItems(data || [])
+  }
+
+  useEffect(() => {
+    if (!workFile) {
+      setWorkPreview('')
+      return
+    }
+    const previewUrl = URL.createObjectURL(workFile)
+    setWorkPreview(previewUrl)
+    return () => URL.revokeObjectURL(previewUrl)
+  }, [workFile])
+
+  const resetWorkForm = () => {
+    setWorkFormOpen(false)
+    setEditingWork(null)
+    setWorkTitle('')
+    setWorkDescription('')
+    setWorkTags('')
+    setWorkFile(null)
+  }
+
+  const startEditWork = (item) => {
+    setEditingWork(item)
+    setWorkTitle(item.title)
+    setWorkDescription(item.description || '')
+    setWorkTags((item.skill_tags || []).join(', '))
+    setWorkFile(null)
+    setWorkFormOpen(true)
+  }
+
+  const handleWorkFile = (event) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    const imageTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+    const videoTypes = ['video/mp4', 'video/webm', 'video/quicktime']
+    if (![...imageTypes, ...videoTypes].includes(file.type)) {
+      showToast('Choose a JPG, PNG, WebP, GIF, MP4, WebM, or MOV file', 'error')
+      return
+    }
+    const isVideo = file.type.startsWith('video/')
+    const maxSize = isVideo ? 50 * 1024 * 1024 : 10 * 1024 * 1024
+    if (file.size > maxSize) {
+      showToast(isVideo ? 'Videos must be 50 MB or smaller' : 'Images must be 10 MB or smaller', 'error')
+      return
+    }
+    setWorkFile(file)
+  }
+
+  const saveWorkItem = async (event) => {
+    event.preventDefault()
+    if (!currentUser || !isOwnProfile) return
+    if (!workTitle.trim()) return showToast('Add a title for this work sample', 'error')
+    if (!editingWork && !workFile) return showToast('Choose a photo or video to upload', 'error')
+    setSavingWork(true)
+    try {
+      const mediaUrl = workFile
+        ? await uploadToR2(workFile, `profile-work/${userId}`)
+        : editingWork.media_url
+      const payload = {
+        user_id: userId,
+        title: workTitle.trim(),
+        description: workDescription.trim(),
+        skill_tags: [...new Set(workTags.split(',').map(tag => tag.trim()).filter(Boolean))].slice(0, 10),
+        media_url: mediaUrl,
+        media_type: workFile ? (workFile.type.startsWith('video/') ? 'video' : 'image') : editingWork.media_type,
+        updated_at: new Date().toISOString(),
+      }
+      const result = editingWork
+        ? await supabase.from('profile_work_items').update(payload).eq('id', editingWork.id).eq('user_id', userId)
+        : await supabase.from('profile_work_items').insert(payload)
+      if (result.error) throw result.error
+      await fetchWorkItems()
+      resetWorkForm()
+      showToast(editingWork ? 'Work sample updated' : 'Work sample added', 'success')
+    } catch (error) {
+      showToast(`Could not save work sample: ${error.message}`, 'error')
+    } finally {
+      setSavingWork(false)
+    }
+  }
+
+  const removeWorkItem = async (item) => {
+    const { error } = await supabase.from('profile_work_items').delete().eq('id', item.id).eq('user_id', userId)
+    if (error) return showToast(`Could not remove work sample: ${error.message}`, 'error')
+    setWorkItems(items => items.filter(work => work.id !== item.id))
+    setDeletingWorkId(null)
+    showToast('Work sample removed', 'success')
+  }
 
   const handleMessage = async () => {
     if (!currentUser || isOwnProfile) return
@@ -102,7 +302,7 @@ export default function PublicProfile({ userId, onClose }) {
       setMessageSent(true)
 
       setTimeout(() => {
-        onClose()
+        handleClose()
         window.dispatchEvent(new CustomEvent('openChatWithUser', {
           detail: { userId }
         }))
@@ -125,50 +325,45 @@ export default function PublicProfile({ userId, onClose }) {
     if (data) setGigs(data)
   }
 
-  if (!userId) return null
+  if (!userId || !standalone) return null
 
   return (
     <div style={{
-      position: 'fixed', inset: 0,
-      background: 'rgba(20,18,58,0.75)',
-      backdropFilter: 'blur(4px)',
-      zIndex: 10000,
-      display: 'flex', alignItems: 'flex-end',
-      justifyContent: 'center',
+      minHeight: '100vh',
+      minHeight: '100dvh',
+      width: '100%',
+      background: 'var(--color-page)',
       fontFamily: "'Plus Jakarta Sans', sans-serif"
-    }} onClick={onClose}>
+    }}>
       <div onClick={e => e.stopPropagation()} style={{
         background: 'var(--color-surface)',
-        borderRadius: '22px 22px 0 0',
-        width: '100%', maxWidth: '640px',
-        maxHeight: '90vh', overflowY: 'auto',
-        animation: 'slideUp 0.3s cubic-bezier(0.16,1,0.3,1)',
-        border: '1.5px solid var(--color-border)'
+        width: '100%', maxWidth: '1180px',
+        minHeight: '100vh', minHeight: '100dvh', margin: '0 auto',
+        boxSizing: 'border-box',
+        overflowY: 'visible', border: 'none',
+        boxShadow: '0 12px 40px rgba(31,24,77,0.06)'
       }}>
         <div style={{
-          display: 'flex', alignItems: 'center',
-          justifyContent: 'center', position: 'relative',
-          padding: '14px 16px 0'
+          display: 'flex', alignItems: 'center', gap: '12px',
+          position: 'sticky', top: 0, zIndex: 5,
+          padding: '12px 20px', background: 'var(--color-surface)',
+          boxShadow: '0 4px 18px rgba(31,24,77,0.06)'
         }}>
-          <div style={{
-            width: '40px', height: '4px',
-            background: 'var(--color-border)', borderRadius: '2px'
-          }} />
           <button
-            onClick={onClose}
+            onClick={handleClose}
             style={{
-              position: 'absolute', right: '14px', top: '8px',
-              width: '32px', height: '32px',
-              borderRadius: '50%', border: 'none',
+              minHeight: '40px', padding: '0 12px',
+              borderRadius: '12px', border: 'none',
               background: 'var(--color-page)',
               display: 'flex', alignItems: 'center',
-              justifyContent: 'center', cursor: 'pointer',
-              fontSize: '18px', color: 'var(--color-text-muted)',
-              fontFamily: 'inherit', lineHeight: 1
+              justifyContent: 'center', gap: '8px', cursor: 'pointer',
+              fontSize: '14px', fontWeight: '700', color: 'var(--color-text-muted)',
+              fontFamily: 'inherit'
             }}
-            aria-label="Close">
-            ×
+            aria-label="Go back">
+            <span aria-hidden="true">←</span> Back
           </button>
+          <div style={{ fontSize: '15px', fontWeight: '800', color: 'var(--color-text)' }}>Public profile</div>
         </div>
 
         {loading ? (
@@ -182,7 +377,7 @@ export default function PublicProfile({ userId, onClose }) {
             color: 'var(--color-text-subtle)', fontSize: '14px'
           }}>Profile not found</div>
         ) : (
-          <div style={{ padding: '20px 20px 40px' }}>
+            <div style={{ padding: '20px clamp(16px, 3vw, 32px) 40px' }}>
 
             {/* Hero */}
             <div style={{
@@ -259,12 +454,13 @@ export default function PublicProfile({ userId, onClose }) {
             </div>
 
             {/* Message Button — top position like LinkedIn/Facebook */}
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', flexWrap: 'wrap' }}>
             {!isOwnProfile && currentUser && (
               <button
                 onClick={handleMessage}
                 disabled={messaging || messageSent}
                 style={{
-                  width: '100%',
+                  flex: '1 1 220px',
                   background: messageSent ? 'var(--color-success-soft)' : 'linear-gradient(135deg, var(--color-brand) 0%, var(--color-brand-mid) 100%)',
                   border: 'none',
                   borderRadius: '14px', padding: '14px',
@@ -272,7 +468,6 @@ export default function PublicProfile({ userId, onClose }) {
                   color: messageSent ? 'var(--color-success)' : 'var(--color-surface)',
                   cursor: messaging || messageSent ? 'default' : 'pointer',
                   fontFamily: 'inherit', transition: 'all 0.2s',
-                  marginBottom: '16px',
                   boxShadow: messageSent ? 'none' : '0 4px 16px rgba(108,71,255,0.3)',
                   display: 'flex',
                   alignItems: 'center',
@@ -291,12 +486,12 @@ export default function PublicProfile({ userId, onClose }) {
               <button
                 onClick={() => setShowReport(true)}
                 style={{
-                  width: '100%',
+                  flex: '1 1 140px',
                   background: 'var(--color-danger-soft)', border: '1.5px solid var(--color-danger-border)',
                   borderRadius: '14px', padding: '11px',
                   fontSize: '13px', fontWeight: '700',
                   color: 'var(--color-danger)', cursor: 'pointer',
-                  fontFamily: 'inherit', marginBottom: '16px',
+                  fontFamily: 'inherit',
                   display: 'flex', alignItems: 'center',
                   justifyContent: 'center', gap: '6px'
                 }}>
@@ -304,13 +499,76 @@ export default function PublicProfile({ userId, onClose }) {
               </button>
             )}
             {isOwnProfile && (
+              <button onClick={() => setProfileEditing(value => !value)} style={{
+                flex: '1 1 180px', minHeight: '44px', padding: '10px 14px',
+                border: 'none', borderRadius: '14px', background: 'var(--color-brand-gradient)',
+                color: 'var(--color-surface)', fontSize: '14px', fontWeight: '700',
+                cursor: 'pointer', fontFamily: 'inherit'
+              }}>{profileEditing ? 'Close editor' : 'Edit profile'}</button>
+            )}
+            <button onClick={shareProfile} style={{
+              flex: '1 1 140px', minHeight: '44px', padding: '10px 14px',
+              border: 'none', borderRadius: '14px', background: 'var(--color-brand-soft)',
+              color: 'var(--color-brand)', fontSize: '14px', fontWeight: '700',
+              cursor: 'pointer', fontFamily: 'inherit'
+            }}>Share profile</button>
+            </div>
+            {isOwnProfile && profileEditing && (
               <div style={{
-                background: 'var(--color-page)', border: '1.5px solid var(--color-border)',
-                borderRadius: '14px', padding: '12px 14px',
-                marginBottom: '16px', textAlign: 'center',
-                fontSize: '13px', color: 'var(--color-brand)', fontWeight: '600'
+                background: 'var(--color-surface)', borderRadius: '16px',
+                padding: '18px', marginBottom: '18px',
+                boxShadow: '0 6px 24px rgba(31,24,77,0.08)'
               }}>
-                This is your profile
+                <form onSubmit={saveProfileDetails} style={{ display: 'grid', gap: '12px' }}>
+                  <div style={{ fontSize: '16px', fontWeight: '800', color: 'var(--color-text)' }}>Edit public profile</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: '12px' }}>
+                    {[
+                      ['full_name', 'Name', 'text'],
+                      ['username', 'Username', 'text'],
+                      ['location', 'Location', 'text'],
+                    ].map(([field, label, type]) => (
+                      <label key={field} style={{ display: 'grid', gap: '5px', fontSize: '12px', fontWeight: '700', color: 'var(--color-text-muted)' }}>
+                        {label}
+                        <input required={field !== 'location'} maxLength={field === 'full_name' ? 100 : 80} type={type} value={profileEditForm[field] || ''}
+                          onChange={e => setProfileEditForm(form => ({ ...form, [field]: e.target.value }))}
+                          style={{ minHeight: '42px', boxSizing: 'border-box', padding: '9px 11px', border: '1px solid var(--color-border)', borderRadius: '10px', background: 'var(--color-page)', color: 'var(--color-text)', font: 'inherit' }} />
+                      </label>
+                    ))}
+                    {[
+                      ['bio', 'About', 500],
+                      ['work_experience', 'Work experience', 2000],
+                    ].map(([field, label, limit]) => (
+                      <label key={field} style={{ display: 'grid', gap: '5px', gridColumn: '1 / -1', fontSize: '12px', fontWeight: '700', color: 'var(--color-text-muted)' }}>
+                        {label}
+                        <textarea maxLength={limit} rows={field === 'bio' ? 3 : 4} value={profileEditForm[field] || ''}
+                          onChange={e => setProfileEditForm(form => ({ ...form, [field]: e.target.value }))}
+                          style={{ boxSizing: 'border-box', padding: '10px 11px', border: '1px solid var(--color-border)', borderRadius: '10px', background: 'var(--color-page)', color: 'var(--color-text)', font: 'inherit', resize: 'vertical' }} />
+                      </label>
+                    ))}
+                    {[
+                      ['skills', 'Skills (comma separated)'],
+                      ['portfolio_url', 'Portfolio link'],
+                      ['social_linkedin', 'LinkedIn'],
+                      ['social_twitter', 'X / Twitter'],
+                    ].map(([field, label]) => (
+                      <label key={field} style={{ display: 'grid', gap: '5px', fontSize: '12px', fontWeight: '700', color: 'var(--color-text-muted)' }}>
+                        {label}
+                        <input maxLength={field === 'skills' ? 500 : 300} type="text" value={profileEditForm[field] || ''}
+                          onChange={e => setProfileEditForm(form => ({ ...form, [field]: e.target.value }))}
+                          style={{ minHeight: '42px', boxSizing: 'border-box', padding: '9px 11px', border: '1px solid var(--color-border)', borderRadius: '10px', background: 'var(--color-page)', color: 'var(--color-text)', font: 'inherit' }} />
+                      </label>
+                    ))}
+                  </div>
+                  <label style={{ display: 'grid', gap: '6px', fontSize: '12px', fontWeight: '700', color: 'var(--color-text-muted)' }}>
+                    Profile photo (optional)
+                    <input type="file" accept="image/jpeg,image/png,image/webp" onChange={e => setProfileAvatarFile(e.target.files?.[0] || null)} />
+                  </label>
+                  {profileAvatarFile && <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)' }}>Selected: {profileAvatarFile.name}</div>}
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', flexWrap: 'wrap' }}>
+                    <button type="button" disabled={savingProfile} onClick={() => { setProfileEditing(false); setProfileAvatarFile(null) }} style={{ minHeight: '42px', padding: '9px 14px', border: 'none', borderRadius: '10px', background: 'var(--color-page)', color: 'var(--color-text-muted)', fontWeight: '700', cursor: 'pointer' }}>Cancel</button>
+                    <button type="submit" disabled={savingProfile} style={{ minHeight: '42px', padding: '9px 16px', border: 'none', borderRadius: '10px', background: 'var(--color-brand-gradient)', color: '#fff', fontWeight: '700', cursor: savingProfile ? 'wait' : 'pointer' }}>{savingProfile ? 'Saving…' : 'Save profile'}</button>
+                  </div>
+                </form>
               </div>
             )}
 
@@ -343,7 +601,30 @@ export default function PublicProfile({ userId, onClose }) {
               ))}
             </div>
 
-            {/* Skills */}
+            <div role="tablist" aria-label="Profile sections" style={{
+              display: 'flex', gap: '8px', overflowX: 'auto', marginBottom: '18px',
+              padding: '4px', borderRadius: '14px', background: 'var(--color-page)'
+            }}>
+              {[
+                ['about', 'About'],
+                ['work', `Work${workItems.length ? ` (${workItems.length})` : ''}`],
+                ['gigs', `Gigs${gigs.length ? ` (${gigs.length})` : ''}`],
+                ['reviews', `Reviews${reviews.length ? ` (${reviews.length})` : ''}`],
+              ].map(([key, label]) => (
+                <button key={key} role="tab" aria-selected={activeTab === key}
+                  onClick={() => setActiveTab(key)} style={{
+                    minHeight: '42px', padding: '8px 16px', border: 'none', borderRadius: '11px',
+                    background: activeTab === key ? 'var(--color-surface)' : 'transparent',
+                    color: activeTab === key ? 'var(--color-brand)' : 'var(--color-text-muted)',
+                    fontSize: '13px', fontWeight: '700', whiteSpace: 'nowrap', cursor: 'pointer',
+                    boxShadow: activeTab === key ? '0 3px 12px rgba(31,24,77,0.08)' : 'none',
+                    fontFamily: 'inherit'
+                  }}>{label}</button>
+              ))}
+            </div>
+
+            {/* About */}
+            {activeTab === 'about' && <>
             {profile.skills && profile.skills.length > 0 && (
               <div style={{ marginBottom: '16px' }}>
                 <div style={{
@@ -380,8 +661,141 @@ export default function PublicProfile({ userId, onClose }) {
               </div>
             )}
 
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-text-subtle)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '10px' }}>Location & details</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '10px' }}>
+                {[
+                  ['Location', profile.location || 'Not shared'],
+                  ['Work type', [profile.physical_mode && 'In person', profile.digital_mode && 'Remote'].filter(Boolean).join(' · ') || 'Flexible'],
+                  ['Member since', profile.joined_at ? parseTimestamp(profile.joined_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'Prima member'],
+                ].map(([label, value]) => (
+                  <div key={label} style={{ padding: '13px 14px', borderRadius: '14px', background: 'var(--color-page)' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--color-text-subtle)', fontWeight: '700', marginBottom: '5px' }}>{label}</div>
+                    <div style={{ fontSize: '13px', color: 'var(--color-text)', fontWeight: '600', overflowWrap: 'anywhere' }}>{value}</div>
+                  </div>
+                ))}
+              </div>
+              {(profile.portfolio_url || profile.social_linkedin || profile.social_twitter) && (
+                <div style={{ marginTop: '12px', padding: '14px', borderRadius: '14px', background: 'var(--color-page)' }}>
+                  <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)', fontWeight: '700', marginBottom: '8px' }}>Portfolio & social links</div>
+                  {[['Portfolio', profile.portfolio_url], ['LinkedIn', profile.social_linkedin], ['X / Twitter', profile.social_twitter]].filter(([, value]) => value).map(([label, value]) => (
+                    <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', padding: '5px 0', fontSize: '13px' }}>
+                      <span style={{ color: 'var(--color-text-muted)' }}>{label}</span>
+                      <span style={{ color: 'var(--color-brand)', overflowWrap: 'anywhere', textAlign: 'right' }}>{String(value).replace(/^https?:\/\//, '')}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            </>}
+
+            {activeTab === 'work' && (
+              <section aria-label="Work samples">
+                {isOwnProfile && !workFormOpen && (
+                  <button onClick={() => { setEditingWork(null); setWorkFormOpen(true) }} style={{
+                    width: '100%', minHeight: '48px', padding: '12px 16px', marginBottom: '16px',
+                    border: '1.5px dashed var(--color-brand-border-strong)', borderRadius: '14px',
+                    background: 'var(--color-brand-tint)', color: 'var(--color-brand)',
+                    fontSize: '14px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit'
+                  }}>+ Add work sample</button>
+                )}
+
+                {isOwnProfile && workFormOpen && (
+                  <form onSubmit={saveWorkItem} style={{
+                    display: 'grid', gap: '12px', padding: '16px', marginBottom: '18px',
+                    borderRadius: '16px', background: 'var(--color-page)'
+                  }}>
+                    <div style={{ fontSize: '16px', fontWeight: '800', color: 'var(--color-text)' }}>
+                      {editingWork ? 'Edit work sample' : 'Add work sample'}
+                    </div>
+                    <label style={{ display: 'grid', gap: '6px', fontSize: '12px', fontWeight: '700', color: 'var(--color-text-muted)' }}>
+                      Title
+                      <input required maxLength={100} value={workTitle} onChange={e => setWorkTitle(e.target.value)} placeholder="What did you create or complete?" style={{
+                        width: '100%', boxSizing: 'border-box', minHeight: '44px', padding: '10px 12px',
+                        border: '1px solid var(--color-border)', borderRadius: '10px', background: 'var(--color-surface)',
+                        color: 'var(--color-text)', font: 'inherit'
+                      }} />
+                    </label>
+                    <label style={{ display: 'grid', gap: '6px', fontSize: '12px', fontWeight: '700', color: 'var(--color-text-muted)' }}>
+                      Description
+                      <textarea maxLength={2000} rows={3} value={workDescription} onChange={e => setWorkDescription(e.target.value)} placeholder="Describe your contribution and the result" style={{
+                        width: '100%', boxSizing: 'border-box', padding: '10px 12px', resize: 'vertical',
+                        border: '1px solid var(--color-border)', borderRadius: '10px', background: 'var(--color-surface)',
+                        color: 'var(--color-text)', font: 'inherit'
+                      }} />
+                    </label>
+                    <label style={{ display: 'grid', gap: '6px', fontSize: '12px', fontWeight: '700', color: 'var(--color-text-muted)' }}>
+                      Skills (comma separated)
+                      <input maxLength={300} value={workTags} onChange={e => setWorkTags(e.target.value)} placeholder="e.g. Flutter, UI design, carpentry" style={{
+                        width: '100%', boxSizing: 'border-box', minHeight: '44px', padding: '10px 12px',
+                        border: '1px solid var(--color-border)', borderRadius: '10px', background: 'var(--color-surface)',
+                        color: 'var(--color-text)', font: 'inherit'
+                      }} />
+                    </label>
+                    <label style={{ display: 'grid', gap: '6px', fontSize: '12px', fontWeight: '700', color: 'var(--color-text-muted)' }}>
+                      Photo or video {editingWork ? '(optional replacement)' : ''}
+                      <input type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime" onChange={handleWorkFile} style={{
+                        width: '100%', boxSizing: 'border-box', padding: '10px', borderRadius: '10px',
+                        background: 'var(--color-surface)', color: 'var(--color-text-muted)', font: 'inherit'
+                      }} />
+                    </label>
+                    <div style={{ fontSize: '11px', color: 'var(--color-text-subtle)' }}>Images up to 10 MB · Videos up to 50 MB · JPG, PNG, WebP, GIF, MP4, WebM, MOV</div>
+                    {(workPreview || (editingWork && !workFile)) && (
+                      <div style={{ maxWidth: '420px', maxHeight: '260px', overflow: 'hidden', borderRadius: '12px', background: '#111' }}>
+                        {workFile ? (workFile.type.startsWith('video/')
+                          ? <video src={workPreview} controls playsInline style={{ display: 'block', width: '100%', maxHeight: '260px', objectFit: 'contain' }} />
+                          : <img src={workPreview} alt="Selected work preview" style={{ display: 'block', width: '100%', maxHeight: '260px', objectFit: 'contain' }} />
+                        ) : editingWork.media_type === 'video'
+                          ? <video src={editingWork.media_url} controls playsInline style={{ display: 'block', width: '100%', maxHeight: '260px', objectFit: 'contain' }} />
+                          : <img src={editingWork.media_url} alt="Current work sample" style={{ display: 'block', width: '100%', maxHeight: '260px', objectFit: 'contain' }} />}
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                      <button type="button" onClick={resetWorkForm} disabled={savingWork} style={{
+                        minHeight: '42px', padding: '8px 14px', border: 'none', borderRadius: '10px',
+                        background: 'var(--color-surface)', color: 'var(--color-text-muted)', fontWeight: '700', cursor: 'pointer'
+                      }}>Cancel</button>
+                      <button type="submit" disabled={savingWork} style={{
+                        minHeight: '42px', padding: '8px 16px', border: 'none', borderRadius: '10px',
+                        background: 'var(--color-brand-gradient)', color: '#fff', fontWeight: '700', cursor: savingWork ? 'wait' : 'pointer'
+                      }}>{savingWork ? 'Uploading…' : editingWork ? 'Save changes' : 'Publish work'}</button>
+                    </div>
+                  </form>
+                )}
+
+                {workItems.length ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '14px' }}>
+                    {workItems.map(item => (
+                      <article key={item.id} style={{ overflow: 'hidden', borderRadius: '16px', background: 'var(--color-page)', boxShadow: '0 5px 18px rgba(31,24,77,0.08)' }}>
+                        <div style={{ width: '100%', aspectRatio: '16 / 10', background: '#111', overflow: 'hidden' }}>
+                          {item.media_type === 'video'
+                            ? <video src={item.media_url} controls playsInline preload="metadata" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            : <img src={item.media_url} alt={item.title} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                        </div>
+                        <div style={{ padding: '14px' }}>
+                          <div style={{ fontSize: '15px', fontWeight: '800', color: 'var(--color-text)', marginBottom: '6px' }}>{item.title}</div>
+                          {item.description && <p style={{ margin: '0 0 10px', fontSize: '13px', color: 'var(--color-text-muted)', lineHeight: '1.55', whiteSpace: 'pre-wrap' }}>{item.description}</p>}
+                          {!!item.skill_tags?.length && <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>{item.skill_tags.map(tag => <span key={tag} style={{ padding: '4px 9px', borderRadius: '20px', background: 'var(--color-brand-soft)', color: 'var(--color-brand)', fontSize: '11px', fontWeight: '700' }}>{tag}</span>)}</div>}
+                          {isOwnProfile && <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                            <button onClick={() => startEditWork(item)} style={{ flex: 1, minHeight: '38px', border: 'none', borderRadius: '9px', background: 'var(--color-surface)', color: 'var(--color-brand)', fontWeight: '700', cursor: 'pointer' }}>Edit</button>
+                            {deletingWorkId === item.id ? <>
+                              <button onClick={() => removeWorkItem(item)} style={{ minHeight: '38px', padding: '0 10px', border: 'none', borderRadius: '9px', background: 'var(--color-danger)', color: '#fff', fontWeight: '700', cursor: 'pointer' }}>Confirm delete</button>
+                              <button onClick={() => setDeletingWorkId(null)} style={{ minHeight: '38px', padding: '0 10px', border: 'none', borderRadius: '9px', background: 'var(--color-surface)', color: 'var(--color-text-muted)', fontWeight: '700', cursor: 'pointer' }}>Cancel</button>
+                            </> : <button onClick={() => setDeletingWorkId(item.id)} style={{ flex: 1, minHeight: '38px', border: 'none', borderRadius: '9px', background: 'var(--color-danger-soft)', color: 'var(--color-danger)', fontWeight: '700', cursor: 'pointer' }}>Delete</button>}
+                          </div>}
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                ) : !workFormOpen && <div style={{ padding: '32px 20px', textAlign: 'center', borderRadius: '16px', background: 'var(--color-page)' }}>
+                  <div style={{ fontSize: '15px', fontWeight: '700', color: 'var(--color-text)', marginBottom: '5px' }}>{isOwnProfile ? 'Show people what you can do' : 'No work samples yet'}</div>
+                  <div style={{ fontSize: '13px', color: 'var(--color-text-subtle)' }}>{isOwnProfile ? 'Add photos or a video of work you have completed.' : 'This person has not added work samples yet.'}</div>
+                </div>}
+              </section>
+            )}
+
             {/* Active Gigs */}
-            {gigs.length > 0 && (
+            {activeTab === 'gigs' && (gigs.length > 0 ? (
               <div style={{ marginBottom: '20px' }}>
                 <div style={{
                   fontSize: '12px', fontWeight: '700', color: 'var(--color-text-subtle)',
@@ -416,10 +830,10 @@ export default function PublicProfile({ userId, onClose }) {
                   ))}
                 </div>
               </div>
-            )}
+            ) : <div style={{ padding: '28px', textAlign: 'center', borderRadius: '16px', background: 'var(--color-page)', color: 'var(--color-text-subtle)' }}>No active gigs right now.</div>)}
 
             {/* Reviews */}
-            {reviews.length > 0 && (
+            {activeTab === 'reviews' && (reviews.length > 0 ? (
               <div style={{ marginBottom: '20px' }}>
                 <div style={{
                   fontSize: '12px', fontWeight: '700', color: 'var(--color-text-subtle)',
@@ -500,7 +914,7 @@ export default function PublicProfile({ userId, onClose }) {
                   ))}
                 </div>
               </div>
-            )}
+            ) : <div style={{ padding: '28px', textAlign: 'center', borderRadius: '16px', background: 'var(--color-page)', color: 'var(--color-text-subtle)' }}>No reviews yet.</div>)}
 
           </div>
         )}

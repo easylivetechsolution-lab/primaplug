@@ -107,6 +107,15 @@ body div[style*="border-radius"][style*="padding"][style*="border:"] {
   backdrop-filter: blur(12px) saturate(1.08);
 }
 
+.post-gig-modal {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.post-gig-modal::-webkit-scrollbar {
+  display: none;
+}
+
 body div[style*="border-bottom:"],
 body div[style*="border-top:"] {
   border-bottom-color: transparent !important;
@@ -151,6 +160,12 @@ select:focus-visible,
 textarea:focus-visible {
   outline: 3px solid var(--color-brand) !important;
   outline-offset: 2px !important;
+}
+
+.search-input:focus-visible {
+  outline: none !important;
+  outline-offset: 0 !important;
+  box-shadow: none !important;
 }
 
 .pp-button {
@@ -587,4 +602,13 @@ textarea:focus-visible {
   color: var(--color-text-muted);
   font-size: 12px;
   font-weight: 500;
+}
+
+.gig-detail-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.gig-detail-scroll::-webkit-scrollbar {
+  display: none;
 }

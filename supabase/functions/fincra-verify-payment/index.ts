@@ -179,6 +179,7 @@ serve(async (req) => {
         title: '💰 Wallet Funded',
         message: `Your ${currency} wallet has been credited with ${currency} ${creditAmount.toLocaleString()}`,
         type: 'wallet',
+        wallet_transaction_id: txRow.id,
       })
     }
 

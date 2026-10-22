@@ -586,15 +586,16 @@ export default function MapScreen() {
 
         {/* Dark Mode Toggle */}
         <button
+          className="prima-map-theme-toggle"
           onClick={() => setDarkMap(d => !d)}
           title={darkMap ? 'Switch to light map' : 'Switch to dark map'}
           style={{
-            position: 'absolute', top: '14px', right: '14px', zIndex: 40,
+            position: 'absolute', top: '8px', right: '12px', zIndex: 40,
             background: darkMap ? 'rgba(108,71,255,0.92)' : 'rgba(255,255,255,0.92)',
             backdropFilter: 'blur(10px)',
             border: `1.5px solid ${darkMap ? 'var(--color-brand-mid)' : 'rgba(108,71,255,0.2)'}`,
-            borderRadius: '20px', padding: '5px 12px',
-            fontSize: '11px', fontWeight: '700',
+            borderRadius: '20px', minHeight: '30px', height: '30px', padding: '3px 10px',
+            fontSize: '10px', fontWeight: '700',
             color: darkMap ? 'var(--color-surface)' : 'var(--color-text-muted)',
             cursor: 'pointer', fontFamily: 'inherit',
             boxShadow: '0 2px 10px rgba(0,0,0,0.12)'
@@ -686,13 +687,14 @@ export default function MapScreen() {
         </div>
 
         {/* Radius Filter Chips */}
-        <div style={{
+        <div className="prima-map-distance-row" style={{
           position: 'absolute', top: '130px', left: '14px',
           zIndex: 40, display: 'flex', gap: '6px',
           pointerEvents: 'all'
         }}>
           {[null, 5, 10, 25].map(km => (
             <button
+              className="prima-map-distance-chip"
               key={km ?? 'all'}
               onClick={() => setRadiusKm(radiusKm === km ? null : km)}
               style={{
@@ -713,13 +715,13 @@ export default function MapScreen() {
       </div>
 
       {/* Happening Now Strip */}
-      <div style={{
+      <div className="prima-happening-now" style={{
         background: 'var(--color-surface)',
         borderTop: '1.5px solid var(--color-border)',
         flexShrink: 0
       }}>
-        <div style={{
-          padding: '8px 16px 5px',
+        <div className="prima-happening-now-header" style={{
+          padding: '6px 12px 3px',
           display: 'flex', justifyContent: 'space-between',
           alignItems: 'center'
         }}>
@@ -736,19 +738,19 @@ export default function MapScreen() {
         </div>
 
         {filteredGigs.length === 0 ? (
-          <div style={{
-            padding: '12px 16px 16px',
+          <div className="prima-happening-now-empty" style={{
+            padding: '9px 12px 11px',
             textAlign: 'center',
-            color: 'var(--color-text-subtle)', fontSize: '13px'
+            color: 'var(--color-text-subtle)', fontSize: '12px'
           }}>
             {gigs.length === 0
               ? 'No live gigs yet. Be the first to post one!'
               : 'No gigs in this category nearby'}
           </div>
         ) : (
-          <div style={{
-            display: 'flex', gap: '12px',
-            overflowX: 'auto', padding: '0 16px 10px',
+          <div className="prima-happening-now-list" style={{
+            display: 'flex', gap: '10px',
+            overflowX: 'auto', padding: '0 12px 7px',
             scrollbarWidth: 'none'
           }}>
             {filteredGigs.slice(0, 8).map(gig => (
@@ -757,8 +759,8 @@ export default function MapScreen() {
                 className={selectedGig?.id === gig.id ? 'prima-now-card is-active' : 'prima-now-card'}
                 style={{
                   background: selectedGig?.id === gig.id ? 'var(--color-brand-soft)' : 'var(--color-page)',
-                  borderRadius: '12px', padding: '9px 12px',
-                  minWidth: '174px',
+                  borderRadius: '12px', padding: '8px 10px',
+                  minWidth: '164px',
                   border: `1.5px solid ${selectedGig?.id === gig.id ? 'var(--color-brand)' : 'var(--color-border)'}`,
                   cursor: 'pointer', flexShrink: 0,
                   transition: 'transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease',
@@ -774,9 +776,9 @@ export default function MapScreen() {
                   e.currentTarget.style.borderColor = selectedGig?.id === gig.id ? 'var(--color-brand)' : 'var(--color-border)'
                   e.currentTarget.style.transform = 'translateY(0)'
                 }}>
-                <div style={{
+                <div className="prima-now-card-meta" style={{
                   display: 'flex', justifyContent: 'space-between',
-                  alignItems: 'flex-start', marginBottom: '6px'
+                  alignItems: 'flex-start', marginBottom: '4px'
                 }}>
                   <span style={{
                     display: 'inline-flex', alignItems: 'center', gap: '3px',
@@ -796,14 +798,14 @@ export default function MapScreen() {
                     }}>REMOTE</span>
                   ) : null}
                 </div>
-                <div style={{
-                  fontSize: '12px', fontWeight: '700',
-                  color: 'var(--color-text)', marginBottom: '5px', lineHeight: '1.3'
+                <div className="prima-now-card-title" style={{
+                  fontSize: '11px', fontWeight: '700',
+                  color: 'var(--color-text)', marginBottom: '4px', lineHeight: '1.3'
                 }}>{gig.title}</div>
-                <div style={{
-                  fontSize: '14px', fontWeight: '800', color: 'var(--color-success)'
+                <div className="prima-now-card-pay" style={{
+                  fontSize: '13px', fontWeight: '800', color: 'var(--color-success)'
                 }}>{getCurrencySymbol(gig.currency)}{gig.pay_min}–{getCurrencySymbol(gig.currency)}{gig.pay_max}</div>
-                <div style={{ fontSize: '10px', color: 'var(--color-text-subtle)', marginTop: '4px' }}>
+                <div className="prima-now-card-distance" style={{ fontSize: '9px', color: 'var(--color-text-subtle)', marginTop: '3px' }}>
                   {formatDist(calcDistance(userPos[0], userPos[1], gig.latitude, gig.longitude))} away
                 </div>
               </div>
@@ -825,7 +827,7 @@ export default function MapScreen() {
           setSelectedGig(null)
           setApplied(false)
         }}>
-          <div className="prima-bottom-sheet" onClick={e => e.stopPropagation()} style={{
+          <div className="prima-bottom-sheet gig-detail-scroll" onClick={e => e.stopPropagation()} style={{
             background: 'var(--color-surface)',
             borderRadius: '22px 22px 0 0',
             padding: '24px', width: '100%',
@@ -845,14 +847,17 @@ export default function MapScreen() {
               }} />
               <button
                 onClick={() => { setSelectedGig(null); setApplied(false) }}
+                aria-label="Close gig details"
                 style={{
                   position: 'absolute', right: 0,
-                  width: '32px', height: '32px',
-                  background: 'var(--color-page)', border: '1.5px solid var(--color-border)',
-                  borderRadius: '50%', fontSize: '16px',
-                  color: 'var(--color-text-muted)', cursor: 'pointer',
+                  width: '32px', height: '32px', minHeight: '32px',
+                  padding: 0, boxSizing: 'border-box', flexShrink: 0,
+                  background: 'var(--color-brand-soft)', border: '1px solid var(--color-brand-border-strong)',
+                  borderRadius: '10px', fontSize: '18px',
+                  color: 'var(--color-brand)', cursor: 'pointer',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontFamily: 'inherit', lineHeight: 1
+                  fontFamily: 'inherit', lineHeight: 1,
+                  boxShadow: 'var(--shadow-glass)'
                 }}>×</button>
             </div>
 
@@ -1004,7 +1009,7 @@ export default function MapScreen() {
                     </div>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
-  <div style={{
+  {selectedGig.urgency?.toLowerCase() !== 'now' && <div style={{
     display: 'inline-flex', alignItems: 'center', gap: '4px',
     background: `color-mix(in srgb, ${URGENCY_COLORS[selectedGig.urgency]} 10%, transparent)`,
     border: `1px solid color-mix(in srgb, ${URGENCY_COLORS[selectedGig.urgency]} 28%, transparent)`,
@@ -1013,7 +1018,7 @@ export default function MapScreen() {
     color: URGENCY_COLORS[selectedGig.urgency], letterSpacing: '0.8px'
   }}>
     {selectedGig.urgency?.toUpperCase()}
-  </div>
+  </div>}
   {selectedGig.slots > 1 && (
     <span style={{
       background: 'var(--color-success-soft)', border: '1px solid var(--color-success-border)',
@@ -1800,6 +1805,22 @@ export default function MapScreen() {
         @keyframes primaPinFloat {
           0%, 100% { transform: translateY(0); }
           50% { transform: translateY(-2px); }
+        }
+        @media (max-width: 600px) {
+          .prima-map-theme-toggle { top: 6px !important; right: 8px !important; min-height: 28px !important; height: 28px !important; padding: 2px 8px !important; font-size: 9px !important; }
+          .prima-map-distance-row { gap: 4px !important; }
+          .prima-map-distance-chip { min-height: 28px !important; height: 28px !important; box-sizing: border-box; padding: 2px 8px !important; font-size: 10px !important; }
+          .prima-happening-now-header { padding: 4px 10px 2px !important; }
+          .prima-happening-now-header > span:first-child { font-size: 9px !important; letter-spacing: 0.7px !important; }
+          .prima-happening-now-header > span:last-child { font-size: 10px !important; }
+          .prima-happening-now-list { gap: 8px !important; padding: 0 10px 5px !important; }
+          .prima-now-card { min-width: 138px !important; padding: 6px 8px !important; }
+          .prima-now-card-meta { margin-bottom: 3px !important; }
+          .prima-now-card-meta span { font-size: 7px !important; padding: 1px 4px !important; }
+          .prima-now-card-title { font-size: 10px !important; margin-bottom: 3px !important; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+          .prima-now-card-pay { font-size: 12px !important; }
+          .prima-now-card-distance { display: none !important; }
+          .prima-happening-now-empty { padding: 7px 10px 8px !important; font-size: 11px !important; }
         }
         .leaflet-tile-pane { z-index: 1 !important; }
         .leaflet-overlay-pane { z-index: 2 !important; }

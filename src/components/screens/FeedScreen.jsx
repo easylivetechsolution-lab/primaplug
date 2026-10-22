@@ -680,7 +680,7 @@ export default function FeedScreen() {
           setSelectedGig(null)
           setApplied(false)
         }}>
-          <div onClick={e => e.stopPropagation()} style={{
+          <div className="gig-detail-scroll" onClick={e => e.stopPropagation()} style={{
             background: 'var(--color-surface)',
             borderRadius: '22px 22px 0 0',
             padding: '24px', width: '100%',
