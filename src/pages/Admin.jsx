@@ -39,6 +39,8 @@ export default function Admin() {
   const [confirmDialog, setConfirmDialog] = useState(null)
   const [reportStatusFilter, setReportStatusFilter] = useState('pending')
   const [reportsError, setReportsError] = useState('')
+  const [creditPayoutRecoveries, setCreditPayoutRecoveries] = useState([])
+  const [creditPayoutRecoveryError, setCreditPayoutRecoveryError] = useState('')
 
   useEffect(() => {
     if (!loading && !isAdmin) navigate('/dashboard')
@@ -165,6 +167,7 @@ export default function Admin() {
           .order('created_at', { ascending: false })
           .limit(100)
         setWithdrawals(withdrawalsData || [])
+        await fetchCreditPayoutRecoveries()
         break
       case 'reports':
         const { data: reportsData, error: reportsFetchError } = await supabase
@@ -191,6 +194,55 @@ export default function Admin() {
         break
     }
     setLoadingData(false)
+  }
+
+  const fetchCreditPayoutRecoveries = async () => {
+    setCreditPayoutRecoveryError('')
+    const { data, error } = await supabase.functions.invoke('fincra-credit-payout-admin', {
+      body: { action: 'list' },
+    })
+    if (error || data?.error) {
+      setCreditPayoutRecoveryError(error?.message || data?.error || 'Could not load credit payout recoveries')
+      setCreditPayoutRecoveries([])
+      return
+    }
+    setCreditPayoutRecoveries(data?.withdrawals || [])
+  }
+
+  const resolveCreditPayoutRecovery = async (withdrawal, resolution) => {
+    const fundsReturned = resolution === 'funds_returned_credit_refunded'
+    if (fundsReturned && !window.confirm(
+      'Only continue after verifying in Fincra that the converted funds have returned to Prima. Refund credits only after the money is back under Prima control. Continue?'
+    )) return
+
+    const notes = window.prompt('Add a short reconciliation note for the audit record:')
+    if (!notes || notes.trim().length < 5) {
+      showToast('Enter at least 5 characters of reconciliation notes', 'error')
+      return
+    }
+    const fincraPayoutId = resolution === 'payout_completed'
+      ? window.prompt('Enter the Fincra payout ID if available (optional):')
+      : null
+
+    const { data, error } = await supabase.functions.invoke('fincra-credit-payout-admin', {
+      body: {
+        action: 'resolve',
+        reference: withdrawal.fincra_reference,
+        resolution,
+        notes: notes.trim(),
+        fincraPayoutId: fincraPayoutId?.trim() || null,
+        fundsReturned,
+      },
+    })
+    if (error || data?.error) {
+      showToast(error?.message || data?.error || 'Could not resolve credit payout', 'error')
+      return
+    }
+    showToast(fundsReturned
+      ? 'Credits refunded after recording the recovered Fincra funds'
+      : 'Withdrawal marked completed', 'success')
+    await fetchCreditPayoutRecoveries()
+    await fetchTabData('withdrawals')
   }
 
   const banUser = async (userId, confirmed = false) => {
@@ -271,63 +323,31 @@ export default function Admin() {
 
     const gig = dispute.gigs
     const isWalletGig = gig?.payment_method === 'wallet'
+    const applicationId = dispute.application_id
+    if (!applicationId) {
+      showToast('This receipt is not linked to a worker application. Apply the workflow migration before resolving it.', 'error')
+      return
+    }
 
     if (favor === 'worker') {
-      // Mark receipt fully completed
-      await supabase.from('receipts').update({
-        disputed: false,
-        dispute_reason: `Resolved in favor of worker by admin`,
-        worker_confirmed: true,
-        worker_confirmed_at: new Date().toISOString(),
-        completed: true,
-        completed_at: new Date().toISOString(),
-        status: 'completed'
-      }).eq('id', receiptId)
-
-      if (isWalletGig && gig?.id) {
-        // Release escrow to worker
-        await supabase.rpc('release_gig_escrow', {
-          p_gig_id: gig.id,
-          p_poster_id: dispute.poster_id,
-          p_worker_id: dispute.worker_id,
-          p_amount: Number(gig.escrow_amount || gig.pay_min || dispute.amount),
-          p_currency: gig.currency || 'NGN'
-        })
-      } else if (gig?.id) {
-        // Create commission debt for worker (manual payment gig)
-        const commissionAmount = Math.round((dispute.amount || 0) * 0.1 * 100) / 100
-        const { data: existing } = await supabase
-          .from('commissions')
-          .select('id, status')
-          .eq('gig_id', gig.id)
-          .eq('worker_id', dispute.worker_id)
-          .maybeSingle()
-
-        if (!existing) {
-          await supabase.from('commissions').insert({
-            gig_id: gig.id,
-            worker_id: dispute.worker_id,
-            gig_amount: dispute.amount,
-            commission_amount: commissionAmount,
-            currency: dispute.currency || 'NGN',
-            status: 'pending',
-            due_date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
-          })
-        }
-      }
-
-      if (gig?.id) {
-        await supabase.rpc('increment_gigs_completed', { worker_id: dispute.worker_id })
+      const { error: completeError } = await supabase.rpc(
+        isWalletGig ? 'complete_wallet_gig_application' : 'complete_manual_gig_application',
+        { p_application_id: applicationId }
+      )
+      if (completeError) {
+        showToast('Could not complete this dispute resolution: ' + completeError.message, 'error')
+        return
       }
 
       const paymentDeadline = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString()
 
       if (!isWalletGig) {
         // Set a 5-day payment deadline — pg_cron will auto-ban if missed
-        await supabase.from('receipts').update({
+        const { error: deadlineError } = await supabase.from('receipts').update({
           payment_ordered: true,
           payment_deadline: paymentDeadline
         }).eq('id', receiptId)
+        if (deadlineError) showToast('Completion saved, but the payment deadline did not save: ' + deadlineError.message, 'error')
       }
 
       // Notify winner (worker)
@@ -338,7 +358,8 @@ export default function Admin() {
           ? `Admin reviewed the dispute for "${gig?.title}" and ruled in your favor. Your payment has been released to your wallet.`
           : `Admin reviewed the dispute for "${gig?.title}" and ruled in your favor. The poster has been ordered to pay you within 5 days. Commission is due within 3 days of receipt.`,
         type: isWalletGig ? 'wallet' : 'general',
-        gig_id: gig?.id || null
+        gig_id: gig?.id || null,
+        application_id: applicationId
       })
 
       // Notify loser (poster) — stern legal warning for manual gigs
@@ -346,31 +367,37 @@ export default function Admin() {
         user_id: dispute.poster_id,
         title: isWalletGig ? 'Dispute Outcome — Favor Worker' : '⚠️ Payment Order — Action Required',
         message: isWalletGig
-          ? `Admin reviewed the payment dispute for "${gig?.title}" and ruled in the worker's favor. The gig is now marked complete.`
+          ? `Admin reviewed the payment dispute for "${gig?.title}" and ruled in the worker's favor. This worker's escrow has been released.`
           : `Admin has reviewed the dispute for "${gig?.title}" and ruled in the worker's favor. You are required to release the agreed payment to the worker within 5 days (by ${new Date(paymentDeadline).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}). Failure to comply will result in an immediate account ban and referral for legal action.`,
         type: 'general',
-        gig_id: gig?.id || null
+        gig_id: gig?.id || null,
+        application_id: applicationId
       })
 
     } else {
       // Favor poster — reset receipt so parties can re-negotiate
-      await supabase.from('receipts').update({
-        disputed: false,
-        dispute_reason: `Resolved in favor of poster by admin`,
-        poster_confirmed: false,
-        worker_confirmed: false,
-        completed: false,
-        status: 'pending'
-      }).eq('id', receiptId)
-
       if (isWalletGig && gig?.id) {
-        // Return locked escrow back to poster's wallet
-        await supabase.rpc('unlock_gig_escrow', {
-          p_gig_id: gig.id,
-          p_poster_id: dispute.poster_id,
-          p_amount: Number(gig.escrow_amount || gig.pay_min || dispute.amount),
-          p_currency: gig.currency || 'NGN'
-        })
+        const { error: refundError } = await supabase.rpc(
+          'refund_gig_application_escrow',
+          { p_application_id: applicationId }
+        )
+        if (refundError) {
+          showToast('Could not refund this worker’s escrow: ' + refundError.message, 'error')
+          return
+        }
+      } else {
+        const { error: resetError } = await supabase.from('receipts').update({
+          disputed: false,
+          dispute_reason: 'Resolved in favor of poster by admin',
+          poster_confirmed: false,
+          worker_confirmed: false,
+          completed: false,
+          status: 'pending'
+        }).eq('id', receiptId)
+        if (resetError) {
+          showToast('Could not reset this receipt: ' + resetError.message, 'error')
+          return
+        }
       }
 
       // Notify winner (poster)
@@ -381,7 +408,8 @@ export default function Admin() {
           ? `Admin reviewed the dispute for "${gig?.title}" and ruled in your favor. Your escrowed funds have been returned to your wallet.`
           : `Admin reviewed the dispute for "${gig?.title}" and ruled in your favor. You may re-submit a corrected receipt.`,
         type: isWalletGig ? 'wallet' : 'general',
-        gig_id: gig?.id || null
+        gig_id: gig?.id || null,
+        application_id: applicationId
       })
 
       // Notify loser (worker)
@@ -390,7 +418,8 @@ export default function Admin() {
         title: 'Dispute Outcome — Favor Poster',
         message: `Admin reviewed your dispute for "${gig?.title}" and ruled in the poster's favor. Please contact the poster to resolve the payment directly.`,
         type: 'general',
-        gig_id: gig?.id || null
+        gig_id: gig?.id || null,
+        application_id: applicationId
       })
     }
 
@@ -408,6 +437,7 @@ export default function Admin() {
     }).eq('id', receiptId)
 
     const gig = dispute?.gigs
+    const applicationId = dispute?.application_id || null
 
     await supabase.from('notifications').insert([
       {
@@ -415,14 +445,16 @@ export default function Admin() {
         title: 'Dispute Dismissed — Please Confirm',
         message: `Admin reviewed the dispute for "${gig?.title}" and dismissed it. Please review the receipt and confirm or re-raise your concern.`,
         type: 'receipt',
-        gig_id: gig?.id || null
+        gig_id: gig?.id || null,
+        application_id: applicationId
       },
       {
         user_id: dispute.poster_id,
         title: 'Dispute Dismissed',
         message: `The dispute raised on "${gig?.title}" was dismissed. The worker has been asked to review the receipt again.`,
         type: 'general',
-        gig_id: gig?.id || null
+        gig_id: gig?.id || null,
+        application_id: applicationId
       }
     ])
 
@@ -1322,6 +1354,74 @@ export default function Admin() {
                         }}>✕ Reject & Refund</button>
                     </div>
                   )}
+                </div>
+              ))}
+
+              <div style={{ marginTop: '28px', marginBottom: '12px' }}>
+                <div style={{ fontSize: '20px', fontWeight: '800', color: 'var(--color-text)' }}>
+                  Credit payout recovery ({creditPayoutRecoveries.length})
+                </div>
+                <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: '5px' }}>
+                  Check the payout in Fincra before resolving. Refund credits only after converted funds are back under Prima’s control.
+                </div>
+              </div>
+              {creditPayoutRecoveryError && (
+                <div style={{ background: 'var(--color-danger-soft)', color: 'var(--color-danger)', padding: '12px', borderRadius: '10px', marginBottom: '12px', fontSize: '13px' }}>
+                  {creditPayoutRecoveryError}
+                </div>
+              )}
+              {creditPayoutRecoveries.length === 0 && !creditPayoutRecoveryError ? (
+                <div style={{ textAlign: 'center', padding: '28px', color: 'var(--color-text-subtle)', fontSize: '14px' }}>
+                  No credit payouts need recovery.
+                </div>
+              ) : creditPayoutRecoveries.map(w => (
+                <div key={w.id} style={{
+                  background: 'var(--color-surface)', border: '1.5px solid var(--color-warning-gold-border)',
+                  borderRadius: '14px', padding: '16px', marginBottom: '10px'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+                    <div>
+                      <div style={{ fontSize: '14px', fontWeight: '700', color: 'var(--color-text)' }}>
+                        {w.destination_currency} {Number(w.destination_amount).toLocaleString()} to {w.destination_country}
+                      </div>
+                      <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: '4px' }}>
+                        {w.credits_amount} credits (${Number(w.usd_amount).toFixed(2)} USD) · User {w.user_id}
+                      </div>
+                      <div style={{ fontSize: '11px', color: 'var(--color-text-subtle)', marginTop: '4px', wordBreak: 'break-all' }}>
+                        Reference: {w.fincra_reference}
+                      </div>
+                      {w.fincra_payout_id && (
+                        <div style={{ fontSize: '11px', color: 'var(--color-text-subtle)', marginTop: '3px' }}>
+                          Fincra payout ID: {w.fincra_payout_id}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)' }}>
+                      {new Date(w.created_at).toLocaleString()}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '14px' }}>
+                    <button
+                      onClick={() => setConfirmDialog({
+                        title: 'Mark payout completed?',
+                        message: 'Use this only after Fincra confirms the beneficiary received the payout.',
+                        confirmLabel: 'Mark completed',
+                        action: () => resolveCreditPayoutRecovery(w, 'payout_completed'),
+                      })}
+                      style={{ flex: 1, minWidth: '180px', background: 'var(--color-success-soft)', border: '1px solid var(--color-success-border)', borderRadius: '9px', padding: '10px', color: 'var(--color-success)', fontWeight: '700', cursor: 'pointer' }}>
+                      Mark paid (verified)
+                    </button>
+                    <button
+                      onClick={() => setConfirmDialog({
+                        title: 'Refund credits?',
+                        message: 'Only refund after Fincra confirms the converted funds have returned to Prima. This will restore the user’s credits.',
+                        confirmLabel: 'Refund credits',
+                        action: () => resolveCreditPayoutRecovery(w, 'funds_returned_credit_refunded'),
+                      })}
+                      style={{ flex: 1, minWidth: '180px', background: 'var(--color-danger-soft)', border: '1px solid var(--color-danger-border)', borderRadius: '9px', padding: '10px', color: 'var(--color-danger)', fontWeight: '700', cursor: 'pointer' }}>
+                      Funds returned · refund
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

@@ -6,7 +6,6 @@ import { getCurrency } from '../../data/currencies'
 import { showToast } from '../../utils/toast'
 import PublicProfile from '../PublicProfile'
 import { getPendingGigReferralForPayout } from '../../utils/referral'
-import { updateWorkerLevel } from '../../utils/workerLevel'
 import ReceiptFlow from '../ReceiptFlow'
 import { parseTimestamp } from '../../utils/time'
 import ScreenLoader from '../ScreenLoader'
@@ -94,6 +93,10 @@ export default function MyGigsScreen() {
   const [applicantsGig, setApplicantsGig] = useState(null)
   const [confirmDialog, setConfirmDialog] = useState(null)
 
+  const openReceiptFlow = (gig, application = null) => {
+    if (gig) setReceiptGig({ gig, application })
+  }
+
   useEffect(() => {
     if (user) {
       fetchAll()
@@ -111,8 +114,16 @@ export default function MyGigsScreen() {
     if (!pendingNotificationTarget || loading) return
     const { gigId, action, side } = pendingNotificationTarget
     const postedGig = postedGigs.find(gig => gig.id === gigId)
-    const workingApplication = workingGigs.find(application => application.gigs?.id === gigId)
+    const workingApplication = workingGigs.find(application =>
+      application.gigs?.id === gigId &&
+      (!pendingNotificationTarget.applicationId || application.id === pendingNotificationTarget.applicationId)
+    )
     const workingGig = workingApplication?.gigs
+    const postedApplication = postedGig?.applications?.find(application =>
+      pendingNotificationTarget.applicationId
+        ? application.id === pendingNotificationTarget.applicationId
+        : application.status === 'accepted' && !application.receipts?.[0]?.poster_confirmed
+    ) || postedGig?.applications?.find(application => ['accepted', 'completed'].includes(application.status))
 
     setStatusFilter(action === 'applicants' ? 'action' : 'all')
     if (action === 'applicants' && postedGig) {
@@ -120,10 +131,10 @@ export default function MyGigsScreen() {
       setApplicantsGig(postedGig)
     } else if (action === 'receipt' && side === 'worker' && workingGig) {
       setTab('myjobs')
-      setReceiptGig(workingGig)
+      openReceiptFlow(workingGig, workingApplication)
     } else if (action === 'receipt' && postedGig) {
       setTab('myposts')
-      setReceiptGig(postedGig)
+      openReceiptFlow(postedGig, postedApplication)
     } else if (postedGig || workingGig) {
       setTab(postedGig ? 'myposts' : 'myjobs')
     }
@@ -162,7 +173,7 @@ export default function MyGigsScreen() {
           users(id, full_name, avatar_url, rating, trust_score, level)
         ),
         receipts(
-          id, amount, currency, commission_amount,
+          id, worker_id, amount, currency, commission_amount,
           poster_confirmed, worker_confirmed,
           completed, disputed, status
         ),
@@ -171,10 +182,17 @@ export default function MyGigsScreen() {
         )
       `)
       .eq('poster_id', user.id)
-      .neq('status', 'completed')
       .is('deleted_at', null)
       .order('created_at', { ascending: false })
-    if (data) setPostedGigs(data)
+    if (data) {
+      setPostedGigs(data.map(gig => ({
+        ...gig,
+        applications: (gig.applications || []).map(application => ({
+          ...application,
+          receipts: (gig.receipts || []).filter(receipt => receipt.worker_id === application.worker_id)
+        }))
+      })))
+    }
   }
 
   const fetchWorkingGigs = async () => {
@@ -185,7 +203,7 @@ export default function MyGigsScreen() {
         gigs(
           *,
           receipts(
-            id, amount, currency, commission_amount,
+            id, worker_id, amount, currency, commission_amount,
             poster_confirmed, worker_confirmed,
             completed, disputed, status
           ),
@@ -195,11 +213,18 @@ export default function MyGigsScreen() {
         )
       `)
       .eq('worker_id', user.id)
-      .in('status', ['pending', 'accepted'])
+      .in('status', ['pending', 'accepted', 'completed', 'declined'])
       .order('created_at', { ascending: false })
 
     if (data) {
-      const valid = data.filter(a => a.gigs && !a.gigs.deleted_at)
+      const valid = data
+        .filter(a => a.gigs && !a.gigs.deleted_at)
+        .map(application => ({
+          ...application,
+          receipts: (application.gigs.receipts || []).filter(
+            receipt => receipt.worker_id === application.worker_id
+          )
+        }))
       setWorkingGigs(valid)
     }
   }
@@ -220,63 +245,19 @@ export default function MyGigsScreen() {
   const acceptApplication = async (gig, application) => {
     try {
       const isWalletGig = gig.payment_method === PAYMENT_METHODS.WALLET
-
-      // If wallet gig, lock escrow first before accepting
-      if (isWalletGig) {
-        const escrowAmount = Number(gig.pay_min)
-
-        const { data: lockResult, error: lockError } = await supabase
-          .rpc('lock_gig_escrow', {
-            p_user_id: gig.poster_id,
-            p_gig_id: gig.id,
-            p_amount: escrowAmount,
-            p_currency: gig.currency || 'NGN'
-          })
-
-        if (lockError) throw lockError
-
-        if (!lockResult) {
+      const { data: acceptResult, error: acceptError } = await supabase.rpc(
+        'accept_gig_application',
+        { p_application_id: application.id }
+      )
+      if (acceptError) {
+        if (/insufficient wallet balance/i.test(acceptError.message)) {
           showToast('Your wallet balance is not enough to accept this worker. Please fund your wallet or use a manual-payment gig.', 'error')
           window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'wallet' }))
           return
         }
+        throw acceptError
       }
-
-      // Accept this application
-      const { error: acceptError } = await supabase
-        .from('applications')
-        .update({
-          status: 'accepted',
-          accepted_at: new Date().toISOString()
-        })
-        .eq('id', application.id)
-
-      if (acceptError) throw acceptError
-
-      const { data: acceptedApps } = await supabase
-        .from('applications')
-        .select('id')
-        .eq('gig_id', gig.id)
-        .eq('status', 'accepted')
-
-      const filled = acceptedApps?.length || 1
-      const slots = Number(gig.slots || 1)
-      const slotsFull = slots <= 1 || filled >= slots
-
-      // Update gig with worker_id (also lock escrow_amount for wallet gigs)
-      const { error: gigError } = await supabase
-        .from('gigs')
-        .update({
-          status: slotsFull ? 'in_progress' : 'open',
-          worker_id: application.worker_id,
-          worker_name: application.users?.full_name,
-          accepted_at: new Date().toISOString(),
-          slots_filled: filled,
-          ...(isWalletGig ? { escrow_amount: Number(gig.pay_min) } : {})
-        })
-        .eq('id', gig.id)
-
-      if (gigError) throw gigError
+      const slotsFull = Boolean(acceptResult?.slots_full)
 
       // Notify accepted worker
       // Check if this gig has a pending referral, to inform the worker
@@ -299,7 +280,8 @@ const { error: notifError } = await supabase
         : 'Get in touch with the poster and get started.'
     }${referralNote}`,
     type: 'accepted',
-    gig_id: gig.id
+    gig_id: gig.id,
+    application_id: application.id
   })
 
       if (notifError) console.error('Notification error:', notifError)
@@ -310,7 +292,7 @@ const { error: notifError } = await supabase
           application.worker_id,
           '🎉 You Got The Job!',
           `Your application for "${gig.title}" was accepted!`,
-          { type: 'accepted', gigId: gig.id }
+          { type: 'accepted', gigId: gig.id, applicationId: application.id }
         )
       } catch (e) {
         console.log('Push error:', e)
@@ -335,7 +317,8 @@ const { error: notifError } = await supabase
             title: 'Application Update',
             message: `Your application for "${gig.title}" was not selected this time.`,
             type: 'rejected',
-            gig_id: gig.id
+            gig_id: gig.id,
+            application_id: a.id
           }))
         )
       }
@@ -351,103 +334,23 @@ const { error: notifError } = await supabase
     }
   }
 
-  const releaseEscrow = async (gig) => {
-  try {
-    const amount = Number(gig.escrow_amount || gig.pay_min)
-    const referral = await getPendingGigReferralForPayout(gig.id, gig.worker_id)
-
-    if (referral) {
-      const referrerShare = amount * 0.05
-      const { error } = await supabase.rpc('release_gig_escrow_with_referral', {
-        p_gig_id: gig.id,
-        p_poster_id: gig.poster_id,
-        p_worker_id: gig.worker_id,
-        p_amount: amount,
-        p_referrer_id: referral.referrer_id,
-        p_referrer_share: referrerShare,
-        p_currency: gig.currency || 'NGN'
-      })
-
-      if (error) throw error
-
-      await supabase
-        .from('gig_referrals')
-        .update({
-          status: 'completed',
-          reward_given: true,
-          gig_amount: amount,
-          reward_amount: referrerShare,
-          reward_currency: gig.currency,
-          completed_at: new Date().toISOString()
-        })
-        .eq('id', referral.id)
-
-      await supabase.from('notifications').insert({
-        user_id: referral.referrer_id,
-        title: '🎉 Gig Referral Reward!',
-        message: `You earned ${gig.currency || 'NGN'} ${referrerShare.toLocaleString()} (5% of the gig payment) for referring this gig!`,
-        type: 'wallet',
-        gig_id: gig.id
-      })
-    } else {
-      const { error } = await supabase.rpc('release_gig_escrow', {
-        p_gig_id: gig.id,
-        p_poster_id: gig.poster_id,
-        p_worker_id: gig.worker_id,
-        p_amount: amount,
-        p_currency: gig.currency || 'NGN'
-      })
-
-      if (error) throw error
-    }
-      // Mark gig completed
-      await supabase
-        .from('gigs')
-        .update({ status: 'completed' })
-        .eq('id', gig.id)
-
-      await supabase.rpc('increment_gigs_completed', { worker_id: gig.worker_id })
-      await updateWorkerLevel(gig.worker_id)
-
-      // Notify worker funds released
-      await supabase.from('notifications').insert({
-        user_id: gig.worker_id,
-        title: '💸 Payment Released!',
-        message: `Your payment for "${gig.title}" has been released to your Prima wallet. Withdraw anytime.`,
-        type: 'wallet',
-        gig_id: gig.id
-      })
-
-      try {
-        await sendPushToUser(
-          gig.worker_id,
-          '💸 Payment Released!',
-          `Your payment for "${gig.title}" has been released to your wallet.`,
-          { type: 'wallet', gigId: gig.id }
-        )
-      } catch (e) {
-        console.log('Push error:', e)
-      }
-
-      await fetchAll()
-
-    } catch (e) {
-      console.error('Release escrow error:', e)
-      showToast('Error releasing payment: ' + e.message, 'error')
-    }
-  }
   const declineApplication = async (application, gigTitle, gigId) => {
-    await supabase
+    const { error } = await supabase
       .from('applications')
       .update({ status: 'declined' })
       .eq('id', application.id)
+    if (error) {
+      showToast('Could not decline this application: ' + error.message, 'error')
+      return
+    }
 
     await supabase.from('notifications').insert({
       user_id: application.worker_id,
       title: 'Application Update',
       message: `Your application for "${gigTitle}" was not selected.`,
       type: 'rejected',
-      gig_id: gigId || null
+      gig_id: gigId || null,
+      application_id: application.id
     })
 
     try {
@@ -455,7 +358,7 @@ const { error: notifError } = await supabase
         application.worker_id,
         'Application Update',
         `Your application for "${gigTitle}" was not selected.`,
-        { type: 'rejected', gigId: gigId || null }
+        { type: 'rejected', gigId: gigId || null, applicationId: application.id }
       )
     } catch (e) {
       console.log('Push error:', e)
@@ -473,12 +376,16 @@ const { error: notifError } = await supabase
       return
     }
 
-    const { data: current } = await supabase
+    const { data: current, error: lookupError } = await supabase
       .from('gigs')
-      .select('status, expires_at, applications(id, status)')
+      .select('status, expires_at, applications(id, status, worker_id)')
       .eq('id', gigId)
       .maybeSingle()
 
+    if (lookupError) {
+      showToast('Could not check this gig: ' + lookupError.message, 'error')
+      return
+    }
     if (!current) return
 
     // Always block if a worker is actively on the job, regardless of expiry
@@ -487,11 +394,10 @@ const { error: notifError } = await supabase
       return
     }
 
-    // Block if there is an accepted application and the gig is not expired or completed
-    const isExpired = current.expires_at && parseTimestamp(current.expires_at) < new Date()
+    // Expiry closes applications, but must never hide accepted active work.
     const isCompleted = current.status === 'completed'
     const hasAccepted = current.applications?.some(a => a.status === 'accepted')
-    if (hasAccepted && !isExpired && !isCompleted) {
+    if (hasAccepted && !isCompleted) {
       showToast('A worker has been accepted for this gig. Complete or resolve it before deleting.', 'error')
       return
     }
@@ -505,7 +411,8 @@ const { error: notifError } = await supabase
           title: 'Gig Removed',
           message: 'A gig you applied for has been removed by the poster.',
           type: 'rejected',
-          gig_id: null
+          gig_id: null,
+          application_id: a.id
         }))
       )
     }
@@ -514,34 +421,50 @@ const { error: notifError } = await supabase
       .from('gigs')
       .update({ deleted_at: new Date().toISOString() })
       .eq('id', gigId)
-    if (error) showToast('Failed to delete gig: ' + error.message, 'error')
+    if (error) {
+      showToast('Failed to delete gig: ' + error.message, 'error')
+      return
+    }
     await fetchAll()
   }
 
   // ─── FILTER LOGIC ──────────────────────────────────
 
   const getPostedGigStatus = (gig) => {
-    const receipt = gig.receipts?.[0]
     const pendingApps = gig.applications?.filter(a => a.status === 'pending') || []
-    const acceptedApp = gig.applications?.find(a => a.status === 'accepted')
+    const acceptedApps = gig.applications?.filter(a => ['accepted', 'completed'].includes(a.status)) || []
+    const receiptFor = app => app.receipts?.[0] || gig.receipts?.find(r => r.worker_id === app.worker_id)
+    const hasReceiptAction = acceptedApps.some(app => {
+      const receipt = receiptFor(app)
+      return receipt?.poster_confirmed && !receipt?.worker_confirmed && !receipt?.disputed
+    })
+    const activeAcceptedApps = acceptedApps.filter(app => {
+      const receipt = receiptFor(app)
+      return app.status !== 'completed' && !receipt?.completed
+    })
+    const allAcceptedComplete = acceptedApps.length > 0 && activeAcceptedApps.length === 0
+    const slotsFilled = acceptedApps.length >= Number(gig.slots || 1)
+    const isExpired = gig.expires_at && parseTimestamp(gig.expires_at) < new Date()
 
-    if (receipt?.completed) return 'completed'
-    if (receipt?.poster_confirmed && !receipt?.worker_confirmed) return 'waiting'
-    if (gig.status === 'in_progress') return 'inprogress'
-    if (acceptedApp) return 'inprogress'
+    if (hasReceiptAction) return 'waiting'
+    if (gig.status === 'completed' && activeAcceptedApps.length === 0) return 'completed'
+    if (pendingApps.length > 0 && acceptedApps.length < Number(gig.slots || 1)) return 'hasapplicants'
+    if (activeAcceptedApps.length > 0 || (gig.status === 'in_progress' && !allAcceptedComplete)) return 'inprogress'
+    if (allAcceptedComplete && (slotsFilled || isExpired || gig.status === 'completed')) return 'completed'
     if (pendingApps.length > 0) return 'hasapplicants'
-    if (gig.expires_at && parseTimestamp(gig.expires_at) < new Date()) return 'expired'
+    if (isExpired) return 'expired'
     return 'open'
   }
 
   const getWorkingGigStatus = (application) => {
     const gig = application.gigs
-    const receipt = gig?.receipts?.[0]
+    const receipt = application.receipts?.[0] || gig?.receipts?.find(r => r.worker_id === application.worker_id)
 
     if (receipt?.completed) return 'completed'
     if (receipt?.poster_confirmed && !receipt?.worker_confirmed) return 'confirmreceipt'
     if (application.status === 'accepted') return 'inprogress'
     if (application.status === 'declined') return 'declined'
+    if (application.status === 'completed') return 'completed'
     return 'pending'
   }
 
@@ -584,6 +507,7 @@ const { error: notifError } = await supabase
         { key: 'inprogress', label: 'In Progress', count: workingInProgressCount },
         { key: 'pending', label: 'Applied', count: workingGigs.filter(a => getWorkingGigStatus(a) === 'pending').length },
         { key: 'completed', label: 'Completed', count: workingGigs.filter(a => getWorkingGigStatus(a) === 'completed').length },
+        { key: 'declined', label: 'Not Selected', count: workingGigs.filter(a => getWorkingGigStatus(a) === 'declined').length },
       ]
 
   // ─── STYLES ────────────────────────────────────────
@@ -708,7 +632,22 @@ const { error: notifError } = await supabase
                           a.gigs?.id === action.gig_id
                         )?.gigs
                       : postedGigs.find(g => g.id === action.gig_id)
-                    if (gig) setReceiptGig(gig)
+                    if (gig) {
+                      const workerApplication = action.application_id
+                        ? workingGigs.find(a => a.id === action.application_id)
+                        : action.action_type === 'confirm_receipt'
+                          ? workingGigs.find(a => a.gigs?.id === action.gig_id)
+                          : null
+                      const posterGig = action.action_type === 'upload_receipt'
+                        ? postedGigs.find(g => g.id === action.gig_id)
+                        : null
+                      const posterApplication = posterGig?.applications?.find(a =>
+                        action.application_id
+                          ? a.id === action.application_id
+                          : a.status === 'accepted' && !a.receipts?.[0]?.poster_confirmed
+                      ) || posterGig?.applications?.find(a => ['accepted', 'completed'].includes(a.status))
+                      openReceiptFlow(workerApplication?.gigs || posterGig || gig, workerApplication || posterApplication)
+                    }
                   } else if (action.action_type === 'review_applicants') {
                     const gig = postedGigs.find(g => g.id === action.gig_id)
                     if (gig) setApplicantsGig(gig)
@@ -850,14 +789,13 @@ const { error: notifError } = await supabase
   onAccept={acceptApplication}
   onDecline={declineApplication}
   onDelete={deleteGig}
-  onReceipt={setReceiptGig}
+  onReceipt={(gig, application) => openReceiptFlow(gig, application)}
   onEdit={setEditingGig}
   onViewProfile={setViewingProfile}
   onViewApplicants={setApplicantsGig}
   onTrack={(gig) => setTrackingGig({
     gig, role: 'poster', workerInfo: gig.worker
   })}
-  onRelease={releaseEscrow}
   onRefresh={fetchAll}
   sectionHeader={sectionHeader}
   userId={user?.id}
@@ -872,7 +810,7 @@ const { error: notifError } = await supabase
                 getStatus={getWorkingGigStatus}
                 pendingCommissions={pendingCommissions}
                 totalOwed={totalOwed}
-                onReceipt={(gig) => setReceiptGig(gig)}
+                onReceipt={(gig, application) => openReceiptFlow(gig, application)}
                 onViewProfile={setViewingProfile}
                 onTrack={(gig) => setTrackingGig({
                   gig, role: 'worker', posterInfo: gig.poster
@@ -889,7 +827,8 @@ const { error: notifError } = await supabase
       {/* ── MODALS ── */}
       {receiptGig && (
         <ReceiptFlow
-          gig={receiptGig}
+          gig={receiptGig.gig}
+          application={receiptGig.application}
           onClose={() => setReceiptGig(null)}
           onComplete={() => {
             setReceiptGig(null)
@@ -961,7 +900,7 @@ const { error: notifError } = await supabase
 function PostedTab({
   statusFilter, gigs, getStatus, onAccept, onDecline, onDelete,
   onReceipt, onEdit, onViewProfile, onViewApplicants,
-  onTrack, onRelease, onRefresh, sectionHeader, userId
+  onTrack, onRefresh, sectionHeader, userId
 }) {
   const actionGigs = gigs.filter(g =>
     ['hasapplicants', 'waiting'].includes(getStatus(g))
@@ -999,7 +938,6 @@ function PostedTab({
     onEdit={onEdit} onViewProfile={onViewProfile}
     onViewApplicants={onViewApplicants}
     onTrack={onTrack}
-    onRelease={onRelease}
   />
 )
 
@@ -1060,14 +998,17 @@ function PostedTab({
 // ══════════════════════════════════════════
 function PostedGigCard({
   gig, status, onAccept, onDecline, onDelete,
-  onReceipt, onEdit, onViewProfile, onViewApplicants, onTrack, onRelease
+  onReceipt, onEdit, onViewProfile, onViewApplicants, onTrack
 }) {
   const [expanded, setExpanded] = useState(false)
-  const receipt = gig.receipts?.[0]
+  const acceptedApps = gig.applications?.filter(a => ['accepted', 'completed'].includes(a.status)) || []
+  const acceptedApp = acceptedApps.find(a => a.status === 'accepted') || acceptedApps[0]
+  const hasAcceptedWorkers = acceptedApps.length > 0 || Boolean(gig.worker_id)
+  const receiptFor = app => app?.receipts?.[0] || gig.receipts?.find(r => r.worker_id === app?.worker_id)
+  const receipt = receiptFor(acceptedApp) || gig.receipts?.[0]
   const pendingApps = gig.applications?.filter(
     a => a.status === 'pending'
   ) || []
-  const acceptedApp = gig.applications?.find(a => a.status === 'accepted')
   const acceptedWorkerId = gig.worker_id || acceptedApp?.worker_id
   const acceptedWorker = gig.worker || acceptedApp?.users
   const acceptedAt = gig.accepted_at || acceptedApp?.accepted_at
@@ -1179,7 +1120,7 @@ function PostedGigCard({
         )}
 
         {/* Applicants preview */}
-        {status === 'hasapplicants' && (
+        {(status === 'hasapplicants' || (gig.slots > 1 && pendingApps.length > 0 && acceptedApps.length < Number(gig.slots || 1))) && (
           <div style={{
             display: 'flex', gap: '4px', marginTop: '8px',
             alignItems: 'center'
@@ -1216,7 +1157,7 @@ function PostedGigCard({
       }}>
 
         {/* HAS APPLICANTS */}
-        {status === 'hasapplicants' && (
+        {(status === 'hasapplicants' || (gig.slots > 1 && pendingApps.length > 0 && acceptedApps.length < Number(gig.slots || 1))) && (
           <button
             onClick={() => onViewApplicants(gig)}
             style={{
@@ -1234,7 +1175,44 @@ function PostedGigCard({
         )}
 
         {/* IN PROGRESS — Receipt Upload */}
-        {status === 'inprogress' && (
+        {gig.slots > 1 && acceptedApps.length > 0 && ['hasapplicants', 'inprogress', 'waiting'].includes(status) && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '10px' }}>
+            {acceptedApps.map(app => {
+              const appReceipt = receiptFor(app)
+              const appComplete = app.status === 'completed' || appReceipt?.completed
+              const appWaiting = appReceipt?.poster_confirmed && !appReceipt?.worker_confirmed
+              return (
+                <div key={app.id} style={{
+                  display: 'flex', alignItems: 'center', gap: '8px',
+                  padding: '9px 10px', borderRadius: '10px',
+                  background: 'var(--color-page)'
+                }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-text)' }}>
+                      {app.users?.full_name || 'Accepted worker'}
+                    </div>
+                    <div style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>
+                      {appComplete ? 'Work completed' : appWaiting ? 'Waiting for worker confirmation' : 'Work in progress'}
+                    </div>
+                  </div>
+                  {!appComplete && (
+                    <button
+                      onClick={() => onReceipt(gig, app)}
+                      style={{
+                        flexShrink: 0, background: 'var(--color-brand-soft)',
+                        border: '1px solid var(--color-brand-border-strong)',
+                        borderRadius: '9px', padding: '8px 10px',
+                        fontSize: '11px', fontWeight: '700', color: 'var(--color-brand)',
+                        cursor: 'pointer', fontFamily: 'inherit'
+                      }}
+                    >{appWaiting ? 'View receipt' : isWalletGig ? 'Mark done' : 'Upload receipt'}</button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+        {status === 'inprogress' && (gig.slots <= 1 || acceptedApps.length === 0) && (
   <div>
     {daysSinceAccepted >= 3 && gig.payment_method !== 'wallet' && (
       <div style={{
@@ -1271,7 +1249,7 @@ function PostedGigCard({
           Tap Done when {gig.worker?.full_name?.split(' ')[0]} finishes.
         </div>
         <button
-  onClick={() => onReceipt(gig)}
+  onClick={() => onReceipt(gig, acceptedApp)}
   style={{
     width: '100%',
     background: 'linear-gradient(135deg, var(--color-success-accent), var(--color-success))',
@@ -1301,7 +1279,7 @@ function PostedGigCard({
           confirm the payment here.
         </div>
         <button
-          onClick={() => onReceipt(gig)}
+          onClick={() => onReceipt(gig, acceptedApp)}
           style={{
             width: '100%',
             background: 'var(--color-brand-gradient)',
@@ -1351,7 +1329,7 @@ function PostedGigCard({
   </div>
 )}
         {/* WAITING FOR WORKER CONFIRMATION */}
-        {status === 'waiting' && (
+        {status === 'waiting' && (gig.slots <= 1 || acceptedApps.length === 0) && (
           <div>
             <div style={{
               background: 'var(--color-brand-soft)', border: '1.5px solid var(--color-brand-border-strong)',
@@ -1399,7 +1377,7 @@ function PostedGigCard({
         {/* ACTIONS */}
         {['open', 'hasapplicants', 'waiting', 'inprogress'].includes(status) && (
           <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
-            <button
+            {!hasAcceptedWorkers && <button
               onClick={() => onEdit(gig)}
               style={{
                 flex: 1, background: 'var(--color-page)',
@@ -1411,7 +1389,7 @@ function PostedGigCard({
                 justifyContent: 'center', gap: '5px'
               }}>
               <BrandIcon name="edit" size={18} active={false} /> Edit
-            </button>
+            </button>}
             {['open', 'hasapplicants'].includes(status) && (
               <button
                 onClick={() => onDelete(gig.id)}
@@ -1480,6 +1458,7 @@ function WorkingTab({
   const inProgressApps = applications.filter(a => getStatus(a) === 'inprogress')
   const pendingApps = applications.filter(a => getStatus(a) === 'pending')
   const completedApps = applications.filter(a => getStatus(a) === 'completed')
+  const declinedApps = applications.filter(a => getStatus(a) === 'declined')
 
   if (applications.length === 0) {
     return (
@@ -1499,14 +1478,17 @@ function WorkingTab({
     (statusFilter === 'action' && (actionApps.length > 0 || pendingCommissions.length > 0)) ||
     (statusFilter === 'inprogress' && inProgressApps.length > 0) ||
     (statusFilter === 'pending' && pendingApps.length > 0) ||
-    (statusFilter === 'completed' && completedApps.length > 0)
+    (statusFilter === 'completed' && completedApps.length > 0) ||
+    (statusFilter === 'declined' && declinedApps.length > 0)
 
   const renderApp = (app) => (
     <WorkingGigCard
       key={app.id}
       application={app}
       status={getStatus(app)}
-      commission={pendingCommissions.find(c => c.gig_id === app.gigs?.id)}
+      commission={pendingCommissions.find(c =>
+        c.gig_id === app.gigs?.id && c.worker_id === app.worker_id
+      )}
       onReceipt={onReceipt}
       onViewProfile={onViewProfile}
       onTrack={onTrack}
@@ -1584,6 +1566,11 @@ function WorkingTab({
           {completedApps.map(renderApp)}
         </GigCarousel>
       )}
+      {(statusFilter === 'all' || statusFilter === 'declined') && declinedApps.length > 0 && (
+        <GigCarousel title="Not Selected" count={declinedApps.length} color="var(--color-text-muted)">
+          {declinedApps.map(renderApp)}
+        </GigCarousel>
+      )}
     </div>
   )
 }
@@ -1596,7 +1583,7 @@ function WorkingGigCard({
   onReceipt, onViewProfile, onTrack
 }) {
   const gig = application.gigs
-  const receipt = gig?.receipts?.[0]
+  const receipt = application.receipts?.[0] || gig?.receipts?.find(r => r.worker_id === application.worker_id)
   const currency = getCurrency(receipt?.currency || gig?.currency || 'USD')
   const poster = gig?.poster
   const isWalletGig = gig?.payment_method === PAYMENT_METHODS.WALLET
@@ -1786,7 +1773,7 @@ function WorkingGigCard({
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button
-                onClick={() => onReceipt(gig)}
+                onClick={() => onReceipt(gig, application)}
                 style={{
                   flex: 1, background: 'var(--color-danger-soft)',
                   border: '1.5px solid var(--color-danger-border)',
@@ -1795,7 +1782,7 @@ function WorkingGigCard({
                   color: 'var(--color-danger)', cursor: 'pointer', fontFamily: 'inherit'
                 }}>✗ Dispute</button>
               <button
-                onClick={() => onReceipt(gig)}
+                onClick={() => onReceipt(gig, application)}
                 style={{
                   flex: 2,
                   background: 'linear-gradient(135deg, var(--color-success-accent), var(--color-success))',

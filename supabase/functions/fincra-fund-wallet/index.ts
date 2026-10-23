@@ -13,10 +13,28 @@ serve(async (req) => {
   }
 
   try {
-    const { userId, amount, currency, email, name } = await req.json()
-    console.log('Received body:', JSON.stringify({ userId, amount, currency, email, name }))
+    const { userId: requestedUserId, amount, currency, email, name, relatedCommissionId } = await req.json()
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Authentication required' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+    const supabaseAuth = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } },
+    )
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser()
+    if (authError || !user || user.id !== requestedUserId) {
+      return new Response(JSON.stringify({ error: 'Invalid user session' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+    const userId = user.id
+    console.log('Received funding request:', JSON.stringify({ userId, amount, currency, relatedCommissionId }))
 
-    if (!userId || !amount || amount <= 0) {
+    if (!Number.isFinite(Number(amount)) || Number(amount) <= 0) {
       return new Response(
         JSON.stringify({ error: 'Missing or invalid userId/amount' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -28,7 +46,71 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
 
-    const reference = `wallet_${userId}_${Date.now()}`
+    let commissionId: string | null = null
+    if (relatedCommissionId) {
+      const { data: commission, error: commissionError } = await supabase
+        .from('commissions')
+        .select('id, worker_id, commission_amount, currency, status')
+        .eq('id', relatedCommissionId)
+        .eq('worker_id', userId)
+        .maybeSingle()
+      if (commissionError) throw commissionError
+      if (!commission || commission.status !== 'pending') {
+        return new Response(JSON.stringify({ error: 'Commission is not payable.' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+      const commissionCurrency = String(commission.currency || 'NGN').toUpperCase()
+      if (
+        Number(commission.commission_amount) !== Number(amount) ||
+        commissionCurrency !== String(currency || 'NGN').toUpperCase()
+      ) {
+        return new Response(JSON.stringify({ error: 'Commission amount or currency changed. Refresh and try again.' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+      commissionId = commission.id
+    }
+
+    const reference = `wallet_${userId}_${crypto.randomUUID()}`
+
+    // Persist the merchant reference first. If Fincra creates a checkout but
+    // the response is interrupted, a later webhook can still reconcile it.
+    if (commissionId) {
+      const { data: reservation, error: reserveError } = await supabase.rpc(
+        'reserve_fincra_commission_payment',
+        {
+          p_commission_id: commissionId,
+          p_user_id: userId,
+          p_amount: Number(amount),
+          p_currency: currency || 'NGN',
+          p_reference: reference,
+        },
+      )
+      if (reserveError) throw reserveError
+      if (reservation?.status === 'already_pending') {
+        return new Response(JSON.stringify({
+          error: 'A payment for this commission is already pending. Check the existing checkout before trying again.',
+          reference: reservation.reference,
+        }), { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+      if (reservation?.status !== 'reserved') {
+        return new Response(JSON.stringify({ error: 'Commission is no longer payable. Refresh and try again.' }), {
+          status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+    } else {
+      const { error: transactionError } = await supabase.from('wallet_transactions').insert({
+        user_id: userId,
+        type: 'fund_in',
+        amount: amount,
+        currency: currency || 'NGN',
+        fincra_reference: reference,
+        status: 'pending',
+        description: 'Wallet funding initiated',
+      })
+      if (transactionError) throw transactionError
+    }
 
 const PAYMENT_METHODS_BY_CURRENCY: Record<string, string[]> = {
   NGN: ['bank_transfer', 'card'],
@@ -78,21 +160,21 @@ const fincraPayload = {
         fincraData?.error?.message ||
         (typeof fincraData?.error === 'string' ? fincraData.error : null) ||
         `Payment provider rejected the request (${selectedCurrency})`
+      await supabase.from('wallet_transactions')
+        .update({ status: 'failed', description: 'Fincra rejected checkout creation' })
+        .eq('fincra_reference', reference)
+        .eq('status', 'pending')
       return new Response(
         JSON.stringify({ error: fincraMessage, details: fincraData }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    await supabase.from('wallet_transactions').insert({
-      user_id: userId,
-      type: 'fund_in',
-      amount: amount,
-      currency: currency || 'NGN',
-      fincra_reference: reference,
-      status: 'pending',
-      description: 'Wallet funding initiated',
-    })
+    if (!fincraData?.data?.link) {
+      // Keep the pending transaction for webhook or dashboard reconciliation;
+      // the provider may have created the checkout despite a malformed response.
+      throw new Error('Fincra did not return a checkout link. The transaction is pending reconciliation.')
+    }
 
     return new Response(
       JSON.stringify({

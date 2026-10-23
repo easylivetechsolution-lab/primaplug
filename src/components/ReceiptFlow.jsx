@@ -3,12 +3,12 @@ import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 import { uploadToR2 } from '../utils/r2upload'
 import { CURRENCIES, getCurrency } from '../data/currencies'
-import { getPendingGigReferralForPayout, rewardGigReferral } from '../utils/referral'
+import { getPendingGigReferralForPayout } from '../utils/referral'
 import { updateWorkerLevel } from '../utils/workerLevel'
 import { calculateCommission, calculateWorkerEscrowShare, PAYMENT_METHODS } from '../utils/payments'
 import ConfirmDialog from './ConfirmDialog'
 
-export default function ReceiptFlow({ gig, onClose, onComplete }) {
+export default function ReceiptFlow({ gig, application, onClose, onComplete }) {
   const { user } = useAuth()
   const [step, setStep] = useState('start')
   const [receipt, setReceipt] = useState(null)
@@ -20,19 +20,52 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
   const [confirmDialog, setConfirmDialog] = useState(null)
+  const [hasReferral, setHasReferral] = useState(false)
 
   const isPoster = gig?.poster_id === user?.id
-  const isWorker = gig?.worker_id === user?.id
+  const workerId = application?.worker_id || gig?.worker_id
+  const isWorker = workerId === user?.id
   const currency = getCurrency(gig?.currency || 'NGN')
   const isWalletGig = gig?.payment_method === PAYMENT_METHODS.WALLET
 
+  useEffect(() => {
+    let active = true
+    if (!gig?.id || !workerId || !isWorker) {
+      setHasReferral(false)
+      return () => { active = false }
+    }
+    getPendingGigReferralForPayout(gig.id, workerId)
+      .then(referral => {
+        if (!active) return
+        const storedRate = Number(receipt?.amount) > 0
+          ? Number(receipt?.commission_amount) / Number(receipt.amount)
+          : 0
+        setHasReferral(Boolean(referral) || storedRate > 0.1001)
+      })
+    return () => { active = false }
+  }, [gig?.id, workerId, isWorker, receipt?.amount, receipt?.commission_amount])
+
   const fetchReceipt = useCallback(async () => {
     if (!gig) return
-    const { data } = await supabase
-      .from('receipts')
-      .select('*')
-      .eq('gig_id', gig.id)
-      .maybeSingle()
+    let data = null
+    if (application?.id) {
+      const result = await supabase.from('receipts').select('*')
+        .eq('application_id', application.id).maybeSingle()
+      if (result.error) throw result.error
+      data = result.data
+      if (!data) {
+        const legacy = await supabase.from('receipts').select('*')
+          .eq('gig_id', gig.id).eq('worker_id', workerId)
+          .is('application_id', null).maybeSingle()
+        if (legacy.error) throw legacy.error
+        data = legacy.data
+      }
+    } else {
+      const result = await supabase.from('receipts').select('*')
+        .eq('gig_id', gig.id).eq('worker_id', workerId).maybeSingle()
+      if (result.error) throw result.error
+      data = result.data
+    }
     if (data) {
       setReceipt(data)
       // Determine step based on receipt state
@@ -52,15 +85,19 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
     } else {
       setStep(isPoster ? 'poster_amount' : 'waiting_poster')
     }
-  }, [gig, isPoster, isWorker])
+  }, [gig, application, workerId, isPoster, isWorker])
 
   useEffect(() => {
-    const timer = setTimeout(fetchReceipt, 0)
+    const timer = setTimeout(() => {
+      fetchReceipt().catch(e => setError('Unable to load receipt: ' + e.message))
+    }, 0)
     return () => clearTimeout(timer)
   }, [fetchReceipt])
 
   const handlePosterSubmit = async () => {
-    const walletAmount = Number(gig?.escrow_amount || gig?.pay_min || 0)
+    // Escrow is locked per accepted application, even when the gig has
+    // multiple worker slots.
+    const walletAmount = Number(gig?.pay_min || 0)
     if (!isWalletGig && (!amount || parseFloat(amount) <= 0)) {
       setError('Please enter the amount you paid')
       return
@@ -86,15 +123,25 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
       const receiptCurrency = gig?.currency || selectedCurrency
       const commissionAmount = calculateCommission(gigAmount)
 
+      if (isWalletGig && application?.id) {
+        const { data: escrowReady, error: escrowError } = await supabase.rpc(
+          'ensure_gig_application_escrow',
+          { p_application_id: application.id }
+        )
+        if (escrowError) throw escrowError
+        if (!escrowReady) throw new Error('Wallet balance is not enough to restore this worker’s escrow.')
+      }
+
       // Check if receipt exists
-      const { data: existing } = await supabase
-        .from('receipts')
-        .select('id')
-        .eq('gig_id', gig.id)
-        .maybeSingle()
+      let lookup = supabase.from('receipts').select('id')
+      lookup = application?.id
+        ? lookup.eq('application_id', application.id)
+        : lookup.eq('gig_id', gig.id).eq('worker_id', workerId)
+      const { data: existing, error: lookupError } = await lookup.maybeSingle()
+      if (lookupError) throw lookupError
 
       if (existing) {
-        await supabase
+        const { error } = await supabase
           .from('receipts')
           .update({
             amount: gigAmount,
@@ -105,11 +152,13 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
             poster_receipt_url: isWalletGig ? null : (receiptFile || null),
           })
           .eq('id', existing.id)
+        if (error) throw error
       } else {
-        await supabase.from('receipts').insert({
+        const { error } = await supabase.from('receipts').insert({
           gig_id: gig.id,
+          application_id: application?.id || null,
           poster_id: gig.poster_id,
-          worker_id: gig.worker_id,
+          worker_id: workerId,
           amount: gigAmount,
           currency: receiptCurrency,
           commission_amount: commissionAmount,
@@ -119,18 +168,20 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
           completed: false,
           poster_receipt_url: isWalletGig ? null : (receiptFile || null),
         })
+        if (error) throw error
       }
 
       // Notify worker with currency info
       const currSymbol = CURRENCIES.find(c => c.code === receiptCurrency)?.symbol
       await supabase.from('notifications').insert({
-        user_id: gig.worker_id,
+        user_id: workerId,
         title: '📎 Receipt Submitted',
         message: isWalletGig
           ? `Poster marked "${gig.title}" complete. Please confirm so escrow can release.`
           : `Poster confirmed payment of ${currSymbol}${gigAmount.toLocaleString()} ${receiptCurrency} for "${gig.title}". Please confirm you received this amount.`,
         type: 'receipt',
-        gig_id: gig.id
+        gig_id: gig.id,
+        application_id: application?.id || null
       })
 
       setStep('waiting_worker')
@@ -145,15 +196,19 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
     setError(null)
 
     try {
-      const { data: currentReceipt } = await supabase
-        .from('receipts')
-        .select('*')
-        .eq('gig_id', gig.id)
-        .single()
+      let currentReceipt = receipt
+      if (!currentReceipt) {
+        let query = supabase.from('receipts').select('*')
+        if (application?.id) query = query.eq('application_id', application.id)
+        else query = query.eq('gig_id', gig.id).eq('worker_id', workerId)
+        const { data, error } = await query.maybeSingle()
+        if (error) throw error
+        currentReceipt = data
+      }
+      if (!currentReceipt) throw new Error('Receipt was not found. Refresh and try again.')
 
       if (!agreed) {
-        // Worker disputes the amount
-        await supabase
+        const { error: disputeError } = await supabase
           .from('receipts')
           .update({
             disputed: true,
@@ -161,200 +216,122 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
             worker_confirmed: false
           })
           .eq('id', currentReceipt.id)
+        if (disputeError) throw disputeError
 
-        // Notify admin
         const { data: admins } = await supabase
           .from('users')
           .select('id')
           .eq('is_admin', true)
-
         if (admins?.length > 0) {
-          await supabase.from('notifications').insert(
-            admins.map(admin => ({
-              user_id: admin.id,
-              title: '⚠️ Receipt Dispute',
-              message: `Amount dispute on "${gig.title}". Poster claimed ${currency.symbol}${currentReceipt.amount}`,
-              type: 'general',
-              gig_id: gig.id
-            }))
-          )
+          await supabase.from('notifications').insert(admins.map(admin => ({
+            user_id: admin.id,
+            title: 'Receipt Dispute',
+            message: `Amount dispute on "${gig.title}". Poster claimed ${currency.symbol}${currentReceipt.amount}`,
+            type: 'general',
+            gig_id: gig.id,
+            application_id: application?.id || null
+          })))
         }
-
-        // Notify poster
         await supabase.from('notifications').insert({
           user_id: gig.poster_id,
-          title: '⚠️ Receipt Disputed',
+          title: 'Receipt Disputed',
           message: `The worker has disputed the amount for "${gig.title}". Our team will review and resolve this.`,
           type: 'general',
-          gig_id: gig.id
+          gig_id: gig.id,
+          application_id: application?.id || null
         })
-
         setStep('disputed')
         setSubmitting(false)
         return
       }
 
-      // Worker agrees — complete the receipt
-      const gigAmount = currentReceipt.amount
+      const gigAmount = Number(currentReceipt.amount)
       const receiptCurrency = currentReceipt.currency || gig?.currency || 'NGN'
-      const commissionAmount = calculateCommission(gigAmount)
+      let commissionAmount = calculateCommission(gigAmount)
+      let alreadyCompleted = false
 
-      await supabase
-        .from('receipts')
-        .update({
-          worker_confirmed: true,
-          worker_confirmed_at: new Date().toISOString(),
-          completed: true,
-          completed_at: new Date().toISOString(),
-          status: 'completed',
-          commission_amount: commissionAmount
-        })
-        .eq('id', currentReceipt.id)
+      if (!application?.id) {
+        throw new Error('This job is missing its application record. Refresh and contact support if it continues.')
+      }
 
       if (isWalletGig) {
-        const escrowAmount = Number(gig.escrow_amount || gigAmount)
-        const referral = await getPendingGigReferralForPayout(gig.id, gig.worker_id)
+        const referral = await getPendingGigReferralForPayout(gig.id, workerId)
+        const { data: alreadyPaid, error: payoutError } = await supabase.rpc(
+          'complete_wallet_gig_application',
+          { p_application_id: application.id }
+        )
+        if (payoutError) throw payoutError
+        alreadyCompleted = Boolean(alreadyPaid)
 
-        if (referral) {
-          const referrerShare = escrowAmount * 0.05
-          const { error: releaseError } = await supabase.rpc('release_gig_escrow_with_referral', {
-            p_gig_id: gig.id,
-            p_poster_id: gig.poster_id,
-            p_worker_id: gig.worker_id,
-            p_amount: escrowAmount,
-            p_referrer_id: referral.referrer_id,
-            p_referrer_share: referrerShare,
-            p_currency: gig.currency || 'NGN'
-          })
-
-          if (releaseError) throw releaseError
-
-          await supabase
-            .from('gig_referrals')
-            .update({
-              status: 'completed',
-              reward_given: true,
-              gig_amount: escrowAmount,
-              reward_amount: referrerShare,
-              reward_currency: gig.currency || 'NGN',
-              completed_at: new Date().toISOString()
+        if (!alreadyCompleted) {
+          const referrerShare = referral ? gigAmount * 0.05 : 0
+          const workerShare = calculateWorkerEscrowShare(gigAmount, Boolean(referral))
+          if (referral) {
+            await supabase.from('notifications').insert({
+              user_id: referral.referrer_id,
+              title: 'Gig Referral Reward!',
+              message: `You earned ${gig.currency || 'NGN'} ${referrerShare.toLocaleString()} (5% of the gig payment) for referring this gig!`,
+              type: 'wallet',
+              gig_id: gig.id,
+              application_id: application.id
             })
-            .eq('id', referral.id)
-
-          await supabase.from('notifications').insert({
-            user_id: referral.referrer_id,
-            title: 'Gig Referral Reward!',
-            message: `You earned ${gig.currency || 'NGN'} ${referrerShare.toLocaleString()} (5% of the gig payment) for referring this gig!`,
-            type: 'wallet',
-            gig_id: gig.id
-          })
-        } else {
-          const { error: releaseError } = await supabase.rpc('release_gig_escrow', {
-            p_gig_id: gig.id,
-            p_poster_id: gig.poster_id,
-            p_worker_id: gig.worker_id,
-            p_amount: escrowAmount,
-            p_currency: gig.currency || 'NGN'
-          })
-
-          if (releaseError) throw releaseError
-        }
-
-        const workerShare = calculateWorkerEscrowShare(escrowAmount)
-
-        await supabase.from('gigs').update({ status: 'completed' }).eq('id', gig.id)
-
-        await supabase.rpc('increment_gigs_completed', {
-          worker_id: gig.worker_id
-        })
-
-        await updateWorkerLevel(gig.worker_id)
-
-        await supabase.from('notifications').insert([
-          {
-            user_id: gig.poster_id,
-            title: '✅ Gig Completed!',
-            message: `"${gig.title}" is complete. Escrow has been released.`,
-            type: 'review',
-            gig_id: gig.id
-          },
-          {
-            user_id: gig.worker_id,
-            title: '✅ Escrow Released!',
-            message: `${getCurrency(receiptCurrency).symbol}${workerShare.toLocaleString()} has been added to your wallet. Prima's 10% commission was already deducted.`,
-            type: 'general',
-            gig_id: gig.id
           }
-        ])
-
-        setStep('done')
-        onComplete && onComplete()
-        setSubmitting(false)
-        return
-      }
-
-      // Create or refresh one commission record for this gig/worker.
-      const commissionPayload = {
-        gig_id: gig.id,
-        worker_id: gig.worker_id,
-        gig_amount: gigAmount,
-        commission_amount: commissionAmount,
-        currency: receiptCurrency,
-        status: 'pending',
-        due_date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
-      }
-
-      const { data: existingCommission } = await supabase
-        .from('commissions')
-        .select('id, status')
-        .eq('gig_id', gig.id)
-        .eq('worker_id', gig.worker_id)
-        .maybeSingle()
-
-      if (existingCommission) {
-        if (existingCommission.status !== 'paid') {
-          await supabase
-            .from('commissions')
-            .update(commissionPayload)
-            .eq('id', existingCommission.id)
+        await supabase.from('notifications').insert([
+            {
+              user_id: gig.poster_id,
+              title: 'Work Completed!',
+              message: `The accepted work for "${gig.title}" is complete. Escrow has been released.`,
+              type: 'review',
+              gig_id: gig.id,
+              application_id: application.id
+            },
+            {
+              user_id: workerId,
+              title: 'Escrow Released!',
+              message: `${getCurrency(receiptCurrency).symbol}${workerShare.toLocaleString()} has been added to your wallet. Prima's commission and any referral reward have been accounted for.`,
+              type: 'general',
+              gig_id: gig.id,
+              application_id: application.id
+            }
+          ])
         }
       } else {
-        await supabase.from('commissions').insert(commissionPayload)
-      }
+        const { data: completion, error: completionError } = await supabase.rpc(
+          'complete_manual_gig_application',
+          { p_application_id: application.id }
+        )
+        if (completionError) throw completionError
+        alreadyCompleted = Boolean(completion?.already_completed)
+        commissionAmount = Number(completion?.commission_amount ?? commissionAmount)
 
-      // Reward gig referral if applicable
-      if (gigAmount > 0) {
-        await rewardGigReferral(gig.id, gigAmount, gig.currency || 'NGN', gig.worker_id)
-      }
-
-      // Update worker gigs completed
-      await supabase.rpc('increment_gigs_completed', {
-        worker_id: gig.worker_id
-      })
-
-      await updateWorkerLevel(gig.worker_id)
-
-      // Notify both parties
-      await supabase.from('notifications').insert([
-        {
-          user_id: gig.poster_id,
-          title: '✅ Gig Completed!',
-          message: `"${gig.title}" is complete. Please leave a review for the worker!`,
-          type: 'review',
-          gig_id: gig.id
-        },
-        {
-          user_id: gig.worker_id,
-          title: '✅ Gig Completed!',
-          message: `"${gig.title}" complete! You owe ${getCurrency(receiptCurrency).symbol}${commissionAmount.toLocaleString()} platform commission. Pay within 3 days to keep applying for gigs.`,
-          type: 'commission',
-          gig_id: gig.id
+        if (!alreadyCompleted) {
+          await supabase.from('notifications').insert([
+            {
+              user_id: gig.poster_id,
+              title: 'Work Completed!',
+              message: `The accepted work for "${gig.title}" is complete. Please leave a review for the worker!`,
+              type: 'review',
+              gig_id: gig.id,
+              application_id: application.id
+            },
+            {
+              user_id: workerId,
+              title: 'Gig Completed!',
+              message: `"${gig.title}" complete! You owe ${getCurrency(receiptCurrency).symbol}${commissionAmount.toLocaleString()} platform commission. Pay within 3 days to keep applying for gigs.`,
+              type: 'commission',
+              gig_id: gig.id,
+              application_id: application.id
+            }
+          ])
         }
-      ])
+      }
+
+      try { await updateWorkerLevel(workerId) } catch (levelError) {
+        console.error('Worker level refresh error:', levelError)
+      }
 
       setStep('done')
       onComplete && onComplete()
-
     } catch (e) {
       setError('Error confirming receipt: ' + e.message)
     }
@@ -375,15 +352,18 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
   const confirmDisputePaymentReceived = async () => {
     setSubmitting(true)
     try {
-      const { data: currentReceipt } = await supabase
-        .from('receipts').select('*').eq('gig_id', gig.id).single()
-      await supabase.from('receipts')
+      const currentReceipt = receipt || (application?.id
+        ? (await supabase.from('receipts').select('*').eq('application_id', application.id).maybeSingle()).data
+        : null)
+      if (!currentReceipt) throw new Error('Receipt was not found')
+      const { error: clearError } = await supabase.from('receipts')
         .update({ disputed: false, dispute_reason: null }).eq('id', currentReceipt.id)
+      if (clearError) throw clearError
       await supabase.from('notifications').insert({
         user_id: gig.poster_id,
         title: 'Dispute Resolved',
         message: `The worker confirmed they received payment for "${gig.title}" and has closed the dispute.`,
-        type: 'general', gig_id: gig.id
+        type: 'general', gig_id: gig.id, application_id: application?.id || null
       })
       await handleWorkerConfirm(true)
     } catch (e) {
@@ -606,11 +586,13 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
                       borderTop: '1px solid var(--color-page)'
                     }}>
                       <span style={{ color: 'var(--color-warning)' }}>
-                        Platform commission debt (10%)
+                        {isWorker
+                          ? `Total fee (${hasReferral ? '15%' : '10%'})`
+                          : 'Prima fee (10%; referral reward may apply)'}
                       </span>
                       <span style={{ fontWeight: '800', color: 'var(--color-warning)' }}>
                         {CURRENCIES.find(c => c.code === selectedCurrency)?.symbol}
-                        {calculateCommission(parseFloat(amount)).toLocaleString()} {selectedCurrency}
+                        {calculateCommission(parseFloat(amount), hasReferral).toLocaleString()} {selectedCurrency}
                       </span>
                     </div>
                   </div>
@@ -862,7 +844,7 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
               {(() => {
                 const rc = getCurrency(receipt?.currency || gig?.currency || 'USD')
                 const commissionAmt = calculateCommission(
-                  receipt?.amount || 0, receipt?.currency || gig?.currency
+                  receipt?.amount || 0, hasReferral
                 )
                 return (
                   <div style={{
@@ -881,8 +863,9 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
                         fontSize: '12px', color: 'var(--color-warning)',
                         opacity: 0.8, lineHeight: '1.5'
                       }}>
-                        Confirming this receipt means you agree a 10% platform
-                        commission of {rc.symbol}{commissionAmt.toLocaleString()} will be owed to Prima.
+                        Confirming means you agree to a total {hasReferral ? '15%' : '10%'} fee
+                        of {rc.symbol}{commissionAmt.toLocaleString()} payable to Prima.
+                        {hasReferral ? ' Prima pays 5% of it to your referrer.' : ''}
                         You have 3 days to pay.
                       </div>
                     </div>
@@ -1043,7 +1026,7 @@ export default function ReceiptFlow({ gig, onClose, onComplete }) {
                     fontSize: '12px', color: 'var(--color-warning)',
                     opacity: 0.8, lineHeight: '1.5'
                   }}>
-                    10% platform fee due within 3 days.
+                    {hasReferral ? '15% total fee (including the 5% referral reward)' : '10% platform fee'} due within 3 days.
                     Pay via Fincra or Prima Credits to keep applying
                     for gigs.
                   </div>

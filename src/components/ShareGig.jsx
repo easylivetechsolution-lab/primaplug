@@ -35,8 +35,11 @@ export default function ShareGig({ gig, onClose }) {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const gigValue = ((gig.pay_min + gig.pay_max) / 2)
-  const estimatedEarning = (gigValue * 0.05).toFixed(2)
+  const gigValue = (Number(gig.pay_min || 0) + Number(gig.pay_max || 0)) / 2
+  const estimatedEarning = (gigValue * 0.05).toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
   const currency = getCurrency(gig.currency || 'USD')
 
   const shareNative = async () => {
@@ -118,13 +121,13 @@ export default function ShareGig({ gig, onClose }) {
             fontSize: '12px', opacity: 0.8,
             textTransform: 'uppercase', letterSpacing: '1px',
             marginBottom: '6px'
-          }}>If they complete the gig you earn</div>
+          }}>Estimated reward if they complete the gig</div>
           <div style={{
             fontSize: '32px', fontWeight: '800',
             letterSpacing: '-1px', marginBottom: '3px'
           }}>~{currency.symbol}{estimatedEarning}</div>
           <div style={{ fontSize: '12px', opacity: 0.8 }}>
-            5% of avg gig value · paid to your wallet
+            Estimate based on range midpoint. Final reward is 5% of the confirmed payment.
           </div>
         </div>
 
@@ -224,7 +227,7 @@ export default function ShareGig({ gig, onClose }) {
           <div>1. Share your link with someone who can do this gig</div>
           <div>2. They click your link and apply</div>
           <div>3. They get accepted and complete the gig</div>
-          <div>4. You automatically earn 5% of the gig payment to your wallet</div>
+          <div>4. The worker gets 85% on referred gigs; you earn 5% and Prima keeps 10%</div>
         </div>
 
         <style>{`

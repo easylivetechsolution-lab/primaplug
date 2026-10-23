@@ -26,11 +26,23 @@ serve(async (req) => {
       commission_id,
     } = await req.json()
 
-    if (!amount || Number(amount) <= 0) return json({ error: 'Valid amount required' }, 400)
+    if (!Number.isFinite(Number(amount)) || Number(amount) <= 0) return json({ error: 'Valid amount required' }, 400)
     if (!user_id) return json({ error: 'user_id required' }, 400)
+    if (type !== 'wallet' && type !== 'commission') return json({ error: 'Unsupported payment type' }, 400)
+
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) return json({ error: 'Authentication required' }, 401)
+    const supabaseAuth = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } } },
+    )
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser()
+    if (authError || !user || user.id !== user_id) return json({ error: 'Invalid user session' }, 401)
 
     const secretKey = Deno.env.get('FINCRA_SECRET_KEY')
-    const baseUrl = Deno.env.get('FINCRA_BASE_URL') || 'https://api.fincra.com'
+    // Project is currently configured for Fincra test credentials.
+    const baseUrl = 'https://sandboxapi.fincra.com'
     const redirectUrl = Deno.env.get('FINCRA_REDIRECT_URL') || ''
 
     if (!secretKey) return json({ error: 'Fincra is not configured' }, 500)
@@ -42,8 +54,24 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
+    if (type === 'commission') {
+      if (!commission_id) return json({ error: 'commission_id required' }, 400)
+      const { data: commission, error: commissionError } = await supabase
+        .from('commissions')
+        .select('id, worker_id, commission_amount, currency, status')
+        .eq('id', commission_id)
+        .eq('worker_id', user.id)
+        .maybeSingle()
+      if (commissionError) throw commissionError
+      if (!commission || commission.status !== 'pending'
+          || Math.round(Number(amount) * 100) !== Math.round(Number(commission.commission_amount) * 100)
+          || String(currency).toUpperCase() !== String(commission.currency || 'NGN').toUpperCase()) {
+        return json({ error: 'Commission is not payable for this amount or currency' }, 409)
+      }
+    }
+
     if (type === 'wallet') {
-      await supabase.from('wallet_transactions').insert({
+      const { error: transactionError } = await supabase.from('wallet_transactions').insert({
         user_id,
         type: 'fund_in',
         amount,
@@ -52,6 +80,7 @@ serve(async (req) => {
         status: 'pending',
         description: 'Wallet funding via Fincra',
       })
+      if (transactionError) throw transactionError
     }
 
     const response = await fetch(`${baseUrl}/checkout/payments`, {
@@ -71,11 +100,21 @@ serve(async (req) => {
     })
 
     const data = await response.json()
-    if (!response.ok) return json({ error: 'Fincra checkout failed', details: data }, 502)
+    if (!response.ok) {
+      if (type === 'wallet') {
+        await supabase.from('wallet_transactions')
+          .update({ status: 'failed', description: 'Fincra rejected checkout creation' })
+          .eq('fincra_reference', reference).eq('status', 'pending')
+      }
+      return json({ error: 'Fincra checkout failed', details: data }, 502)
+    }
+
+    const checkoutUrl = data?.data?.checkoutUrl || data?.data?.paymentLink || data?.checkoutUrl || data?.paymentLink
+    if (!checkoutUrl) return json({ error: 'Fincra checkout is pending reconciliation', reference }, 502)
 
     return json({
       reference,
-      checkout_url: data?.data?.checkoutUrl || data?.data?.paymentLink || data?.checkoutUrl || data?.paymentLink,
+      checkout_url: checkoutUrl,
       raw: data,
     })
   } catch (error) {

@@ -116,7 +116,8 @@ export const applyToGig = async ({ gig, workerId, notifyPush = true }) => {
     title: 'New Application!',
     message: `Someone applied for your gig "${gig.title}"`,
     type: 'application',
-    gig_id: gig.id
+    gig_id: gig.id,
+    application_id: application.id
   })
 
   if (notifyPush) {
@@ -124,7 +125,7 @@ export const applyToGig = async ({ gig, workerId, notifyPush = true }) => {
       gig.poster_id,
       'New Application!',
       `Someone applied for your gig "${gig.title}"`,
-      { type: 'application', gigId: gig.id }
+      { type: 'application', gigId: gig.id, applicationId: application.id }
     )
   }
 

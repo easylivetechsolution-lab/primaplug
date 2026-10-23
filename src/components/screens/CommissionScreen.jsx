@@ -54,44 +54,10 @@ export default function CommissionScreen() {
 
     setPaying(commission.id)
     try {
-      const { data: newBalance, error: deductError } = await supabase.rpc('_debit_wallet', {
-        p_user_id:  user.id,
-        p_currency: commissionCurrency,
-        p_amount:   commission.commission_amount,
+      const { error: paymentError } = await supabase.rpc('pay_commission_from_wallet', {
+        p_commission_id: commission.id,
       })
-
-      if (deductError) throw deductError
-      if (newBalance === null) throw new Error('Insufficient balance')
-
-      const { error: commissionError } = await supabase
-        .from('commissions')
-        .update({
-          status: 'paid',
-          paid_at: new Date().toISOString(),
-          payment_method: 'wallet'
-        })
-        .eq('id', commission.id)
-
-      if (commissionError) throw commissionError
-
-      await supabase.from('wallet_transactions').insert({
-        user_id: user.id,
-        type: 'commission_payment',
-        amount: commission.commission_amount,
-        currency: commissionCurrency,
-        status: 'completed',
-        balance_after: newBalance,
-        description: `Commission paid for: ${commission.gigs?.title || 'Gig'}`,
-      })
-
-      await supabase.rpc('check_commission_status', { p_worker_id: user.id })
-
-      supabase.from('notifications').insert({
-        user_id: user.id,
-        title: '✅ Commission Paid!',
-        message: `Platform commission paid from your wallet. Your account is in good standing.`,
-        type: 'general'
-      })
+      if (paymentError) throw paymentError
 
       refreshProfile()
       await fetchCommissions()
@@ -181,7 +147,7 @@ export default function CommissionScreen() {
           color: 'var(--color-text)', marginBottom: '4px'
         }}>Platform Commission</div>
         <div style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>
-          10% of your earnings goes to Prima
+          Prima keeps 10%; a referred gig adds a 5% reward for its referrer.
         </div>
       </div>
 
@@ -326,7 +292,9 @@ export default function CommissionScreen() {
                         ? ' (minimum ₦500)'
                         : commission.commission_amount === 2
                           ? ' (minimum $2)'
-                          : ' (10%)'}
+                          : commission.gig_amount
+                            ? ` (${Math.round(Number(commission.commission_amount) / Number(commission.gig_amount) * 100)}%)`
+                            : ''}
                     </div>
                   </div>
                   <div style={{
@@ -351,25 +319,12 @@ export default function CommissionScreen() {
                         const response = await startFincraWalletFunding(supabase, {
                           amount: commission.commission_amount,
                           currency: commission.currency || 'NGN',
+                          related_commission_id: commission.id,
                           user_id: user.id,
                           email: user?.email || '',
                           name: profile?.full_name || 'Prima User',
                         })
                         if (!response?.checkoutUrl) throw new Error('Fincra did not return a checkout URL.')
-
-                        // Link this exact transaction to this exact commission row —
-                        // no ambiguity even if amounts happen to match across commissions
-                        const { error: tagError } = await supabase
-                          .from('wallet_transactions')
-                          .update({
-                            description: `Commission payment for gig`,
-                            related_commission_id: commission.id,
-                          })
-                          .eq('fincra_reference', response.reference)
-
-                        if (tagError) {
-                          console.error('Failed to tag commission transaction:', tagError)
-                        }
 
                         window.location.href = response.checkoutUrl
                       } catch (e) {
@@ -517,7 +472,7 @@ export default function CommissionScreen() {
           icon="commission"
           tone="money"
           title="No commissions yet"
-          message="When you complete a gig and both parties confirm the receipt, your 10% platform fee will appear here."
+          message="When a gig is completed, Prima's 10% fee appears here. Referred gigs include an additional 5% reward for the referrer."
         />
       )}
 

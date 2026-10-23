@@ -795,14 +795,14 @@ export default function PostGig({ onClose }) {
                             {
                               key: PAYMENT_METHODS.WALLET,
                               title: 'Pay from Wallet',
-                              desc: 'Escrow locks funds. Worker gets 90%, Prima keeps 10%.',
+                              desc: 'Worker gets 90%, or 85% if referred. Prima keeps 10%.',
                               tag: 'Recommended',
                               disabled: !walletEnabled,
                             },
                             {
                               key: PAYMENT_METHODS.MANUAL,
                               title: 'Pay Manually',
-                              desc: 'Cash or transfer. 10% commission is owed after receipt.',
+                              desc: 'Cash or transfer. A 10% fee is owed, plus 5% when the worker was referred.',
                               tag: 'Flexible',
                               disabled: false,
                             },

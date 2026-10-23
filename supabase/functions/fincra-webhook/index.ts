@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from '@supabase/supabase-js'
+import { verifyFincraSignature } from '../_shared/fincra-signature.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -16,12 +17,32 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
   try {
-    const payload = await req.json()
+    let payload: any
+    try {
+      payload = JSON.parse(await req.text())
+    } catch {
+      return json({ error: 'Invalid JSON payload' }, 400)
+    }
+
+    const webhookSecret = Deno.env.get('FINCRA_WEBHOOK_SECRET')
+    if (!webhookSecret) return json({ error: 'Webhook signature verification is not configured' }, 500)
+    if (!await verifyFincraSignature(payload, req.headers.get('signature'), webhookSecret)) {
+      return json({ error: 'Invalid webhook signature' }, 401)
+    }
+
     const eventType = payload?.event || payload?.type || payload?.event_type || 'unknown'
     const data = payload?.data || payload
-    const reference = data?.reference || data?.paymentReference || data?.transactionReference
+    const reference = data?.merchantReference || data?.MerchantReference || data?.reference || data?.paymentReference || data?.transactionReference || data?.chargeReference
     const status = String(data?.status || '').toLowerCase()
-    const amount = Number(data?.amount || data?.amountReceived || 0)
+    const settledAmount = Number(
+      data?.amountToSettle ??
+      data?.metadata?.amount ??
+      data?.amountExpected ??
+      (String(data?.feeBearer || '').toLowerCase() === 'business'
+        ? data?.amountReceived ?? data?.amount
+        : NaN)
+    )
+    const varianceType = String(data?.varianceType || '').toLowerCase()
     const currency = data?.currency || 'NGN'
     const metadata = data?.metadata || {}
 
@@ -39,8 +60,8 @@ serve(async (req) => {
       processed: false,
     })
 
-    if (logError?.code === '23505') return json({ ok: true, duplicate: true })
-    if (logError) throw logError
+    if (logError?.code === '23505' && eventType !== 'charge.successful') return json({ ok: true, duplicate: true })
+    if (logError && logError.code !== '23505') throw logError
 
     const isSuccessful = ['successful', 'success', 'completed', 'paid'].includes(status)
     if (!isSuccessful) return json({ ok: true, processed: false })
@@ -54,7 +75,9 @@ serve(async (req) => {
 
       if (
         commission &&
-        amount >= Number(commission.commission_amount) &&
+        Number.isFinite(settledAmount) &&
+        Math.round(settledAmount * 100) === Math.round(Number(commission.commission_amount) * 100) &&
+        varianceType !== 'underpayment' &&
         String(currency).toUpperCase() === String(commission.currency || 'NGN').toUpperCase()
       ) {
         await supabase.from('commissions').update({
@@ -68,31 +91,31 @@ serve(async (req) => {
         })
       }
     } else {
-      const { data: tx } = await supabase
+      const { data: tx, error: txError } = await supabase
         .from('wallet_transactions')
-        .select('id, user_id, amount, currency')
+        .select('id, user_id, amount, currency, type, status')
         .eq('fincra_reference', reference)
-        .eq('status', 'pending')
         .maybeSingle()
+      if (txError) throw txError
 
-      if (tx && amount >= Number(tx.amount)) {
-        const { data: profile } = await supabase
-          .from('users')
-          .select('wallet_balance')
-          .eq('id', tx.user_id)
-          .single()
-
-        const balanceAfter = Number(profile?.wallet_balance || 0) + Number(tx.amount)
-
-        await supabase.from('users').update({
-          wallet_balance: balanceAfter,
-          wallet_currency: tx.currency,
-        }).eq('id', tx.user_id)
-
-        await supabase.from('wallet_transactions').update({
-          status: 'completed',
-          balance_after: balanceAfter,
-        }).eq('id', tx.id)
+      if (tx?.status === 'completed') {
+        // A duplicate successful event is already settled.
+      } else if (
+        tx &&
+        Number.isFinite(settledAmount) &&
+        Math.round(settledAmount * 100) === Math.round(Number(tx.amount) * 100) &&
+        varianceType !== 'underpayment' &&
+        String(currency).toUpperCase() === String(tx.currency || 'NGN').toUpperCase()
+      ) {
+        if (tx.type === 'fund_in') {
+          const { error: completionError } = await supabase.rpc(
+            'complete_fincra_wallet_funding',
+            { p_reference: reference }
+          )
+          if (completionError) throw completionError
+        }
+      } else {
+        return json({ ok: false, processed: false, reason: 'amount_or_currency_mismatch' }, 409)
       }
     }
 

@@ -13,15 +13,39 @@ serve(async (req) => {
 
   try {
     const url = new URL(req.url)
-    const country = url.searchParams.get('country') || 'NG'
+    const country = url.searchParams.get('country')
+    const currency = url.searchParams.get('currency')
+    const paymentDestination = url.searchParams.get('paymentDestination') || 'bank_account'
+    if (!country && !currency) {
+      return new Response(JSON.stringify({ error: 'Country or currency is required' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+    if (country && !/^[A-Z]{2}$/.test(country.toUpperCase())) {
+      return new Response(JSON.stringify({ error: 'Country must be an ISO alpha-2 code' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+    if (!['bank_account'].includes(paymentDestination)) {
+      return new Response(JSON.stringify({ error: 'Unsupported payout method' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    const baseUrl = (Deno.env.get('FINCRA_BASE_URL') || 'https://sandboxapi.fincra.com').replace(/\/$/, '')
+    const apiKey = Deno.env.get('FINCRA_SECRET_KEY')
+    if (!apiKey) throw new Error('Fincra is not configured')
+    const params = new URLSearchParams({ paymentDestination })
+    if (country) params.set('country', country.toUpperCase())
+    if (currency) params.set('currency', currency.toUpperCase())
 
     const fincraRes = await fetch(
-      `https://sandboxapi.fincra.com/core/banks?country=${country}`,
+      `${baseUrl}/core/banks?${params.toString()}`,
       {
         method: 'GET',
         headers: {
           'accept': 'application/json',
-          'api-key': Deno.env.get('FINCRA_SECRET_KEY') ?? '',
+          'api-key': apiKey,
           'connection': 'close',
         },
       }

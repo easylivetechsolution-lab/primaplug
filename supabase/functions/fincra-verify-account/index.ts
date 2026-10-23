@@ -21,12 +21,15 @@ serve(async (req) => {
       )
     }
 
-    const fincraRes = await fetch('https://sandboxapi.fincra.com/core/accounts/resolve', {
+    const baseUrl = (Deno.env.get('FINCRA_BASE_URL') || 'https://sandboxapi.fincra.com').replace(/\/$/, '')
+    const apiKey = Deno.env.get('FINCRA_SECRET_KEY')
+    if (!apiKey) throw new Error('Fincra is not configured')
+    const fincraRes = await fetch(`${baseUrl}/core/accounts/resolve`, {
       method: 'POST',
       headers: {
         'accept': 'application/json',
         'Content-Type': 'application/json',
-        'api-key': Deno.env.get('FINCRA_SECRET_KEY')!,
+        'api-key': apiKey,
       },
       body: JSON.stringify({
         accountNumber,

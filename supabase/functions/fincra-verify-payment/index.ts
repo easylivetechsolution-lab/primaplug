@@ -27,6 +27,24 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
 
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Authentication required' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+    const supabaseAuth = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } },
+    )
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser()
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: 'Invalid user session' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
     // Find our pending transaction first
     const { data: txRow, error: txError } = await supabase
       .from('wallet_transactions')
@@ -35,6 +53,12 @@ serve(async (req) => {
       .maybeSingle()
 
     if (txError) throw txError
+
+    if (txRow && txRow.user_id !== user.id) {
+      return new Response(JSON.stringify({ error: 'Transaction not found' }), {
+        status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
 
     if (!txRow) {
       return new Response(
@@ -45,7 +69,7 @@ serve(async (req) => {
 
     if (txRow.status === 'completed') {
       return new Response(
-        JSON.stringify({ status: 'already_completed', transaction: txRow }),
+        JSON.stringify({ status: 'completed', alreadyCompleted: true, transaction: txRow }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -79,6 +103,51 @@ serve(async (req) => {
     if (!isSuccessful) {
       return new Response(
         JSON.stringify({ status: 'not_yet_successful', fincraStatus: txStatus, details: verifyData }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    const verifiedAmount = Number(
+      verifyData?.data?.amountToSettle ??
+      verifyData?.data?.metadata?.amount ??
+      verifyData?.data?.amountExpected ??
+      (String(verifyData?.data?.feeBearer || '').toLowerCase() === 'business'
+        ? verifyData?.data?.amountReceived ?? verifyData?.data?.amount
+        : NaN)
+    )
+    const verifiedCurrency = String(verifyData?.data?.currency || '').toUpperCase()
+    const transactionAmount = Number(txRow.amount)
+    const transactionCurrency = String(txRow.currency || 'NGN').toUpperCase()
+    const varianceType = String(verifyData?.data?.varianceType || '').toLowerCase()
+    if (
+      !Number.isFinite(verifiedAmount) ||
+      Math.round(verifiedAmount * 100) !== Math.round(transactionAmount * 100) ||
+      varianceType === 'underpayment' ||
+      verifiedCurrency !== transactionCurrency
+    ) {
+      return new Response(
+        JSON.stringify({
+          status: 'payment_amount_or_currency_mismatch',
+          expectedAmount: transactionAmount,
+          expectedCurrency: transactionCurrency,
+        }),
+        { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    if (txRow.type === 'fund_in') {
+      const { data: completion, error: completionError } = await supabase.rpc(
+        'complete_fincra_wallet_funding',
+        { p_reference: reference }
+      )
+      if (completionError) throw completionError
+
+      return new Response(
+        JSON.stringify({
+          status: completion?.status || 'completed',
+          alreadyCompleted: Boolean(completion?.already_completed),
+          newBalance: completion?.balance,
+        }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }

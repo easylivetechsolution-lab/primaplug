@@ -8,11 +8,11 @@ export const PAYMENT_METHODS = {
   WALLET: 'wallet',
 }
 
-export const calculateCommission = (amount) =>
-  Number(amount || 0) * COMMISSION_RATE
+export const calculateCommission = (amount, hasReferral = false) =>
+  Math.round(Number(amount || 0) * (hasReferral ? COMMISSION_RATE + 0.05 : COMMISSION_RATE) * 100) / 100
 
-export const calculateWorkerEscrowShare = (amount) =>
-  Number(amount || 0) * WORKER_ESCROW_SHARE
+export const calculateWorkerEscrowShare = (amount, hasReferral = false) =>
+  Math.round(Number(amount || 0) * (hasReferral ? WORKER_ESCROW_SHARE - 0.05 : WORKER_ESCROW_SHARE) * 100) / 100
 
 export const creditsToDollars = (credits) =>
   Number(credits || 0) / CREDITS_PER_DOLLAR

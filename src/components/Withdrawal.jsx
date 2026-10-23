@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
-import { creditsToDollars, MIN_WITHDRAWAL_CREDITS } from '../utils/payments'
 
 const CURRENCY_TO_COUNTRY = {
   NGN: 'NG', GHS: 'GH', KES: 'KE', ZAR: 'ZA',
@@ -9,7 +8,7 @@ const CURRENCY_TO_COUNTRY = {
 }
 
 export default function Withdrawal({ onClose }) {
-  const { user, profile, wallets, refreshProfile } = useAuth()
+  const { user, wallets, refreshProfile } = useAuth()
 
   const [source, setSource] = useState('wallet') // 'wallet' or 'credits'
   const [walletCurrency, setWalletCurrency] = useState(() => wallets?.[0]?.currency || 'NGN')
@@ -26,8 +25,6 @@ export default function Withdrawal({ onClose }) {
 
   const selectedWallet = (wallets || []).find(w => w.currency === walletCurrency)
   const walletBalance = Number(selectedWallet?.balance || 0)
-  const creditsBalance = Number(profile?.credit_balance || 0)
-  const creditsAsDollars = creditsToDollars(creditsBalance)
 
   useEffect(() => {
     loadBanks(walletCurrency)
@@ -90,8 +87,12 @@ export default function Withdrawal({ onClose }) {
 
   const handleWithdraw = async () => {
     setError('')
+    if (source !== 'wallet') {
+      setError('Credit withdrawals are temporarily unavailable. Your credits have not been changed.')
+      return
+    }
     const numAmount = parseFloat(amount)
-    const balance = source === 'wallet' ? walletBalance : creditsAsDollars
+    const balance = walletBalance
 
     if (!numAmount || numAmount <= 0) {
       setError('Enter a valid amount')
@@ -105,11 +106,6 @@ export default function Withdrawal({ onClose }) {
       setError('Please verify the account first')
       return
     }
-    if (source === 'credits' && creditsBalance < MIN_WITHDRAWAL_CREDITS) {
-      setError(`You need at least ${MIN_WITHDRAWAL_CREDITS} credits to withdraw`)
-      return
-    }
-
     setLoading(true)
     try {
       const { data, error: fnError } = await supabase.functions.invoke('fincra-payout', {
@@ -191,7 +187,6 @@ export default function Withdrawal({ onClose }) {
             <div style={{ display: 'flex', gap: '8px', marginBottom: source === 'wallet' && (wallets || []).length > 1 ? '10px' : '18px' }}>
               {[
                 { key: 'wallet', label: 'Wallet', balance: `${walletCurrency} ${walletBalance.toLocaleString()}` },
-                { key: 'credits', label: 'Prima Credits', balance: `$${creditsAsDollars.toFixed(2)}` },
               ].map(s => (
                 <button
                   key={s.key}
@@ -210,6 +205,9 @@ export default function Withdrawal({ onClose }) {
                   </div>
                 </button>
               ))}
+            </div>
+            <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: '-10px', marginBottom: '14px' }}>
+              Prima Credits cannot currently be withdrawn to a bank account.
             </div>
 
             {/* Wallet currency picker (only when multiple wallets) */}

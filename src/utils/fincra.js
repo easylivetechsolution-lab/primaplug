@@ -4,6 +4,7 @@ export const startFincraWalletFunding = async (supabase, payload) => {
       userId: payload.user_id,
       amount: payload.amount,
       currency: payload.currency,
+      relatedCommissionId: payload.related_commission_id || null,
       email: payload.email,
       name: payload.name,
     },
@@ -24,15 +25,43 @@ export const requestFincraPayout = async (supabase, payload) => {
   return data
 }
 
-export const listFincraBanks = async (supabase, country = 'NG') => {
+export const quoteFincraCreditPayout = async (supabase, payload) => {
+  const { data, error } = await supabase.functions.invoke('fincra-credit-payout-quote', {
+    body: {
+      creditsAmount: payload.creditsAmount,
+      destinationCurrency: payload.destinationCurrency || 'NGN',
+      destinationCountry: payload.destinationCountry || 'NG',
+      paymentScheme: payload.paymentScheme || null,
+    },
+  })
+
+  if (error) throw error
+  if (data?.error) throw new Error(data.error)
+  return data
+}
+
+export const requestFincraCreditPayout = async (supabase, payload) => {
+  const { data, error } = await supabase.functions.invoke('fincra-credit-payout', {
+    body: payload,
+  })
+
+  if (error) throw error
+  if (data?.error) throw new Error(data.error)
+  return data
+}
+
+export const listFincraBanks = async (supabase, country = 'NG', currency, paymentDestination = 'bank_account') => {
   const { data: sessionData } = await supabase.auth.getSession()
   const token = sessionData?.session?.access_token
+  const params = new URLSearchParams({ country, paymentDestination })
+  if (currency) params.set('currency', currency)
 
   const res = await fetch(
-    `https://eiwytpjtrawmocinxpid.supabase.co/functions/v1/fincra-list-banks?country=${country}`,
+    `https://eiwytpjtrawmocinxpid.supabase.co/functions/v1/fincra-list-banks?${params.toString()}`,
     {
       headers: {
         Authorization: `Bearer ${token}`,
+        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
       },
     }
   )

@@ -30,7 +30,7 @@ entrypoint = "./functions/fincra-create-payout/index.ts"
 
 [functions.fincra-fund-wallet]
 enabled = true
-verify_jwt = false
+verify_jwt = true
 import_map = "./functions/fincra-fund-wallet/deno.json"
 # Uncomment to specify a custom file path to the entrypoint.
 # Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
@@ -52,7 +52,7 @@ entrypoint = "./functions/fincra-payin-webhook/index.ts"
 
 [functions.fincra-list-banks]
 enabled = true
-verify_jwt = false
+verify_jwt = true
 import_map = "./functions/fincra-list-banks/deno.json"
 # Uncomment to specify a custom file path to the entrypoint.
 # Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
@@ -63,7 +63,7 @@ entrypoint = "./functions/fincra-list-banks/index.ts"
 
 [functions.fincra-verify-account]
 enabled = true
-verify_jwt = false
+verify_jwt = true
 import_map = "./functions/fincra-verify-account/deno.json"
 # Uncomment to specify a custom file path to the entrypoint.
 # Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
@@ -74,7 +74,7 @@ entrypoint = "./functions/fincra-verify-account/index.ts"
 
 [functions.fincra-payout]
 enabled = true
-verify_jwt = false
+verify_jwt = true
 import_map = "./functions/fincra-payout/deno.json"
 # Uncomment to specify a custom file path to the entrypoint.
 # Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
@@ -96,7 +96,7 @@ entrypoint = "./functions/fincra-payout-webhook/index.ts"
 
 [functions.fincra-verify-payment]
 enabled = true
-verify_jwt = false
+verify_jwt = true
 import_map = "./functions/fincra-verify-payment/deno.json"
 # Uncomment to specify a custom file path to the entrypoint.
 # Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
@@ -104,3 +104,18 @@ entrypoint = "./functions/fincra-verify-payment/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/fincra-verify-payment/*.html" ]
+
+[functions.fincra-credit-payout-quote]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/fincra-credit-payout-quote/index.ts"
+
+[functions.fincra-credit-payout]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/fincra-credit-payout/index.ts"
+
+[functions.fincra-credit-payout-admin]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/fincra-credit-payout-admin/index.ts"

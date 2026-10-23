@@ -20,12 +20,40 @@ serve(async (req) => {
 
   try {
     const {
-      userId, source, currency: requestedCurrency,
+      userId: requestedUserId, source, currency: requestedCurrency,
       amount, accountNumber, bankCode,
       accountName, firstName, lastName, email
     } = await req.json()
 
-    if (!userId || !source || !amount || !accountNumber || !bankCode) {
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Authentication required' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+    const supabaseAuth = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } },
+    )
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser()
+    if (authError || !user || user.id !== requestedUserId) {
+      return new Response(JSON.stringify({ error: 'Invalid user session' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+    const userId = user.id
+
+    // Credits withdrawals are disabled until the NGN conversion rate and
+    // the credit debit can be handled atomically with payout creation.
+    if (source !== 'wallet') {
+      return new Response(
+        JSON.stringify({ error: 'Only wallet withdrawals are currently available' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    if (!source || !Number.isFinite(Number(amount)) || Number(amount) <= 0 || !accountNumber || !bankCode) {
       return new Response(
         JSON.stringify({ error: 'Missing required fields' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -38,74 +66,30 @@ serve(async (req) => {
     )
 
     let currency = requestedCurrency || 'NGN'
-    let newBalance: number | undefined
-
-    if (source === 'wallet') {
-      // Validate currency is Fincra-supported
-      if (!FINCRA_CURRENCIES.includes(currency)) {
-        return new Response(
-          JSON.stringify({ error: `Currency ${currency} is not supported for payouts` }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
-      }
-
-      // Read balance from wallets table — never trust client-supplied balance
-      const { data: walletRow, error: walletErr } = await supabase
-        .from('wallets')
-        .select('balance')
-        .eq('user_id', userId)
-        .eq('currency', currency)
-        .maybeSingle()
-
-      if (walletErr) throw walletErr
-
-      if (!walletRow) {
-        return new Response(
-          JSON.stringify({ error: `No ${currency} wallet found` }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
-      }
-
-      const currentBalance = Number(walletRow.balance || 0)
-      if (currentBalance < amount) {
-        return new Response(
-          JSON.stringify({ error: 'Insufficient balance' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
-      }
-
-      // Atomically debit the wallet
-      const { data: debitedBal, error: debitErr } = await supabase.rpc('_debit_wallet', {
-        p_user_id:  userId,
-        p_currency: currency,
-        p_amount:   Number(amount),
-      })
-      if (debitErr) throw debitErr
-      if (debitedBal === null) {
-        return new Response(
-          JSON.stringify({ error: 'Insufficient balance (concurrent update)' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
-      }
-      newBalance = debitedBal as number
+    if (!FINCRA_CURRENCIES.includes(currency)) {
+      return new Response(
+        JSON.stringify({ error: `Currency ${currency} is not supported for payouts` }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
     }
 
     const reference = `payout_${source}_${userId}_${Date.now()}`
-
-    await supabase.from('wallet_transactions').insert({
-      user_id: userId,
-      type: 'withdrawal',
-      amount: amount,
-      currency: currency,
-      fincra_reference: reference,
-      status: 'pending',
-      balance_after: newBalance,
-      description: `Withdrawal via ${source} to ${bankCode}/${accountNumber}`,
-    })
-
-    const nameParts = (accountName || `${firstName || ''} ${lastName || ''}`).trim().split(' ')
-    const payoutFirstName = firstName || nameParts[0] || 'Prima'
-    const payoutLastName = lastName || nameParts.slice(1).join(' ') || 'User'
+    const { data: reservation, error: reserveError } = await supabase.rpc(
+      'reserve_fincra_wallet_withdrawal',
+      {
+        p_user_id: userId,
+        p_currency: currency,
+        p_amount: Number(amount),
+        p_reference: reference,
+        p_description: `Withdrawal via wallet to ${bankCode}`,
+      },
+    )
+    if (reserveError) throw reserveError
+    if (reservation?.status !== 'reserved') {
+      return new Response(JSON.stringify({ error: 'Insufficient wallet balance' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
 
     const payoutPayload = {
       business: Deno.env.get('FINCRA_BUSINESS_ID'),
@@ -116,9 +100,9 @@ serve(async (req) => {
       customerReference: reference,
       paymentDestination: 'bank_account',
       beneficiary: {
-        firstName: payoutFirstName,
-        lastName: payoutLastName,
-        accountHolderName: accountName || `${payoutFirstName} ${payoutLastName}`,
+        firstName: firstName || (accountName || 'Prima User').trim().split(' ')[0],
+        lastName: lastName || (accountName || 'Prima User').trim().split(' ').slice(1).join(' ') || 'User',
+        accountHolderName: accountName || `${firstName || 'Prima'} ${lastName || 'User'}`,
         accountNumber: accountNumber,
         country: CURRENCY_TO_COUNTRY[currency] || 'NG',
         bankCode: bankCode,
@@ -130,8 +114,7 @@ serve(async (req) => {
         email: 'hello@primaplug.com',
       },
     }
-
-    console.log('Sending payout to Fincra:', JSON.stringify(payoutPayload))
+    console.log('Sending wallet payout to Fincra:', JSON.stringify({ reference, currency, amount: Number(amount), bankCode }))
 
     const fincraRes = await fetch('https://sandboxapi.fincra.com/disbursements/payouts', {
       method: 'POST',
@@ -144,27 +127,19 @@ serve(async (req) => {
     })
 
     const fincraData = await fincraRes.json()
-    console.log('Fincra payout response:', JSON.stringify(fincraData))
+    console.log('Fincra payout response:', JSON.stringify({ reference, success: fincraRes.ok && fincraData.success !== false }))
 
     if (!fincraRes.ok || fincraData.success === false) {
-      // Refund the wallet if payout failed to initiate
-      if (source === 'wallet' && newBalance !== undefined) {
-        await supabase.rpc('_credit_wallet', {
-          p_user_id:  userId,
-          p_currency: currency,
-          p_amount:   Number(amount),
-        })
-      }
-
-      await supabase
-        .from('wallet_transactions')
-        .update({ status: 'failed', description: 'Payout failed to initiate - refunded' })
-        .eq('fincra_reference', reference)
+      const { error: settleError } = await supabase.rpc('process_fincra_wallet_payout', {
+        p_reference: reference,
+        p_success: false,
+      })
+      if (settleError) throw settleError
 
       const fincraMessage = fincraData?.message || fincraData?.error || 'Payment provider declined the transfer'
       return new Response(
         JSON.stringify({ error: fincraMessage, details: fincraData }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 

@@ -184,7 +184,7 @@ export default function NotificationsScreen({ onNavigate }) {
       go('mygigs')
       requestAnimationFrame(() => requestAnimationFrame(() => {
         window.dispatchEvent(new CustomEvent('openMyGigNotification', {
-          detail: { gigId: notification.gig_id, action: 'applicants' }
+          detail: { gigId: notification.gig_id, applicationId: notification.application_id, action: 'applicants' }
         }))
       }))
       return
@@ -193,7 +193,7 @@ export default function NotificationsScreen({ onNavigate }) {
       go('mygigs')
       requestAnimationFrame(() => requestAnimationFrame(() => {
         window.dispatchEvent(new CustomEvent('openMyGigNotification', {
-          detail: { gigId: notification.gig_id, action: 'gig' }
+          detail: { gigId: notification.gig_id, applicationId: notification.application_id, action: 'gig' }
         }))
       }))
       return
@@ -204,6 +204,7 @@ export default function NotificationsScreen({ onNavigate }) {
         window.dispatchEvent(new CustomEvent('openMyGigNotification', {
           detail: {
             gigId: notification.gig_id,
+            applicationId: notification.application_id,
             action: 'receipt',
             side: titleAndMessage.includes('disput') ? 'poster' : 'worker',
           }
@@ -215,7 +216,7 @@ export default function NotificationsScreen({ onNavigate }) {
       go('mygigs')
       requestAnimationFrame(() => requestAnimationFrame(() => {
         window.dispatchEvent(new CustomEvent('openMyGigNotification', {
-          detail: { gigId: notification.gig_id, action: 'gig' }
+          detail: { gigId: notification.gig_id, applicationId: notification.application_id, action: 'gig' }
         }))
       }))
       return
@@ -240,7 +241,7 @@ export default function NotificationsScreen({ onNavigate }) {
       go('mygigs')
       requestAnimationFrame(() => requestAnimationFrame(() => {
         window.dispatchEvent(new CustomEvent('openMyGigNotification', {
-          detail: { gigId: notification.gig_id, action: 'receipt', side: 'poster' }
+          detail: { gigId: notification.gig_id, applicationId: notification.application_id, action: 'receipt', side: 'poster' }
         }))
       }))
       return

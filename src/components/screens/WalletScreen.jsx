@@ -62,7 +62,6 @@ export default function WalletScreen() {
   const [amount, setAmount]               = useState('')
   const [fundLoading, setFundLoading]     = useState(false)
   const [fundError, setFundError]         = useState('')
-  const [checkoutUrl, setCheckoutUrl]     = useState(null)
 
   // Withdraw modal
   const [showWithdraw, setShowWithdraw]   = useState(false)
@@ -289,8 +288,7 @@ export default function WalletScreen() {
         user_id: user.id,
       })
       if (!response?.checkoutUrl) throw new Error('Fincra did not return a checkout URL.')
-      setCheckoutUrl(response.checkoutUrl)
-      setShowFund(false)
+      window.location.assign(response.checkoutUrl)
     } catch (e) {
       setFundError(e.message || 'Could not start wallet funding.')
     }
@@ -362,12 +360,6 @@ export default function WalletScreen() {
     setWithdrawing(false)
   }
 
-  const closeCheckout = () => {
-    setCheckoutUrl(null)
-    refreshProfile()
-    fetchTransactions()
-  }
-
   const inputStyle = {
     width: '100%',
     background: 'var(--color-page)',
@@ -383,42 +375,6 @@ export default function WalletScreen() {
 
   return (
     <>
-    {checkoutUrl && (
-      <div style={{
-        position: 'fixed', inset: 0, zIndex: 99999,
-        background: 'rgba(20,18,58,0.85)', backdropFilter: 'blur(4px)',
-        display: 'flex', flexDirection: 'column',
-        fontFamily: "'Plus Jakarta Sans', sans-serif"
-      }}>
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '12px 16px',
-          background: 'var(--color-surface)', borderBottom: '1px solid var(--color-border)'
-        }}>
-          <div>
-            <div style={{ fontSize: '15px', fontWeight: '800', color: 'var(--color-text)' }}>Fund Wallet</div>
-            <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', fontWeight: '500' }}>🔒 Secured by Fincra</div>
-          </div>
-          <button  onClick={closeCheckout} style={{
-            background: 'var(--color-page)', border: '1.5px solid var(--color-border)',
-            borderRadius: '10px', width: '36px', height: '36px',
-            fontSize: '18px', color: 'var(--color-text-muted)', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center'
-          }}>×</button>
-        </div>
-        <iframe
-          src={checkoutUrl}
-          style={{ flex: 1, border: 'none', width: '100%' }}
-          title="Fincra Checkout"
-          onLoad={(e) => {
-            try {
-              if (e.target.contentWindow.location.href.includes('primaplug.com')) closeCheckout()
-            } catch (_) {}
-          }}
-        />
-      </div>
-    )}
-
     <div className="wallet-page">
 
       {/* HEADER */}

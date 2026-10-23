@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { verifyFincraSignature } from '../_shared/fincra-signature.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -23,33 +24,36 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders })
   }
 
-  const rawBody = await req.text()
-  console.log('=== WEBHOOK RECEIVED ===')
-  console.log('RAW BODY:', rawBody)
-
   try {
-    const signatureHeader = req.headers.get('signature') || ''
-    const webhookSecret = Deno.env.get('FINCRA_WEBHOOK_SECRET') || ''
-    // Only verify if a secret is actually configured — skip in sandbox when not set
-    const signatureSkipped = !webhookSecret
-    const isValid = signatureSkipped
-      ? true
-      : await verifySignature(rawBody, signatureHeader, webhookSecret)
-    console.log('SIGNATURE VALID:', isValid, '| SKIPPED:', signatureSkipped)
+    const rawBody = await req.text()
+    let payload: any
+    try {
+      payload = JSON.parse(rawBody)
+    } catch {
+      return new Response(JSON.stringify({ error: 'Invalid JSON payload' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    const webhookSecret = Deno.env.get('FINCRA_WEBHOOK_SECRET')
+    if (!webhookSecret) {
+      return new Response(JSON.stringify({ error: 'Webhook signature verification is not configured' }), {
+        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+    if (!await verifyFincraSignature(payload, req.headers.get('signature'), webhookSecret)) {
+      return new Response(JSON.stringify({ error: 'Invalid webhook signature' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
 
-    let payload: any = {}
-    try {
-      payload = JSON.parse(rawBody)
-    } catch {
-      console.log('Could not parse body as JSON')
-    }
-
     const fincraRef = payload?.data?.merchantReference
+      || payload?.data?.MerchantReference
       || payload?.data?.reference
       || payload?.data?.chargeReference
       || `unknown_${Date.now()}`
@@ -61,7 +65,7 @@ serve(async (req) => {
       payload: payload,
       processed: false,
     })
-    if (insertErr?.code === '23505') {
+    if (insertErr?.code === '23505' && payload?.event !== 'charge.successful') {
       console.log('Duplicate webhook — already processed, skipping')
       return new Response(JSON.stringify({ status: 'duplicate' }), {
         status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -69,81 +73,59 @@ serve(async (req) => {
     }
     console.log('Logged event to fincra_webhook_events, ref:', fincraRef)
 
-    // Signature mismatch is logged as a warning but does NOT block processing
-    // This ensures payments are never lost due to a misconfigured webhook secret
-    if (!isValid) {
-      console.log('WARNING: Signature mismatch — processing anyway to avoid lost payments')
-    }
-
     const event = payload?.event
     const data = payload?.data
 
     if (event === 'charge.successful') {
-      const merchantReference = data?.merchantReference || data?.reference
-      const amount = data?.amount
+      const merchantReference = data?.merchantReference || data?.MerchantReference || data?.reference || data?.chargeReference
+      if (!merchantReference) throw new Error('Successful charge webhook is missing its merchant reference')
 
-      console.log('Looking for pending transaction with reference:', merchantReference)
-
-      const { data: txRow, error: txFindError } = await supabase
+      const settledAmount = Number(
+        data?.amountToSettle ??
+        data?.metadata?.amount ??
+        data?.amountExpected ??
+        (String(data?.feeBearer || '').toLowerCase() === 'business'
+          ? data?.amountReceived ?? data?.amount
+          : NaN)
+      )
+      const varianceType = String(data?.varianceType || '').toLowerCase()
+      const currency = String(data?.currency || '').toUpperCase()
+      const { data: tx, error: txError } = await supabase
         .from('wallet_transactions')
-        .select('*')
+        .select('amount, currency, status')
         .eq('fincra_reference', merchantReference)
-        .eq('status', 'pending')
         .maybeSingle()
-
-      console.log('Transaction lookup result:', JSON.stringify(txRow), 'error:', JSON.stringify(txFindError))
-
-      let resolvedTx = txRow
-
-      // Fallback: if no match by reference, look up by user_id from Fincra metadata
-      if (!resolvedTx && data?.metadata?.userId) {
-        console.log('Reference mismatch — trying fallback lookup via metadata.userId:', data.metadata.userId)
-        const { data: fallbackTx } = await supabase
-          .from('wallet_transactions')
-          .select('*')
-          .eq('user_id', data.metadata.userId)
-          .eq('status', 'pending')
-          .eq('type', 'fund_in')
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle()
-        resolvedTx = fallbackTx
-        console.log('Fallback tx:', JSON.stringify(resolvedTx))
-      }
-
-      if (resolvedTx) {
-        const { data: userRow } = await supabase
-          .from('users')
-          .select('wallet_balance, wallet_currency')
-          .eq('id', resolvedTx.user_id)
-          .single()
-
-        const newBalance = Number(userRow?.wallet_balance || 0) + Number(resolvedTx.amount)
-        console.log('Updating wallet balance to:', newBalance)
-
-        const updatePayload: Record<string, unknown> = { wallet_balance: newBalance }
-        if (!userRow?.wallet_currency && resolvedTx.currency) {
-          updatePayload.wallet_currency = resolvedTx.currency
-        }
-
-        await supabase.from('users').update(updatePayload).eq('id', resolvedTx.user_id)
-        await supabase.from('wallet_transactions').update({
-          status: 'completed', balance_after: newBalance
-        }).eq('id', resolvedTx.id)
-        await supabase.from('fincra_webhook_events').update({ processed: true }).eq('fincra_reference', fincraRef)
-
-        await supabase.from('notifications').insert({
-          user_id: resolvedTx.user_id,
-          title: '💰 Wallet Funded',
-          message: `Your wallet has been credited with ${resolvedTx.currency} ${Number(resolvedTx.amount).toLocaleString()}`,
-          type: 'wallet',
-          wallet_transaction_id: resolvedTx.id,
+      if (txError) throw txError
+      if (!tx) throw new Error('No wallet transaction exists for this Fincra reference')
+      if (tx.status === 'completed') {
+        await supabase.from('fincra_webhook_events')
+          .update({ processed: true }).eq('fincra_reference', fincraRef)
+        return new Response(JSON.stringify({ status: 'duplicate' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         })
-
-        console.log('=== WALLET UPDATED SUCCESSFULLY ===')
-      } else {
-        console.log('NO MATCHING PENDING TRANSACTION FOUND for reference:', merchantReference)
       }
+      if (
+        !Number.isFinite(settledAmount) ||
+        Math.round(settledAmount * 100) !== Math.round(Number(tx.amount) * 100) ||
+        varianceType === 'underpayment' ||
+        currency !== String(tx.currency || 'NGN').toUpperCase()
+      ) {
+        return new Response(JSON.stringify({
+          status: 'amount_or_currency_mismatch',
+          processed: false,
+        }), {
+          status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+
+      const { data: completion, error: completionError } = await supabase.rpc(
+        'complete_fincra_wallet_funding',
+        { p_reference: merchantReference }
+      )
+      if (completionError) throw completionError
+      await supabase.from('fincra_webhook_events')
+        .update({ processed: true }).eq('fincra_reference', fincraRef)
+      console.log('Funding webhook reconciled:', JSON.stringify(completion))
     } else {
       console.log('Event type was not charge.successful, it was:', event)
     }
@@ -155,7 +137,7 @@ serve(async (req) => {
   } catch (e) {
     console.log('CAUGHT ERROR:', e.message, e.stack)
     return new Response(JSON.stringify({ status: 'error_logged', message: e.message }), {
-      status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
   }
 })
