@@ -368,7 +368,7 @@ export default function ChatScreen() {
   async function fetchConversations() {
     if (!user) return
     try {
-      const data = await fetchChatConversations(user.id, { includeEmpty: true })
+      const data = await fetchChatConversations(user.id)
       setConversations(data)
       setActiveConvo(current => current
         ? data.find(item => item.id === current.id) || current

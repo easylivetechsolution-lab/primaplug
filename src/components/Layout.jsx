@@ -275,8 +275,8 @@ export default function Layout() {
 
   useEffect(() => {
     if (loading || !user) return
-    const { missing } = getProfileCompletion(profile)
-    if (missing.length > 0) {
+    const { requiredMissing } = getProfileCompletion(profile)
+    if (requiredMissing.length > 0) {
       const timer = setTimeout(() => setShowProfilePrompt(true), 2000)
       return () => clearTimeout(timer)
     }
@@ -951,8 +951,8 @@ useEffect(() => {
 
           {/* Profile Completion Banner */}
           {!loading && user && (() => {
-            const { score, complete } = getProfileCompletion(profile)
-            if (!profile || complete) return null
+            const { score } = getProfileCompletion(profile)
+            if (!profile || score >= 100) return null
             return (
               <div style={{
                 background: 'linear-gradient(135deg, var(--color-brand-soft), var(--color-brand-pale))',
@@ -978,7 +978,7 @@ useEffect(() => {
                       fontSize: '12px', fontWeight: '700',
                       color: 'var(--color-text)', marginBottom: '4px'
                     }}>
-                      Complete your profile — {score}% done
+                      Build your profile — {score}% complete
                     </div>
                     <div style={{
                       height: '4px', background: 'var(--color-border)',

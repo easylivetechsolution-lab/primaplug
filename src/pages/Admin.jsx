@@ -6,6 +6,8 @@ import { useNavigate } from 'react-router-dom'
 import VerificationBadge from '../components/VerificationBadge'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { showToast } from '../utils/toast'
+import { edgeFunctionErrorMessage } from '../utils/edgeFunctionErrors'
+import { getCurrency } from '../data/currencies'
 
 const TABS = [
   { key: 'overview', label: '📊 Overview', icon: '📊' },
@@ -57,6 +59,17 @@ export default function Admin() {
     if (!isAdmin || activeTab !== 'reports') return undefined
     const channel = supabase.channel(`admin-report-queue-${user?.id || 'admin'}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'reports' }, () => fetchTabData('reports'))
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [isAdmin, activeTab, user?.id])
+
+  useEffect(() => {
+    if (!isAdmin || !['disputes', 'receipts'].includes(activeTab)) return undefined
+    const channel = supabase.channel(`admin-${activeTab}-${user?.id || 'admin'}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'receipts' }, () => {
+        fetchTabData(activeTab)
+        fetchOverview()
+      })
       .subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [isAdmin, activeTab, user?.id])
@@ -155,7 +168,7 @@ export default function Admin() {
       case 'receipts':
         const { data: receiptsData } = await supabase
           .from('receipts')
-          .select('*, gigs(title), poster:users!receipts_poster_id_fkey(full_name), worker:users!receipts_worker_id_fkey(full_name)')
+          .select('*, gigs(title, currency), poster:users!receipts_poster_id_fkey(full_name), worker:users!receipts_worker_id_fkey(full_name)')
           .order('created_at', { ascending: false })
           .limit(100)
         setReceipts(receiptsData || [])
@@ -202,7 +215,9 @@ export default function Admin() {
       body: { action: 'list' },
     })
     if (error || data?.error) {
-      setCreditPayoutRecoveryError(error?.message || data?.error || 'Could not load credit payout recoveries')
+      setCreditPayoutRecoveryError(error
+        ? await edgeFunctionErrorMessage(error, 'Could not load credit payout recoveries.')
+        : data?.error || 'Could not load credit payout recoveries.')
       setCreditPayoutRecoveries([])
       return
     }
@@ -235,7 +250,9 @@ export default function Admin() {
       },
     })
     if (error || data?.error) {
-      showToast(error?.message || data?.error || 'Could not resolve credit payout', 'error')
+      showToast(error
+        ? await edgeFunctionErrorMessage(error, 'Could not resolve this credit payout. Please try again.')
+        : data?.error || 'Could not resolve credit payout', 'error')
       return
     }
     showToast(fundsReturned
@@ -329,9 +346,54 @@ export default function Admin() {
       return
     }
 
+    if (favor === 'worker' && !isWalletGig) {
+      const paymentDeadline = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString()
+      const { error: orderError } = await supabase.from('receipts').update({
+        disputed: false,
+        dispute_reason: 'Resolved in favor of worker by admin; payment ordered',
+        poster_confirmed: false,
+        poster_confirmed_at: null,
+        worker_confirmed: false,
+        worker_confirmed_at: null,
+        completed: false,
+        completed_at: null,
+        status: 'pending',
+        payment_ordered: true,
+        payment_deadline: paymentDeadline,
+        payment_ordered_at: new Date().toISOString(),
+        payment_order_original_receipt_url: dispute.poster_receipt_url || null,
+        poster_receipt_url: null
+      }).eq('id', receiptId)
+      if (orderError) {
+        showToast('Could not issue the payment order: ' + orderError.message, 'error')
+        return
+      }
+
+      await supabase.from('notifications').insert([
+        {
+          user_id: dispute.worker_id,
+          title: 'Dispute Resolved — Payment Ordered',
+          message: `Admin ruled in your favor for "${gig?.title}". Confirm the receipt only after the poster pays the ordered amount.`,
+          type: 'general', gig_id: gig?.id || null, application_id: applicationId
+        },
+        {
+          user_id: dispute.poster_id,
+          title: 'Payment Order — Action Required',
+          message: `Admin ruled in the worker's favor for "${gig?.title}". Pay ${getCurrency(dispute.currency || gig?.currency || 'USD').symbol}${Number(dispute.amount).toLocaleString()} ${dispute.currency || gig?.currency || 'USD'} and submit new payment proof by ${new Date(paymentDeadline).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}.`,
+          type: 'general', gig_id: gig?.id || null, application_id: applicationId
+        }
+      ])
+      showToast('Payment ordered. Completion and commission wait for the worker to confirm receipt.', 'success')
+      await fetchTabData('disputes')
+      await fetchOverview()
+      return
+    }
+
     if (favor === 'worker') {
+      // Manual-payment disputes return above after issuing a payment order.
+      // Reaching this branch means wallet escrow can be released now.
       const { error: completeError } = await supabase.rpc(
-        isWalletGig ? 'complete_wallet_gig_application' : 'complete_manual_gig_application',
+        'complete_wallet_gig_application',
         { p_application_id: applicationId }
       )
       if (completeError) {
@@ -339,25 +401,12 @@ export default function Admin() {
         return
       }
 
-      const paymentDeadline = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString()
-
-      if (!isWalletGig) {
-        // Set a 5-day payment deadline — pg_cron will auto-ban if missed
-        const { error: deadlineError } = await supabase.from('receipts').update({
-          payment_ordered: true,
-          payment_deadline: paymentDeadline
-        }).eq('id', receiptId)
-        if (deadlineError) showToast('Completion saved, but the payment deadline did not save: ' + deadlineError.message, 'error')
-      }
-
       // Notify winner (worker)
       await supabase.from('notifications').insert({
         user_id: dispute.worker_id,
         title: '✅ Dispute Resolved — In Your Favor',
-        message: isWalletGig
-          ? `Admin reviewed the dispute for "${gig?.title}" and ruled in your favor. Your payment has been released to your wallet.`
-          : `Admin reviewed the dispute for "${gig?.title}" and ruled in your favor. The poster has been ordered to pay you within 5 days. Commission is due within 3 days of receipt.`,
-        type: isWalletGig ? 'wallet' : 'general',
+        message: `Admin reviewed the dispute for "${gig?.title}" and ruled in your favor. Your payment has been released to your wallet.`,
+        type: 'wallet',
         gig_id: gig?.id || null,
         application_id: applicationId
       })
@@ -365,10 +414,8 @@ export default function Admin() {
       // Notify loser (poster) — stern legal warning for manual gigs
       await supabase.from('notifications').insert({
         user_id: dispute.poster_id,
-        title: isWalletGig ? 'Dispute Outcome — Favor Worker' : '⚠️ Payment Order — Action Required',
-        message: isWalletGig
-          ? `Admin reviewed the payment dispute for "${gig?.title}" and ruled in the worker's favor. This worker's escrow has been released.`
-          : `Admin has reviewed the dispute for "${gig?.title}" and ruled in the worker's favor. You are required to release the agreed payment to the worker within 5 days (by ${new Date(paymentDeadline).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}). Failure to comply will result in an immediate account ban and referral for legal action.`,
+        title: 'Dispute Outcome — Favor Worker',
+        message: `Admin reviewed the payment dispute for "${gig?.title}" and ruled in the worker's favor. This worker's escrow has been released.`,
         type: 'general',
         gig_id: gig?.id || null,
         application_id: applicationId
@@ -390,9 +437,15 @@ export default function Admin() {
           disputed: false,
           dispute_reason: 'Resolved in favor of poster by admin',
           poster_confirmed: false,
+          poster_confirmed_at: null,
           worker_confirmed: false,
+          worker_confirmed_at: null,
           completed: false,
-          status: 'pending'
+          completed_at: null,
+          status: 'pending',
+          payment_ordered: false,
+          payment_deadline: null,
+          payment_ordered_at: null
         }).eq('id', receiptId)
         if (resetError) {
           showToast('Could not reset this receipt: ' + resetError.message, 'error')
@@ -427,14 +480,41 @@ export default function Admin() {
     fetchOverview()
   }
 
+  const requestDisputeResolution = (dispute, outcome) => {
+    const gig = dispute.gigs
+    const isWalletGig = gig?.payment_method === 'wallet'
+    const label = outcome === 'worker' ? 'Favor Worker' : outcome === 'poster' ? 'Favor Poster' : 'Dismiss Dispute'
+    const message = outcome === 'worker'
+      ? (isWalletGig
+        ? 'This releases the held escrow according to the gig split.'
+        : 'This orders the poster to pay the receipt amount within five days. The gig will not be marked complete and the worker will not owe commission until they confirm receiving payment.')
+      : outcome === 'poster'
+        ? (isWalletGig
+          ? 'This refunds the held escrow to the poster and resets the receipt.'
+          : 'This resets the receipt so the poster can submit a corrected payment record.')
+        : 'This removes the dispute and returns the receipt to the worker for review.'
+    setConfirmDialog({
+      title: `Resolve dispute: ${label}?`,
+      message,
+      confirmLabel: label,
+      action: () => outcome === 'dismiss'
+        ? dismissDispute(dispute.id)
+        : resolveDispute(dispute.id, outcome)
+    })
+  }
+
   const dismissDispute = async (receiptId) => {
     const dispute = disputes.find(d => d.id === receiptId)
     // Reset to worker_confirm step so worker sees the receipt again
-    await supabase.from('receipts').update({
+    const { error: dismissError } = await supabase.from('receipts').update({
       disputed: false,
       dispute_reason: null,
       status: 'pending'
     }).eq('id', receiptId)
+    if (dismissError) {
+      showToast('Could not dismiss this dispute: ' + dismissError.message, 'error')
+      return
+    }
 
     const gig = dispute?.gigs
     const applicationId = dispute?.application_id || null
@@ -1114,7 +1194,7 @@ export default function Admin() {
                         color: 'var(--color-text)', marginBottom: '4px'
                       }}>{dispute.gigs?.title || 'Deleted Gig'}</div>
                       <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
-                        Amount: ${dispute.amount || '?'} ·{' '}
+                        Amount: {getCurrency(dispute.currency || dispute.gigs?.currency || 'USD').symbol}{dispute.amount || '?'} {dispute.currency || dispute.gigs?.currency || 'USD'} ·{' '}
                         {timeAgo(dispute.created_at)}
                       </div>
                     </div>
@@ -1188,7 +1268,7 @@ export default function Admin() {
 
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <button
-                      onClick={() => resolveDispute(dispute.id, 'poster')}
+                      onClick={() => requestDisputeResolution(dispute, 'poster')}
                       style={{
                         flex: 1, background: 'var(--color-brand-soft)',
                         border: '1.5px solid var(--color-brand-border-strong)',
@@ -1198,7 +1278,7 @@ export default function Admin() {
                         fontFamily: 'inherit'
                       }}>✓ Favor Poster</button>
                     <button
-                      onClick={() => resolveDispute(dispute.id, 'worker')}
+                      onClick={() => requestDisputeResolution(dispute, 'worker')}
                       style={{
                         flex: 1, background: 'var(--color-success-soft)',
                         border: '1.5px solid var(--color-success-border)',
@@ -1208,7 +1288,7 @@ export default function Admin() {
                         fontFamily: 'inherit'
                       }}>✓ Favor Worker</button>
                     <button
-                      onClick={() => dismissDispute(dispute.id)}
+                      onClick={() => requestDisputeResolution(dispute, 'dismiss')}
                       style={{
                         background: 'var(--color-page)',
                         border: '1.5px solid var(--color-border)',
@@ -1477,7 +1557,7 @@ export default function Admin() {
                     }}>{receipt.worker?.full_name || '—'}</div>
                     <div style={{
                       fontSize: '12px', fontWeight: '700', color: 'var(--color-success)'
-                    }}>${receipt.amount || '—'}</div>
+                    }}>{getCurrency(receipt.currency || receipt.gigs?.currency || 'USD').symbol}{receipt.amount || '—'} {receipt.currency || receipt.gigs?.currency || 'USD'}</div>
                     <span style={{
                       background: receipt.completed ? 'var(--color-success-soft)'
                         : receipt.disputed ? 'var(--color-danger-soft)' : 'var(--color-warning-soft)',
@@ -1490,7 +1570,9 @@ export default function Admin() {
                       display: 'inline-block'
                     }}>
                       {receipt.completed ? 'Complete'
-                        : receipt.disputed ? 'Disputed' : 'Pending'}
+                        : receipt.disputed ? 'Disputed'
+                        : receipt.payment_ordered ? `Payment Ordered${receipt.payment_deadline ? ` · due ${new Date(receipt.payment_deadline).toLocaleDateString()}` : ''}`
+                        : 'Pending'}
                     </span>
                   </div>
                 ))}

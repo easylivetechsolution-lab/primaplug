@@ -21,12 +21,15 @@ export default function ReceiptFlow({ gig, application, onClose, onComplete }) {
   const [error, setError] = useState(null)
   const [confirmDialog, setConfirmDialog] = useState(null)
   const [hasReferral, setHasReferral] = useState(false)
+  const [showDisputeReason, setShowDisputeReason] = useState(false)
+  const [disputeReasonInput, setDisputeReasonInput] = useState('')
 
   const isPoster = gig?.poster_id === user?.id
   const workerId = application?.worker_id || gig?.worker_id
   const isWorker = workerId === user?.id
   const currency = getCurrency(gig?.currency || 'NGN')
   const isWalletGig = gig?.payment_method === PAYMENT_METHODS.WALLET
+  const isPaymentOrder = Boolean(receipt?.payment_ordered && !receipt?.poster_confirmed)
 
   useEffect(() => {
     let active = true
@@ -68,6 +71,10 @@ export default function ReceiptFlow({ gig, application, onClose, onComplete }) {
     }
     if (data) {
       setReceipt(data)
+      if (data.payment_ordered && !data.poster_confirmed) {
+        setAmount(String(data.amount ?? ''))
+        setSelectedCurrency(data.currency || gig?.currency || 'USD')
+      }
       // Determine step based on receipt state
       if (data.completed) {
         setStep('done')
@@ -75,6 +82,8 @@ export default function ReceiptFlow({ gig, application, onClose, onComplete }) {
         setStep('disputed')
       } else if (isPoster && !data.poster_confirmed) {
         setStep('poster_amount')
+      } else if (isWorker && data.payment_ordered && !data.poster_confirmed) {
+        setStep('waiting_poster')
       } else if (isWorker && data.poster_confirmed && !data.worker_confirmed) {
         setStep('worker_confirm')
       } else if (isPoster && data.poster_confirmed) {
@@ -103,6 +112,11 @@ export default function ReceiptFlow({ gig, application, onClose, onComplete }) {
       return
     }
 
+    if (isPaymentOrder && Number(amount) !== Number(receipt.amount)) {
+      setError(`The administrator ordered payment of ${getCurrency(receipt.currency || gig?.currency || 'USD').symbol}${Number(receipt.amount).toLocaleString()}. Enter that exact amount.`)
+      return
+    }
+
     if (!isWalletGig && gig?.pay_min && parseFloat(amount) < Number(gig.pay_min)) {
       setError(
         `Amount cannot be less than the minimum pay (${CURRENCIES.find(c => c.code === selectedCurrency)?.symbol || ''
@@ -120,7 +134,9 @@ export default function ReceiptFlow({ gig, application, onClose, onComplete }) {
 
     try {
       const gigAmount = isWalletGig ? walletAmount : parseFloat(amount)
-      const receiptCurrency = gig?.currency || selectedCurrency
+      const receiptCurrency = isPaymentOrder
+        ? (receipt.currency || gig?.currency || selectedCurrency)
+        : (gig?.currency || selectedCurrency)
       const commissionAmount = calculateCommission(gigAmount)
 
       if (isWalletGig && application?.id) {
@@ -146,7 +162,9 @@ export default function ReceiptFlow({ gig, application, onClose, onComplete }) {
           .update({
             amount: gigAmount,
             currency: receiptCurrency,
-            commission_amount: commissionAmount,
+            commission_amount: isPaymentOrder
+              ? (receipt?.commission_amount ?? commissionAmount)
+              : commissionAmount,
             poster_confirmed: true,
             poster_confirmed_at: new Date().toISOString(),
             poster_receipt_url: isWalletGig ? null : (receiptFile || null),
@@ -191,7 +209,11 @@ export default function ReceiptFlow({ gig, application, onClose, onComplete }) {
     setSubmitting(false)
   }
 
-  const handleWorkerConfirm = async (agreed) => {
+  const handleWorkerConfirm = async (agreed, disputeReason = '') => {
+    if (!agreed && disputeReason.trim().length < 8) {
+      setError('Please explain what is wrong with the amount or payment proof (at least 8 characters).')
+      return
+    }
     setSubmitting(true)
     setError(null)
 
@@ -212,7 +234,7 @@ export default function ReceiptFlow({ gig, application, onClose, onComplete }) {
           .from('receipts')
           .update({
             disputed: true,
-            dispute_reason: `Worker disputes amount. Poster claimed ${currency.symbol}${currentReceipt.amount}`,
+            dispute_reason: disputeReason.trim(),
             worker_confirmed: false
           })
           .eq('id', currentReceipt.id)
@@ -226,7 +248,7 @@ export default function ReceiptFlow({ gig, application, onClose, onComplete }) {
           await supabase.from('notifications').insert(admins.map(admin => ({
             user_id: admin.id,
             title: 'Receipt Dispute',
-            message: `Amount dispute on "${gig.title}". Poster claimed ${currency.symbol}${currentReceipt.amount}`,
+            message: `Amount dispute on "${gig.title}". Poster claimed ${getCurrency(currentReceipt.currency || gig?.currency || 'USD').symbol}${currentReceipt.amount}. Worker reason: ${disputeReason.trim()}`,
             type: 'general',
             gig_id: gig.id,
             application_id: application?.id || null
@@ -235,7 +257,7 @@ export default function ReceiptFlow({ gig, application, onClose, onComplete }) {
         await supabase.from('notifications').insert({
           user_id: gig.poster_id,
           title: 'Receipt Disputed',
-          message: `The worker has disputed the amount for "${gig.title}". Our team will review and resolve this.`,
+          message: `The worker has disputed the amount for "${gig.title}": ${disputeReason.trim()}. Our team will review and resolve this.`,
           type: 'general',
           gig_id: gig.id,
           application_id: application?.id || null
@@ -429,12 +451,14 @@ export default function ReceiptFlow({ gig, application, onClose, onComplete }) {
               <div style={{
                 fontSize: '22px', fontWeight: '800',
                 color: 'var(--color-text)', marginBottom: '6px'
-              }}>How much did you pay?</div>
+              }}>{isPaymentOrder ? 'Submit payment proof' : 'How much did you pay?'}</div>
               <div style={{
                 fontSize: '13px', color: 'var(--color-text-muted)',
                 marginBottom: '24px', lineHeight: '1.6'
               }}>
-                Enter the exact amount you paid the worker for "{gig?.title}"
+                {isPaymentOrder
+                  ? `Admin ordered ${getCurrency(receipt.currency || 'USD').symbol}${Number(receipt.amount).toLocaleString()} ${receipt.currency || ''} for "${gig?.title}". Pay this amount and upload proof.`
+                  : `Enter the exact amount you paid the worker for "${gig?.title}"`}
               </div>
 
               {/* Currency Selector */}
@@ -447,13 +471,14 @@ export default function ReceiptFlow({ gig, application, onClose, onComplete }) {
 
                 <div style={{ position: 'relative' }}>
                   <button
-                    onClick={() => setShowCurrencyPicker(s => !s)}
+                    disabled={isPaymentOrder}
+                    onClick={() => !isPaymentOrder && setShowCurrencyPicker(s => !s)}
                     style={{
                       width: '100%', background: 'var(--color-page)',
                       border: '1.5px solid var(--color-border)',
                       borderRadius: '12px', padding: '12px 16px',
                       fontSize: '14px', fontWeight: '700',
-                      color: 'var(--color-text)', cursor: 'default',
+                      color: 'var(--color-text)', cursor: isPaymentOrder ? 'not-allowed' : 'default',
                       fontFamily: 'inherit',
                       display: 'flex', alignItems: 'center',
                       justifyContent: 'space-between', gap: '10px'
@@ -470,7 +495,7 @@ export default function ReceiptFlow({ gig, application, onClose, onComplete }) {
                     <span style={{ fontSize: '12px', color: 'var(--color-text-subtle)' }}>▼</span>
                   </button>
 
-                  {showCurrencyPicker && (
+                  {showCurrencyPicker && !isPaymentOrder && (
                     <div style={{
                       position: 'absolute', top: '50px', left: 0, right: 0,
                       background: 'var(--color-surface)', border: '1.5px solid var(--color-border)',
@@ -526,7 +551,7 @@ export default function ReceiptFlow({ gig, application, onClose, onComplete }) {
                   color: 'var(--color-text-subtle)', textTransform: 'uppercase',
                   letterSpacing: '0.8px', marginBottom: '10px',
                   textAlign: 'center'
-                }}>Amount Paid</div>
+                }}>{isPaymentOrder ? 'Amount Ordered' : 'Amount Paid'}</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <div style={{
                     fontSize: '24px', fontWeight: '800',
@@ -538,6 +563,7 @@ export default function ReceiptFlow({ gig, application, onClose, onComplete }) {
                     type="number"
                     value={amount}
                     min={gig?.pay_min || 0}
+                    disabled={isPaymentOrder}
                     onChange={e => {
                       setAmount(e.target.value)
                       setError(null)
@@ -549,7 +575,7 @@ export default function ReceiptFlow({ gig, application, onClose, onComplete }) {
                   />
                 </div>
 
-                {gig?.pay_min && (
+                {gig?.pay_min && !isPaymentOrder && (
                   <div
                     style={{
                       fontSize: '12px',
@@ -785,8 +811,9 @@ export default function ReceiptFlow({ gig, application, onClose, onComplete }) {
                 fontSize: '13px', color: 'var(--color-text-muted)',
                 lineHeight: '1.7'
               }}>
-                The poster needs to confirm the payment amount first.
-                You'll be notified when they do.
+                {receipt?.payment_ordered
+                  ? `Admin ordered the poster to pay ${getCurrency(receipt.currency || 'USD').symbol}${Number(receipt.amount).toLocaleString()} ${receipt.currency || ''}. You can confirm or dispute after they submit new proof.`
+                  : 'The poster needs to confirm the payment amount first. You will be notified when they do.'}
               </div>
             </div>
           )}
@@ -885,7 +912,10 @@ export default function ReceiptFlow({ gig, application, onClose, onComplete }) {
               {/* Action buttons */}
               <div style={{ display: 'flex', gap: '10px' }}>
                 <button
-                  onClick={() => handleWorkerConfirm(false)}
+                  onClick={() => {
+                    setShowDisputeReason(value => !value)
+                    setError(null)
+                  }}
                   disabled={submitting}
                   style={{
                     flex: 1, background: 'var(--color-danger-soft)',
@@ -915,6 +945,37 @@ export default function ReceiptFlow({ gig, application, onClose, onComplete }) {
                   {submitting ? '⏳...' : '✓ Yes, I Received It'}
                 </button>
               </div>
+              {showDisputeReason && (
+                <div style={{ marginTop: '12px' }}>
+                  <label style={{
+                    display: 'block', fontSize: '12px', fontWeight: '700',
+                    color: 'var(--color-text-muted)', marginBottom: '6px'
+                  }}>Tell the admin what is wrong</label>
+                  <textarea
+                    value={disputeReasonInput}
+                    onChange={e => setDisputeReasonInput(e.target.value)}
+                    maxLength={1000}
+                    rows={3}
+                    placeholder="For example: I received a different amount, or I have not received the payment."
+                    style={{ ...inputStyle, width: '100%', resize: 'vertical', boxSizing: 'border-box' }}
+                  />
+                  <button
+                    onClick={() => handleWorkerConfirm(false, disputeReasonInput)}
+                    disabled={submitting || disputeReasonInput.trim().length < 8}
+                    style={{
+                      width: '100%', marginTop: '8px',
+                      background: submitting || disputeReasonInput.trim().length < 8
+                        ? 'var(--color-border)' : 'var(--color-danger)',
+                      border: 'none', borderRadius: '10px', padding: '12px',
+                      fontSize: '13px', fontWeight: '700',
+                      color: 'var(--color-surface)',
+                      cursor: submitting || disputeReasonInput.trim().length < 8 ? 'not-allowed' : 'pointer',
+                      fontFamily: 'inherit'
+                    }}>
+                    {submitting ? 'Submitting...' : 'Submit Dispute for Admin Review'}
+                  </button>
+                </div>
+              )}
             </div>
           )}
 

@@ -5,6 +5,7 @@ import { supabase } from '../../supabase'
 import { parseTimestamp } from '../../utils/time'
 import { showToast } from '../../utils/toast'
 import BrandIcon from '../BrandIcon'
+import { DEFAULT_NOTIFICATION_PREFERENCES, notificationPreferenceEnabled } from '../../utils/notificationPreferences'
 
 const PAGE_SIZE = 40
 const JOB_TYPES = new Set(['application', 'accepted', 'rejected', 'receipt', 'review', 'commission', 'gig_referral_payout'])
@@ -55,6 +56,7 @@ export default function NotificationsScreen({ onNavigate }) {
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [hasMore, setHasMore] = useState(true)
+  const [notificationPreferences, setNotificationPreferences] = useState(DEFAULT_NOTIFICATION_PREFERENCES)
 
   const fetchMyGigs = useCallback(async (rows) => {
     const ids = [...new Set(rows.map(row => row.gig_id).filter(Boolean))]
@@ -101,6 +103,28 @@ export default function NotificationsScreen({ onNavigate }) {
   }, [user?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
+    if (!user?.id) return
+    let active = true
+    try {
+      const cached = JSON.parse(localStorage.getItem(`prima_notification_preferences_${user.id}`) || '{}')
+      setNotificationPreferences({ ...DEFAULT_NOTIFICATION_PREFERENCES, ...cached })
+    } catch {
+      setNotificationPreferences(DEFAULT_NOTIFICATION_PREFERENCES)
+    }
+    supabase.from('user_preferences')
+      .select('notification_preferences')
+      .eq('user_id', user.id)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (!active || error || !data?.notification_preferences) return
+        const saved = { ...DEFAULT_NOTIFICATION_PREFERENCES, ...data.notification_preferences }
+        setNotificationPreferences(saved)
+        localStorage.setItem(`prima_notification_preferences_${user.id}`, JSON.stringify(saved))
+      })
+    return () => { active = false }
+  }, [user?.id])
+
+  useEffect(() => {
     if (!user) return
     const channel = supabase
       .channel(`notification-page-${user.id}`)
@@ -123,11 +147,12 @@ export default function NotificationsScreen({ onNavigate }) {
   }, [user, fetchMyGigs])
 
   const filteredNotifications = useMemo(() => notifications.filter(notification => {
+    if (!notificationPreferenceEnabled(notification, notificationPreferences)) return false
     if (filter === 'jobs') return JOB_TYPES.has(notification.type) || Boolean(notification.gig_id)
     if (filter === 'my-posts') return Boolean(notification.gig_id && myGigIds.has(notification.gig_id))
     if (filter === 'mentions') return isMention(notification, profile?.username)
     return true
-  }), [notifications, filter, myGigIds, profile?.username])
+  }), [notifications, notificationPreferences, filter, myGigIds, profile?.username])
 
   const markRead = async (notification) => {
     if (notification.read) return
@@ -179,7 +204,10 @@ export default function NotificationsScreen({ onNavigate }) {
       }))
       return
     }
-    if (notification.type === 'commission') return go('commission')
+    if (notification.type === 'commission' ||
+        (titleAndMessage.includes('commission') && /\b(paid|payment|due|overdue)\b/.test(titleAndMessage))) {
+      return go('commission')
+    }
     if (notification.type === 'application') {
       go('mygigs')
       requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -254,7 +282,9 @@ export default function NotificationsScreen({ onNavigate }) {
     }
   }
 
-  const unreadCount = notifications.filter(notification => !notification.read).length
+  const unreadCount = notifications.filter(notification =>
+    !notification.read && notificationPreferenceEnabled(notification, notificationPreferences)
+  ).length
 
   return (
     <main className="notifications-screen" style={{

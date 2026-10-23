@@ -33,7 +33,16 @@ const visibleToUser = (convo, userId) => {
   return !(convo.hidden_for || []).includes(userId)
 }
 
-export const fetchConversations = async (userId, { includeEmpty = false } = {}) => {
+// Conversation rows are created when someone applies to a gig, before either
+// participant has actually sent a chat message. Those rows belong in the
+// application workflow, not in the Messages inbox. Older versions stored this
+// workflow event as if it were a chat preview, so hide it here as well.
+const hasChatMessagePreview = (convo) => {
+  const preview = typeof convo?.last_message === 'string' ? convo.last_message.trim() : ''
+  return preview !== '' && preview.toLowerCase() !== 'application sent'
+}
+
+export const fetchConversations = async (userId) => {
   if (!userId) return []
   let query = supabase
     .from('conversations')
@@ -41,11 +50,11 @@ export const fetchConversations = async (userId, { includeEmpty = false } = {}) 
     .or(`participant_1.eq.${userId},participant_2.eq.${userId}`)
     .order('last_message_at', { ascending: false })
 
-  if (!includeEmpty) query = query.neq('last_message', '').not('last_message', 'is', null)
+  query = query.neq('last_message', '').not('last_message', 'is', null)
 
   const { data, error } = await query
   if (error) throw error
-  return (data || []).filter(convo => visibleToUser(convo, userId))
+  return (data || []).filter(convo => visibleToUser(convo, userId) && hasChatMessagePreview(convo))
 }
 
 export const fetchConversationById = async (convoId, userId) => {

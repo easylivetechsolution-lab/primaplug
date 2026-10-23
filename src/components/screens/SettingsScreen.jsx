@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../../supabase'
 import { useAuth } from '../../context/AuthContext'
@@ -9,36 +9,134 @@ import { CURRENCIES } from '../../data/currencies'
 import { useCredits } from '../../context/CreditsContext'
 import { CREDITS_PER_DOLLAR } from '../../utils/payments'
 import EmergencyReport from '../EmergencyReport'
+import { showToast } from '../../utils/toast'
+import { DEFAULT_NOTIFICATION_PREFERENCES } from '../../utils/notificationPreferences'
+import { translateSetting } from '../../data/settingsTranslations'
+const DEFAULT_PRIVACY_PREFERENCES = { location: true, phone: true, profile: true }
+
+const readLocalPreferences = (userId, key, fallback) => {
+  try {
+    const value = localStorage.getItem(`prima_${key}_${userId}`)
+    return value ? { ...fallback, ...JSON.parse(value) } : fallback
+  } catch {
+    return fallback
+  }
+}
+
+function PreferenceSwitch({ label, checked, onChange, onLabel = 'on', offLabel = 'off' }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-label={label}
+      aria-checked={checked}
+      title={`${label}: ${checked ? onLabel : offLabel}`}
+      onClick={onChange}
+      style={{
+        width: '44px', minWidth: '44px', height: '44px', minHeight: '44px',
+        padding: 0, border: 0, borderRadius: '12px', background: 'transparent',
+        display: 'grid', placeItems: 'center', flexShrink: 0, cursor: 'pointer',
+      }}
+    >
+      <span style={{
+        width: '38px', height: '22px', borderRadius: '999px', position: 'relative',
+        display: 'block', background: checked ? 'var(--color-brand)' : 'var(--color-border)',
+        transition: 'background 0.18s ease',
+      }}>
+        <span style={{
+          width: '16px', height: '16px', borderRadius: '50%',
+          background: 'var(--color-surface)', position: 'absolute', top: '3px', left: '3px',
+          transform: checked ? 'translateX(16px)' : 'translateX(0)',
+          transition: 'transform 0.18s ease', boxShadow: '0 1px 3px rgba(0,0,0,0.22)',
+        }} />
+      </span>
+    </button>
+  )
+}
 
 export default function SettingsScreen({ onLogout }) {
   const { user } = useAuth()
   const { credits } = useCredits()
   const { language, setLanguage, currency, setCurrency, t } = useLanguage()
+  const st = (key) => translateSetting(language, key)
   const [showLangPicker, setShowLangPicker] = useState(false)
   const [showCurrencyPicker, setShowCurrencyPicker] = useState(false)
-  const [notifications, setNotifications] = useState({
-    applications: true,
-    messages: true,
-    receipts: true,
-    reviews: true,
-    newGigs: true,
-    sounds: true,
-  })
+  const [notifications, setNotifications] = useState(() =>
+    readLocalPreferences(user?.id || 'guest', 'notification_preferences', DEFAULT_NOTIFICATION_PREFERENCES))
+  const [privacy, setPrivacy] = useState(() =>
+    readLocalPreferences(user?.id || 'guest', 'privacy_preferences', DEFAULT_PRIVACY_PREFERENCES))
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [showEmergency, setShowEmergency] = useState(false)
   const [showIOSSteps, setShowIOSSteps] = useState(false)
 
+  const handleLanguageChange = async (code) => {
+    setShowLangPicker(false)
+    const result = await setLanguage(code)
+    if (result?.error) showToast(st('changedLocal'), 'error')
+  }
+
+  const handleCurrencyChange = async (code) => {
+    setShowCurrencyPicker(false)
+    const result = await setCurrency(code)
+    if (result?.error) showToast(st('changedLocal'), 'error')
+  }
+
+  useEffect(() => {
+    if (!user?.id) return
+    let active = true
+    setNotifications(readLocalPreferences(user.id, 'notification_preferences', DEFAULT_NOTIFICATION_PREFERENCES))
+    setPrivacy(readLocalPreferences(user.id, 'privacy_preferences', DEFAULT_PRIVACY_PREFERENCES))
+    supabase.from('user_preferences')
+      .select('notification_preferences, privacy_preferences')
+      .eq('user_id', user.id)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (!active) return
+        if (error) {
+          showToast('Could not load saved settings. You can still change them on this device.', 'error')
+          return
+        }
+        const savedNotifications = { ...DEFAULT_NOTIFICATION_PREFERENCES, ...(data?.notification_preferences || {}) }
+        const savedPrivacy = { ...DEFAULT_PRIVACY_PREFERENCES, ...(data?.privacy_preferences || {}) }
+        setNotifications(savedNotifications)
+        setPrivacy(savedPrivacy)
+        localStorage.setItem(`prima_notification_preferences_${user.id}`, JSON.stringify(savedNotifications))
+        localStorage.setItem(`prima_privacy_preferences_${user.id}`, JSON.stringify(savedPrivacy))
+      })
+    return () => { active = false }
+  }, [user?.id])
+
   const toggle = (key) => {
     setNotifications(prev => ({ ...prev, [key]: !prev[key] }))
   }
 
+  const togglePrivacy = (key) => {
+    setPrivacy(prev => ({ ...prev, [key]: !prev[key] }))
+  }
+
   const handleSave = async () => {
     setSaving(true)
-    await new Promise(r => setTimeout(r, 800))
-    setSaving(false)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+    try {
+      if (user?.id) {
+        const { error } = await supabase.from('user_preferences').upsert({
+          user_id: user.id,
+          notification_preferences: notifications,
+          privacy_preferences: privacy,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id' })
+        if (error) throw error
+      }
+      const storageId = user?.id || 'guest'
+      localStorage.setItem(`prima_notification_preferences_${storageId}`, JSON.stringify(notifications))
+      localStorage.setItem(`prima_privacy_preferences_${storageId}`, JSON.stringify(privacy))
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } catch (error) {
+      showToast(`Could not save settings: ${error.message}`, 'error')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const ToggleRow = ({ label, subLabel, settingKey, icon }) => (
@@ -60,22 +158,13 @@ export default function SettingsScreen({ onLogout }) {
           )}
         </div>
       </div>
-      <div
-        onClick={() => toggle(settingKey)}
-        style={{
-          width: '44px', height: '24px', borderRadius: '12px',
-          background: notifications[settingKey] ? 'var(--color-brand)' : 'var(--color-border)',
-          position: 'relative', cursor: 'pointer',
-          transition: 'background 0.2s', flexShrink: 0
-        }}>
-        <div style={{
-          width: '18px', height: '18px', borderRadius: '50%',
-          background: 'var(--color-surface)', position: 'absolute',
-          top: '3px', transition: 'left 0.2s',
-          left: notifications[settingKey] ? '23px' : '3px',
-          boxShadow: '0 1px 4px rgba(0,0,0,0.2)'
-        }} />
-      </div>
+      <PreferenceSwitch
+        label={label}
+        checked={notifications[settingKey]}
+        onChange={() => toggle(settingKey)}
+        onLabel={st('on')}
+        offLabel={st('off')}
+      />
     </div>
   )
 
@@ -85,10 +174,10 @@ export default function SettingsScreen({ onLogout }) {
       fontFamily: "'Plus Jakarta Sans', sans-serif"
     }}>
       <div style={{ fontSize: '22px', fontWeight: '800', color: 'var(--color-text)', marginBottom: '4px' }}>
-        Settings
+        {t('settings')}
       </div>
       <div style={{ fontSize: '13px', color: 'var(--color-text-muted)', marginBottom: '24px' }}>
-        Manage your Prima preferences
+        {st('description')}
       </div>
 
       {/* Prima Credits Card */}
@@ -106,7 +195,7 @@ export default function SettingsScreen({ onLogout }) {
               fontSize: '12px', opacity: 0.8,
               textTransform: 'uppercase', letterSpacing: '1px',
               marginBottom: '4px'
-            }}>Prima Credits Balance</div>
+            }}>{st('credits')}</div>
             <div style={{
               fontSize: '32px', fontWeight: '800',
               letterSpacing: '-1px', marginBottom: '3px'
@@ -208,7 +297,7 @@ export default function SettingsScreen({ onLogout }) {
               {user?.email}
             </div>
             <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)', marginTop: '2px' }}>
-              Prima Member
+              {st('member')}
             </div>
           </div>
         </div>
@@ -224,42 +313,48 @@ export default function SettingsScreen({ onLogout }) {
           fontSize: '12px', fontWeight: '700', color: 'var(--color-text-subtle)',
           textTransform: 'uppercase', letterSpacing: '1px',
           marginBottom: '4px'
-        }}>Notifications</div>
+        }}>{t('notifications')}</div>
 
         <ToggleRow
           icon="applied"
-          label="New Applications"
-          subLabel="When someone applies to your gig"
+          label={st('applications')}
+          subLabel={st('applicationsHelp')}
           settingKey="applications"
         />
         <ToggleRow
           icon="accepted"
-          label="Acceptances & Rejections"
-          subLabel="Status updates on your applications"
+          label={st('statusUpdates')}
+          subLabel={st('statusHelp')}
+          settingKey="statusUpdates"
+        />
+        <ToggleRow
+          icon="chat"
+          label={st('messages')}
+          subLabel={st('messagesHelp')}
           settingKey="messages"
         />
         <ToggleRow
           icon="receipt"
-          label="Receipt Uploads"
-          subLabel="When the other party uploads a receipt"
+          label={st('receipts')}
+          subLabel={st('receiptsHelp')}
           settingKey="receipts"
         />
         <ToggleRow
           icon="reviews"
-          label="New Reviews"
-          subLabel="When someone reviews you"
+          label={st('reviews')}
+          subLabel={st('reviewsHelp')}
           settingKey="reviews"
         />
         <ToggleRow
           icon="map"
-          label="New Gigs Nearby"
-          subLabel="When gigs are posted in your area"
+          label={st('newGigs')}
+          subLabel={st('newGigsHelp')}
           settingKey="newGigs"
         />
         <ToggleRow
           icon="sound"
-          label="Notification Sounds"
-          subLabel="Play sounds for new notifications"
+          label={st('sounds')}
+          subLabel={st('soundsHelp')}
           settingKey="sounds"
         />
       </div>
@@ -274,19 +369,23 @@ export default function SettingsScreen({ onLogout }) {
           fontSize: '12px', fontWeight: '700', color: 'var(--color-text-subtle)',
           textTransform: 'uppercase', letterSpacing: '1px',
           marginBottom: '14px'
-        }}>Privacy</div>
+        }}>{t('privacy')}</div>
+        <div style={{
+          fontSize: '12px', color: 'var(--color-text-muted)', lineHeight: '1.5',
+          marginBottom: '4px'
+        }}>{st('privacyNotice')}</div>
         {[
-          ['location', 'Show my location on map', 'Others can see your general area'],
-          ['phone', 'Show phone number on gigs', 'Applicants can call or WhatsApp you'],
-          ['profile', 'Public profile', 'Anyone can view your profile'],
-        ].map(([icon, label, sub]) => (
+          ['location', st('location'), st('locationHelp')],
+          ['phone', st('phone'), st('phoneHelp')],
+          ['profile', st('profile'), st('profileHelp')],
+        ].map(([settingKey, label, sub]) => (
           <div key={label} style={{
             display: 'flex', justifyContent: 'space-between',
             alignItems: 'center', padding: '12px 0',
             borderBottom: '1px solid var(--color-page)'
           }}>
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-              <BrandIcon name={icon} size={34} />
+              <BrandIcon name={settingKey} size={34} />
               <div>
                 <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--color-text)' }}>
                   {label}
@@ -296,17 +395,13 @@ export default function SettingsScreen({ onLogout }) {
                 </div>
               </div>
             </div>
-            <div style={{
-              width: '44px', height: '24px', borderRadius: '12px',
-              background: 'var(--color-brand)', position: 'relative', cursor: 'pointer'
-            }}>
-              <div style={{
-                width: '18px', height: '18px', borderRadius: '50%',
-                background: 'var(--color-surface)', position: 'absolute',
-                top: '3px', left: '23px',
-                boxShadow: '0 1px 4px rgba(0,0,0,0.2)'
-              }} />
-            </div>
+            <PreferenceSwitch
+              label={label}
+              checked={privacy[settingKey]}
+              onChange={() => togglePrivacy(settingKey)}
+              onLabel={st('on')}
+              offLabel={st('off')}
+            />
           </div>
         ))}
       </div>
@@ -315,13 +410,14 @@ export default function SettingsScreen({ onLogout }) {
       <div style={{
         background: 'var(--color-surface)', border: '1.5px solid var(--color-border)',
         borderRadius: '16px', padding: '16px 18px',
-        marginBottom: '14px'
+        marginBottom: '14px', position: 'relative',
+        zIndex: showLangPicker || showCurrencyPicker ? 20 : 0
       }}>
         <div style={{
           fontSize: '12px', fontWeight: '700', color: 'var(--color-text-subtle)',
           textTransform: 'uppercase', letterSpacing: '1px',
           marginBottom: '14px'
-        }}>Language & Currency</div>
+        }}>{t('language')} & {t('currency')}</div>
 
         {/* Language selector */}
         <div style={{
@@ -336,7 +432,7 @@ export default function SettingsScreen({ onLogout }) {
               <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--color-text)' }}>
                 {t('language')}
               </div>
-              <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)' }}>App display language</div>
+              <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)' }}>{st('languageHelp')}</div>
             </div>
           </div>
           <button
@@ -363,10 +459,12 @@ export default function SettingsScreen({ onLogout }) {
               maxHeight: '280px', overflowY: 'auto'
             }}>
               {SUPPORTED_LANGUAGES.map(lang => (
-                <div
+                <button
+                  type="button"
                   key={lang.code}
-                  onClick={() => { setLanguage(lang.code); setShowLangPicker(false) }}
+                  onClick={() => handleLanguageChange(lang.code)}
                   style={{
+                    width: '100%', border: 0, textAlign: 'left', fontFamily: 'inherit',
                     display: 'flex', gap: '10px', alignItems: 'center',
                     padding: '10px 12px', borderRadius: '10px',
                     cursor: 'pointer',
@@ -387,7 +485,7 @@ export default function SettingsScreen({ onLogout }) {
                   {language === lang.code && (
                     <span style={{ color: 'var(--color-brand)', fontSize: '14px' }}>✓</span>
                   )}
-                </div>
+                </button>
               ))}
             </div>
           )}
@@ -405,7 +503,7 @@ export default function SettingsScreen({ onLogout }) {
               <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--color-text)' }}>
                 {t('currency')}
               </div>
-              <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)' }}>Default display currency</div>
+              <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)' }}>{st('currencyHelp')}</div>
             </div>
           </div>
           <button
@@ -432,10 +530,12 @@ export default function SettingsScreen({ onLogout }) {
               maxHeight: '280px', overflowY: 'auto'
             }}>
               {CURRENCIES.map(curr => (
-                <div
+                <button
+                  type="button"
                   key={curr.code}
-                  onClick={() => { setCurrency(curr.code); setShowCurrencyPicker(false) }}
+                  onClick={() => handleCurrencyChange(curr.code)}
                   style={{
+                    width: '100%', border: 0, textAlign: 'left', fontFamily: 'inherit',
                     display: 'flex', gap: '10px', alignItems: 'center',
                     padding: '10px 12px', borderRadius: '10px',
                     cursor: 'pointer',
@@ -456,7 +556,7 @@ export default function SettingsScreen({ onLogout }) {
                   {currency === curr.code && (
                     <span style={{ color: 'var(--color-brand)', fontSize: '14px' }}>✓</span>
                   )}
-                </div>
+                </button>
               ))}
             </div>
           )}
@@ -467,17 +567,17 @@ export default function SettingsScreen({ onLogout }) {
       <div style={{
         background: 'var(--color-surface)', border: '1.5px solid var(--color-border)',
         borderRadius: '16px', padding: '16px 18px',
-        marginBottom: '14px'
+        marginBottom: '14px', position: 'relative', zIndex: 0
       }}>
         <div style={{
           fontSize: '12px', fontWeight: '700', color: 'var(--color-text-subtle)',
           textTransform: 'uppercase', letterSpacing: '1px',
           marginBottom: '4px'
-        }}>Legal</div>
+        }}>{st('legal')}</div>
 
         {[
-          { icon: '🔒', label: 'Privacy Policy', sub: 'How we handle your data', url: '/privacy' },
-          { icon: '📄', label: 'Terms of Service', sub: 'Rules and agreements for using Prima', url: '/terms' },
+          { icon: '🔒', label: st('privacyPolicy'), sub: st('privacyHelp'), url: '/privacy' },
+          { icon: '📄', label: st('terms'), sub: st('termsHelp'), url: '/terms' },
         ].map(({ icon, label, sub, url }, i, arr) => (
           <Link
             key={label}
@@ -530,7 +630,7 @@ export default function SettingsScreen({ onLogout }) {
           fontFamily: 'inherit', marginBottom: '12px',
           transition: 'all 0.2s'
         }}>
-        {saved ? '✓ Settings Saved!' : saving ? '⏳ Saving...' : 'Save Settings'}
+        {saved ? `✓ ${t('saveSettings')}` : saving ? '⏳ Saving...' : t('saveSettings')}
       </button>
 
       {/* Logout */}
@@ -539,7 +639,7 @@ export default function SettingsScreen({ onLogout }) {
         border: '1.5px solid var(--color-danger-border)', borderRadius: '12px',
         padding: '14px', fontSize: '14px', fontWeight: '700',
         color: 'var(--color-danger)', cursor: 'pointer', fontFamily: 'inherit'
-      }}>Log Out of Prima</button>
+      }}>{t('logout')}</button>
 
       {showEmergency && (
         <EmergencyReport onClose={() => setShowEmergency(false)} />

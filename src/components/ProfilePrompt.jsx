@@ -1,7 +1,7 @@
 import { getProfileCompletion } from '../utils/profileComplete'
 
 export default function ProfilePrompt({ profile, onClose, onGoToProfile }) {
-  const { score, missing, done, total } = getProfileCompletion(profile)
+  const { score, requiredMissing, done, total } = getProfileCompletion(profile)
 
   return (
     <div style={{
@@ -31,8 +31,8 @@ export default function ProfilePrompt({ profile, onClose, onGoToProfile }) {
             fontSize: '13px', color: 'var(--color-text-muted)',
             lineHeight: '1.6'
           }}>
-            People need to know who they're working with.
-            Complete your profile to post or apply for gigs.
+            Add the basics people need to understand who you are and what work you do.
+            A profile photo, location, phone number, and bio can be added later.
           </div>
         </div>
 
@@ -47,7 +47,7 @@ export default function ProfilePrompt({ profile, onClose, onGoToProfile }) {
             }}>Profile Strength</span>
             <span style={{
               fontSize: '13px', fontWeight: '800',
-              color: score >= 80 ? 'var(--color-success)' : 'var(--color-brand)'
+              color: requiredMissing.length === 0 ? 'var(--color-success)' : 'var(--color-brand)'
             }}>{score}%</span>
           </div>
           <div style={{
@@ -57,7 +57,7 @@ export default function ProfilePrompt({ profile, onClose, onGoToProfile }) {
             <div style={{
               height: '100%', borderRadius: '4px',
               width: `${score}%`,
-              background: score >= 80
+              background: requiredMissing.length === 0
                 ? 'linear-gradient(90deg, var(--color-success), #00E5A8)'
                 : 'linear-gradient(90deg, var(--color-brand), var(--color-brand-mid))',
               transition: 'width 0.8s ease'
@@ -70,7 +70,7 @@ export default function ProfilePrompt({ profile, onClose, onGoToProfile }) {
         </div>
 
         {/* Missing Items */}
-        {missing.length > 0 && (
+        {requiredMissing.length > 0 && (
           <div style={{
             background: 'var(--color-page)', borderRadius: '14px',
             padding: '14px', marginBottom: '20px'
@@ -83,8 +83,8 @@ export default function ProfilePrompt({ profile, onClose, onGoToProfile }) {
             <div style={{
               display: 'flex', flexDirection: 'column', gap: '8px'
             }}>
-              {missing.map(item => (
-                <div key={item.key} style={{
+              {requiredMissing.map((label, index) => (
+                <div key={`${label}-${index}`} style={{
                   display: 'flex', gap: '8px', alignItems: 'center'
                 }}>
                   <div style={{
@@ -100,7 +100,7 @@ export default function ProfilePrompt({ profile, onClose, onGoToProfile }) {
                   </div>
                   <span style={{
                     fontSize: '13px', color: 'var(--color-text-muted)', fontWeight: '500'
-                  }}>{item.label}</span>
+                  }}>{label}</span>
                 </div>
               ))}
             </div>

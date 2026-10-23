@@ -206,7 +206,7 @@ export default function ReferralScreen() {
           borderRadius: '10px', padding: '10px 14px',
           fontSize: '12px', opacity: 0.9, lineHeight: '1.5'
         }}>
-          🎁 Your friend gets +{REFERRAL_REWARDS.referredTrust} trust score and {REFERRAL_REWARDS.referredCredits} Prima Credits when they complete their profile
+          🎁 Your friend gets {REFERRAL_REWARDS.referredCredits} Prima Credits when they complete their profile
         </div>
       </div>
 

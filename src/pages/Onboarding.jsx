@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import CategoryPicker from '../components/CategoryPicker'
 import { processReferral, generateReferralCode, completeReferral } from '../utils/referral'
-import { getProfileCompletion } from '../utils/profileComplete'
+import { isReferralProfileComplete } from '../utils/profileComplete'
 
 const LocationSearch = ({ value, onSelect, inputStyle }) => {
   const [search, setSearch] = useState(value || '')
@@ -100,7 +100,7 @@ export default function Onboarding() {
   const [error, setError] = useState('')
 
   const [form, setForm] = useState({
-    full_name: '',
+    full_name: user?.user_metadata?.full_name || '',
     username: '',
     phone: '',
     location: '',
@@ -115,11 +115,30 @@ export default function Onboarding() {
     social_twitter: '',
   })
 
+  useEffect(() => {
+    if (!user?.id) return
+    let active = true
+    supabase.from('users')
+      .select('full_name, username, phone, location, bio, work_experience, physical_mode, digital_mode, skills, portfolio_url, social_linkedin, social_twitter')
+      .eq('id', user.id)
+      .maybeSingle()
+      .then(({ data, error: fetchError }) => {
+        if (!active || fetchError || !data) return
+        setForm(current => ({
+          ...current,
+          ...Object.fromEntries(Object.entries(data).filter(([, value]) => value !== null)),
+          full_name: data.full_name || current.full_name || '',
+          skills: current.skills.length ? current.skills : (data.skills || [])
+        }))
+      })
+    return () => { active = false }
+  }, [user?.id])
+
   const update = (key, val) => setForm(f => ({ ...f, [key]: val }))
 
   const handleSubmit = async () => {
-    if (!form.full_name || !form.username) {
-      setError('Please fill in your name and username')
+    if (!form.full_name.trim() || !form.username.trim() || form.skills.length === 0) {
+      setError('Please add your full name, username, and at least one skill')
       return
     }
     setLoading(true)
@@ -171,11 +190,10 @@ export default function Onboarding() {
       await generateReferralCode(user.id, form.username, form.full_name)
 
       // Process any pending referral
-      await processReferral(user.id)
+      await processReferral()
 
-      const { complete } = getProfileCompletion(payload)
-      if (complete) {
-        await completeReferral(user.id)
+      if (isReferralProfileComplete(payload)) {
+        await completeReferral()
       }
 
       // Sync AuthContext so Layout gets the fresh profile immediately

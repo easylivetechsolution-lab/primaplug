@@ -1,14 +1,9 @@
 import { supabase } from '../supabase'
 
 export const REFERRAL_REWARDS = {
-  referrerTrust: 3,
-  referrerCredits: 20,
-  referredTrust: 3,
-  referredCredits: 10,
-}
-
-const throwIfSupabaseError = ({ error }) => {
-  if (error) throw error
+  referrerTrust: 2,
+  referrerCredits: 5,
+  referredCredits: 5,
 }
 
 // Save referral code from URL to localStorage
@@ -22,38 +17,15 @@ export const captureReferralCode = () => {
 }
 
 // Process referral after signup
-export const processReferral = async (newUserId) => {
+export const processReferral = async () => {
   const referralCode = localStorage.getItem('prima_referral')
   if (!referralCode) return
 
   try {
-    // Find referrer by code
-    const { data: referrer } = await supabase
-      .from('users')
-      .select('id, full_name')
-      .eq('referral_code', referralCode)
-      .maybeSingle()
-
-    if (!referrer || referrer.id === newUserId) return
-
-    // Check if referral already exists
-    const { data: existing } = await supabase
-      .from('referrals')
-      .select('id')
-      .eq('referred_id', newUserId)
-      .maybeSingle()
-
-    if (existing) return
-
-    // Create referral record
-    await supabase.from('referrals').insert({
-      referrer_id: referrer.id,
-      referred_id: newUserId,
-      referral_code: referralCode,
-      status: 'pending'
+    const { error } = await supabase.rpc('record_signup_referral', {
+      p_referral_code: referralCode
     })
-
-    console.log('Referral created for:', referrer.full_name)
+    if (error) throw error
     localStorage.removeItem('prima_referral')
   } catch (e) {
     console.error('Referral error:', e)
@@ -61,74 +33,14 @@ export const processReferral = async (newUserId) => {
 }
 
 // Complete referral when new user finishes profile
-export const completeReferral = async (userId) => {
+export const completeReferral = async () => {
   try {
-    // Find pending referral for this user
-    const { data: referral } = await supabase
-      .from('referrals')
-      .select('*, referrer:users!referrals_referrer_id_fkey(id, full_name)')
-      .eq('referred_id', userId)
-      .eq('status', 'pending')
-      .eq('reward_given', false)
-      .maybeSingle()
-
-    if (!referral) return
-
-    // Reward referrer
-    throwIfSupabaseError(await supabase.rpc('increment_trust', {
-      user_id: referral.referrer_id,
-      amount: REFERRAL_REWARDS.referrerTrust
-    }))
-
-    throwIfSupabaseError(await supabase.rpc('add_credits', {
-      p_user_id: referral.referrer_id,
-      p_amount: REFERRAL_REWARDS.referrerCredits,
-      p_type: 'referral_reward',
-      p_description: 'Referral reward — your referral joined Prima',
-    }))
-
-    // Reward new user
-    throwIfSupabaseError(await supabase.rpc('increment_trust', {
-      user_id: userId,
-      amount: REFERRAL_REWARDS.referredTrust
-    }))
-
-    throwIfSupabaseError(await supabase.rpc('add_credits', {
-      p_user_id: userId,
-      p_amount: REFERRAL_REWARDS.referredCredits,
-      p_type: 'referral_joined',
-      p_description: 'Welcome bonus for joining via referral',
-    }))
-
-    // Mark referral complete only after rewards have succeeded.
-    throwIfSupabaseError(await supabase
-      .from('referrals')
-      .update({
-        status: 'completed',
-        reward_given: true,
-        completed_at: new Date().toISOString()
-      })
-      .eq('id', referral.id))
-
-    // Notify referrer
-    await supabase.from('notifications').insert({
-      user_id: referral.referrer_id,
-      title: '🎉 Referral Completed!',
-      message: `Your referral completed their profile! You earned +${REFERRAL_REWARDS.referrerTrust} trust score and ${REFERRAL_REWARDS.referrerCredits} Prima Credits.`,
-      type: 'general'
-    })
-
-    // Notify new user
-    await supabase.from('notifications').insert({
-      user_id: userId,
-      title: '🎁 Welcome Bonus!',
-      message: `You joined via referral and earned +${REFERRAL_REWARDS.referredTrust} trust score and ${REFERRAL_REWARDS.referredCredits} Prima Credits!`,
-      type: 'general'
-    })
-
-    console.log('Referral completed and rewards given')
+    const { data, error } = await supabase.rpc('complete_signup_referral')
+    if (error) throw error
+    return data?.status
   } catch (e) {
     console.error('Complete referral error:', e)
+    return null
   }
 }
 
@@ -160,20 +72,18 @@ export const generateReferralCode = async (userId, username, fullName) => {
     for (let attempt = 0; attempt < 5; attempt += 1) {
       const code = base + Math.floor(1000 + Math.random() * 9000)
 
-      const { data: updated, error: updateError } = await supabase
-        .from('users')
-        .update({ referral_code: code })
-        .eq('id', userId)
-        .select('referral_code')
-        .maybeSingle()
+      const { data, error: codeError } = await supabase.rpc('set_my_referral_code', {
+        p_code: code
+      })
 
-      if (!updateError && updated?.referral_code) {
-        console.log('Referral code generated:', code)
-        return code
+      if (!codeError && data?.referral_code) {
+        console.log('Referral code ready:', data.referral_code)
+        return data.referral_code
       }
 
-      if (updateError?.code !== '23505') {
-        console.error('Referral code update error:', updateError)
+      if (data?.status === 'collision') continue
+      if (codeError) {
+        console.error('Referral code update error:', codeError)
         return null
       }
     }
@@ -213,36 +123,17 @@ export const clearGigReferral = () => {
   localStorage.removeItem('prima_gig_referral')
 }
 
-export const trackGigReferral = async (gigId, referredUserId) => {
+export const trackGigReferral = async (gigId) => {
   const captured = getCapturedGigReferral()
   if (!captured) return
   if (captured.gigId !== gigId) return
 
   try {
-    const { data: referrer } = await supabase
-      .from('users')
-      .select('id')
-      .eq('referral_code', captured.referralCode)
-      .maybeSingle()
-
-    if (!referrer) return
-    if (referrer.id === referredUserId) return
-
-    const { data: existing } = await supabase
-      .from('gig_referrals')
-      .select('id')
-      .eq('gig_id', gigId)
-      .eq('referred_id', referredUserId)
-      .maybeSingle()
-
-    if (existing) return
-
-    await supabase.from('gig_referrals').insert({
-      gig_id: gigId,
-      referrer_id: referrer.id,
-      referred_id: referredUserId,
-      status: 'pending'
+    const { error } = await supabase.rpc('record_gig_referral', {
+      p_gig_id: gigId,
+      p_referral_code: captured.referralCode
     })
+    if (error) throw error
 
     clearGigReferral()
     console.log('Gig referral tracked')

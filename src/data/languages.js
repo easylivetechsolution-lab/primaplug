@@ -1,16 +1,16 @@
 export const LANGUAGES = [
-  { code: 'en', name: 'English',    flag: '🇬🇧', native: 'English'   },
-  { code: 'fr', name: 'French',     flag: '🇫🇷', native: 'Français'  },
-  { code: 'es', name: 'Spanish',    flag: '🇪🇸', native: 'Español'   },
-  { code: 'pt', name: 'Portuguese', flag: '🇧🇷', native: 'Português' },
-  { code: 'ar', name: 'Arabic',     flag: '🇸🇦', native: 'العربية'   },
-  { code: 'zh', name: 'Chinese',    flag: '🇨🇳', native: '中文'       },
-  { code: 'hi', name: 'Hindi',      flag: '🇮🇳', native: 'हिन्दी'     },
-  { code: 'de', name: 'German',     flag: '🇩🇪', native: 'Deutsch'   },
-  { code: 'it', name: 'Italian',    flag: '🇮🇹', native: 'Italiano'  },
-  { code: 'ru', name: 'Russian',    flag: '🇷🇺', native: 'Русский'   },
-  { code: 'tr', name: 'Turkish',    flag: '🇹🇷', native: 'Türkçe'   },
-  { code: 'sw', name: 'Swahili',    flag: '🇰🇪', native: 'Kiswahili' },
+  { code: 'en', name: 'English', flag: '🇬🇧', native: 'English' },
+  { code: 'fr', name: 'French', flag: '🇫🇷', native: 'Français' },
+  { code: 'es', name: 'Spanish', flag: '🇪🇸', native: 'Español' },
+  { code: 'pt', name: 'Portuguese', flag: '🇵🇹', native: 'Português' },
+  { code: 'ar', name: 'Arabic', flag: '🇸🇦', native: 'العربية' },
+  { code: 'zh', name: 'Chinese', flag: '🇨🇳', native: '中文' },
+  { code: 'hi', name: 'Hindi', flag: '🇮🇳', native: 'हिन्दी' },
+  { code: 'de', name: 'German', flag: '🇩🇪', native: 'Deutsch' },
+  { code: 'it', name: 'Italian', flag: '🇮🇹', native: 'Italiano' },
+  { code: 'ru', name: 'Russian', flag: '🇷🇺', native: 'Русский' },
+  { code: 'tr', name: 'Turkish', flag: '🇹🇷', native: 'Türkçe' },
+  { code: 'sw', name: 'Swahili', flag: '🇰🇪', native: 'Kiswahili' },
 ]
 
 export const DEFAULT_LANGUAGE = 'en'

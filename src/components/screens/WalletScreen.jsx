@@ -5,6 +5,7 @@ import { getCurrency, FINCRA_CURRENCIES } from '../../data/currencies'
 import { startFincraWalletFunding, requestFincraPayout, listFincraBanks, verifyFincraAccount, verifyFincraPayment } from '../../utils/fincra'
 import { parseTimestamp } from '../../utils/time'
 import { showToast } from '../../utils/toast'
+import { LockKeyhole, Wallet } from 'lucide-react'
 
 const FUND_TYPES = ['fund_in', 'escrow_release_worker', 'gig_referral_payout', 'withdrawal_refund']
 const WITHDRAW_TYPES = ['withdrawal', 'escrow_lock']
@@ -409,78 +410,45 @@ export default function WalletScreen() {
         </div>
       ) : (
         <>
-          <div className="wallet-cards-grid" style={{
-            gridTemplateColumns: wallets.length > 1
-              ? 'repeat(auto-fit, minmax(min(100%, 360px), 1fr))'
-              : 'minmax(0, 680px)',
-            justifyContent: wallets.length > 1 ? 'stretch' : 'center'
-          }}>{wallets.map(wallet => {
+          <div className="wallet-cards-grid">{wallets.map(wallet => {
             const cur = getCurrency(wallet.currency)
             const bal = Number(wallet.balance || 0)
             const held = Number(wallet.held_balance || 0)
             return (
-              <div key={wallet.currency} style={{
-                background: 'linear-gradient(135deg, var(--color-brand) 0%, var(--color-brand-mid) 50%, var(--color-brand-highlight) 100%)',
-                borderRadius: '24px', padding: '24px', color: 'var(--color-surface)',
-                marginBottom: 0, position: 'relative', overflow: 'hidden'
-              }}>
-                <div style={{
-                  fontSize: '12px', opacity: 0.8, textTransform: 'uppercase',
-                  letterSpacing: '1.5px', marginBottom: '6px', fontWeight: '700'
-                }}>
-                  {wallet.currency} Wallet
+              <div key={wallet.currency} className="wallet-summary-card">
+                <div className="wallet-summary-head">
+                  <div className="wallet-summary-currency">
+                    <span className="wallet-currency-mark"><Wallet size={20} strokeWidth={2.2} /></span>
+                    <div>
+                      <div className="wallet-summary-name">{cur.name} wallet</div>
+                    </div>
+                  </div>
                 </div>
-                <div style={{
-                  fontSize: '40px', fontWeight: '800',
-                  letterSpacing: '-1.5px', marginBottom: '2px', lineHeight: 1
-                }}>
-                  {cur.symbol}{bal.toLocaleString()}
+                <div className="wallet-summary-main">
+                  <div className="wallet-summary-amount-block">
+                    <div className="wallet-summary-label">Available balance</div>
+                    <div className="wallet-summary-balance">{cur.symbol}{bal.toLocaleString()}</div>
+                  </div>
+                  <div className="wallet-summary-actions">
+                    <button className="wallet-fund-action" onClick={() => openFund(wallet)}>Add money</button>
+                    <button className="wallet-withdraw-action" onClick={() => openWithdraw(wallet)}>Withdraw</button>
+                  </div>
                 </div>
-                <div style={{ fontSize: '12px', opacity: 0.7, marginBottom: held > 0 ? '12px' : '18px' }}>
-                  {cur.name}
-                </div>
-
                 {held > 0 && (
-                  <div style={{
-                    background: 'rgba(255,255,255,0.15)', borderRadius: '12px',
-                    padding: '8px 12px', display: 'flex', justifyContent: 'space-between',
-                    alignItems: 'center', marginBottom: '14px'
-                  }}>
-                    <span style={{ fontSize: '12px', opacity: 0.85 }}>🔒 Held in escrow</span>
-                    <strong style={{ fontSize: '12px' }}>{cur.symbol}{held.toLocaleString()}</strong>
+                  <div className="wallet-summary-escrow">
+                    <span className="wallet-escrow-label"><LockKeyhole size={14} /> Held in escrow</span>
+                    <strong>{cur.symbol}{held.toLocaleString()}</strong>
                   </div>
                 )}
-
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <button onClick={() => openFund(wallet)} style={{
-                    flex: 1, background: 'var(--color-surface)', border: 'none', borderRadius: '12px',
-                    padding: '11px', color: 'var(--color-brand)', fontSize: '12px', fontWeight: '800',
-                    cursor: 'pointer', fontFamily: 'inherit',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px'
-                  }}>
-                    💰 Fund
-                  </button>
-                  <button onClick={() => openWithdraw(wallet)} style={{
-                    flex: 1, background: 'rgba(255,255,255,0.18)',
-                    border: '1.5px solid rgba(255,255,255,0.4)',
-                    borderRadius: '12px', padding: '11px', color: 'var(--color-surface)',
-                    fontSize: '12px', fontWeight: '800', cursor: 'pointer',
-                    fontFamily: 'inherit',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px'
-                  }}>
-                    💸 Withdraw
-                  </button>
-                </div>
               </div>
             )
           })}</div>
-
           {/* Add another currency */}
           <button onClick={() => openFund()} style={{
-            width: '100%', background: 'var(--color-page)',
-            border: '1.5px dashed var(--color-brand-border-strong)', borderRadius: '16px',
-            padding: '14px', color: 'var(--color-brand)', fontSize: '13px', fontWeight: '700',
-            cursor: 'pointer', fontFamily: 'inherit', marginBottom: '20px'
+            display: 'block', width: 'fit-content', margin: '0 auto 20px',
+            background: 'transparent', border: 0, borderRadius: '8px',
+            padding: '8px 12px', color: 'var(--color-brand)', fontSize: '13px', fontWeight: '700',
+            cursor: 'pointer', fontFamily: 'inherit'
           }}>
             + Add another currency wallet
           </button>

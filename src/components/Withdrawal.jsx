@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
+import { edgeFunctionErrorMessage } from '../utils/edgeFunctionErrors'
 
 const CURRENCY_TO_COUNTRY = {
   NGN: 'NG', GHS: 'GH', KES: 'KE', ZAR: 'ZA',
@@ -67,7 +68,7 @@ export default function Withdrawal({ onClose }) {
         body: { accountNumber, bankCode },
       })
 
-      if (fnError) throw fnError
+      if (fnError) throw new Error(await edgeFunctionErrorMessage(fnError, 'Could not verify this account. Check the details and try again.'))
       if (data?.error) throw new Error(data.error)
 
       const accountData = data?.data
@@ -121,7 +122,7 @@ export default function Withdrawal({ onClose }) {
         },
       })
 
-      if (fnError) throw fnError
+      if (fnError) throw new Error(await edgeFunctionErrorMessage(fnError, 'Withdrawal could not be started. Please try again.'))
       if (data?.error) throw new Error(data.error)
 
       setSuccess(true)

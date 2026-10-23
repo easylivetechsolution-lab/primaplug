@@ -36,61 +36,66 @@ export default function ReviewModal({ gig, revieweeId, revieweeName, reviewType,
     )
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (rating === 0) {
       showToast('Please select a rating', 'error')
       return
     }
     setSubmitting(true)
+    try {
+      const { data: review, error: reviewError } = await supabase
+        .from('reviews')
+        .insert({
+          gig_id: gig.id,
+          reviewer_id: user.id,
+          reviewee_id: revieweeId,
+          rating,
+          comment,
+          tags: selectedTags,
+          type: reviewType
+        })
+        .select('id')
+        .single()
+      if (reviewError) throw reviewError
 
-    // Fire insert without awaiting — the promise hangs on response but data saves fine
-    supabase.from('reviews').insert({
-      gig_id: gig.id,
-      reviewer_id: user.id,
-      reviewee_id: revieweeId,
-      rating,
-      comment,
-      tags: selectedTags,
-      type: reviewType
-    }).catch(err => console.error('Review insert:', err))
+      if (reviewType === 'worker') {
+        const { error } = await supabase.rpc('apply_review_trust', { p_review_id: review.id })
+        if (error) throw error
+      }
 
-    // Short pause so the insert fires, then show success regardless
-    setTimeout(() => {
       setDone(true)
       setSubmitting(false)
 
-      // Background: update rating average
-      supabase.from('reviews').select('rating').eq('reviewee_id', revieweeId)
-        .then(({ data }) => {
-          if (data?.length > 0) {
-            const avg = data.reduce((s, r) => s + r.rating, 0) / data.length
-            supabase.from('users').update({
-              rating: Math.round(avg * 10) / 10,
-              reviews_count: data.length
-            }).eq('id', revieweeId)
-          }
-        }).catch(() => null)
-
-      // Background: trust score
-      if (reviewType === 'worker') {
-        const trustAdd = rating >= 4 ? 2 : rating >= 3 ? 0 : -3
-        supabase.rpc('increment_trust', { user_id: revieweeId, amount: trustAdd }).catch(() => null)
+      // Refresh the displayed average after the review has been stored.
+      const { data } = await supabase
+        .from('reviews')
+        .select('rating')
+        .eq('reviewee_id', revieweeId)
+      if (data?.length > 0) {
+        const avg = data.reduce((sum, item) => sum + item.rating, 0) / data.length
+        await supabase.from('users').update({
+          rating: Math.round(avg * 10) / 10,
+          reviews_count: data.length
+        }).eq('id', revieweeId)
       }
 
-      // Background: notification
-      supabase.from('notifications').insert({
+      await supabase.from('notifications').insert({
         user_id: revieweeId,
         title: 'New Review Received!',
         message: `You received a ${rating}★ review for "${gig.title}"`,
         type: 'review',
         gig_id: gig.id
-      }).catch(() => null)
+      })
 
       setTimeout(() => {
         onDone && onDone()
         onClose()
       }, 2000)
-    }, 800)
+    } catch (error) {
+      console.error('Review submission error:', error)
+      setSubmitting(false)
+      showToast('Your review could not be submitted. Please try again.', 'error')
+    }
   }
 
   return (

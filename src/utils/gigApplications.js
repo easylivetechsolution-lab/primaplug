@@ -65,7 +65,9 @@ export const ensureGigConversation = async ({ gigId, posterId, workerId }) => {
       gig_id: gigId,
       participant_1: posterId,
       participant_2: workerId,
-      last_message: 'Application sent',
+      // The application is a workflow event, not a chat message. Keep the
+      // conversation hidden from inboxes until one participant sends a message.
+      last_message: '',
       last_message_at: new Date().toISOString()
     })
     .select('id')
@@ -89,7 +91,10 @@ export const applyToGig = async ({ gig, workerId, notifyPush = true }) => {
   }
 
   const existing = await findExistingApplication(gig.id, workerId)
-  if (existing) return { alreadyApplied: true, application: existing }
+  if (existing) {
+    await trackGigReferral(gig.id)
+    return { alreadyApplied: true, application: existing }
+  }
 
   const blocker = await findApplicationBlocker(workerId)
   if (blocker) return { blocked: true, message: blocker }
@@ -106,10 +111,15 @@ export const applyToGig = async ({ gig, workerId, notifyPush = true }) => {
 
   if (error) {
     if (error.code === '23505') {
+      await trackGigReferral(gig.id)
       return { alreadyApplied: true }
     }
     throw error
   }
+
+  // Record share attribution as soon as the application exists, so unrelated
+  // notification or conversation failures cannot lose a valid referral.
+  await trackGigReferral(gig.id)
 
   await supabase.from('notifications').insert({
     user_id: gig.poster_id,
@@ -135,6 +145,5 @@ export const applyToGig = async ({ gig, workerId, notifyPush = true }) => {
     workerId
   })
 
-  await trackGigReferral(gig.id, workerId)
   return { alreadyApplied: false, application }
 }

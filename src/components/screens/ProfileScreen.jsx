@@ -8,7 +8,7 @@ import BrandIcon from '../BrandIcon'
 import ScreenLoader from '../ScreenLoader'
 import { completeReferral } from '../../utils/referral'
 import { showToast } from '../../utils/toast'
-import { getProfileCompletion } from '../../utils/profileComplete'
+import { getProfileCompletion, isReferralProfileComplete } from '../../utils/profileComplete'
 import { parseTimestamp } from '../../utils/time'
 import { useCredits } from '../../context/CreditsContext'
 import { CREDITS_PER_DOLLAR } from '../../utils/payments'
@@ -380,8 +380,7 @@ export default function ProfileScreen({ onLogout }) {
 
     const updatedProfile = data?.[0]
     if (updatedProfile) {
-      const { complete } = getProfileCompletion(updatedProfile)
-      if (complete) await completeReferral(user.id)
+      if (isReferralProfileComplete(updatedProfile)) await completeReferral()
     }
 
     await fetchProfile()
@@ -1067,8 +1066,8 @@ export default function ProfileScreen({ onLogout }) {
                     ['accepted', 'Status', profile?.is_available ? 'Available' : 'Busy'],
                   ].map(([icon, key, val]) => (
                     <div key={key} style={{ background: 'var(--color-page)', borderRadius: '10px', padding: '10px 12px', minWidth: 0 }}>
-                      <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)', marginBottom: '5px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <BrandIcon name={icon} size={22} active={false} />{key}
+                      <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)', marginBottom: '7px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <BrandIcon name={icon} size={28} active={false} />{key}
                       </div>
                       <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--color-text)', minWidth: 0, overflowWrap: 'anywhere', wordBreak: 'break-word', lineHeight: 1.35 }}>{val}</div>
                     </div>
@@ -1205,11 +1204,6 @@ export default function ProfileScreen({ onLogout }) {
               Coming to Prima
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '10px' }}>
-              <ComingSoonCard
-                icon="level" title="Verified ID + Payment Badge"
-                desc="A clearer verification badge showing ID and payment method are both verified."
-                gradient="var(--color-brand-gradient)"
-              />
               <ComingSoonCard
                 icon="accepted" title="Prima Pro"
                 desc="Priority placement, lower commission, and advanced tools for power users."

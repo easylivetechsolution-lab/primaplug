@@ -266,6 +266,7 @@ export default function CommissionScreen() {
             const usdValue = convertToUSD(commission.commission_amount, commission.currency || 'NGN')
             const creditsNeeded = dollarsToCredits(usdValue)
             const canPayWithCredits = (credits?.balance || 0) >= creditsNeeded
+            const commissionCurrency = (commission.currency || 'NGN').toUpperCase()
 
             return (
               <div key={commission.id} style={{
@@ -284,9 +285,9 @@ export default function CommissionScreen() {
                       color: 'var(--color-text)', marginBottom: '3px'
                     }}>{commission.gigs?.title || 'Gig'}</div>
                     <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
-                      You earned: {getCurrency(commission.currency || 'NGN').symbol}
+                      You earned: {getCurrency(commissionCurrency).symbol}
                       {commission.gig_amount?.toLocaleString()} ·
-                      Fee: {getCurrency(commission.currency || 'NGN').symbol}
+                      Fee: {getCurrency(commissionCurrency).symbol}
                       {commission.commission_amount?.toLocaleString()}
                       {commission.currency === 'NGN' && commission.commission_amount === 500
                         ? ' (minimum ₦500)'

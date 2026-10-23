@@ -33,12 +33,9 @@ export const CreditsProvider = ({ children }) => {
         .maybeSingle()
 
       if (!data) {
-        const { data: newCredits } = await supabase
-          .from('prima_credits')
-          .insert({ user_id: user.id, balance: 0, lifetime_earned: 0, lifetime_spent: 0 })
-          .select()
-          .single()
-        setCredits(newCredits)
+        // Credit rows are created by trusted credit-grant operations. Do not
+        // create or mutate the ledger directly from the browser.
+        setCredits({ user_id: user.id, balance: 0, lifetime_earned: 0, lifetime_spent: 0 })
       } else {
         setCredits(data)
       }
@@ -92,10 +89,11 @@ export const CreditsProvider = ({ children }) => {
     return data
   }
 
-  const uniqueCommissions = commissions.filter((commission, index, all) => {
-    const key = commission.gig_id || commission.id
-    return all.findIndex(item => (item.gig_id || item.id) === key) === index
-  })
+  // Keep rows distinct by their own identity. Collapsing by gig_id can hide
+  // an unpaid commission behind another commission row for the same gig.
+  const uniqueCommissions = commissions.filter((commission, index, all) =>
+    all.findIndex(item => item.id === commission.id) === index
+  )
   const pendingCommissions = uniqueCommissions.filter(c => c.status === 'pending')
   const totalOwed = pendingCommissions.reduce(
     (sum, c) => sum + convertToUSD(c.commission_amount || 0, c.currency || 'NGN'), 0

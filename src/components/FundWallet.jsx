@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
+import { edgeFunctionErrorMessage } from '../utils/edgeFunctionErrors'
 
 const SUPPORTED_CURRENCIES = [
   { code: 'NGN', label: 'Nigerian Naira', symbol: '₦' },
@@ -39,14 +40,14 @@ export default function FundWallet({ onClose, initialCurrency }) {
         },
       })
 
-      if (fnError) throw fnError
+      if (fnError) throw new Error(await edgeFunctionErrorMessage(fnError, 'Could not start wallet funding. Please try again.'))
       if (data?.error) throw new Error(data.error)
 
       window.location.href = data.checkoutUrl
 
     } catch (e) {
       console.error('Fund wallet error:', e)
-      setError(e.message || 'Something went wrong. Try again.')
+      setError(e.message || 'Could not start wallet funding. Please try again.')
       setLoading(false)
     }
   }

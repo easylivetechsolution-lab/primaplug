@@ -10,10 +10,35 @@ import {
   playComplete,
   playMessage,
 } from '../utils/sounds'
+import { DEFAULT_NOTIFICATION_PREFERENCES, notificationPreferenceEnabled } from '../utils/notificationPreferences'
 
 export default function NotificationBell({ onNavigate, active = false }) {
   const { user } = useAuth()
   const [unreadCount, setUnreadCount] = useState(0)
+  const [notificationPreferences, setNotificationPreferences] = useState(DEFAULT_NOTIFICATION_PREFERENCES)
+  const soundEnabled = notificationPreferences.sounds !== false
+
+  useEffect(() => {
+    if (!user?.id) return
+    let active = true
+    try {
+      const cached = JSON.parse(localStorage.getItem(`prima_notification_preferences_${user.id}`) || '{}')
+      setNotificationPreferences({ ...DEFAULT_NOTIFICATION_PREFERENCES, ...cached })
+    } catch {
+      setNotificationPreferences(DEFAULT_NOTIFICATION_PREFERENCES)
+    }
+    supabase.from('user_preferences')
+      .select('notification_preferences')
+      .eq('user_id', user.id)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (!active || error || !data?.notification_preferences) return
+        const saved = { ...DEFAULT_NOTIFICATION_PREFERENCES, ...data.notification_preferences }
+        setNotificationPreferences(saved)
+        localStorage.setItem(`prima_notification_preferences_${user.id}`, JSON.stringify(saved))
+      })
+    return () => { active = false }
+  }, [user?.id])
 
   const refreshUnreadCount = useCallback(async () => {
     if (!user) {
@@ -21,14 +46,16 @@ export default function NotificationBell({ onNavigate, active = false }) {
       return
     }
 
-    const { count, error } = await supabase
+    const { data, error } = await supabase
       .from('notifications')
-      .select('id', { count: 'exact', head: true })
+      .select('id, type, title, message')
       .eq('user_id', user.id)
       .eq('read', false)
 
-    if (!error) setUnreadCount(count || 0)
-  }, [user])
+    if (!error) setUnreadCount((data || []).filter(row =>
+      notificationPreferenceEnabled(row, notificationPreferences)
+    ).length)
+  }, [user, notificationPreferences])
 
   useEffect(() => {
     refreshUnreadCount()
@@ -44,6 +71,7 @@ export default function NotificationBell({ onNavigate, active = false }) {
       }, (payload) => {
         refreshUnreadCount()
         if (payload.eventType !== 'INSERT') return
+        if (!soundEnabled || !notificationPreferenceEnabled(payload.new, notificationPreferences)) return
 
         const type = payload.new?.type
         if (type === 'accepted') playAccepted()
@@ -59,7 +87,7 @@ export default function NotificationBell({ onNavigate, active = false }) {
       window.removeEventListener('notificationsChanged', handleChange)
       supabase.removeChannel(channel)
     }
-  }, [user, refreshUnreadCount])
+  }, [user, refreshUnreadCount, soundEnabled, notificationPreferences])
 
   return (
     <button

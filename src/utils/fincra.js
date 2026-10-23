@@ -1,3 +1,5 @@
+import { edgeFunctionErrorMessage } from './edgeFunctionErrors'
+
 export const startFincraWalletFunding = async (supabase, payload) => {
   const { data, error } = await supabase.functions.invoke('fincra-fund-wallet', {
     body: {
@@ -10,7 +12,7 @@ export const startFincraWalletFunding = async (supabase, payload) => {
     },
   })
 
-  if (error) throw error
+  if (error) throw new Error(await edgeFunctionErrorMessage(error, 'Could not start wallet funding. Please try again.'))
   if (data?.error) throw new Error(data.error)
   return data
 }
@@ -20,7 +22,7 @@ export const requestFincraPayout = async (supabase, payload) => {
     body: payload,
   })
 
-  if (error) throw error
+  if (error) throw new Error(await edgeFunctionErrorMessage(error, 'Could not start the withdrawal. Please try again.'))
   if (data?.error) throw new Error(data.error)
   return data
 }
@@ -35,7 +37,7 @@ export const quoteFincraCreditPayout = async (supabase, payload) => {
     },
   })
 
-  if (error) throw error
+  if (error) throw new Error(await edgeFunctionErrorMessage(error, 'Could not get a payout quote. Please try again.'))
   if (data?.error) throw new Error(data.error)
   return data
 }
@@ -45,7 +47,7 @@ export const requestFincraCreditPayout = async (supabase, payload) => {
     body: payload,
   })
 
-  if (error) throw error
+  if (error) throw new Error(await edgeFunctionErrorMessage(error, 'Could not submit the withdrawal. Please check your withdrawal history before retrying.'))
   if (data?.error) throw new Error(data.error)
   return data
 }
@@ -75,7 +77,7 @@ export const verifyFincraAccount = async (supabase, accountNumber, bankCode) => 
     body: { accountNumber, bankCode },
   })
 
-  if (error) throw error
+  if (error) throw new Error(await edgeFunctionErrorMessage(error, 'Could not verify this account. Check the details and try again.'))
   if (data?.error) throw new Error(data.error)
   return data
 }
@@ -85,7 +87,8 @@ export const verifyFincraPayment = async (supabase, reference) => {
     body: { reference },
   })
 
-  if (error) throw error
+  if (error) throw new Error(await edgeFunctionErrorMessage(error, 'Could not verify this payment. Please try again.'))
   if (data?.error) throw new Error(data.error)
   return data
 }
+

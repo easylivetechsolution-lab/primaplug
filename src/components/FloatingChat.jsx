@@ -187,7 +187,7 @@ export default function FloatingChat({ onOpenFullChat }) {
   async function fetchConversations() {
     if (!user) return
     try {
-      const data = await fetchChatConversations(user.id, { includeEmpty: true })
+      const data = await fetchChatConversations(user.id)
       setConversations(data)
       setTotalUnread(data.reduce((sum, c) => sum + getUnread(c), 0))
     } catch (error) {

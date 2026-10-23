@@ -11,6 +11,7 @@ import PublicProfile from './components/PublicProfile'
 import { LanguageProvider } from './context/LanguageContext'
 import { CreditsProvider } from './context/CreditsContext'
 import { captureReferralCode, captureGigReferral } from './utils/referral'
+import { needsProfileSetup } from './utils/profileComplete'
 
 function AppLoader({ message }) {
   return (
@@ -73,7 +74,7 @@ function AuthCallback() {
             // Check if Prima profile exists
             const { data: profile } = await supabase
               .from('users')
-              .select('id, full_name')
+              .select('id, full_name, username, skills')
               .eq('id', userId)
               .maybeSingle()
 
@@ -97,8 +98,8 @@ function AuthCallback() {
               })
               setMessage('Profile created! Taking you to setup...')
               setTimeout(() => navigate('/onboarding'), 1000)
-            } else if (!profile.full_name) {
-              setMessage('Almost there...')
+            } else if (needsProfileSetup(profile)) {
+              setMessage('Finish setting up your profile...')
               setTimeout(() => navigate('/onboarding'), 1000)
             } else {
               setMessage('Welcome back! Loading Prima...')
@@ -141,7 +142,7 @@ function PublicProfileRoute() {
 }
 
 function AppRoutes() {
-  const { user, loading } = useAuth()
+  const { user, profile, loading } = useAuth()
 
   useEffect(() => {
     captureReferralCode()
@@ -153,7 +154,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={
-        user ? <Navigate to="/dashboard" replace /> : <Auth />
+        user ? <Navigate to={needsProfileSetup(profile) ? '/onboarding' : '/dashboard'} replace /> : <Auth />
       } />
       <Route path="/auth/callback" element={<AuthCallback />} />
       <Route path="/auth/confirm" element={<AuthCallback />} />
@@ -164,7 +165,7 @@ function AppRoutes() {
         <ProtectedRoute><Onboarding /></ProtectedRoute>
       } />
       <Route path="/dashboard" element={
-        <ProtectedRoute><Dashboard /></ProtectedRoute>
+        <ProtectedRoute>{needsProfileSetup(profile) ? <Navigate to="/onboarding" replace /> : <Dashboard />}</ProtectedRoute>
       } />
       <Route path="/admin" element={
         <ProtectedRoute><Admin /></ProtectedRoute>

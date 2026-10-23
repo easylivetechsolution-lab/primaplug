@@ -1,10 +1,12 @@
 import { supabase } from '../supabase'
+import { edgeFunctionErrorMessage } from './edgeFunctionErrors'
 
 export async function uploadToR2(file, folder = 'uploads') {
   const { data, error } = await supabase.functions.invoke('r2-presign', {
     body: { fileName: file.name, contentType: file.type || 'application/octet-stream', folder },
   })
-  if (error || !data?.uploadUrl) throw new Error(error?.message || 'Failed to get upload URL')
+  if (error) throw new Error(await edgeFunctionErrorMessage(error, 'Could not prepare this upload. Please try again.'))
+  if (!data?.uploadUrl) throw new Error('Could not prepare this upload. Please try again.')
 
   const res = await fetch(data.uploadUrl, {
     method: 'PUT',
@@ -20,7 +22,8 @@ export async function uploadBlobToR2(blob, fileName, contentType, folder = 'uplo
   const { data, error } = await supabase.functions.invoke('r2-presign', {
     body: { fileName, contentType, folder },
   })
-  if (error || !data?.uploadUrl) throw new Error(error?.message || 'Failed to get upload URL')
+  if (error) throw new Error(await edgeFunctionErrorMessage(error, 'Could not prepare this upload. Please try again.'))
+  if (!data?.uploadUrl) throw new Error('Could not prepare this upload. Please try again.')
 
   const res = await fetch(data.uploadUrl, {
     method: 'PUT',

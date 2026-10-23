@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '../../supabase'
 import { useAuth } from '../../context/AuthContext'
+import { edgeFunctionErrorMessage } from '../../utils/edgeFunctionErrors'
 import PostService from '../PostService'
 import ServiceDetail from '../ServiceDetail'
 import EditService from '../EditService'
@@ -799,7 +800,7 @@ function BoostSheet({ service, wallets, onClose, onBoosted, user }) {
           serviceName: service.title,
         },
       })
-      if (fnErr) throw fnErr
+      if (fnErr) throw new Error(await edgeFunctionErrorMessage(fnErr, 'Could not start payment. Please try again.'))
       if (data?.error) throw new Error(data.error)
       window.location.href = data.checkoutUrl
     } catch (e) {
