@@ -11,6 +11,7 @@ export const AuthProvider = ({ children }) => {
   const [profile, setProfile] = useState(null)
   const [wallets, setWallets] = useState([])
   const [loading, setLoading] = useState(true)
+  const [profileLoaded, setProfileLoaded] = useState(false)
 
   const fetchProfile = async (userId) => {
     if (!userId) return
@@ -30,6 +31,7 @@ export const AuthProvider = ({ children }) => {
     } catch (e) {
       console.log('Profile fetch exception:', e)
     } finally {
+      setProfileLoaded(true)
       setLoading(false)
     }
   }
@@ -38,6 +40,7 @@ export const AuthProvider = ({ children }) => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
       if (session?.user) {
+        setProfileLoaded(false)
         fetchProfile(session.user.id)
         setTimeout(() => initPushNotifications(session.user.id), 3000)
       } else {
@@ -46,14 +49,20 @@ export const AuthProvider = ({ children }) => {
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      (event, session) => {
         setUser(session?.user ?? null)
         if (session?.user) {
-          fetchProfile(session.user.id)
-          setTimeout(() => initPushNotifications(session.user.id), 3000)
+          if (event !== 'TOKEN_REFRESHED') {
+            setProfileLoaded(false)
+            fetchProfile(session.user.id)
+          }
+          if (event === 'SIGNED_IN') {
+            setTimeout(() => initPushNotifications(session.user.id), 3000)
+          }
         } else {
           setProfile(null)
           setWallets([])
+          setProfileLoaded(false)
           setLoading(false)
         }
       }
@@ -67,7 +76,7 @@ export const AuthProvider = ({ children }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ user, profile, wallets, loading, refreshProfile }}>
+    <AuthContext.Provider value={{ user, profile, wallets, loading, profileLoaded, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   )

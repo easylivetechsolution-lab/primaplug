@@ -139,9 +139,9 @@ function AuthCallback() {
 }
 
 function ProtectedRoute({ children }) {
-  const { user, loading } = useAuth()
+  const { user, loading, profileLoaded } = useAuth()
 
-  if (loading) return <AppLoader />
+  if (loading || (user && !profileLoaded)) return <AppLoader />
 
   return user ? children : <Navigate to="/" replace />
 }
@@ -152,7 +152,7 @@ function PublicProfileRoute() {
 }
 
 function AppRoutes() {
-  const { user, profile, loading } = useAuth()
+  const { user, profile, loading, profileLoaded } = useAuth()
 
   useEffect(() => {
     captureReferralCode()
@@ -164,7 +164,11 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={
-        user ? <Navigate to={needsProfileSetup(profile) ? '/onboarding' : '/dashboard'} replace /> : <Auth />
+        user
+          ? !profileLoaded
+            ? <AppLoader />
+            : <Navigate to={needsProfileSetup(profile) ? '/onboarding' : '/dashboard'} replace />
+          : <Auth />
       } />
       <Route path="/auth/callback" element={<AuthCallback />} />
       <Route path="/auth/confirm" element={<AuthCallback />} />

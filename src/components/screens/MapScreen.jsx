@@ -147,18 +147,45 @@ const ClusterLayer = ({ gigs, onSelect, selectedGigId }) => {
   const map = useMap()
   const [zoom, setZoom] = useState(map.getZoom())
   const hoverCloseTimer = useRef(null)
+  const autoPopupTimer = useRef(null)
+  const autoPopupScheduler = useRef(null)
+  const autoOpenedMarker = useRef(null)
+  const markerRefs = useRef(new Map())
+  const autoPopupIndex = useRef(0)
+  const interactionPaused = useRef(false)
+  const pointerHovering = useRef(false)
+  const mapMoving = useRef(false)
   const clearHoverClose = () => {
     if (hoverCloseTimer.current) clearTimeout(hoverCloseTimer.current)
     hoverCloseTimer.current = null
+  }
+  const pauseAutoPopups = () => {
+    interactionPaused.current = true
+    if (autoPopupTimer.current) clearTimeout(autoPopupTimer.current)
+    autoPopupTimer.current = null
+  }
+  const resumeAutoPopups = () => {
+    if (pointerHovering.current || selectedGigId) return
+    interactionPaused.current = false
+    autoPopupScheduler.current?.()
   }
   const schedulePopupClose = (popup) => {
     clearHoverClose()
     hoverCloseTimer.current = setTimeout(() => {
       const popupElement = popup?.getElement?.()
-      if (!popupElement?.matches(':hover')) popup?.close?.()
+      if (!popupElement?.matches(':hover')) {
+        popup?.close?.()
+        if (autoOpenedMarker.current?.getPopup?.() === popup) autoOpenedMarker.current = null
+        pointerHovering.current = false
+        resumeAutoPopups()
+      }
     }, 220)
   }
-  useMapEvents({ zoomend: e => setZoom(e.target.getZoom()) })
+  useMapEvents({
+    zoomend: e => setZoom(e.target.getZoom()),
+    movestart: () => { mapMoving.current = true },
+    moveend: () => { mapMoving.current = false },
+  })
 
   const clusters = useMemo(() => {
     const precision = Math.max(1, Math.min(4, zoom - 11))
@@ -178,6 +205,63 @@ const ClusterLayer = ({ gigs, onSelect, selectedGigId }) => {
       lng: g.sumLng / g.gigs.length
     }))
   }, [gigs, zoom])
+
+  const autoPopupCandidates = clusters
+    .filter(cluster => cluster.gigs.length === 1)
+    .map(cluster => cluster.gigs[0].id)
+
+  useEffect(() => {
+    const scheduleNext = () => {
+      if (autoPopupTimer.current) clearTimeout(autoPopupTimer.current)
+      autoPopupTimer.current = null
+      if (selectedGigId || interactionPaused.current || autoPopupCandidates.length === 0) return
+
+      // Leave a five-second gap before opening the next preview.
+      autoPopupTimer.current = setTimeout(() => {
+        autoPopupTimer.current = null
+        if (selectedGigId || interactionPaused.current) return
+
+        const candidateId = autoPopupCandidates[autoPopupIndex.current % autoPopupCandidates.length]
+        const marker = markerRefs.current.get(candidateId)
+        if (marker) {
+          marker.openPopup()
+          autoOpenedMarker.current = marker
+          autoPopupIndex.current = (autoPopupIndex.current + 1) % autoPopupCandidates.length
+          // Show the preview for five seconds, close it, then wait five more
+          // seconds before the next preview.
+          autoPopupTimer.current = setTimeout(() => {
+            autoPopupTimer.current = null
+            autoOpenedMarker.current?.closePopup?.()
+            autoOpenedMarker.current = null
+            scheduleNext()
+          }, 5000)
+        } else {
+          scheduleNext()
+        }
+      }, 5000)
+    }
+
+    autoPopupScheduler.current = scheduleNext
+    if (!selectedGigId && !pointerHovering.current) {
+      interactionPaused.current = false
+    }
+    if (selectedGigId) {
+      pauseAutoPopups()
+      autoOpenedMarker.current?.closePopup?.()
+      autoOpenedMarker.current = null
+    }
+    scheduleNext()
+    return () => {
+      if (autoPopupTimer.current) clearTimeout(autoPopupTimer.current)
+      autoPopupTimer.current = null
+      autoPopupScheduler.current = null
+    }
+  }, [autoPopupCandidates.join('|'), selectedGigId])
+
+  useEffect(() => () => {
+    if (hoverCloseTimer.current) clearTimeout(hoverCloseTimer.current)
+    if (autoPopupTimer.current) clearTimeout(autoPopupTimer.current)
+  }, [])
 
   return clusters.map((cluster, i) => {
     if (cluster.gigs.length === 1) {
@@ -206,15 +290,22 @@ const ClusterLayer = ({ gigs, onSelect, selectedGigId }) => {
         iconSize: [44, 66], iconAnchor: [22, 66], popupAnchor: [0, -66]
       })
       return (
-        <Marker key={gig.id} position={[gig.latitude, gig.longitude]} icon={gigIcon}
+        <Marker ref={marker => {
+          if (marker) markerRefs.current.set(gig.id, marker)
+          else markerRefs.current.delete(gig.id)
+        }} key={gig.id} position={[gig.latitude, gig.longitude]} icon={gigIcon}
           zIndexOffset={isSelected ? 1200 : isUrgent ? 800 : 400}
           eventHandlers={{
             mouseover: (event) => {
+              if (mapMoving.current) return
               clearHoverClose()
+              pointerHovering.current = true
+              pauseAutoPopups()
               event.target.openPopup()
             },
             mouseout: (event) => schedulePopupClose(event.target.getPopup()),
             click: (event) => {
+              pauseAutoPopups()
               onSelect(gig)
               setTimeout(() => event.target.closePopup(), 0)
             }
@@ -222,7 +313,12 @@ const ClusterLayer = ({ gigs, onSelect, selectedGigId }) => {
           <Popup className="prima-work-popup" minWidth={230} maxWidth={280}
             closeButton={false} autoPan={false}
             eventHandlers={{
-              mouseover: clearHoverClose,
+              mouseover: () => {
+                if (mapMoving.current) return
+                clearHoverClose()
+                pointerHovering.current = true
+                pauseAutoPopups()
+              },
               mouseout: (event) => schedulePopupClose(event.target)
             }}>
             <div className="prima-map-work-card">
@@ -830,8 +926,7 @@ export default function MapScreen() {
           <div className="prima-bottom-sheet gig-detail-scroll" onClick={e => e.stopPropagation()} style={{
             background: 'var(--color-surface)',
             borderRadius: '22px 22px 0 0',
-            padding: '24px', width: '100%',
-            maxWidth: '640px', maxHeight: '88vh',
+            width: '100%', maxWidth: '640px',
             overflowY: 'auto',
             animation: 'slideUp 0.3s cubic-bezier(0.16,1,0.3,1)',
             fontFamily: "'Plus Jakarta Sans', sans-serif"
@@ -839,7 +934,7 @@ export default function MapScreen() {
             <div style={{
               display: 'flex', alignItems: 'center',
               justifyContent: 'center', position: 'relative',
-              marginBottom: '20px'
+              minHeight: '36px', marginBottom: '14px'
             }}>
               <div style={{
                 width: '40px', height: '4px',
@@ -849,7 +944,7 @@ export default function MapScreen() {
                 onClick={() => { setSelectedGig(null); setApplied(false) }}
                 aria-label="Close gig details"
                 style={{
-                  position: 'absolute', right: 0,
+                  position: 'absolute', top: '2px', right: 0,
                   width: '32px', height: '32px', minHeight: '32px',
                   padding: 0, boxSizing: 'border-box', flexShrink: 0,
                   background: 'var(--color-brand-soft)', border: '1px solid var(--color-brand-border-strong)',
@@ -1567,6 +1662,17 @@ export default function MapScreen() {
         }
         .prima-bottom-sheet {
           box-shadow: 0 -18px 50px rgba(20,18,58,0.22);
+        }
+        .prima-bottom-sheet.gig-detail-scroll {
+          box-sizing: border-box;
+          max-height: min(80vh, calc(100dvh - env(safe-area-inset-top) - 16px));
+          padding: 18px 20px calc(18px + env(safe-area-inset-bottom));
+        }
+        @media (max-width: 600px) {
+          .prima-bottom-sheet.gig-detail-scroll {
+            max-height: min(78dvh, calc(100dvh - env(safe-area-inset-top) - 24px));
+            padding: 14px 16px calc(16px + env(safe-area-inset-bottom));
+          }
         }
         .leaflet-popup-content-wrapper {
           border-radius: 14px !important;

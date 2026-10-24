@@ -71,6 +71,8 @@ export default function ChatScreen() {
   const { user } = useAuth()
   const [conversations, setConversations] = useState([])
   const [activeConvo, setActiveConvo] = useState(null)
+  const activeConvoRef = useRef(activeConvo)
+  activeConvoRef.current = activeConvo
   const [messages, setMessages] = useState([])
   const [newMessage, setNewMessage] = useState('')
   const [sending, setSending] = useState(false)
@@ -120,6 +122,39 @@ export default function ChatScreen() {
   const presenceChannelRef = useRef()
   const longPressTimerRef = useRef()
 
+  const openConversation = (conversation) => {
+    if (!conversation) return
+    if (!activeConvoRef.current) {
+      window.history.pushState(
+        { ...(window.history.state || {}), screen: 'chat', chatConversation: true },
+        '',
+        `${window.location.pathname}${window.location.search}`
+      )
+    }
+    activeConvoRef.current = conversation
+    setActiveConvo(conversation)
+  }
+
+  const backToConversationList = () => {
+    if (window.history.state?.chatConversation) {
+      window.history.back()
+    } else {
+      activeConvoRef.current = null
+      setActiveConvo(null)
+    }
+  }
+
+  useEffect(() => {
+    const handleConversationBack = (event) => {
+      if (activeConvoRef.current && !event.state?.chatConversation) {
+        activeConvoRef.current = null
+        setActiveConvo(null)
+      }
+    }
+    window.addEventListener('popstate', handleConversationBack)
+    return () => window.removeEventListener('popstate', handleConversationBack)
+  }, [])
+
   useEffect(() => {
     fetchConversations()
   }, [user?.id])
@@ -158,7 +193,7 @@ export default function ChatScreen() {
       try {
         const data = await fetchConversationById(convoId, user.id)
         if (data) {
-          setActiveConvo(data)
+          openConversation(data)
           setConversations(prev =>
             prev.find(c => c.id === data.id) ? prev : [data, ...prev]
           )
@@ -179,7 +214,7 @@ export default function ChatScreen() {
         })
 
         if (convo) {
-          setActiveConvo(convo)
+          openConversation(convo)
           if (convo.id) {
             setConversations(prev =>
               prev.find(c => c.id === convo.id) ? prev : [convo, ...prev]
@@ -590,7 +625,7 @@ export default function ChatScreen() {
   const deleteConversation = async (convo, e, confirmed = false) => {
     e?.stopPropagation()
     if (!convo?.id) {
-      setActiveConvo(null)
+      backToConversationList()
       setMessages([])
       return
     }
@@ -611,7 +646,7 @@ export default function ChatScreen() {
 
     setConversations(prev => prev.filter(c => c.id !== convo.id))
     if (activeConvo?.id === convo.id) {
-      setActiveConvo(null)
+      backToConversationList()
       setMessages([])
     }
   }
@@ -619,7 +654,7 @@ export default function ChatScreen() {
   const clearConversation = async (convo, e, confirmed = false) => {
     e?.stopPropagation()
     if (!convo?.id) {
-      setActiveConvo(null)
+      backToConversationList()
       setMessages([])
       return
     }
@@ -687,7 +722,7 @@ export default function ChatScreen() {
       setConversations(prev => prev.some(item => item.id === convo.id)
         ? prev
         : [convo, ...prev])
-      setActiveConvo(convo)
+      openConversation(convo)
       setShowNewChat(false)
       setNewChatQuery('')
       setNewChatUsers([])
@@ -939,7 +974,7 @@ export default function ChatScreen() {
               return (
                 <div key={convo.id}>
                 <div
-                  onClick={() => setActiveConvo(convo)}
+                  onClick={() => openConversation(convo)}
                   style={{
                     padding: '10px 14px',
                     display: 'flex', gap: '12px',
@@ -1175,7 +1210,7 @@ export default function ChatScreen() {
                   {/* Back button mobile */}
                   {isMobile && (
                     <button
-                      onClick={() => setActiveConvo(null)}
+                      onClick={backToConversationList}
                       style={{
                         background: 'none', border: 'none',
                         fontSize: '20px', cursor: 'pointer',
@@ -1834,7 +1869,7 @@ export default function ChatScreen() {
               </button>
 
               {/* Input */}
-              <div style={{
+              <div className="chat-composer" style={{
                 flex: 1, background: 'var(--color-page)',
                 border: '1.5px solid var(--color-border)',
                 borderRadius: '14px', padding: '10px 14px',
@@ -1842,6 +1877,7 @@ export default function ChatScreen() {
                 transition: 'border-color 0.15s'
               }}>
                 <textarea
+                  className="chat-composer-input"
                   ref={inputRef}
                   value={newMessage}
                   onChange={e => {

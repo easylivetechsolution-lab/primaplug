@@ -164,16 +164,30 @@ export default function Layout() {
   useEffect(() => {
     const vv = window.visualViewport
     if (!vv) return
+    let viewportBaseHeight = Math.max(window.innerHeight, vv.height)
     const update = () => {
       if (!appRef.current) return
+      const keyboardOpen = screen === 'chat' && viewportBaseHeight - vv.height > 120
+      if (!keyboardOpen) viewportBaseHeight = Math.max(window.innerHeight, vv.height)
       appRef.current.style.height = vv.height + 'px'
       appRef.current.style.top = vv.offsetTop + 'px'
+      document.body.classList.toggle('chat-keyboard-open', keyboardOpen)
+    }
+    const resetViewportBase = () => {
+      viewportBaseHeight = Math.max(window.innerHeight, vv.height)
+      update()
     }
     update()
     vv.addEventListener('resize', update)
     vv.addEventListener('scroll', update)
-    return () => { vv.removeEventListener('resize', update); vv.removeEventListener('scroll', update) }
-  }, [])
+    window.addEventListener('orientationchange', resetViewportBase)
+    return () => {
+      vv.removeEventListener('resize', update)
+      vv.removeEventListener('scroll', update)
+      window.removeEventListener('orientationchange', resetViewportBase)
+      document.body.classList.remove('chat-keyboard-open')
+    }
+  }, [screen])
 
   const navigateTo = useCallback((newScreen) => {
     newScreen = normalizeDashboardScreen(newScreen)
@@ -1188,6 +1202,11 @@ useEffect(() => {
         }
         @media (max-width: 960px) {
           .desktop-nav { display: none !important; }
+        }
+        @media (max-width: 767px) {
+          .chat-keyboard-open .mobile-nav { display: none !important; }
+          .chat-keyboard-open .screen-scroll { padding-bottom: 0 !important; }
+          .chat-keyboard-open .chat-persistent-wrapper { bottom: 0 !important; }
         }
       `}</style>
 

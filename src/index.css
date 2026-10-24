@@ -125,6 +125,15 @@ body div[style*="border-radius"][style*="padding"][style*="border:"] {
   display: none;
 }
 
+.report-modal-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.report-modal-scroll::-webkit-scrollbar {
+  display: none;
+}
+
 .onboarding-location-spinner {
   width: 18px;
   height: 18px;
@@ -194,6 +203,16 @@ select:focus-visible,
 textarea:focus-visible {
   outline: 3px solid var(--color-brand) !important;
   outline-offset: 2px !important;
+}
+
+.chat-composer:focus-within {
+  border-color: var(--color-brand) !important;
+}
+
+.chat-composer-input:focus-visible {
+  outline: none !important;
+  outline-offset: 0 !important;
+  box-shadow: none !important;
 }
 
 .search-input:focus-visible {

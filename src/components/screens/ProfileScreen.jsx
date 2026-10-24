@@ -257,6 +257,7 @@ export default function ProfileScreen({ onLogout }) {
   const [profileStats, setProfileStats] = useState({
     totalEarned: 0,
     totalReviews: 0,
+    successfulApps: 0,
   })
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
@@ -302,7 +303,7 @@ export default function ProfileScreen({ onLogout }) {
       .maybeSingle()
     setVerificationRequest(verificationData || null)
 
-    const [{ data: reviews }, { data: receipts }, { data: withdrawals }, { data: walletsData }] = await Promise.all([
+    const [{ data: reviews }, { data: receipts }, { data: withdrawals }, { data: walletsData }, { count: successfulAppsCount, error: successfulAppsError }] = await Promise.all([
       supabase
         .from('reviews')
         .select('rating')
@@ -324,13 +325,21 @@ export default function ProfileScreen({ onLogout }) {
         .select('*')
         .eq('user_id', user.id)
         .order('created_at'),
+      supabase
+        .from('applications')
+        .select('id', { count: 'exact', head: true })
+        .eq('worker_id', user.id)
+        .in('status', ['accepted', 'completed']),
     ])
+
+    if (successfulAppsError) console.warn('Could not load successful application count:', successfulAppsError)
 
     const totalEarned = receipts?.reduce((sum, r) => sum + (r.amount || 0), 0) || 0
 
     setProfileStats({
       totalEarned,
       totalReviews: reviews?.length || 0,
+      successfulApps: successfulAppsCount || 0,
     })
     setWithdrawalHistory(withdrawals || [])
     setProfileWallets(walletsData || [])
@@ -465,11 +474,13 @@ export default function ProfileScreen({ onLogout }) {
     : 100
   const totalEarned = Number(profileStats.totalEarned || 0)
   const reviewsCount = Number(profileStats.totalReviews || 0)
+  const successfulApps = Math.max(0, Number(profileStats.successfulApps || 0))
+  const successfulAppsMilestone = 1000
   const nextEarnedTarget = Math.max(100, Math.ceil((totalEarned + 1) / 100) * 100)
   const nextReviewTarget = Math.max(10, Math.ceil((reviewsCount + 1) / 10) * 10)
   const progressMetrics = [
     { label: 'Total Earned', value: `$${totalEarned.toLocaleString()}`, current: totalEarned, max: nextEarnedTarget, color: 'linear-gradient(90deg,var(--color-success),#06D6D6)' },
-    { label: 'Gigs Completed', value: gigsCompleted, current: gigsCompleted, max: nextLevelTarget, color: 'linear-gradient(90deg,var(--color-brand),var(--color-info))' },
+    { label: 'Gigs Completed', value: `${Math.min(successfulApps, successfulAppsMilestone).toLocaleString()} / ${successfulAppsMilestone.toLocaleString()}`, current: successfulApps, max: successfulAppsMilestone, color: 'linear-gradient(90deg,var(--color-brand),var(--color-info))' },
     { label: 'Reviews', value: `${reviewsCount}/${nextReviewTarget}`, current: reviewsCount, max: nextReviewTarget, color: 'linear-gradient(90deg,var(--color-brand-highlight),var(--color-brand-mid))' },
   ]
 

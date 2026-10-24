@@ -100,7 +100,7 @@ export default function ReportModal({
         border: '1.5px solid var(--color-border)',
         boxShadow: '0 20px 60px rgba(108,71,255,0.25)',
         animation: 'slideUp 0.3s cubic-bezier(0.16,1,0.3,1)'
-      }}>
+      }} className="report-modal-scroll">
         {submitted ? (
           <div style={{ padding: '48px 28px', textAlign: 'center' }}>
             <div style={{

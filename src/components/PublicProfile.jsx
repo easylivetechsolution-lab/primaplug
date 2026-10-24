@@ -275,43 +275,21 @@ export default function PublicProfile({ userId, onClose, standalone = false }) {
     setMessaging(true)
 
     try {
-      const { data: existing } = await supabase
-        .from('conversations')
-        .select('id')
-        .or(
-          `and(participant_1.eq.${currentUser.id},participant_2.eq.${userId}),` +
-          `and(participant_1.eq.${userId},participant_2.eq.${currentUser.id})`
-        )
-        .maybeSingle()
-
-      let convoId = existing?.id
-
-      if (!convoId) {
-        const { data: newConvo } = await supabase
-          .from('conversations')
-          .insert({
-            participant_1: currentUser.id,
-            participant_2: userId,
-            last_message: '',
-            last_message_at: new Date().toISOString()
-          })
-          .select('id')
-          .single()
-        convoId = newConvo?.id
-      }
-
+      // This route sits outside the dashboard, so its chat listener may not
+      // exist yet. Persist the target for ChatScreen to consume after routing.
+      sessionStorage.setItem('pendingChatUserId', userId)
+      sessionStorage.removeItem('pendingChatGigId')
       setMessaging(false)
       setMessageSent(true)
 
       setTimeout(() => {
-        handleClose()
-        window.dispatchEvent(new CustomEvent('openChatWithUser', {
-          detail: { userId }
-        }))
+        navigate('/dashboard?screen=chat', { replace: true })
       }, 600)
     } catch (e) {
       console.log('Message error:', e)
+      sessionStorage.removeItem('pendingChatUserId')
       setMessaging(false)
+      showToast('Could not open chat. Please try again.', 'error')
     }
   }
 
