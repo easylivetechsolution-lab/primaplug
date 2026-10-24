@@ -24,6 +24,14 @@ export default function PostGig({ onClose }) {
   const { user, profile, wallets } = useAuth()
   const { currency: defaultCurrency } = useLanguage()
   const locationCurrency = currencyForLocation(profile?.location, defaultCurrency || 'USD')
+  const supportedGigCurrencies = FINCRA_CURRENCIES
+    .map(code => CURRENCIES.find(currency => currency.code === code))
+    .filter(Boolean)
+  const initialGigCurrency = FINCRA_CURRENCIES.includes(locationCurrency)
+    ? locationCurrency
+    : FINCRA_CURRENCIES.includes(String(defaultCurrency || '').toUpperCase())
+      ? String(defaultCurrency).toUpperCase()
+      : 'USD'
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
@@ -57,7 +65,7 @@ export default function PostGig({ onClose }) {
     urgency: 'now',
     pay_min: '',
     pay_max: '',
-    currency: locationCurrency,
+    currency: initialGigCurrency,
     duration_days: 1,
     expires_on: '',
     location: '',
@@ -79,7 +87,14 @@ export default function PostGig({ onClose }) {
   if (saved) {
     try {
       const parsed = JSON.parse(saved)
-      setForm(f => ({ ...f, ...parsed }))
+      const restoredCurrency = String(parsed.currency || '').toUpperCase()
+      setForm(f => ({
+        ...f,
+        ...parsed,
+        currency: FINCRA_CURRENCIES.includes(restoredCurrency) ? restoredCurrency : initialGigCurrency,
+      }))
+      setLocationSearch(parsed.location || '')
+      setLocationSelected(Boolean(parsed.location))
       setStep(3)
     } catch {}
     sessionStorage.removeItem('prima_postgig_resume')
@@ -112,118 +127,137 @@ export default function PostGig({ onClose }) {
   return null
 }
 
+  const validateStep = (stepToValidate) => {
+    if (stepToValidate === 1) {
+      if (!form.title.trim()) return 'Add a title for this gig.'
+      if (!form.field && !form.custom_skill.trim()) return 'Choose a field or enter a custom skill.'
+    }
+    if (stepToValidate === 2) {
+      const minPay = Number(form.pay_min)
+      const maxPay = Number(form.pay_max)
+      if (!FINCRA_CURRENCIES.includes(String(form.currency).toUpperCase())) {
+        return 'Choose a supported gig currency.'
+      }
+      if (!Number.isFinite(minPay) || minPay <= 0 || !Number.isFinite(maxPay) || maxPay <= 0) {
+        return 'Enter a minimum and maximum pay greater than zero.'
+      }
+      if (maxPay < minPay) return 'Maximum pay must be at least the minimum pay.'
+      if (!Number.isInteger(Number(form.slots)) || Number(form.slots) < 1 || Number(form.slots) > 10) {
+        return 'Choose between 1 and 10 open slots.'
+      }
+      if (!form.location.trim() || !locationSelected) {
+        return 'Choose a location from the suggestions.'
+      }
+      if (form.expires_on) {
+        const expiry = new Date(`${form.expires_on}T23:59:59`)
+        if (!Number.isFinite(expiry.getTime()) || expiry < new Date()) return 'Choose a valid future expiry date.'
+      }
+    }
+    return ''
+  }
+
+  const handleContinue = () => {
+    const validationError = validateStep(step)
+    if (validationError) {
+      setError(validationError)
+      return
+    }
+    setError('')
+    setStep(current => current + 1)
+  }
+
   const handleSubmit = async () => {
     if (loading || submittingRef.current) return
+    const validationError = validateStep(1) || validateStep(2)
+    if (validationError) {
+      setError(validationError)
+      return
+    }
+
+    const gigWalletForSubmit = (wallets || []).find(w => w.currency === form.currency)
+    if (form.payment_method === PAYMENT_METHODS.WALLET && !gigWalletForSubmit) {
+      setError(`Add a ${form.currency} wallet or choose manual payment.`)
+      return
+    }
+    if (form.payment_method === PAYMENT_METHODS.WALLET && Number(form.pay_max) !== Number(form.pay_min)) {
+      setError('Wallet payment settles at the minimum pay per worker. Set both pay amounts equal, or choose manual payment for a pay range.')
+      return
+    }
+    if (form.payment_method === PAYMENT_METHODS.WALLET && Number(gigWalletForSubmit.balance || 0) < Number(form.pay_min)) {
+      setError('Fund your wallet to cover the minimum escrow, or switch this gig to manual payment.')
+      return
+    }
+
     submittingRef.current = true
     setLoading(true)
     setError('')
-
-    const { data: userProfile } = await supabase
-      .from('users')
-      .select('selfie_verified')
-      .eq('id', user.id)
-      .single()
-    if (!userProfile?.selfie_verified) {
-      showToast('Please complete selfie verification in your profile before posting gigs.', 'error')
-      submittingRef.current = false
-      setLoading(false)
-      onClose()
-      window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'profile' }))
-      return
-    }
-
-    const { complete } = getProfileCompletion(profile)
-    if (!complete) {
-      submittingRef.current = false
-      setLoading(false)
-      setShowPrompt(true)
-      return
-    }
-    if (!form.title || !form.pay_min || !form.pay_max) {
-      setError('Please fill in title and pay range')
-      submittingRef.current = false
-      setLoading(false)
-      return
-    }
-
-    // Server-side guard: if gig currency isn't in user's wallets or Fincra, force manual
-    const gigWalletForSubmit = (wallets || []).find(w => w.currency === form.currency)
-    if (
-      form.payment_method === PAYMENT_METHODS.WALLET &&
-      (!FINCRA_CURRENCIES.includes(form.currency) || !gigWalletForSubmit)
-    ) {
-      update('payment_method', PAYMENT_METHODS.MANUAL)
-      form.payment_method = PAYMENT_METHODS.MANUAL
-    }
-
-    const minPay = parseFloat(form.pay_min)
-    if (form.payment_method === PAYMENT_METHODS.WALLET) {
-      const walletBalance = Number(gigWalletForSubmit?.balance || 0)
-      if (walletBalance < minPay) {
-        setError('Fund your wallet to use Pay from Wallet, or switch this gig to manual payment.')
-        submittingRef.current = false
-        setLoading(false)
+    try {
+      const { data: userProfile, error: profileError } = await supabase
+        .from('users')
+        .select('selfie_verified')
+        .eq('id', user.id)
+        .single()
+      if (profileError) throw profileError
+      if (!userProfile?.selfie_verified) {
+        showToast('Please complete selfie verification in your profile before posting gigs.', 'error')
+        onClose()
+        window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'profile' }))
         return
       }
-    }
 
-    let lat = form.latitude
-    let lng = form.longitude
+      const { complete } = getProfileCompletion(profile)
+      if (!complete) {
+        setShowPrompt(true)
+        return
+      }
 
-    // Auto geocode location to coordinates
-    if (form.type === 'physical' && form.location && !lat) {
-      const coords = await geocodeLocation(form.location)
-      if (coords) { lat = coords.lat; lng = coords.lng }
-    }
+      let lat = form.latitude
+      let lng = form.longitude
+      if (form.location && !lat) {
+        const coords = await geocodeLocation(form.location)
+        if (coords) { lat = coords.lat; lng = coords.lng }
+      }
 
-    // For digital gigs, pin them on the map at the poster's profile location
-    if (form.type === 'digital' && !lat && profile?.location) {
-      const coords = await geocodeLocation(profile.location)
-      if (coords) { lat = coords.lat; lng = coords.lng }
-    }
+      const expiresAt = form.expires_on ? new Date(`${form.expires_on}T23:59:59`) : new Date()
+      if (!form.expires_on) expiresAt.setDate(expiresAt.getDate() + 5)
+      const { error: insertError } = await supabase.from('gigs').insert({
+        poster_id: user.id,
+        title: form.title.trim(),
+        description: form.description.trim(),
+        type: form.type,
+        field: form.field,
+        urgency: form.urgency,
+        pay_min: Number(form.pay_min),
+        pay_max: Number(form.pay_max),
+        currency: String(form.currency).toUpperCase(),
+        duration_days: form.duration_days,
+        expires_at: expiresAt.toISOString(),
+        location: form.location.trim(),
+        latitude: lat,
+        longitude: lng,
+        slots: Number(form.slots),
+        status: 'open',
+        custom_skill: form.custom_skill.trim(),
+        house_number: form.house_number,
+        street: form.street,
+        landmark: form.landmark,
+        directions: form.directions,
+        payment_method: form.payment_method,
+      })
+      if (insertError) throw insertError
 
-    const expiresAt = form.expires_on ? new Date(`${form.expires_on}T23:59:59`) : new Date()
-    if (!form.expires_on) expiresAt.setDate(expiresAt.getDate() + 5)
-
-    const { error: err } = await supabase.from('gigs').insert({
-  poster_id: user.id,
-  title: form.title,
-  description: form.description,
-  type: form.type,
-  field: form.field,
-  urgency: form.urgency,
-  pay_min: parseFloat(form.pay_min),
-  pay_max: parseFloat(form.pay_max),
-  currency: form.currency,
-  duration_days: form.duration_days,
-  expires_at: expiresAt.toISOString(),
-  location: form.location,
-  latitude: lat,
-  longitude: lng,
-  slots: form.slots,
-  status: 'open',
-  custom_skill: form.custom_skill,
-  house_number: form.house_number,
-  street: form.street,
-  landmark: form.landmark,
-  directions: form.directions,
-  payment_method: form.payment_method,
-})
-
-    if (err) {
-      setError(err.message)
+      playAccepted()
+      setDone(true)
+      setTimeout(() => {
+        onClose()
+        window.location.reload()
+      }, 2000)
+    } catch (submitError) {
+      setError(submitError?.message || 'Could not post this gig. Please try again.')
+    } finally {
       submittingRef.current = false
       setLoading(false)
-      return
     }
-
-    playAccepted()
-    setDone(true)
-    setLoading(false)
-    setTimeout(() => {
-  onClose()
-  window.location.reload()
-}, 2000)
   }
 
   const inputStyle = {
@@ -319,6 +353,14 @@ export default function PostGig({ onClose }) {
               ))}
             </div>
 
+            {error && (
+              <div role="alert" style={{
+                background: 'var(--color-danger-soft)', border: '1.5px solid var(--color-danger-border)',
+                borderRadius: '8px', padding: '10px 14px',
+                fontSize: '13px', color: 'var(--color-danger)', marginBottom: '16px'
+              }}>{error}</div>
+            )}
+
             {/* STEP 1 */}
             {step === 1 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -396,7 +438,7 @@ export default function PostGig({ onClose }) {
                     value={form.currency}
                     onChange={e => update('currency', e.target.value)}
                     style={{ ...inputStyle, appearance: 'none', cursor: 'pointer' }}>
-                    {CURRENCIES.map(c => (
+                    {supportedGigCurrencies.map(c => (
                       <option key={c.code} value={c.code}>
                         {c.flag} {c.code} — {c.name} ({c.symbol})
                       </option>
@@ -422,6 +464,7 @@ export default function PostGig({ onClose }) {
                     <label style={labelStyle}>Min Pay ({CURRENCIES.find(c => c.code === form.currency)?.symbol || '$'})</label>
                     <input
                       style={inputStyle} type="number"
+                      min="0.01" step="0.01"
                       placeholder="e.g. 80"
                       value={form.pay_min}
                       onChange={e => update('pay_min', e.target.value)}
@@ -431,6 +474,7 @@ export default function PostGig({ onClose }) {
                     <label style={labelStyle}>Max Pay ({CURRENCIES.find(c => c.code === form.currency)?.symbol || '$'})</label>
                     <input
                       style={inputStyle} type="number"
+                      min="0.01" step="0.01"
                       placeholder="e.g. 160"
                       value={form.pay_max}
                       onChange={e => update('pay_max', e.target.value)}
@@ -438,32 +482,24 @@ export default function PostGig({ onClose }) {
                   </div>
                 </div>
 
-                {/* Digital gig — map placement from profile location */}
                 {form.type === 'digital' && (
                   <div style={{
                     background: 'var(--color-brand-soft)', border: '1.5px solid var(--color-brand-border-strong)',
-                    borderRadius: '12px', padding: '14px',
+                    borderRadius: '12px', padding: '14px', marginBottom: '14px',
                     display: 'flex', gap: '10px', alignItems: 'center'
                   }}>
                     <BrandIcon name="location" size={36} active />
-                    <div>
-                      <div style={{
-                        fontSize: '12px', fontWeight: '700', color: 'var(--color-brand)', marginBottom: '2px'
-                      }}>Shown on map as Remote</div>
-                      <div style={{ fontSize: '13px', color: 'var(--color-text-muted)', lineHeight: '1.5' }}>
-                        {profile?.location
-                          ? `Pinned near ${profile.location} — workers worldwide can still apply.`
-                          : 'Your gig will appear on the map once you set your location in your profile.'}
-                      </div>
+                    <div style={{ fontSize: '13px', color: 'var(--color-text-muted)', lineHeight: '1.5' }}>
+                      Choose any area for the map pin. Digital work remains open to applicants worldwide.
                     </div>
                   </div>
                 )}
 
-                {/* Location — only for physical gigs */}
-                {form.type === 'physical' && (
+                {/* Both physical and digital gigs can choose a map location. */}
+                {(form.type === 'physical' || form.type === 'digital') && (
                   <div>
                     <label style={labelStyle}>
-                      General Area
+                      {form.type === 'physical' ? 'General Area' : 'Map Location'}
                       <span style={{
                         marginLeft: '6px', fontSize: '12px',
                         color: 'var(--color-text-subtle)', fontWeight: '500',
@@ -601,8 +637,8 @@ export default function PostGig({ onClose }) {
                       }}>✓ Pin placed on map</div>
                     )}
 
-                    {/* Exact Address */}
-                    {locationSelected && (
+                    {/* Exact address details apply only to physical gigs. */}
+                    {form.type === 'physical' && locationSelected && (
                       <div style={{
                         background: 'var(--color-page)', borderRadius: '14px',
                         padding: '16px', border: '1.5px solid var(--color-border)',
@@ -695,7 +731,7 @@ export default function PostGig({ onClose }) {
                       borderRadius: '9px', fontSize: '13px', fontWeight: '700',
                       color: form.slots === 10 ? 'var(--color-brand)' : 'var(--color-text-muted)',
                       cursor: 'pointer', fontFamily: 'inherit'
-                    }}>10+</button>
+                    }}>10</button>
                   </div>
                 </div>
 
@@ -731,7 +767,7 @@ export default function PostGig({ onClose }) {
                     ['Pay Range', `${CURRENCIES.find(c => c.code === form.currency)?.symbol || '$'}${form.pay_min || '?'} - ${CURRENCIES.find(c => c.code === form.currency)?.symbol || '$'}${form.pay_max || '?'}`],
                     ['Payment', form.payment_method === PAYMENT_METHODS.WALLET ? 'Pay from Wallet' : 'Pay Manually'],
                     ['Expires', form.expires_on || '5 days from posting'],
-                    ['Location', form.type === 'digital' ? 'Remote' : (form.location || '—')],
+                    ['Location', form.location || '—'],
                     ['Slots', form.slots],
                   ].map(([k, v]) => (
                     <div key={k} style={{
@@ -748,6 +784,23 @@ export default function PostGig({ onClose }) {
 
                 <div style={{ marginBottom: '16px' }}>
                   <label style={labelStyle}>How will you pay the worker?</label>
+
+                  {form.payment_method === PAYMENT_METHODS.MANUAL && (
+                    <div style={{
+                      background: 'var(--color-brand-soft)',
+                      border: '1.5px solid var(--color-brand-border-strong)',
+                      borderRadius: '12px',
+                      padding: '14px',
+                      display: 'flex',
+                      gap: '10px',
+                      marginBottom: '12px'
+                    }}>
+                      <BrandIcon name="lock" size={34} />
+                      <div style={{ fontSize: '12px', color: 'var(--color-brand)', lineHeight: '1.6' }}>
+                        Both parties confirm completion by uploading receipts with their names. This protects everyone involved.
+                      </div>
+                    </div>
+                  )}
 
                   {(() => {
                     const gigCurrencyFincraSupported = FINCRA_CURRENCIES.includes(form.currency)
@@ -879,6 +932,7 @@ export default function PostGig({ onClose }) {
                       {Number((wallets || []).find(w => w.currency === form.currency)?.balance || 0).toLocaleString()}.
                       {' '}Minimum escrow needed: {CURRENCIES.find(c => c.code === form.currency)?.symbol || '$'}
                       {Number(form.pay_min || 0).toLocaleString()}.
+                      {' '}Wallet payment settles at the minimum amount for each worker. Set the minimum and maximum equal, or choose manual payment for a pay range.
                       {Number((wallets || []).find(w => w.currency === form.currency)?.balance || 0) < Number(form.pay_min || 0) && (
   <button
     type="button"
@@ -910,28 +964,6 @@ export default function PostGig({ onClose }) {
                   )}
                 </div>
 
-                <div style={{
-                  background: 'var(--color-brand-soft)',
-                  border: '1.5px solid var(--color-brand-border-strong)',
-                  borderRadius: '12px',
-                  padding: '14px',
-                  display: 'flex',
-                  gap: '10px',
-                  marginBottom: '20px'
-                }}>
-                  <BrandIcon name="lock" size={34} />
-                  <div style={{ fontSize: '12px', color: 'var(--color-brand)', lineHeight: '1.6' }}>
-                    Both parties confirm completion by uploading receipts with their names. This protects everyone involved.
-                  </div>
-                </div>
-
-                {error && (
-                  <div style={{
-                    background: 'var(--color-danger-soft)', border: '1.5px solid var(--color-danger-border)',
-                    borderRadius: '8px', padding: '10px 14px',
-                    fontSize: '13px', color: 'var(--color-danger)', marginBottom: '16px'
-                  }}>{error}</div>
-                )}
               </div>
             )}
 
@@ -948,7 +980,7 @@ export default function PostGig({ onClose }) {
                 }}>← Back</button>
               )}
               <button
-                onClick={step < 3 ? () => setStep(s => s + 1) : handleSubmit}
+                onClick={step < 3 ? handleContinue : handleSubmit}
                 disabled={loading}
                 className="pp-button pp-button--primary"
                 style={{

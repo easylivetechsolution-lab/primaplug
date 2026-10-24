@@ -116,6 +116,40 @@ body div[style*="border-radius"][style*="padding"][style*="border:"] {
   display: none;
 }
 
+.onboarding-card {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.onboarding-card::-webkit-scrollbar {
+  display: none;
+}
+
+.onboarding-location-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--color-brand-border-strong);
+  border-top-color: var(--color-brand);
+  border-radius: 50%;
+  animation: onboarding-location-spin 0.7s linear infinite;
+}
+
+@keyframes onboarding-location-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 520px) {
+  .onboarding-shell {
+    padding: 10px !important;
+  }
+
+  .onboarding-card {
+    padding: 20px !important;
+    max-height: 86dvh !important;
+    border-radius: 18px !important;
+  }
+}
+
 body div[style*="border-bottom:"],
 body div[style*="border-top:"] {
   border-bottom-color: transparent !important;

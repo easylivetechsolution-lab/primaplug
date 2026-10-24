@@ -3,6 +3,7 @@ import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import CategoryPicker from '../components/CategoryPicker'
+import BrandIcon from '../components/BrandIcon'
 import { processReferral, generateReferralCode, completeReferral } from '../utils/referral'
 import { isReferralProfileComplete } from '../utils/profileComplete'
 
@@ -40,9 +41,11 @@ const LocationSearch = ({ value, onSelect, inputStyle }) => {
         />
         <span style={{
           position: 'absolute', right: '12px',
-          top: '50%', transform: 'translateY(-50%)', fontSize: '14px'
+          top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center'
         }}>
-          {loading ? '⏳' : selected ? '✓' : '🔍'}
+          {loading
+            ? <span className="onboarding-location-spinner" aria-label="Searching locations" />
+            : <BrandIcon name={selected ? 'accepted' : 'search'} size={22} active={false} />}
         </span>
       </div>
       {results.length > 0 && !selected && (
@@ -74,7 +77,7 @@ const LocationSearch = ({ value, onSelect, inputStyle }) => {
                 onMouseEnter={e => e.currentTarget.style.background = 'var(--color-page)'}
                 onMouseLeave={e => e.currentTarget.style.background = 'var(--color-surface)'}
               >
-                <span>📍</span>
+                <BrandIcon name="location" size={24} active={false} />
                 <div>
                   <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--color-text)' }}>
                     {name || r.display_name.split(',')[0]}
@@ -210,8 +213,8 @@ export default function Onboarding() {
     width: '100%',
     background: 'var(--color-page)',
     border: '1.5px solid var(--color-border)',
-    borderRadius: '10px',
-    padding: '12px 14px',
+    borderRadius: '9px',
+    padding: '10px 12px',
     fontSize: '14px',
     color: 'var(--color-text)',
     fontFamily: 'inherit',
@@ -226,13 +229,13 @@ export default function Onboarding() {
     textTransform: 'uppercase',
     letterSpacing: '0.8px',
     display: 'block',
-    marginBottom: '7px'
+    marginBottom: '5px'
   }
 
   const steps = ['Basic Info', 'Work & Experience', 'Skills & Links']
 
   return (
-    <div style={{
+    <div className="onboarding-shell" style={{
       minHeight: '100vh',
       background: 'linear-gradient(135deg, var(--color-brand) 0%, var(--color-brand-mid) 50%, var(--color-brand-highlight) 100%)',
       display: 'flex',
@@ -241,27 +244,23 @@ export default function Onboarding() {
       padding: '20px',
       fontFamily: "'Plus Jakarta Sans', sans-serif"
     }}>
-      <div style={{
+      <div className="onboarding-card" style={{
         background: 'var(--color-surface)',
-        borderRadius: '24px',
-        padding: '36px',
+        borderRadius: '20px',
+        padding: '28px',
         width: '100%',
-        maxWidth: '480px',
-        maxHeight: '90vh',
+        maxWidth: '440px',
+        maxHeight: '86vh',
         overflowY: 'auto',
         boxShadow: '0 20px 60px rgba(108,71,255,0.3)'
       }}>
 
         {/* Logo */}
-        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-          <div style={{
-            width: '52px', height: '52px',
-            background: 'linear-gradient(135deg, var(--color-brand), var(--color-brand-highlight))',
-            borderRadius: '14px',
-            display: 'flex', alignItems: 'center',
-            justifyContent: 'center', fontSize: '24px',
-            margin: '0 auto 10px'
-          }}>🗺</div>
+        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+          <img src="/prima-logo.png" alt="" aria-hidden="true" style={{
+            width: '46px', height: '46px', objectFit: 'contain',
+            borderRadius: '12px', display: 'block', margin: '0 auto 9px'
+          }} />
           <div style={{
             fontSize: '22px', fontWeight: '800',
             color: 'var(--color-text)', marginBottom: '4px'
@@ -285,7 +284,7 @@ export default function Onboarding() {
         {/* Step labels */}
         <div style={{
           display: 'flex', justifyContent: 'space-between',
-          marginBottom: '24px'
+          marginBottom: '18px'
         }}>
           {steps.map((label, i) => (
             <span key={label} style={{
@@ -301,15 +300,15 @@ export default function Onboarding() {
           letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '4px'
         }}>Step {step} of 3</div>
         <div style={{
-          fontSize: '18px', fontWeight: '800',
-          color: 'var(--color-text)', marginBottom: '20px'
+          fontSize: '17px', fontWeight: '800',
+          color: 'var(--color-text)', marginBottom: '16px'
         }}>
           {step === 1 ? 'Who are you?' : step === 2 ? 'Work & Experience' : 'Skills & Links'}
         </div>
 
         {/* STEP 1 — Basic Info */}
         {step === 1 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '11px' }}>
             <div>
               <label style={labelStyle}>Full Name *</label>
               <input
@@ -383,7 +382,7 @@ export default function Onboarding() {
                 {[
                   {
                     key: 'physical_mode',
-                    icon: '📌',
+                    icon: 'physical',
                     title: 'Physical Work',
                     sub: 'On-location gigs near you',
                     color: 'var(--color-warning)',
@@ -392,7 +391,7 @@ export default function Onboarding() {
                   },
                   {
                     key: 'digital_mode',
-                    icon: '💻',
+                    icon: 'digital',
                     title: 'Digital Work',
                     sub: 'Remote gigs online',
                     color: 'var(--color-brand)',
@@ -409,7 +408,7 @@ export default function Onboarding() {
                       cursor: 'pointer', transition: 'all 0.2s',
                       display: 'flex', gap: '12px', alignItems: 'center'
                     }}>
-                    <div style={{ fontSize: '24px' }}>{mode.icon}</div>
+                    <BrandIcon name={mode.icon} size={34} active={form[mode.key]} />
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: '14px', fontWeight: '700', color: 'var(--color-text)' }}>
                         {mode.title}
@@ -513,7 +512,7 @@ export default function Onboarding() {
         )}
 
         {/* Buttons */}
-        <div style={{ display: 'flex', gap: '10px', marginTop: '24px' }}>
+        <div style={{ display: 'flex', gap: '10px', marginTop: '18px' }}>
           {step > 1 && (
             <button onClick={() => setStep(s => s - 1)} style={{
               flex: 1, background: 'var(--color-page)',
@@ -539,7 +538,7 @@ export default function Onboarding() {
               boxShadow: '0 4px 20px rgba(108,71,255,0.35)',
               fontFamily: 'inherit', transition: 'all 0.2s'
             }}>
-            {loading ? '⏳ Saving...' : step < 3 ? 'Continue →' : '🚀 Enter Prima'}
+            {loading ? 'Saving…' : step < 3 ? 'Continue →' : 'Complete profile & enter Prima'}
           </button>
         </div>
       </div>

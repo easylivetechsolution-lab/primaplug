@@ -71,7 +71,10 @@ export default function Search({ onClose }) {
       // Build gigs query
       let gigsQuery = supabase
         .from('gigs')
-        .select('*, users(full_name, avatar_url, trust_score, rating)')
+        // gigs references users as both poster and worker; make the joined
+        // profile explicit so PostgREST does not reject the relationship as
+        // ambiguous (HTTP 300).
+        .select('*, users!gigs_poster_id_fkey(full_name, avatar_url, trust_score, rating)')
         .eq('status', 'open')
         .is('deleted_at', null)
         .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)

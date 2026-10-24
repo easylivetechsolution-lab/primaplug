@@ -153,9 +153,7 @@ export const CURRENCIES = [
   { code: 'TOP', symbol: 'T$',    name: 'Tongan Paʻanga',           flag: '🇹🇴' },
 ]
 
-// Currencies Fincra can process for wallet funding + payouts.
-// Gigs can be quoted in any currency, but wallet payment is only
-// available when the gig currency matches one of these.
+// Currencies currently supported for gig payment, wallet funding, and payouts.
 export const FINCRA_CURRENCIES = ['NGN', 'GHS', 'KES', 'ZAR', 'USD', 'EUR', 'GBP']
 
 export const getCurrency = (code) =>

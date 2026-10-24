@@ -12,6 +12,7 @@ import { getCurrency } from '../data/currencies'
 const TABS = [
   { key: 'overview', label: '📊 Overview', icon: '📊' },
   { key: 'users', label: '👥 Users', icon: '👥' },
+  { key: 'verification', label: '✅ Verification', icon: '✅' },
   { key: 'gigs', label: '⚡ Gigs', icon: '⚡' },
   { key: 'services', label: '🛠 Services', icon: '🛠' },
   { key: 'disputes', label: '⚠️ Disputes', icon: '⚠️' },
@@ -28,6 +29,7 @@ export default function Admin() {
   const [activeTab, setActiveTab] = useState('overview')
   const [stats, setStats] = useState(null)
   const [users, setUsers] = useState([])
+  const [verificationRequests, setVerificationRequests] = useState([])
   const [gigs, setGigs] = useState([])
   const [services, setServices] = useState([])
   const [disputes, setDisputes] = useState([])
@@ -129,6 +131,20 @@ export default function Admin() {
           .limit(100)
         setUsers(usersData || [])
         break
+      case 'verification': {
+        const { data: requestData, error: requestError } = await supabase
+          .from('verification_requests')
+          .select('*, user:users!verification_requests_user_id_fkey(id, full_name, username, email, avatar_url, bio, location, skills, portfolio_url, website_url, social_linkedin, social_twitter, is_verified)')
+          .eq('status', 'pending')
+          .order('created_at', { ascending: true })
+        if (requestError) {
+          setVerificationRequests([])
+          showToast('Could not load verification requests. Check that the verification migration has been applied.', 'error')
+        } else {
+          setVerificationRequests(requestData || [])
+        }
+        break
+      }
       case 'gigs':
         const { data: gigsData } = await supabase
           .from('gigs')
@@ -274,12 +290,28 @@ export default function Admin() {
     fetchTabData('users')
   }
 
-  const verifyUser = async (userId) => {
-    await supabase
-      .from('users')
-      .update({ is_verified: true })
-      .eq('id', userId)
-    fetchTabData('users')
+  const reviewVerificationRequest = async (request, decision) => {
+    const reviewNote = window.prompt(
+      decision === 'rejected' ? 'Reason for declining this request (at least 5 characters):' : 'Optional note for the applicant:',
+      ''
+    )
+    if (reviewNote === null) return
+    if (decision === 'rejected' && reviewNote.trim().length < 5) {
+      showToast('Add a short reason so the applicant knows what to improve.', 'error')
+      return
+    }
+    const { error } = await supabase.rpc('review_verification_request', {
+      p_request_id: request.id,
+      p_decision: decision,
+      p_review_note: reviewNote.trim() || null,
+    })
+    if (error) {
+      showToast(error.message || 'Could not save the verification decision.', 'error')
+      return
+    }
+    showToast(decision === 'approved' ? 'Applicant approved and badge granted.' : 'Request declined.', 'success')
+    await fetchTabData('verification')
+    if (decision === 'approved') await fetchTabData('users')
   }
 
   const deleteGig = async (gigId, confirmed = false) => {
@@ -868,19 +900,6 @@ export default function Admin() {
                       {timeAgo(u.joined_at)}
                     </div>
                     <div style={{ display: 'flex', gap: '4px' }}>
-                      {!u.is_verified && !u.is_admin && (
-                        <button
-                          onClick={() => verifyUser(u.id)}
-                          title="Verify User"
-                          style={{
-                            background: 'var(--color-success-soft)',
-                            border: '1px solid var(--color-success-border)',
-                            borderRadius: '6px', padding: '4px 7px',
-                            fontSize: '12px', fontWeight: '700',
-                            color: 'var(--color-success)', cursor: 'pointer',
-                            fontFamily: 'inherit'
-                          }}>✓</button>
-                      )}
                       {!u.is_admin && !u.is_banned && (
                         <button
                           onClick={() => banUser(u.id)}
@@ -916,6 +935,73 @@ export default function Admin() {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* VERIFICATION REQUESTS TAB */}
+          {activeTab === 'verification' && (
+            <div>
+              <div style={{ fontSize: '20px', fontWeight: '800', color: 'var(--color-text)', marginBottom: '6px' }}>
+                Prima verification requests ({verificationRequests.length})
+              </div>
+              <div style={{ fontSize: '13px', color: 'var(--color-text-muted)', marginBottom: '18px', lineHeight: '1.5' }}>
+                Review the applicant’s Prima profile and work details. Approving grants the public verified badge.
+              </div>
+
+              {loadingData ? (
+                <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-subtle)' }}>Loading requests…</div>
+              ) : verificationRequests.length === 0 ? (
+                <div style={{ background: 'var(--color-surface)', border: '1.5px solid var(--color-border)', borderRadius: '14px', padding: '28px', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                  No pending verification requests.
+                </div>
+              ) : verificationRequests.map(request => {
+                const applicant = request.user || {}
+                const profileLinks = [
+                  ['Portfolio', applicant.portfolio_url],
+                  ['Website', applicant.website_url],
+                  ['LinkedIn', applicant.social_linkedin],
+                  ['X', applicant.social_twitter],
+                ].filter(([, url]) => url)
+                return (
+                  <article key={request.id} style={{
+                    background: 'var(--color-surface)', border: '1.5px solid var(--color-border)',
+                    borderRadius: '16px', padding: '18px', marginBottom: '14px'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                        {applicant.avatar_url ? <img src={applicant.avatar_url} alt="" style={{ width: '42px', height: '42px', borderRadius: '12px', objectFit: 'cover' }} /> : (
+                          <div style={{ width: '42px', height: '42px', borderRadius: '12px', display: 'grid', placeItems: 'center', background: 'var(--color-brand-soft)', color: 'var(--color-brand)', fontWeight: '800' }}>{applicant.full_name?.[0] || '?'}</div>
+                        )}
+                        <div>
+                          <div style={{ fontSize: '14px', fontWeight: '800', color: 'var(--color-text)' }}>{applicant.full_name || 'Name not provided'} {applicant.username ? `@${applicant.username}` : ''}</div>
+                          <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>{applicant.email || 'No email'} · Submitted {timeAgo(request.created_at)}</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ marginTop: '14px', padding: '13px', borderRadius: '10px', background: 'var(--color-page)', color: 'var(--color-text)', fontSize: '13px', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
+                      {request.applicant_note}
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '12px', fontSize: '12px', color: 'var(--color-text-muted)' }}>
+                      {applicant.location && <span>📍 {applicant.location}</span>}
+                      {Array.isArray(applicant.skills) && applicant.skills.length > 0 && <span>Skills: {applicant.skills.join(', ')}</span>}
+                      {applicant.bio && <span>Profile bio: {applicant.bio}</span>}
+                    </div>
+                    {profileLinks.length > 0 && (
+                      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '10px' }}>
+                        {profileLinks.map(([label, url]) => (
+                          <a key={label} href={url.startsWith('http') ? url : `https://${url}`} target="_blank" rel="noreferrer" style={{ color: 'var(--color-brand)', fontSize: '12px', fontWeight: '700' }}>{label} ↗</a>
+                        ))}
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
+                      <button type="button" onClick={() => reviewVerificationRequest(request, 'approved')} style={{ flex: 1, border: 'none', borderRadius: '10px', padding: '11px', background: 'var(--color-success)', color: 'white', fontSize: '13px', fontWeight: '800', cursor: 'pointer', fontFamily: 'inherit' }}>Approve and grant badge</button>
+                      <button type="button" onClick={() => reviewVerificationRequest(request, 'rejected')} style={{ flex: 1, border: '1px solid var(--color-danger-border)', borderRadius: '10px', padding: '11px', background: 'var(--color-danger-soft)', color: 'var(--color-danger)', fontSize: '13px', fontWeight: '800', cursor: 'pointer', fontFamily: 'inherit' }}>Decline</button>
+                    </div>
+                  </article>
+                )
+              })}
             </div>
           )}
 

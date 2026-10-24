@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../supabase'
 import { useAuth } from '../../context/AuthContext'
@@ -265,6 +266,10 @@ export default function ProfileScreen({ onLogout }) {
   const [activeTab, setActiveTab] = useState('about')
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [showSelfie, setShowSelfie] = useState(false)
+  const [showVerificationRequest, setShowVerificationRequest] = useState(false)
+  const [verificationRequest, setVerificationRequest] = useState(null)
+  const [verificationNote, setVerificationNote] = useState('')
+  const [submittingVerification, setSubmittingVerification] = useState(false)
   const [withdrawalHistory, setWithdrawalHistory] = useState([])
   const [profileWallets, setProfileWallets] = useState([])
   const fileRef = useRef()
@@ -287,6 +292,15 @@ export default function ProfileScreen({ onLogout }) {
       .select('*')
       .eq('id', user.id)
       .maybeSingle()
+
+    const { data: verificationData } = await supabase
+      .from('verification_requests')
+      .select('id, applicant_note, status, review_note, created_at, reviewed_at')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    setVerificationRequest(verificationData || null)
 
     const [{ data: reviews }, { data: receipts }, { data: withdrawals }, { data: walletsData }] = await Promise.all([
       supabase
@@ -328,6 +342,33 @@ export default function ProfileScreen({ onLogout }) {
     setLoading(false)
   }
 
+  const submitVerificationRequest = async () => {
+    const note = verificationNote.trim()
+    if (note.length < 20) {
+      showToast('Please add at least 20 characters about your work and profile.', 'error')
+      return
+    }
+    setSubmittingVerification(true)
+    const { data, error } = await supabase
+      .from('verification_requests')
+      .insert({ user_id: user.id, applicant_note: note })
+      .select('id, applicant_note, status, review_note, created_at, reviewed_at')
+      .single()
+
+    if (error) {
+      showToast(error.code === '23505'
+        ? 'You already have a verification request under review.'
+        : 'Could not submit your request. Please try again.', 'error')
+      setSubmittingVerification(false)
+      return
+    }
+    setVerificationRequest(data)
+    setVerificationNote('')
+    setShowVerificationRequest(false)
+    setSubmittingVerification(false)
+    showToast('Your Prima verification request has been submitted.', 'success')
+  }
+
   const handleAvatarUpload = async (e) => {
     const file = e.target.files[0]
     if (!file) return
@@ -366,6 +407,7 @@ export default function ProfileScreen({ onLogout }) {
         physical_mode: editForm.physical_mode,
         digital_mode: editForm.digital_mode,
         skills: editForm.skills || [],
+        website_url: editForm.website_url,
         portfolio_url: editForm.portfolio_url,
         social_linkedin: editForm.social_linkedin,
         social_twitter: editForm.social_twitter,
@@ -441,43 +483,46 @@ export default function ProfileScreen({ onLogout }) {
       margin: '0 auto'
     }}>
       {/* EDIT MODAL */}
-      {editing && (
+      {editing && createPortal((
   <div style={{
     position: 'fixed', inset: 0,
-    background: 'rgba(20,18,58,0.75)',
-    backdropFilter: 'blur(4px)',
+    background: 'rgba(38,25,88,0.56)',
+    backdropFilter: 'blur(7px)',
     zIndex: 400,
-    display: 'flex', alignItems: 'flex-start',
-    justifyContent: 'center', padding: '20px',
+    display: 'flex', alignItems: 'center',
+    justifyContent: 'center', padding: '12px',
     overflowY: 'auto',
-    WebkitOverflowScrolling: 'touch'
+    WebkitOverflowScrolling: 'touch',
+    boxSizing: 'border-box'
   }}>
           <div style={{
-  background: 'var(--color-surface)',
-  borderRadius: '24px', padding: '28px',
-  width: '100%', maxWidth: '520px',
-  margin: '20px 0',
+  display: 'flex', flexDirection: 'column',
+  background: 'var(--color-brand-surface-gradient)',
+  borderRadius: '24px', padding: 0,
+  width: '100%', maxWidth: '480px',
+  height: '78dvh', maxHeight: 'calc(100dvh - 24px)', minHeight: 0,
+  margin: '0 auto', overflow: 'hidden',
   border: '1.5px solid var(--color-border)',
-  boxShadow: '0 20px 60px rgba(108,71,255,0.25)'
+  boxShadow: '0 24px 80px rgba(57,35,130,0.3)',
+  boxSizing: 'border-box'
 }}>
             <div style={{
               display: 'flex', justifyContent: 'space-between',
-              alignItems: 'center', padding: '22px 22px 16px',
-              borderBottom: '1px solid var(--color-page)', flexShrink: 0
+              alignItems: 'center', padding: '14px 18px 12px',
+              borderBottom: '1px solid var(--color-page)', flexShrink: 0,
+              background: 'linear-gradient(110deg, var(--color-brand-soft), var(--color-surface) 72%)'
             }}>
               <div style={{ fontSize: '18px', fontWeight: '800', color: 'var(--color-text)' }}>Edit Profile</div>
-              <button  onClick={() => setEditing(false)} style={{
-                background: 'var(--color-page)', border: '1.5px solid var(--color-border)', borderRadius: '8px',
-                width: '34px', height: '34px', fontSize: '18px', color: 'var(--color-text-muted)',
-                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'inherit'
-              }}>×</button>
+              <button type="button" aria-label="Close profile editor" onClick={() => setEditing(false)} style={{ background: 'var(--color-page)', border: '1.5px solid var(--color-border)', borderRadius: '8px', minWidth: '58px', height: '34px', padding: '0 9px', fontSize: '12px', fontWeight: '700', color: 'var(--color-text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'inherit' }}>Close</button>
             </div>
 
             <div style={{
               display: 'flex', flexDirection: 'column', gap: '14px',
               flex: 1, minHeight: 0, overflowY: 'auto',
               WebkitOverflowScrolling: 'touch',
-              padding: '18px 22px 22px'
+              overscrollBehaviorY: 'contain',
+              padding: '14px 18px 18px',
+              background: 'var(--color-brand-surface-gradient)'
             }}>
               <div>
                 <label style={labelStyle}>Full Name</label>
@@ -571,6 +616,11 @@ export default function ProfileScreen({ onLogout }) {
               </div>
 
               <div>
+                <label style={labelStyle}>Website</label>
+                <input style={inputStyle} type="url" value={editForm.website_url || ''} placeholder="https://yourwebsite.com"
+                  onChange={e => setEditForm(f => ({ ...f, website_url: e.target.value }))} />
+              </div>
+              <div>
                 <label style={labelStyle}>Portfolio URL</label>
                 <input style={inputStyle} value={editForm.portfolio_url || ''} placeholder="https://yourportfolio.com"
                   onChange={e => setEditForm(f => ({ ...f, portfolio_url: e.target.value }))} />
@@ -589,7 +639,7 @@ export default function ProfileScreen({ onLogout }) {
 
             <div style={{
               display: 'flex', gap: '10px',
-              padding: '14px 22px calc(14px + env(safe-area-inset-bottom))',
+              padding: '10px 18px calc(10px + env(safe-area-inset-bottom))',
               borderTop: '1px solid var(--color-page)',
               background: 'var(--color-surface)',
               boxShadow: '0 -10px 24px rgba(20,18,58,0.06)',
@@ -597,18 +647,18 @@ export default function ProfileScreen({ onLogout }) {
             }}>
               <button onClick={() => { document.activeElement?.blur(); setEditForm(profile); setEditing(false) }} disabled={saving} style={{
                 flex: 1, background: 'var(--color-page)', border: '1.5px solid var(--color-border)', borderRadius: '12px',
-                padding: '13px', fontSize: '13px', fontWeight: '600', color: 'var(--color-text-muted)', cursor: 'pointer', fontFamily: 'inherit'
+                padding: '10px', fontSize: '13px', fontWeight: '600', color: 'var(--color-text-muted)', cursor: 'pointer', fontFamily: 'inherit'
               }}>Cancel</button>
               <button onClick={handleSave} disabled={saving} style={{
                 flex: 2, background: saving ? 'var(--color-brand-border-strong)' : 'var(--color-brand-gradient)',
-                border: 'none', borderRadius: '12px', padding: '13px', fontSize: '14px', fontWeight: '700',
+                border: 'none', borderRadius: '12px', padding: '10px', fontSize: '14px', fontWeight: '700',
                 color: 'var(--color-surface)', cursor: saving ? 'not-allowed' : 'pointer',
                 boxShadow: '0 4px 16px rgba(108,71,255,0.3)', fontFamily: 'inherit'
               }}>{saving ? '⏳ Saving...' : '✓ Save Profile'}</button>
             </div>
           </div>
         </div>
-      )}
+      ), document.body)}
 
       {/* ═══════════════════════════════════════
           DASHBOARD GRID — sidebar + main
@@ -1187,14 +1237,37 @@ export default function ProfileScreen({ onLogout }) {
             }}>
               <BrandIcon name="level" size={42} />
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: '14px', fontWeight: '700', color: 'var(--color-text)', marginBottom: '3px' }}>Get Verified on Prima</div>
-                <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', lineHeight: '1.5' }}>Verified users get 3x more gig responses. Show clients you're legit.</div>
+                <div style={{ fontSize: '14px', fontWeight: '700', color: 'var(--color-text)', marginBottom: '3px' }}>
+                  {verificationRequest?.status === 'pending'
+                    ? 'Prima Verification Under Review'
+                    : verificationRequest?.status === 'rejected'
+                      ? 'Apply Again for Prima Verification'
+                      : 'Get Verified on Prima'}
+                </div>
+                <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', lineHeight: '1.5' }}>
+                  {verificationRequest?.status === 'pending'
+                    ? 'Your profile is in the review queue. We’ll show the decision here.'
+                    : verificationRequest?.status === 'rejected'
+                      ? `Your last request was declined${verificationRequest.review_note ? `: ${verificationRequest.review_note}` : '.'}`
+                      : 'Prima reviews your profile and work details. Apply to request the public verified badge.'}
+                </div>
               </div>
-              <button style={{
+              <button
+                type="button"
+                disabled={verificationRequest?.status === 'pending'}
+                onClick={() => {
+                  setVerificationNote('')
+                  setShowVerificationRequest(true)
+                }}
+                style={{
                 background: 'linear-gradient(135deg, var(--color-warning-gold), var(--color-warning))', border: 'none', borderRadius: '10px',
                 padding: '9px 14px', fontSize: '12px', fontWeight: '700', color: 'var(--color-surface)', cursor: 'pointer',
-                fontFamily: 'inherit', flexShrink: 0, whiteSpace: 'nowrap'
-              }}>Get Verified</button>
+                fontFamily: 'inherit', flexShrink: 0, whiteSpace: 'nowrap',
+                opacity: verificationRequest?.status === 'pending' ? 0.6 : 1,
+                cursor: verificationRequest?.status === 'pending' ? 'default' : 'pointer'
+              }}>
+                {verificationRequest?.status === 'pending' ? 'Pending' : verificationRequest?.status === 'rejected' ? 'Apply Again' : 'Get Verified'}
+              </button>
             </div>
           )}
 
@@ -1233,6 +1306,54 @@ export default function ProfileScreen({ onLogout }) {
             borderRadius: '14px', padding: '15px', fontSize: '14px', fontWeight: '700',
             color: 'var(--color-danger)', cursor: 'pointer', fontFamily: 'inherit'
           }}>Log Out of Prima</button>
+        </div>
+      )}
+
+      {showVerificationRequest && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 9998,
+          background: 'rgba(20,18,58,0.78)', backdropFilter: 'blur(6px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
+        }}>
+          <div role="dialog" aria-modal="true" aria-labelledby="verification-request-title" style={{
+            width: '100%', maxWidth: '480px', background: 'var(--color-surface)',
+            border: '1.5px solid var(--color-border)', borderRadius: '20px', padding: '24px',
+            boxShadow: '0 24px 64px rgba(0,0,0,0.35)'
+          }}>
+            <div id="verification-request-title" style={{ fontSize: '20px', fontWeight: '800', color: 'var(--color-text)', marginBottom: '8px' }}>
+              Request Prima verification
+            </div>
+            <div style={{ fontSize: '13px', color: 'var(--color-text-muted)', lineHeight: '1.6', marginBottom: '16px' }}>
+              Prima will manually review your profile and work details. This public badge review is separate from selfie verification. Tell us what you do and what clients can confirm from your profile.
+            </div>
+            <textarea
+              aria-label="Tell us about your work"
+              value={verificationNote}
+              onChange={e => setVerificationNote(e.target.value.slice(0, 1500))}
+              placeholder="Describe your work, experience, and any profile links that support your application."
+              rows={5}
+              style={{
+                width: '100%', boxSizing: 'border-box', resize: 'vertical',
+                border: '1.5px solid var(--color-border)', borderRadius: '12px',
+                background: 'var(--color-page)', color: 'var(--color-text)',
+                padding: '12px', font: 'inherit', fontSize: '13px', lineHeight: '1.5', outline: 'none'
+              }}
+            />
+            <div style={{ fontSize: '12px', color: verificationNote.trim().length < 20 ? 'var(--color-text-subtle)' : 'var(--color-success)', marginTop: '6px' }}>
+              {verificationNote.trim().length}/1500 characters · at least 20 required
+            </div>
+            <div style={{ display: 'flex', gap: '10px', marginTop: '18px' }}>
+              <button type="button" onClick={() => setShowVerificationRequest(false)} disabled={submittingVerification} style={{
+                flex: 1, border: '1px solid var(--color-border)', borderRadius: '10px', padding: '11px',
+                background: 'var(--color-page)', color: 'var(--color-text-muted)', font: 'inherit', fontWeight: '700', cursor: 'pointer'
+              }}>Cancel</button>
+              <button type="button" onClick={submitVerificationRequest} disabled={submittingVerification || verificationNote.trim().length < 20} style={{
+                flex: 1, border: 'none', borderRadius: '10px', padding: '11px',
+                background: 'var(--color-brand-gradient)', color: 'var(--color-surface)', font: 'inherit', fontWeight: '700',
+                cursor: submittingVerification || verificationNote.trim().length < 20 ? 'not-allowed' : 'pointer', opacity: submittingVerification || verificationNote.trim().length < 20 ? 0.6 : 1
+              }}>{submittingVerification ? 'Submitting…' : 'Submit for review'}</button>
+            </div>
+          </div>
         </div>
       )}
 

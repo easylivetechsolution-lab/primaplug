@@ -43,7 +43,7 @@ export default function ReviewModal({ gig, revieweeId, revieweeName, reviewType,
     }
     setSubmitting(true)
     try {
-      const { data: review, error: reviewError } = await supabase
+      const { data: insertedReview, error: reviewError } = await supabase
         .from('reviews')
         .insert({
           gig_id: gig.id,
@@ -56,11 +56,33 @@ export default function ReviewModal({ gig, revieweeId, revieweeName, reviewType,
         })
         .select('id')
         .single()
-      if (reviewError) throw reviewError
+
+      let review = insertedReview
+      if (reviewError) {
+        // The review insert can succeed while trust application fails (for
+        // example during a transient network issue). Reuse that review on a
+        // retry instead of creating a duplicate or leaving trust unapplied.
+        if (reviewError.code !== '23505') throw reviewError
+        const { data: existingReview, error: existingReviewError } = await supabase
+          .from('reviews')
+          .select('id')
+          .eq('gig_id', gig.id)
+          .eq('reviewer_id', user.id)
+          .eq('reviewee_id', revieweeId)
+          .eq('type', reviewType)
+          .eq('trust_application_eligible', true)
+          .maybeSingle()
+        if (existingReviewError) throw existingReviewError
+        if (!existingReview) throw reviewError
+        review = existingReview
+      }
 
       if (reviewType === 'worker') {
-        const { error } = await supabase.rpc('apply_review_trust', { p_review_id: review.id })
+        const { data: trustResult, error } = await supabase.rpc('apply_review_trust', { p_review_id: review.id })
         if (error) throw error
+        if (!['applied', 'already_applied'].includes(trustResult?.status)) {
+          throw new Error(`Could not apply review trust: ${trustResult?.status || 'unknown status'}`)
+        }
       }
 
       setDone(true)

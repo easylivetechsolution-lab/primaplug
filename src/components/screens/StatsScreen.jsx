@@ -140,7 +140,10 @@ export default function StatsScreen() {
 
   if (loading) return <ScreenLoader />
 
-  const completed = stats?.profile?.gigs_completed || 0
+  const completed = Number(stats?.profile?.gigs_completed || 0)
+  const completionMilestoneTarget = 1000
+  const milestoneCompleted = Math.min(Math.max(Number(stats?.successfulApps || 0), 0), completionMilestoneTarget)
+  const milestoneProgress = Math.round((milestoneCompleted / completionMilestoneTarget) * 100)
   const currentLevel = [...LEVELS].reverse().find(level => completed >= level.min) || LEVELS[0]
   const currentLevelIndex = LEVELS.findIndex(level => level.key === currentLevel.key)
   const nextLevel = LEVELS[currentLevelIndex + 1] || null
@@ -326,16 +329,15 @@ export default function StatsScreen() {
         ))}
       </div>
 
-      {/* Application Success Rate */}
-      {stats?.decidedApps > 0 && (
-        <div style={{
+      {/* Successful-application milestone uses the existing progress card. */}
+      <div style={{
           background: 'var(--color-surface)', border: '1.5px solid var(--color-border)',
           borderRadius: '14px', padding: '16px', marginBottom: '16px'
         }}>
           <div style={{
             fontSize: '12px', fontWeight: '700', color: 'var(--color-text)',
             marginBottom: '10px'
-          }}>Application Success Rate</div>
+          }}>Successful Applications Progress</div>
           <div style={{
             height: '8px', background: 'var(--color-page)',
             borderRadius: '4px', overflow: 'hidden', marginBottom: '6px'
@@ -343,7 +345,7 @@ export default function StatsScreen() {
             <div style={{
               height: '100%', borderRadius: '4px',
               background: 'linear-gradient(90deg, var(--color-brand), var(--color-brand-highlight))',
-              width: `${Math.round((stats.successfulApps / stats.decidedApps) * 100)}%`,
+              width: `${milestoneProgress}%`,
               transition: 'width 0.8s ease'
             }} />
           </div>
@@ -351,13 +353,14 @@ export default function StatsScreen() {
             display: 'flex', justifyContent: 'space-between', gap: '12px',
             fontSize: '12px', color: 'var(--color-text-muted)'
           }}>
-            <span>{stats.successfulApps} accepted or completed · {stats.decidedApps} decided</span>
+            <span>{milestoneCompleted >= completionMilestoneTarget
+              ? `${milestoneCompleted.toLocaleString()} successful applications · milestone reached`
+              : `${milestoneCompleted.toLocaleString()} / ${completionMilestoneTarget.toLocaleString()} successful applications`}</span>
             <span style={{ fontWeight: '700', color: 'var(--color-brand)', flexShrink: 0 }}>
-              {Math.round((stats.successfulApps / stats.decidedApps) * 100)}%
+              {milestoneProgress}%
             </span>
           </div>
         </div>
-      )}
       {/* Level Roadmap */}
       <div style={{
         background: 'var(--color-surface)', border: '1.5px solid var(--color-border)',

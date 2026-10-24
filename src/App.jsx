@@ -71,6 +71,15 @@ function AuthCallback() {
             const googleAvatar = data.session.user.user_metadata?.avatar_url || ''
             const googleEmail = data.session.user.email || ''
 
+            // The server limits delivery to recently created Google accounts
+            // and records each send, so invoking on callbacks also permits a
+            // retry after a temporary email-provider failure.
+            void supabase.functions.invoke('send-google-welcome-email')
+              .then(({ error: welcomeEmailError }) => {
+                if (welcomeEmailError) console.warn('Google welcome email could not be sent:', welcomeEmailError.message)
+              })
+              .catch(error => console.warn('Google welcome email request failed:', error))
+
             // Check if Prima profile exists
             const { data: profile } = await supabase
               .from('users')
@@ -96,6 +105,7 @@ function AuthCallback() {
                 level: 'new',
                 wallet_currency: 'USD'
               })
+
               setMessage('Profile created! Taking you to setup...')
               setTimeout(() => navigate('/onboarding'), 1000)
             } else if (needsProfileSetup(profile)) {

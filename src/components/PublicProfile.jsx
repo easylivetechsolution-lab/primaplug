@@ -106,6 +106,7 @@ export default function PublicProfile({ userId, onClose, standalone = false }) {
         bio: data.bio || '',
         work_experience: data.work_experience || '',
         skills: Array.isArray(data.skills) ? data.skills.join(', ') : '',
+        website_url: data.website_url || '',
         portfolio_url: data.portfolio_url || '',
         social_linkedin: data.social_linkedin || '',
         social_twitter: data.social_twitter || '',
@@ -137,6 +138,7 @@ export default function PublicProfile({ userId, onClose, standalone = false }) {
         bio: profileEditForm.bio?.trim() || '',
         work_experience: profileEditForm.work_experience?.trim() || '',
         skills: [...new Set(profileEditForm.skills.split(',').map(skill => skill.trim()).filter(Boolean))].slice(0, 30),
+        website_url: profileEditForm.website_url?.trim() || '',
         portfolio_url: profileEditForm.portfolio_url?.trim() || '',
         social_linkedin: profileEditForm.social_linkedin?.trim() || '',
         social_twitter: profileEditForm.social_twitter?.trim() || '',
@@ -547,6 +549,7 @@ export default function PublicProfile({ userId, onClose, standalone = false }) {
                     ))}
                     {[
                       ['skills', 'Skills (comma separated)'],
+                      ['website_url', 'Website'],
                       ['portfolio_url', 'Portfolio link'],
                       ['social_linkedin', 'LinkedIn'],
                       ['social_twitter', 'X / Twitter'],
@@ -675,13 +678,13 @@ export default function PublicProfile({ userId, onClose, standalone = false }) {
                   </div>
                 ))}
               </div>
-              {(profile.portfolio_url || profile.social_linkedin || profile.social_twitter) && (
+              {(profile.website_url || profile.portfolio_url || profile.social_linkedin || profile.social_twitter) && (
                 <div style={{ marginTop: '12px', padding: '14px', borderRadius: '14px', background: 'var(--color-page)' }}>
-                  <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)', fontWeight: '700', marginBottom: '8px' }}>Portfolio & social links</div>
-                  {[['Portfolio', profile.portfolio_url], ['LinkedIn', profile.social_linkedin], ['X / Twitter', profile.social_twitter]].filter(([, value]) => value).map(([label, value]) => (
+                  <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)', fontWeight: '700', marginBottom: '8px' }}>Website & links</div>
+                  {[['Website', profile.website_url], ['Portfolio', profile.portfolio_url], ['LinkedIn', profile.social_linkedin], ['X / Twitter', profile.social_twitter]].filter(([, value]) => value).map(([label, value]) => (
                     <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', padding: '5px 0', fontSize: '13px' }}>
                       <span style={{ color: 'var(--color-text-muted)' }}>{label}</span>
-                      <span style={{ color: 'var(--color-brand)', overflowWrap: 'anywhere', textAlign: 'right' }}>{String(value).replace(/^https?:\/\//, '')}</span>
+                      <a href={String(value).match(/^https?:\/\//i) ? value : `https://${value}`} target="_blank" rel="noreferrer" style={{ color: 'var(--color-brand)', overflowWrap: 'anywhere', textAlign: 'right', textDecoration: 'none' }}>{String(value).replace(/^https?:\/\//i, '')}</a>
                     </div>
                   ))}
                 </div>
