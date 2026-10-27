@@ -49,6 +49,7 @@ function AppLoader({ message }) {
 
 function AuthCallback() {
   const navigate = useNavigate()
+  const { refreshProfile } = useAuth()
   const [message, setMessage] = useState('Signing you in...')
 
   useEffect(() => {
@@ -89,7 +90,7 @@ function AuthCallback() {
 
             if (!profile) {
               // Create profile from Google data
-              await supabase.from('users').insert({
+              const { error: createProfileError } = await supabase.from('users').insert({
                 id: userId,
                 full_name: googleName,
                 email: googleEmail,
@@ -105,14 +106,18 @@ function AuthCallback() {
                 level: 'new',
                 wallet_currency: 'USD'
               })
+              if (createProfileError) throw createProfileError
 
               setMessage('Profile created! Taking you to setup...')
+              await refreshProfile(userId)
               setTimeout(() => navigate('/onboarding'), 1000)
             } else if (needsProfileSetup(profile)) {
               setMessage('Finish setting up your profile...')
+              await refreshProfile(userId)
               setTimeout(() => navigate('/onboarding'), 1000)
             } else {
               setMessage('Welcome back! Loading Prima...')
+              await refreshProfile(userId)
               setTimeout(() => navigate('/dashboard'), 1000)
             }
             return

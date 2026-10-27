@@ -71,8 +71,9 @@ export const AuthProvider = ({ children }) => {
     return () => subscription.unsubscribe()
   }, [])
 
-  const refreshProfile = () => {
-    if (user?.id) fetchProfile(user.id)
+  const refreshProfile = (userId = user?.id) => {
+    if (userId) return fetchProfile(userId)
+    return Promise.resolve()
   }
 
   return (
