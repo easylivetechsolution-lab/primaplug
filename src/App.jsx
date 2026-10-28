@@ -96,7 +96,7 @@ function AuthCallback() {
             // Check if Prima profile exists
             const { data: profile } = await supabase
               .from('users')
-              .select('id, full_name, username, skills')
+              .select('id, full_name, username, skills, onboarding_completed')
               .eq('id', userId)
               .maybeSingle()
 
@@ -121,6 +121,10 @@ function AuthCallback() {
               if (createProfileError) throw createProfileError
 
               setMessage('Profile created! Taking you to setup...')
+              await refreshProfile(userId)
+              setTimeout(() => navigate('/onboarding'), 1000)
+            } else if (profile.onboarding_completed === false) {
+              setMessage('Finish setting up your profile...')
               await refreshProfile(userId)
               setTimeout(() => navigate('/onboarding'), 1000)
             } else {
@@ -185,7 +189,7 @@ function AppRoutes() {
         user
           ? !profileLoaded
             ? <AppLoader />
-            : <Navigate to={profile ? '/dashboard' : '/onboarding'} replace />
+            : <Navigate to={profile?.onboarding_completed === false ? '/onboarding' : '/dashboard'} replace />
           : <Auth />
       } />
       <Route path="/auth/callback" element={<AuthCallback />} />

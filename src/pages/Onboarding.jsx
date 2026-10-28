@@ -168,6 +168,7 @@ export default function Onboarding() {
         portfolio_url: form.portfolio_url,
         social_linkedin: form.social_linkedin,
         social_twitter: form.social_twitter,
+        onboarding_completed: true,
         joined_at: new Date().toISOString(),
       }
 
