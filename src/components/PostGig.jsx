@@ -20,6 +20,12 @@ const URGENCY = [
   { key: 'flexible', label: 'FLEXIBLE', color: 'var(--color-text-subtle)', bg: 'var(--color-page)' },
 ]
 
+const toLocalDateTimeValue = (date) => {
+  const local = new Date(date)
+  local.setMinutes(local.getMinutes() - local.getTimezoneOffset())
+  return local.toISOString().slice(0, 16)
+}
+
 export default function PostGig({ onClose }) {
   const { user, profile, wallets } = useAuth()
   const { currency: defaultCurrency } = useLanguage()
@@ -63,6 +69,7 @@ export default function PostGig({ onClose }) {
     field: '',
     custom_skill: '',
     urgency: 'now',
+    scheduled_start_at: '',
     pay_min: '',
     pay_max: '',
     currency: initialGigCurrency,
@@ -173,6 +180,10 @@ export default function PostGig({ onClose }) {
       setError(validationError)
       return
     }
+    if (form.urgency === 'scheduled' && (!form.scheduled_start_at || new Date(form.scheduled_start_at).getTime() <= Date.now())) {
+      setError('Choose a scheduled start time in the future.')
+      return
+    }
 
     const gigWalletForSubmit = (wallets || []).find(w => w.currency === form.currency)
     if (form.payment_method === PAYMENT_METHODS.WALLET && !gigWalletForSubmit) {
@@ -227,6 +238,9 @@ export default function PostGig({ onClose }) {
         type: form.type,
         field: form.field,
         urgency: form.urgency,
+        scheduled_start_at: form.urgency === 'scheduled'
+          ? new Date(form.scheduled_start_at).toISOString()
+          : null,
         pay_min: Number(form.pay_min),
         pay_max: Number(form.pay_max),
         currency: String(form.currency).toUpperCase(),
@@ -430,6 +444,22 @@ export default function PostGig({ onClose }) {
                     ))}
                   </div>
                 </div>
+
+                {form.urgency === 'scheduled' && (
+                  <div>
+                    <label style={labelStyle}>Scheduled Start</label>
+                    <input
+                      type="datetime-local"
+                      value={form.scheduled_start_at}
+                      min={toLocalDateTimeValue(Date.now() + 60_000)}
+                      onChange={e => update('scheduled_start_at', e.target.value)}
+                      style={inputStyle}
+                    />
+                    <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)', marginTop: '5px' }}>
+                      The time is shown in your local timezone.
+                    </div>
+                  </div>
+                )}
 
                 {/* Currency */}
                 <div>

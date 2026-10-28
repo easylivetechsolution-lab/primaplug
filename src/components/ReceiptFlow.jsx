@@ -373,23 +373,21 @@ export default function ReceiptFlow({ gig, application, onClose, onComplete }) {
 
   const confirmDisputePaymentReceived = async () => {
     setSubmitting(true)
+    setError(null)
     try {
-      const currentReceipt = receipt || (application?.id
-        ? (await supabase.from('receipts').select('*').eq('application_id', application.id).maybeSingle()).data
-        : null)
-      if (!currentReceipt) throw new Error('Receipt was not found')
-      const { error: clearError } = await supabase.from('receipts')
-        .update({ disputed: false, dispute_reason: null }).eq('id', currentReceipt.id)
-      if (clearError) throw clearError
-      await supabase.from('notifications').insert({
-        user_id: gig.poster_id,
-        title: 'Dispute Resolved',
-        message: `The worker confirmed they received payment for "${gig.title}" and has closed the dispute.`,
-        type: 'general', gig_id: gig.id, application_id: application?.id || null
+      if (!application?.id) throw new Error('This job is missing its application record. Refresh and try again.')
+      const { error: resolveError } = await supabase.rpc('confirm_worker_dispute_payment', {
+        p_application_id: application.id
       })
-      await handleWorkerConfirm(true)
+      if (resolveError) throw resolveError
+      try { await updateWorkerLevel(workerId) } catch (levelError) {
+        console.error('Worker level refresh error:', levelError)
+      }
+      setStep('done')
+      onComplete && onComplete()
     } catch (e) {
       setError('Error resolving dispute: ' + e.message)
+    } finally {
       setSubmitting(false)
     }
   }
@@ -992,7 +990,9 @@ export default function ReceiptFlow({ gig, application, onClose, onComplete }) {
                 lineHeight: '1.7', marginBottom: '20px'
               }}>
                 {isWorker
-                  ? 'You raised a dispute on this payment. If you\'ve since found the payment, you can confirm it below — otherwise our team will review within 24 hours.'
+                  ? isWalletGig
+                    ? 'You raised a dispute about this wallet-funded gig. If the completion and escrow amount are now correct, confirm below; otherwise our team will review it.'
+                    : 'You raised a dispute on this payment. If you have since received the payment, you can confirm it below; otherwise our team will review it.'
                   : 'The worker has disputed the payment amount. Our team will review and resolve this within 24 hours. Both parties will be notified of the outcome.'
                 }
               </div>
@@ -1002,8 +1002,9 @@ export default function ReceiptFlow({ gig, application, onClose, onComplete }) {
                 fontSize: '12px', color: 'var(--color-warning)', lineHeight: '1.6',
                 marginBottom: isWorker ? '20px' : '0'
               }}>
-                In the meantime please have your payment proof ready.
-                Our admin team may contact you for more information.
+                {isWalletGig
+                  ? 'Our admin team may review the completion and escrow records and contact you for more information.'
+                  : 'Please keep your payment proof available. Our admin team may contact you for more information.'}
               </div>
 
               {/* Worker can self-resolve if they found the payment */}
@@ -1015,14 +1016,18 @@ export default function ReceiptFlow({ gig, application, onClose, onComplete }) {
                     fontSize: '12px', color: 'var(--color-brand)', lineHeight: '1.5',
                     textAlign: 'left'
                   }}>
-                    💡 Found the payment? Tap below to confirm and close this dispute without waiting for admin.
+                    {isWalletGig
+                      ? 'Ready to confirm that the work is complete and the escrow amount is correct? Tap below to close this dispute.'
+                      : 'Received the payment? Tap below to confirm and close this dispute.'}
                   </div>
                   <button
                     onClick={async () => {
                       setConfirmDialog({
-                        title: 'Confirm that you received the payment?',
-                        message: 'This closes the dispute and confirms that the payment for this job reached you.',
-                        confirmLabel: 'Yes, payment received',
+                        title: isWalletGig ? 'Confirm completion and escrow release?' : 'Confirm that you received the payment?',
+                        message: isWalletGig
+                          ? 'This closes the dispute and releases the held wallet escrow for this completed work.'
+                          : 'This closes the dispute and confirms that the payment for this job reached you.',
+                        confirmLabel: isWalletGig ? 'Confirm completion' : 'Yes, payment received',
                         action: confirmDisputePaymentReceived
                       })
                     }}
@@ -1036,7 +1041,7 @@ export default function ReceiptFlow({ gig, application, onClose, onComplete }) {
                       fontFamily: 'inherit',
                       boxShadow: submitting ? 'none' : '0 4px 16px rgba(0,196,140,0.35)'
                     }}>
-                    {submitting ? '⏳ Processing...' : '✓ I Found It — Confirm Payment'}
+                    {submitting ? '⏳ Processing...' : isWalletGig ? '✓ Confirm Completion' : '✓ I Received It — Confirm Payment'}
                   </button>
                 </div>
               )}

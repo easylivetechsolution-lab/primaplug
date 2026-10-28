@@ -724,6 +724,12 @@ export default function Search({ onClose }) {
               color: 'var(--color-text)', marginBottom: '16px'
             }}>{selectedGig.title}</h2>
 
+            {selectedGig.scheduled_start_at && (
+              <div style={{ fontSize: '13px', color: 'var(--color-brand)', fontWeight: '700', marginBottom: '14px' }}>
+                Scheduled for {new Date(selectedGig.scheduled_start_at).toLocaleString()}
+              </div>
+            )}
+
             <div style={{
               display: 'grid', gridTemplateColumns: '1fr 1fr',
               gap: '10px', marginBottom: '14px'

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { BrowserRouter, Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useParams, useLocation } from 'react-router-dom'
 import { supabase } from './supabase'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import Auth from './pages/Auth'
@@ -11,7 +11,6 @@ import PublicProfile from './components/PublicProfile'
 import { LanguageProvider } from './context/LanguageContext'
 import { CreditsProvider } from './context/CreditsContext'
 import { captureReferralCode, captureGigReferral } from './utils/referral'
-import { needsProfileSetup } from './utils/profileComplete'
 
 function AppLoader({ message }) {
   return (
@@ -43,6 +42,19 @@ function AppLoader({ message }) {
         </div>
       )}
       <style>{`@keyframes primaspin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  )
+}
+
+function ProfileLoadError({ onRetry }) {
+  return (
+    <div style={{ minHeight: '100dvh', display: 'grid', placeItems: 'center', padding: '24px', background: 'var(--color-surface-tint)', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+      <div style={{ maxWidth: '360px', textAlign: 'center', color: 'var(--color-text)' }}>
+        <p>We couldn’t load your profile, so we haven’t redirected you to onboarding.</p>
+        <button onClick={onRetry} style={{ border: 0, borderRadius: '12px', padding: '12px 20px', background: 'var(--color-brand)', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>
+          Try again
+        </button>
+      </div>
     </div>
   )
 }
@@ -111,10 +123,6 @@ function AuthCallback() {
               setMessage('Profile created! Taking you to setup...')
               await refreshProfile(userId)
               setTimeout(() => navigate('/onboarding'), 1000)
-            } else if (needsProfileSetup(profile)) {
-              setMessage('Finish setting up your profile...')
-              await refreshProfile(userId)
-              setTimeout(() => navigate('/onboarding'), 1000)
             } else {
               setMessage('Welcome back! Loading Prima...')
               await refreshProfile(userId)
@@ -144,9 +152,10 @@ function AuthCallback() {
 }
 
 function ProtectedRoute({ children }) {
-  const { user, loading, profileLoaded } = useAuth()
+  const { user, loading, profileLoaded, profileLoadError, refreshProfile } = useAuth()
 
   if (loading || (user && !profileLoaded)) return <AppLoader />
+  if (user && profileLoadError) return <ProfileLoadError onRetry={() => refreshProfile(user.id)} />
 
   return user ? children : <Navigate to="/" replace />
 }
@@ -157,7 +166,8 @@ function PublicProfileRoute() {
 }
 
 function AppRoutes() {
-  const { user, profile, loading, profileLoaded } = useAuth()
+  const { user, profile, loading, profileLoaded, profileLoadError, refreshProfile } = useAuth()
+  const location = useLocation()
 
   useEffect(() => {
     captureReferralCode()
@@ -165,6 +175,9 @@ function AppRoutes() {
   }, [])
 
   if (loading) return <AppLoader />
+  if (user && profileLoaded && profileLoadError && location.pathname === '/') {
+    return <ProfileLoadError onRetry={() => refreshProfile(user.id)} />
+  }
 
   return (
     <Routes>
@@ -172,7 +185,7 @@ function AppRoutes() {
         user
           ? !profileLoaded
             ? <AppLoader />
-            : <Navigate to={needsProfileSetup(profile) ? '/onboarding' : '/dashboard'} replace />
+            : <Navigate to={profile ? '/dashboard' : '/onboarding'} replace />
           : <Auth />
       } />
       <Route path="/auth/callback" element={<AuthCallback />} />
@@ -184,7 +197,7 @@ function AppRoutes() {
         <ProtectedRoute><Onboarding /></ProtectedRoute>
       } />
       <Route path="/dashboard" element={
-        <ProtectedRoute>{needsProfileSetup(profile) ? <Navigate to="/onboarding" replace /> : <Dashboard />}</ProtectedRoute>
+        <ProtectedRoute><Dashboard /></ProtectedRoute>
       } />
       <Route path="/admin" element={
         <ProtectedRoute><Admin /></ProtectedRoute>

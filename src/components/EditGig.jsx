@@ -33,11 +33,20 @@ const URGENCY_OPTIONS = [
   { key: 'flexible', label: '⚪ Flexible', color: 'var(--color-text-muted)', bg: 'var(--color-page)', border: 'var(--color-border)' },
 ]
 
+const toLocalDateTimeValue = (date) => {
+  if (!date) return ''
+  const local = new Date(date)
+  if (Number.isNaN(local.getTime())) return ''
+  local.setMinutes(local.getMinutes() - local.getTimezoneOffset())
+  return local.toISOString().slice(0, 16)
+}
+
 export default function EditGig({ gig, onClose, onSaved }) {
   const [form, setForm] = useState({
     title: gig.title || '',
     description: gig.description || '',
     urgency: gig.urgency || 'flexible',
+    scheduled_start_at: toLocalDateTimeValue(gig.scheduled_start_at),
     currency: gig.currency || 'USD',
     pay_min: gig.pay_min || '',
     pay_max: gig.pay_max || '',
@@ -62,6 +71,10 @@ export default function EditGig({ gig, onClose, onSaved }) {
 
   const handleSave = async () => {
     if (!form.title.trim()) { showToast('Please enter a title', 'error'); return }
+    if (form.urgency === 'scheduled' && (!form.scheduled_start_at || new Date(form.scheduled_start_at).getTime() <= Date.now())) {
+      showToast('Choose a scheduled start time in the future', 'error')
+      return
+    }
     setSaving(true)
     try {
       const expiresAt = new Date()
@@ -71,6 +84,9 @@ export default function EditGig({ gig, onClose, onSaved }) {
         title: form.title,
         description: form.description,
         urgency: form.urgency,
+        scheduled_start_at: form.urgency === 'scheduled'
+          ? new Date(form.scheduled_start_at).toISOString()
+          : null,
         currency: form.currency,
         pay_min: parseFloat(form.pay_min) || 0,
         pay_max: parseFloat(form.pay_max) || 0,
@@ -191,6 +207,22 @@ export default function EditGig({ gig, onClose, onSaved }) {
                 ))}
               </div>
             </div>
+
+            {form.urgency === 'scheduled' && (
+              <div>
+                <label style={labelStyle}>Scheduled Start</label>
+                <input
+                  type="datetime-local"
+                  style={inputStyle}
+                  value={form.scheduled_start_at}
+                  min={toLocalDateTimeValue(Date.now() + 60_000)}
+                  onChange={e => update('scheduled_start_at', e.target.value)}
+                />
+                <div style={{ fontSize: '11px', color: 'var(--color-text-subtle)', marginTop: '5px' }}>
+                  The time is shown in your local timezone.
+                </div>
+              </div>
+            )}
 
             {/* Currency + Pay */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>

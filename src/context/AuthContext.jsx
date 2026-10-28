@@ -12,24 +12,32 @@ export const AuthProvider = ({ children }) => {
   const [wallets, setWallets] = useState([])
   const [loading, setLoading] = useState(true)
   const [profileLoaded, setProfileLoaded] = useState(false)
+  const [profileLoadError, setProfileLoadError] = useState('')
 
   const fetchProfile = async (userId) => {
-    if (!userId) return
+    if (!userId) return false
+    setProfileLoaded(false)
+    setProfileLoadError('')
     try {
-      const [{ data: profileData, error }, { data: walletsData }] = await Promise.all([
+      const [{ data: profileData, error }, { data: walletsData, error: walletsError }] = await Promise.all([
         supabase.from('users').select('*').eq('id', userId).maybeSingle(),
         supabase.from('wallets').select('*').eq('user_id', userId).order('created_at'),
       ])
 
       if (error) {
         console.log('Profile fetch error:', error)
-        return
+        setProfileLoadError('We could not load your profile. Please try again.')
+        return false
       }
 
       setProfile(profileData)
       setWallets(walletsData || [])
+      if (walletsError) console.log('Wallet fetch error:', walletsError)
+      return true
     } catch (e) {
       console.log('Profile fetch exception:', e)
+      setProfileLoadError('We could not load your profile. Please try again.')
+      return false
     } finally {
       setProfileLoaded(true)
       setLoading(false)
@@ -50,6 +58,9 @@ export const AuthProvider = ({ children }) => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        // getSession() above owns initial profile loading. Ignore the matching
+        // INITIAL_SESSION event so it cannot race a second profile fetch.
+        if (event === 'INITIAL_SESSION') return
         setUser(session?.user ?? null)
         if (session?.user) {
           if (event !== 'TOKEN_REFRESHED') {
@@ -62,6 +73,7 @@ export const AuthProvider = ({ children }) => {
         } else {
           setProfile(null)
           setWallets([])
+          setProfileLoadError('')
           setProfileLoaded(false)
           setLoading(false)
         }
@@ -77,7 +89,7 @@ export const AuthProvider = ({ children }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ user, profile, wallets, loading, profileLoaded, refreshProfile }}>
+    <AuthContext.Provider value={{ user, profile, wallets, loading, profileLoaded, profileLoadError, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   )

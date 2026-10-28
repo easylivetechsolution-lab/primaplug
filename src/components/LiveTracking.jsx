@@ -18,50 +18,67 @@ const createWorkerPin = (avatarUrl, initial) => L.divIcon({
       align-items: center;
     ">
       <div style="
-        width: 48px; height: 48px;
+        width: 44px; height: 44px;
+        box-sizing: border-box;
         border-radius: 50%;
-        background: #fff;
-        border: 3px solid var(--color-brand);
-        box-shadow: 0 4px 20px rgba(108,71,255,0.5);
-        display: flex; align-items: center;
-        justify-content: center;
+        padding: 3px;
+        background: var(--color-brand-gradient);
+        box-shadow: 0 5px 14px rgba(20,18,58,0.24);
         overflow: hidden;
-        position: relative; z-index: 2;
-        font-size: 18px; font-weight: 800;
-        color: var(--color-brand);
+        position: relative;
+        z-index: 2;
       ">
-        ${avatarUrl
-          ? `<img src="${avatarUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`
+        <div style="
+          width: 100%; height: 100%;
+          border-radius: 50%;
+          overflow: hidden;
+          background: var(--color-brand-soft);
+          display: flex; align-items: center; justify-content: center;
+          color: var(--color-brand);
+          font-size: 16px; font-weight: 800;
+        ">${avatarUrl
+          ? `<img src="${avatarUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;" />`
           : `<span>${initial}</span>`
-        }
+        }</div>
       </div>
-      <div style="
-        background: var(--color-brand);
+      <span style="
+        position: absolute;
+        top: 35px;
+        left: 50%;
+        z-index: 3;
+        width: 19px; height: 19px;
+        display: grid; place-items: center;
+        transform: translateX(-50%);
+        box-sizing: border-box;
+        border: 2px solid #fff;
+        border-radius: 50%;
+        background: var(--color-brand-gradient);
         color: #fff;
-        font-size: 12px;
-        font-weight: 700;
-        padding: 2px 7px;
-        border-radius: 10px;
-        margin-top: 3px;
-        white-space: nowrap;
-        box-shadow: 0 2px 8px rgba(108,71,255,0.4);
-      ">ON THE WAY</div>
+        box-shadow: 0 2px 7px rgba(72,42,170,0.3);
+      ">
+        <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></svg>
+      </span>
       <div style="
-        width: 0; height: 0;
-        border-left: 6px solid transparent;
-        border-right: 6px solid transparent;
-        border-top: 8px solid var(--color-brand);
-        margin-top: -1px;
-      "></div>
+        background: rgba(255,255,255,0.96);
+        color: var(--color-brand);
+        font-size: 10px;
+        font-weight: 700;
+        padding: 3px 7px;
+        border-radius: 8px;
+        margin-top: 8px;
+        white-space: nowrap;
+        box-shadow: 0 2px 8px rgba(20,18,58,0.14);
+        font-family: 'Plus Jakarta Sans', sans-serif;
+      ">ON THE WAY</div>
     </div>
   `,
-  iconSize: [48, 80],
-  iconAnchor: [24, 80],
-  popupAnchor: [0, -80],
+  iconSize: [44, 62],
+  iconAnchor: [22, 62],
+  popupAnchor: [0, -62],
 })
 
 // Destination pin — shows poster's profile photo
-const createDestinationPin = (avatarUrl, initial) => L.divIcon({
+const createDestinationPin = (avatarUrl, initial, label = 'DESTINATION') => L.divIcon({
   className: '',
   html: `
     <div style="
@@ -71,46 +88,57 @@ const createDestinationPin = (avatarUrl, initial) => L.divIcon({
       align-items: center;
     ">
       <div style="
-        width: 48px; height: 48px;
+        width: 44px; height: 44px;
         border-radius: 50%;
-        background: #fff;
-        border: 3px solid var(--color-danger);
-        box-shadow: 0 4px 20px rgba(255,51,102,0.5);
+        background: linear-gradient(#fff, #fff) padding-box, var(--color-brand-gradient) border-box;
+        border: 3px solid transparent;
+        box-shadow: 0 5px 14px rgba(20,18,58,0.24);
         display: flex; align-items: center;
         justify-content: center;
         overflow: hidden;
         position: relative; z-index: 2;
         font-size: 18px; font-weight: 800;
-        color: var(--color-danger);
+        color: var(--color-brand);
       ">
         ${avatarUrl
           ? `<img src="${avatarUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`
           : `<span style="font-size:20px;">${initial || '📍'}</span>`
         }
       </div>
-      <div style="
-        background: var(--color-danger);
+      <span style="
+        position: absolute;
+        top: 35px;
+        left: 50%;
+        z-index: 3;
+        width: 19px; height: 19px;
+        display: grid; place-items: center;
+        transform: translateX(-50%);
+        box-sizing: border-box;
+        border: 2px solid #fff;
+        border-radius: 50%;
+        background: var(--color-brand-gradient);
         color: #fff;
-        font-size: 12px;
-        font-weight: 700;
-        padding: 2px 7px;
-        border-radius: 10px;
-        margin-top: 3px;
-        white-space: nowrap;
-        box-shadow: 0 2px 8px rgba(255,51,102,0.4);
-      ">DESTINATION</div>
+        box-shadow: 0 2px 7px rgba(72,42,170,0.3);
+      ">
+        <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></svg>
+      </span>
       <div style="
-        width: 0; height: 0;
-        border-left: 6px solid transparent;
-        border-right: 6px solid transparent;
-        border-top: 8px solid var(--color-danger);
-        margin-top: -1px;
-      "></div>
+        background: rgba(255,255,255,0.96);
+        color: var(--color-brand);
+        font-size: 10px;
+        font-weight: 700;
+        padding: 3px 7px;
+        border-radius: 8px;
+        margin-top: 8px;
+        white-space: nowrap;
+        box-shadow: 0 2px 8px rgba(20,18,58,0.14);
+        font-family: 'Plus Jakarta Sans', sans-serif;
+      ">${label}</div>
     </div>
   `,
-  iconSize: [48, 80],
-  iconAnchor: [24, 80],
-  popupAnchor: [0, -80],
+  iconSize: [44, 62],
+  iconAnchor: [22, 62],
+  popupAnchor: [0, -62],
 })
 
 // Auto-fit map to show both pins — mobile: once only; desktop: on every update
@@ -183,21 +211,57 @@ const getRoute = async (fromLat, fromLng, toLat, toLng) => {
 
 export default function LiveTracking({ gig, role, workerInfo, posterInfo, onClose }) {
   // role = 'worker' | 'poster'
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const [workerPos, setWorkerPos] = useState(null)
   const [route, setRoute] = useState([])
   const [eta, setEta] = useState(null)
   const [distance, setDistance] = useState(null)
   const [tracking, setTracking] = useState(false)
   const [arrived, setArrived] = useState(false)
-  const [watchId, setWatchId] = useState(null)
+  const [arrivalConfirmed, setArrivalConfirmed] = useState(false)
+  const [pastScheduledGrace, setPastScheduledGrace] = useState(false)
+  const [nearDestination, setNearDestination] = useState(false)
+  const [confirmingArrival, setConfirmingArrival] = useState(false)
+  const watchIdRef = useRef(null)
   const [resolvedPosterInfo, setResolvedPosterInfo] = useState(posterInfo)
   const channelRef = useRef()
   const fullRouteRef = useRef([]) // complete OSRM route, fetched once
+  const trackingLoadErrorRef = useRef(false)
 
   const destLat = parseFloat(gig.latitude)
   const destLng = parseFloat(gig.longitude)
   const hasDestination = !isNaN(destLat) && !isNaN(destLng)
+  const trackingWorkerId = role === 'worker'
+    ? user?.id
+    : workerInfo?.id || gig.worker_id || gig.applications?.find(application => application.status === 'accepted')?.worker_id
+  const workerAvatarUrl = workerInfo?.avatar_url || (role === 'worker' ? profile?.avatar_url : null)
+  const workerInitial = workerInfo?.full_name?.trim()?.charAt(0)
+    || (role === 'worker' ? profile?.full_name?.trim()?.charAt(0) : null)
+    || user?.email?.trim()?.charAt(0)?.toUpperCase()
+    || '?'
+  const checkInUserId = role === 'worker' ? gig.poster_id : trackingWorkerId
+  const exactAddress = [gig.house_number, gig.street, gig.location]
+    .filter(value => value != null && String(value).trim())
+    .map(value => String(value).trim())
+    .join(', ')
+  const addressDirections = [gig.landmark, gig.directions]
+    .filter(value => value != null && String(value).trim())
+    .map(value => String(value).trim())
+    .join(' · ')
+
+  useEffect(() => {
+    if (!gig.scheduled_start_at) {
+      setPastScheduledGrace(false)
+      return
+    }
+    const updateGraceState = () => {
+      const startsAt = new Date(gig.scheduled_start_at).getTime()
+      setPastScheduledGrace(Number.isFinite(startsAt) && Date.now() >= startsAt + 30 * 60 * 1000)
+    }
+    updateGraceState()
+    const timer = window.setInterval(updateGraceState, 30_000)
+    return () => window.clearInterval(timer)
+  }, [gig.scheduled_start_at])
 
   // When poster tracks a worker, posterInfo isn't passed — fetch own profile instead
   useEffect(() => {
@@ -215,10 +279,32 @@ export default function LiveTracking({ gig, role, workerInfo, posterInfo, onClos
     if (role === 'poster') {
       // Poster subscribes to worker location updates
       subscribeToWorkerLocation()
+      // Keep tracking usable if Realtime is not enabled for this table/project.
+      const pollId = window.setInterval(fetchWorkerLocation, 10000)
+      return () => {
+        window.clearInterval(pollId)
+        if (channelRef.current) supabase.removeChannel(channelRef.current)
+      }
+    }
+    if (role === 'worker') {
+      subscribeToWorkerLocation()
+      return () => {
+        if (channelRef.current) supabase.removeChannel(channelRef.current)
+        if (watchIdRef.current !== null) {
+          navigator.geolocation.clearWatch(watchIdRef.current)
+          watchIdRef.current = null
+          if (user?.id) {
+            void supabase
+              .from('worker_locations')
+              .update({ is_active: false })
+              .eq('gig_id', gig.id)
+              .eq('worker_id', user.id)
+          }
+        }
+      }
     }
     return () => {
       if (channelRef.current) supabase.removeChannel(channelRef.current)
-      if (watchId) navigator.geolocation.clearWatch(watchId)
     }
   }, [])
 
@@ -229,8 +315,10 @@ export default function LiveTracking({ gig, role, workerInfo, posterInfo, onClos
         workerPos[0], workerPos[1], destLat, destLng
       )
       setDistance(dist)
-      // Check if arrived (within 50 meters)
-      if (dist < 0.05) setArrived(true)
+      // GPS proximity is only a hint; the worker must explicitly report arrival.
+      setNearDestination(dist < 0.05)
+    } else {
+      setNearDestination(false)
     }
   }, [workerPos])
 
@@ -243,30 +331,66 @@ export default function LiveTracking({ gig, role, workerInfo, posterInfo, onClos
         table: 'worker_locations',
         filter: `gig_id=eq.${gig.id}`
       }, (payload) => {
+        if (trackingWorkerId && payload.new?.worker_id !== trackingWorkerId) return
         if (payload.new) {
+          setArrived(Boolean(payload.new.worker_arrived_at))
+          setArrivalConfirmed(Boolean(payload.new.poster_confirmed_arrival_at))
+        }
+        if (payload.new?.is_active) {
           setWorkerPos([
             parseFloat(payload.new.latitude),
             parseFloat(payload.new.longitude)
           ])
           setTracking(true)
+        } else if (payload.new) {
+          setWorkerPos(null)
+          setTracking(false)
         }
       })
-      .subscribe()
+      .subscribe((status, error) => {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.error('Worker location Realtime subscription failed:', status, error)
+        }
+      })
 
     // Also fetch latest position
     fetchWorkerLocation()
   }
 
   const fetchWorkerLocation = async () => {
-    const { data } = await supabase
+    let query = supabase
       .from('worker_locations')
       .select('*')
       .eq('gig_id', gig.id)
-      .eq('is_active', true)
+    if (trackingWorkerId) query = query.eq('worker_id', trackingWorkerId)
+    const { data, error } = await query
+      .order('updated_at', { ascending: false })
+      .limit(1)
       .maybeSingle()
+    if (error) {
+      console.error('Could not load worker location:', error)
+      if (!trackingLoadErrorRef.current) {
+        trackingLoadErrorRef.current = true
+        showToast('Could not load live tracking. Check the worker_locations table and its access policies in Supabase.', 'error')
+      }
+      return
+    }
+    trackingLoadErrorRef.current = false
     if (data) {
-      setWorkerPos([parseFloat(data.latitude), parseFloat(data.longitude)])
-      setTracking(true)
+      setArrived(Boolean(data.worker_arrived_at))
+      setArrivalConfirmed(Boolean(data.poster_confirmed_arrival_at))
+      if (data.is_active) {
+        setWorkerPos([parseFloat(data.latitude), parseFloat(data.longitude)])
+        setTracking(true)
+      } else {
+        setWorkerPos(null)
+        setTracking(false)
+      }
+    } else {
+      setWorkerPos(null)
+      setTracking(false)
+      setArrived(false)
+      setArrivalConfirmed(false)
     }
   }
 
@@ -295,31 +419,26 @@ export default function LiveTracking({ gig, role, workerInfo, posterInfo, onClos
   }
 
   const startTracking = () => {
+    if (arrived) {
+      showToast('You have already reported arrival for this gig.', 'info')
+      return
+    }
     if (!navigator.geolocation) {
       showToast('Geolocation not supported on this device', 'error')
       return
     }
+    if (!user?.id) {
+      showToast('Please sign in again before sharing your location.', 'error')
+      return
+    }
 
-    setTracking(true)
-
-    // Notify poster
-    supabase.from('notifications').insert({
-      user_id: gig.poster_id,
-      title: '🚀 Worker is on the way!',
-      message: `Your worker has started heading to "${gig.title}"`,
-      type: 'general',
-      gig_id: gig.id
-    })
-
+    let locationWatchId = null
+    let notifiedPoster = false
     const id = navigator.geolocation.watchPosition(
       async (position) => {
         const lat = position.coords.latitude
         const lng = position.coords.longitude
-
-        setWorkerPos([lat, lng])
-
-        // Update location in database
-        await supabase
+        const { error } = await supabase
           .from('worker_locations')
           .upsert({
             gig_id: gig.id,
@@ -331,8 +450,36 @@ export default function LiveTracking({ gig, role, workerInfo, posterInfo, onClos
             is_active: true,
             updated_at: new Date().toISOString()
           }, { onConflict: 'gig_id,worker_id' })
+
+        if (error) {
+          console.error('Could not share worker location:', error)
+          showToast(`Could not share location: ${error.message || 'Supabase rejected the location update.'}`, 'error')
+          if (locationWatchId !== null) navigator.geolocation.clearWatch(locationWatchId)
+          watchIdRef.current = null
+          setTracking(false)
+          return
+        }
+
+        setWorkerPos([lat, lng])
+        setTracking(true)
+        if (!notifiedPoster) {
+          notifiedPoster = true
+          void supabase.from('notifications').insert({
+            user_id: gig.poster_id,
+            title: 'Worker is on the way!',
+            message: `Your worker has started heading to "${gig.title}"`,
+            type: 'general',
+            gig_id: gig.id
+          })
+        }
       },
-      (err) => console.log('Location error:', err),
+      (err) => {
+        console.error('Location error:', err)
+        setTracking(false)
+        showToast(err.code === 1
+          ? 'Allow location access in your browser to start live tracking.'
+          : 'Could not get your location. Please try again.', 'error')
+      },
       {
         enableHighAccuracy: true,
         maximumAge: 5000,
@@ -340,13 +487,14 @@ export default function LiveTracking({ gig, role, workerInfo, posterInfo, onClos
       }
     )
 
-    setWatchId(id)
+    locationWatchId = id
+    watchIdRef.current = id
   }
 
   const stopTracking = async () => {
-    if (watchId) navigator.geolocation.clearWatch(watchId)
+    if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current)
+    watchIdRef.current = null
     setTracking(false)
-    setWatchId(null)
     fullRouteRef.current = []
 
     await supabase
@@ -356,14 +504,59 @@ export default function LiveTracking({ gig, role, workerInfo, posterInfo, onClos
       .eq('worker_id', user.id)
   }
 
-  const markArrived = async () => {
-    await stopTracking()
-    setArrived(true)
+  const reportArrival = async () => {
+    if (arrived || !tracking || !user?.id) return
+    if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current)
+    watchIdRef.current = null
+    setTracking(false)
+    fullRouteRef.current = []
 
-    await supabase.from('notifications').insert({
+    const { error } = await supabase.rpc('report_gig_worker_arrival', {
+      p_gig_id: gig.id
+    })
+    if (error) {
+      console.error('Could not report worker arrival:', error)
+      const { error: stopError } = await supabase
+        .from('worker_locations')
+        .update({ is_active: false })
+        .eq('gig_id', gig.id)
+        .eq('worker_id', user.id)
+      if (stopError) console.error('Could not stop location sharing:', stopError)
+      showToast(`Could not report arrival: ${error.message}`, 'error')
+      return
+    }
+
+    setArrived(true)
+    setArrivalConfirmed(false)
+    setWorkerPos(null)
+    void supabase.from('notifications').insert({
       user_id: gig.poster_id,
-      title: '📍 Worker has arrived!',
-      message: `Your worker has arrived at "${gig.title}"`,
+      title: 'Worker reported arrival',
+      message: `The worker reported arriving for "${gig.title}". Please confirm their arrival in live tracking.`,
+      type: 'general',
+      gig_id: gig.id
+    })
+  }
+
+  const confirmWorkerArrival = async () => {
+    if (!trackingWorkerId || confirmingArrival) return
+    setConfirmingArrival(true)
+    const { error } = await supabase.rpc('confirm_gig_worker_arrival', {
+      p_gig_id: gig.id,
+      p_worker_id: trackingWorkerId
+    })
+    setConfirmingArrival(false)
+    if (error) {
+      console.error('Could not confirm worker arrival:', error)
+      showToast(`Could not confirm arrival: ${error.message}`, 'error')
+      return
+    }
+
+    setArrivalConfirmed(true)
+    void supabase.from('notifications').insert({
+      user_id: trackingWorkerId,
+      title: 'Arrival confirmed',
+      message: `The poster confirmed your arrival for "${gig.title}".`,
       type: 'general',
       gig_id: gig.id
     })
@@ -401,6 +594,11 @@ export default function LiveTracking({ gig, role, workerInfo, posterInfo, onClos
           <div style={{
             fontSize: '15px', fontWeight: '800', color: 'var(--color-text)'
           }}>{gig.title}</div>
+              {gig.type === 'physical' && exactAddress && (
+                <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', marginTop: '3px', maxWidth: 'min(70vw, 440px)' }}>
+                  {exactAddress}{addressDirections ? ` · ${addressDirections}` : ''}
+                </div>
+              )}
         </div>
         <button  onClick={onClose} style={{
           background: 'var(--color-page)', border: '1.5px solid var(--color-border)',
@@ -496,12 +694,12 @@ export default function LiveTracking({ gig, role, workerInfo, posterInfo, onClos
             <Marker
               position={workerPos}
               icon={createWorkerPin(
-                workerInfo?.avatar_url,
-                workerInfo?.full_name?.charAt(0) || '?'
+                workerAvatarUrl,
+                workerInitial
               )}>
               <Popup>
                 <div style={{ fontFamily: 'inherit', fontSize: '13px' }}>
-                  <strong>{workerInfo?.full_name || 'Worker'}</strong>
+                  <strong>{workerInfo?.full_name || (role === 'worker' ? profile?.full_name : null) || 'Worker'}</strong>
                   <br />On the way...
                 </div>
               </Popup>
@@ -514,11 +712,12 @@ export default function LiveTracking({ gig, role, workerInfo, posterInfo, onClos
               position={[destLat, destLng]}
               icon={createDestinationPin(
                 resolvedPosterInfo?.avatar_url,
-                resolvedPosterInfo?.full_name?.charAt(0) || '📍'
+                resolvedPosterInfo?.full_name?.charAt(0) || '📍',
+                gig.type === 'physical' ? 'AREA PIN' : 'DESTINATION'
               )}>
               <Popup>
                 <div style={{ fontFamily: 'inherit', fontSize: '13px' }}>
-                  <strong>📍 {gig.location || 'Destination'}</strong>
+                  <strong>{gig.type === 'physical' ? 'Area pin' : '📍 Destination'} · {gig.location || 'Location unavailable'}</strong>
                   {resolvedPosterInfo?.full_name && (
                     <><br />{resolvedPosterInfo.full_name}</>
                   )}
@@ -575,9 +774,9 @@ export default function LiveTracking({ gig, role, workerInfo, posterInfo, onClos
             <div style={{
               fontSize: '14px', fontWeight: '700',
               color: 'var(--color-text)', marginBottom: '4px'
-            }}>No exact location set</div>
+            }}>No map pin set</div>
             <div style={{ fontSize: '12px', color: 'var(--color-text-subtle)', lineHeight: '1.5' }}>
-              The poster didn't set an exact address for this gig.
+              The poster hasn't set map coordinates for this gig. Check the address details above if available, or message the poster for directions.
             </div>
           </div>
         )}
@@ -590,23 +789,58 @@ export default function LiveTracking({ gig, role, workerInfo, posterInfo, onClos
         padding: '16px 20px',
         flexShrink: 0
       }}>
+        {pastScheduledGrace && !arrived && (
+          <div style={{
+            background: 'var(--color-warning-soft)',
+            border: '1px solid var(--color-warning-border)',
+            borderRadius: '12px', padding: '12px 14px', marginBottom: '10px'
+          }}>
+            <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--color-warning)', marginBottom: '4px' }}>
+              Scheduled start was over 30 minutes ago
+            </div>
+            <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', lineHeight: 1.45, marginBottom: '9px' }}>
+              Check in with the other person. This reminder does not automatically mark anyone as a no-show.
+            </div>
+            {checkInUserId && (
+              <button
+                onClick={() => window.dispatchEvent(new CustomEvent('openChatWithUser', { detail: { userId: checkInUserId } }))}
+                style={{
+                  background: 'var(--color-brand-gradient)', border: 0, borderRadius: '9px',
+                  padding: '9px 13px', color: '#fff', fontSize: '12px', fontWeight: '700',
+                  fontFamily: 'inherit', cursor: 'pointer'
+                }}
+              >Message {role === 'worker' ? 'poster' : 'worker'}</button>
+            )}
+          </div>
+        )}
+
         {role === 'worker' && !arrived && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {!tracking ? (
-              <button
-                onClick={startTracking}
-                style={{
-                  width: '100%',
-                  background: 'var(--color-brand-gradient)',
-                  border: 'none', borderRadius: '14px', padding: '15px',
-                  fontSize: '15px', fontWeight: '700', color: 'var(--color-surface)',
-                  cursor: 'pointer', fontFamily: 'inherit',
-                  boxShadow: '0 4px 20px rgba(108,71,255,0.4)',
-                  display: 'flex', alignItems: 'center',
-                  justifyContent: 'center', gap: '8px'
+              <>
+                <div style={{
+                  background: 'var(--color-brand-soft)',
+                  border: '1px solid var(--color-brand-border-strong)',
+                  borderRadius: '12px', padding: '11px 13px',
+                  color: 'var(--color-text-muted)', fontSize: '12px', lineHeight: 1.5
                 }}>
-                <span>🧭</span> Start Navigation
-              </button>
+                  Starting navigation shares your live location with the gig poster. You can stop sharing anytime; it also stops when you report arrival.
+                </div>
+                <button
+                  onClick={startTracking}
+                  style={{
+                    width: '100%',
+                    background: 'var(--color-brand-gradient)',
+                    border: 'none', borderRadius: '14px', padding: '15px',
+                    fontSize: '15px', fontWeight: '700', color: 'var(--color-surface)',
+                    cursor: 'pointer', fontFamily: 'inherit',
+                    boxShadow: '0 4px 20px rgba(108,71,255,0.4)',
+                    display: 'flex', alignItems: 'center',
+                    justifyContent: 'center', gap: '8px'
+                  }}>
+                  <span>🧭</span> Start Navigation
+                </button>
+              </>
             ) : (
               <>
                 {(eta || distance) && (
@@ -650,13 +884,23 @@ export default function LiveTracking({ gig, role, workerInfo, posterInfo, onClos
                       Live tracking active
                     </div>
                     <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
-                      Client can see your location
+                      The gig poster can see your live location
                     </div>
                   </div>
                 </div>
+                {nearDestination && (
+                  <div style={{
+                    background: 'var(--color-warning-soft)',
+                    border: '1px solid var(--color-warning-border)',
+                    borderRadius: '10px', padding: '10px 12px',
+                    color: 'var(--color-warning)', fontSize: '12px', fontWeight: '600'
+                  }}>
+                    You appear close to the destination. Report arrival when you are at the job site.
+                  </div>
+                )}
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <button
-                    onClick={markArrived}
+                    onClick={reportArrival}
                     style={{
                       flex: 2,
                       background: 'linear-gradient(135deg, var(--color-success-accent), var(--color-success))',
@@ -686,7 +930,7 @@ export default function LiveTracking({ gig, role, workerInfo, posterInfo, onClos
 
         {role === 'poster' && (
           <div>
-            {!tracking ? (
+            {!tracking && !arrived ? (
               <div style={{
                 textAlign: 'center', padding: '8px',
                 display: 'flex', gap: '10px',
@@ -699,7 +943,7 @@ export default function LiveTracking({ gig, role, workerInfo, posterInfo, onClos
                 <span style={{
                   fontSize: '13px', color: 'var(--color-text-subtle)', fontWeight: '500'
                 }}>
-                  Waiting for worker to start navigation...
+                  Waiting for the worker to start navigation. Their live location appears after they tap “Start Navigation” and allow location access.
                 </span>
               </div>
             ) : arrived ? (
@@ -711,7 +955,21 @@ export default function LiveTracking({ gig, role, workerInfo, posterInfo, onClos
                 <div style={{ fontSize: '24px', marginBottom: '6px' }}>✅</div>
                 <div style={{
                   fontSize: '14px', fontWeight: '700', color: 'var(--color-success)'
-                }}>Worker has arrived!</div>
+                }}>{arrivalConfirmed ? 'Arrival confirmed' : 'Worker reported arrival'}</div>
+                {!arrivalConfirmed && (
+                  <button
+                    onClick={confirmWorkerArrival}
+                    disabled={confirmingArrival}
+                    style={{
+                      marginTop: '12px',
+                      background: 'var(--color-brand-gradient)',
+                      border: 'none', borderRadius: '10px', padding: '11px 16px',
+                      color: '#fff', fontSize: '13px', fontWeight: '700',
+                      cursor: confirmingArrival ? 'wait' : 'pointer',
+                      fontFamily: 'inherit', opacity: confirmingArrival ? 0.7 : 1
+                    }}
+                  >{confirmingArrival ? 'Confirming…' : 'Confirm worker arrival'}</button>
+                )}
               </div>
             ) : (
               <div style={{
@@ -745,9 +1003,9 @@ export default function LiveTracking({ gig, role, workerInfo, posterInfo, onClos
             <div style={{
               fontSize: '15px', fontWeight: '700',
               color: 'var(--color-success)', marginBottom: '4px'
-            }}>You've arrived!</div>
+            }}>{arrivalConfirmed ? 'Arrival confirmed' : 'You reported arrival'}</div>
             <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
-              Client has been notified. Start the work!
+              {arrivalConfirmed ? 'The poster confirmed your arrival.' : 'Location sharing has stopped. Waiting for the poster to confirm.'}
             </div>
           </div>
         )}

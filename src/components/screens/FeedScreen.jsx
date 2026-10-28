@@ -739,6 +739,11 @@ export default function FeedScreen() {
                   display: 'flex', alignItems: 'center', gap: '8px',
                   flexWrap: 'wrap', marginBottom: '12px'
                 }}>
+                  {selectedGig.scheduled_start_at && (
+                    <span style={{ fontSize: '13px', color: 'var(--color-brand)', fontWeight: '700' }}>
+                      Scheduled for {new Date(selectedGig.scheduled_start_at).toLocaleString()}
+                    </span>
+                  )}
                   <span style={{ fontSize: '13px', color: 'var(--color-text-subtle)' }}>
                     Posted {timeAgo(selectedGig.created_at)}
                   </span>

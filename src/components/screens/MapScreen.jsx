@@ -923,7 +923,7 @@ export default function MapScreen() {
           setSelectedGig(null)
           setApplied(false)
         }}>
-          <div className="prima-bottom-sheet gig-detail-scroll" onClick={e => e.stopPropagation()} style={{
+          <div className="prima-bottom-sheet gig-detail-scroll prima-map-gig-sheet" onClick={e => e.stopPropagation()} style={{
             background: 'var(--color-surface)',
             borderRadius: '22px 22px 0 0',
             width: '100%', maxWidth: '640px',
@@ -931,7 +931,7 @@ export default function MapScreen() {
             animation: 'slideUp 0.3s cubic-bezier(0.16,1,0.3,1)',
             fontFamily: "'Plus Jakarta Sans', sans-serif"
           }}>
-            <div style={{
+            <div className="prima-map-gig-sheet-header" style={{
               display: 'flex', alignItems: 'center',
               justifyContent: 'center', position: 'relative',
               minHeight: '36px', marginBottom: '14px'
@@ -1132,6 +1132,11 @@ export default function MapScreen() {
 
                 {/* Posted / Expiry timing */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
+                  {selectedGig.scheduled_start_at && (
+                    <span style={{ fontSize: '11px', color: 'var(--color-brand)', fontWeight: '700' }}>
+                      Scheduled for {new Date(selectedGig.scheduled_start_at).toLocaleString()}
+                    </span>
+                  )}
                   <span style={{ fontSize: '11px', color: 'var(--color-text-subtle)' }}>
                     Posted {timeAgo(selectedGig.created_at)}
                   </span>
@@ -1668,10 +1673,22 @@ export default function MapScreen() {
           max-height: min(80vh, calc(100dvh - env(safe-area-inset-top) - 16px));
           padding: 18px 20px calc(18px + env(safe-area-inset-bottom));
         }
+        .prima-map-gig-sheet-header {
+          position: sticky;
+          top: 0;
+          z-index: 5;
+          margin: -18px -20px 14px;
+          padding: 18px 20px 8px;
+          background: var(--color-surface);
+        }
         @media (max-width: 600px) {
           .prima-bottom-sheet.gig-detail-scroll {
             max-height: min(78dvh, calc(100dvh - env(safe-area-inset-top) - 24px));
             padding: 14px 16px calc(16px + env(safe-area-inset-bottom));
+          }
+          .prima-map-gig-sheet-header {
+            margin: -14px -16px 14px;
+            padding: 14px 16px 8px;
           }
         }
         .leaflet-popup-content-wrapper {
